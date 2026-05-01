@@ -1,0 +1,28 @@
+# [Do not change manually — managed by Superagent]
+
+schema_version: 1
+name: "Tax prep season opening"
+description: "January / February: kick off the tax-filing project; pull supporting docs and set up gathering tasks."
+
+trigger:
+  - "tax prep season"
+  - "open tax season"
+  - "start tax filing"
+  - "kick off taxes"
+
+steps:
+  - skill: "add-project"
+    args: "--workflow tax-filing"
+    note: "Instantiate the tax-filing workflow for this year."
+  - skill: "expenses"
+    args: "--year LAST_YEAR --tax-deductible"
+    note: "Pull tax-deductible categories from last year's transactions."
+  - skill: "follow-up"
+    args: "--missing-tax-docs"
+    note: "Surface any 1099 / W-2 senders the agent expected but hasn't ingested."
+  - skill: "sources"
+    args: "search 'tax 2024'"
+    note: "Pull last year's filed return for reference."
+  - skill: "appointments"
+    args: "list --kind financial --provider accountant"
+    note: "Surface any existing accountant appointment; nudge to schedule if none."

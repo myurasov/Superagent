@@ -1,0 +1,96 @@
+# [Do not change manually — managed by Superagent]
+# Workflow: file annual taxes.
+
+schema_version: 1
+id: "tax-filing"
+version: 1
+name: "File annual taxes"
+description: "End-to-end recipe for filing federal + state taxes."
+
+parameters:
+  - name: "year"
+    type: "integer"
+    required: true
+    description: "Tax year being filed."
+  - name: "country"
+    type: "string"
+    required: false
+    default: "US"
+
+recurring: "annual"
+default_target_date: "{year}-04-15"
+default_priority: "P1"
+related_domains: ["finance"]
+
+goal: "Federal + state {country} returns filed for tax year {year}; refund received OR balance paid."
+
+scope_in:
+  - "Gather W-2s, 1099s, K-1s, charitable receipts, mortgage interest, property tax."
+  - "Compile deductions across the year."
+  - "Coordinate with accountant if applicable."
+  - "File electronically and archive the filed return PDF."
+scope_out:
+  - "Tax planning for the following year (separate project)."
+  - "Estate / trust filings (separate project)."
+  - "Quarterly estimated tax payments (handled by separate cadence)."
+
+success_criteria:
+  - "Return filed by April 15."
+  - "Refund received OR balance paid + confirmation captured."
+  - "Filed-return PDF archived under Sources/documents/taxes/{year}/."
+  - "Year-end recap appended to Domains/Finance/history.md."
+
+deliverables:
+  - "Filed federal + state return PDFs."
+  - "Receipts archive (PDF or scans)."
+  - "1-paragraph year-end recap with takeaways for next year."
+
+seed_tasks:
+  - title: "Gather W-2s and 1099s as they arrive"
+    priority: "P2"
+    due_offset_days: -75
+  - title: "Compile charitable-giving receipts for {year}"
+    priority: "P2"
+    due_offset_days: -60
+  - title: "Pull mortgage-interest 1098 + property-tax statements"
+    priority: "P2"
+    due_offset_days: -60
+  - title: "Pull HSA / FSA contributions + medical-expense totals"
+    priority: "P3"
+    due_offset_days: -55
+  - title: "Schedule accountant call (if applicable)"
+    priority: "P2"
+    due_offset_days: -45
+  - title: "Compile dependent / childcare expenses"
+    priority: "P3"
+    due_offset_days: -45
+  - title: "Review prior year's return for what changed"
+    priority: "P2"
+    due_offset_days: -30
+  - title: "Draft return / send to accountant"
+    priority: "P1"
+    due_offset_days: -21
+  - title: "Review draft return"
+    priority: "P1"
+    due_offset_days: -14
+  - title: "Sign + e-file return"
+    priority: "P0"
+    due_offset_days: -3
+  - title: "Pay balance OR confirm refund expectation"
+    priority: "P1"
+    due_offset_days: 0
+  - title: "Archive filed return PDF in Sources/documents/taxes/{year}/"
+    priority: "P2"
+    due_offset_days: 7
+  - title: "Year-end recap in Finance history (lessons for next year)"
+    priority: "P3"
+    due_offset_days: 14
+
+source_subfolders:
+  - "Sources/documents/taxes/{year}"
+
+notes: |
+  Touchstones for the next instantiation (auto-surfaced):
+  - Gather small receipts in REAL TIME, not on April 1.
+  - The accountant call is the bottleneck — schedule it in February.
+  - Cross-reference with prior year's bank-categorization rules.

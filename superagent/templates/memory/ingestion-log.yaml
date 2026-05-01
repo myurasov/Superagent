@@ -1,0 +1,53 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: append-only log of every ingestion run.
+# Provides per-run forensics (what was pulled, what changed, what failed).
+# Long-term, also useful for the Tailor's strategic pass: which sources are
+# heavily used, which never produce signal, which fail intermittently.
+
+schema_version: 1
+
+# Append-only. Old rows are rotated by `tools/rotate-logs.py` (default keep
+# last 365 entries; configurable in config.yaml).
+runs:
+  # Each run:
+  #   id                — Stable id "ingest-<YYYYMMDD>-<NNN>".
+  #   source            — Source id from data-sources.yaml.
+  #   started_at        — ISO 8601.
+  #   finished_at       — ISO 8601.
+  #   trigger           — manual | scheduled | init | retry.
+  #   window:
+  #     since: null     —   ISO 8601 (lower bound of the pull window).
+  #     until: null     —   ISO 8601 (upper bound, usually "now").
+  #   items_pulled      — Total items returned by upstream.
+  #   items_inserted    — New rows added to indexes.
+  #   items_updated     — Existing rows mutated (e.g. status change).
+  #   items_skipped     — Items already present (dedup hit).
+  #   errors            — List of error strings.
+  #   truncated         — true if max_items_per_run cap hit.
+  #   destination_summary  — Per-target counts:
+  #     interaction_log: 0
+  #     bills: 0
+  #     subscriptions: 0
+  #     appointments: 0
+  #     contacts: 0
+  #     domain_history:
+  #       Health: 0
+  #       Finance: 0
+  #       …
+  #   duration_ms       — Total run duration.
+  #   notes             — Free text.
+  - id: ""
+    source: ""
+    started_at: null
+    finished_at: null
+    trigger: ""
+    window: null
+    items_pulled: 0
+    items_inserted: 0
+    items_updated: 0
+    items_skipped: 0
+    errors: []
+    truncated: false
+    destination_summary: {}
+    duration_ms: 0
+    notes: ""

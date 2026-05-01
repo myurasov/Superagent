@@ -1,0 +1,95 @@
+# [Do not change manually — managed by Superagent]
+# Workflow: annual health "tune-up" — schedule + complete the annual round
+# of physical / dental / eye / dermatology / specialty visits.
+
+schema_version: 1
+id: "annual-health-tuneup"
+version: 1
+name: "Annual health tune-up"
+description: "Coordinate the recurring annual round of medical / dental / vision / specialist visits."
+
+parameters:
+  - name: "year"
+    type: "integer"
+    required: true
+  - name: "for_member"
+    type: "string"
+    required: false
+    default: "self"
+    description: "self | spouse | child:<name>."
+
+recurring: "annual"
+default_target_date: "{year}-12-15"
+default_priority: "P2"
+related_domains: ["health"]
+
+goal: "All annual checkups completed for {for_member} in {year}: physical, dental cleanings, eye exam, plus any standing specialty follow-ups."
+
+scope_in:
+  - "Annual physical with primary care."
+  - "Two dental cleanings (every 6 months)."
+  - "Annual eye exam."
+  - "Refill all standing prescriptions."
+  - "Review labs from last year for any open items."
+  - "Update vaccinations as scheduled (flu, Tdap, COVID, etc.)."
+scope_out:
+  - "Acute care episodes (handled separately as they arise)."
+  - "Major procedures / surgeries (separate project)."
+
+success_criteria:
+  - "Annual physical completed and visit summary in Domains/Health/history.md."
+  - "Two dental cleanings completed."
+  - "Annual eye exam completed."
+  - "All standing prescriptions verified current."
+  - "Annual flu shot administered."
+
+deliverables:
+  - "Visit summaries in health-records.yaml.visits[]."
+  - "Updated medications list in health-records.yaml.medications[]."
+  - "Updated immunization log in health-records.yaml.vaccines[]."
+
+seed_tasks:
+  - title: "Schedule annual physical for {for_member}"
+    priority: "P2"
+    due_offset_days: -300
+  - title: "Schedule first dental cleaning of {year}"
+    priority: "P2"
+    due_offset_days: -300
+  - title: "Schedule annual eye exam"
+    priority: "P3"
+    due_offset_days: -270
+  - title: "Annual physical visit"
+    priority: "P1"
+    due_offset_days: -240
+  - title: "First dental cleaning"
+    priority: "P2"
+    due_offset_days: -240
+  - title: "Schedule second dental cleaning (~6 months out)"
+    priority: "P3"
+    due_offset_days: -180
+  - title: "Eye exam visit"
+    priority: "P2"
+    due_offset_days: -180
+  - title: "Mid-year review: any new specialty referrals to schedule?"
+    priority: "P3"
+    due_offset_days: -120
+  - title: "Second dental cleaning"
+    priority: "P2"
+    due_offset_days: -60
+  - title: "Annual flu shot"
+    priority: "P2"
+    due_offset_days: -90
+  - title: "Year-end review: any open lab follow-ups outstanding?"
+    priority: "P3"
+    due_offset_days: -14
+  - title: "Refill standing prescriptions for next year"
+    priority: "P2"
+    due_offset_days: -7
+
+notes: |
+  Lessons inherit from prior years' instances:
+  - Booking the annual physical 60 days out is usually enough; specialists
+    need 90+.
+  - Some employers reset HSA at year-end — schedule any FSA-eligible
+    items in Q3/Q4.
+  - Cross-reference with insurance plan-year for the deductible cycle.

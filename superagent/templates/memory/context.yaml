@@ -1,0 +1,34 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: rolling "where we are right now" snapshot.
+# Update frequently; this is the default handoff surface between sessions.
+
+schema_version: 1
+
+# When context was last refreshed (ISO 8601).
+last_check: null
+
+# One or two sentences: current top focus across all your domains.
+current_focus: ""
+
+# Short bullet-like strings: items waiting on you (or on someone else).
+pending_items: []
+
+# Free-text recap of the last few days (recent appointments, conversations, decisions, events).
+recent_activity: ""
+
+# Strings that need attention (deadlines, anomalies, unanswered messages).
+alerts: []
+
+# Per-domain "where we are" snapshots (auto-updated by daily-update).
+# Each entry: { domain: "<slug>", note: "<one-line>", as_of: "<iso>" }
+domain_snapshots: []
+
+# Last time each cadence skill ran successfully (helps the Tailor staleness pass).
+last_runs:
+  daily_update: null
+  whatsup: null
+  weekly_review: null
+  monthly_review: null
+  tailor_review: null
+  doctor: null
+  ingest_full: null

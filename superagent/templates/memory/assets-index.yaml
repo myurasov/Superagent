@@ -1,0 +1,79 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: index of physical assets you own.
+# Vehicles, electronics, appliances, jewelry, instruments, tools, collectibles,
+# anything worth recording for insurance, warranty, or maintenance.
+
+schema_version: 1
+
+assets:
+  # Each asset:
+  #   id              — Stable slug (e.g. "blue-camry-2018", "samsung-tv-living-room").
+  #   name            — Human-readable name.
+  #   kind            — vehicle | appliance | electronics | jewelry | instrument |
+  #                      tool | collectible | furniture | art | other.
+  #   sub_kind        — More specific (e.g. for vehicle: car / motorcycle / bicycle / boat / RV).
+  #   domain          — Which Domain owns this asset (id from domains-index).
+  #   purchase_date   — ISO 8601 date.
+  #   purchase_price  — Numeric (USD by default; honors config.preferences.money.currency).
+  #   current_value   — Optional — for insurance / net-worth tracking.
+  #   serial          — Serial number (for electronics / appliances).
+  #   vin             — Vehicle Identification Number (for vehicles).
+  #   model           — Manufacturer model number / name.
+  #   make            — Manufacturer / brand.
+  #   year            — Model year (especially for vehicles, electronics).
+  #   color           — Optional cosmetic descriptor.
+  #   warranty_expires — ISO 8601 date or null.
+  #   insurance       — Free text (carrier, policy number ref, rider notes).
+  #   location        — Where this lives (e.g. "garage", "kitchen", "safe deposit box").
+  #   maintenance:    — List of recurring maintenance tasks attached to this asset.
+  #     - kind: ""    —   e.g. "oil change", "filter replacement", "battery"
+  #       interval_days: 0  — recommended interval
+  #       interval_miles: 0 — vehicles only; null otherwise
+  #       last_done: null   — ISO 8601 date
+  #       next_due: null    — ISO 8601 date (auto-computed)
+  #   receipts        — List of paths into Sources/documents/<category>/<asset-slug>/.
+  #                      (Source documents are NEVER stored under Domains/. They live
+  #                      in Sources/ and are pointed at from the relevant
+  #                      Domains/<X>/sources.md catalogue.)
+  #   photos          — List of paths. Working / context photos go in
+  #                      Domains/<domain>/Resources/<asset-slug>/. Vault-grade photos
+  #                      (asset-condition photos retained for insurance) go in
+  #                      Sources/documents/<category>/<asset-slug>/.
+  #   notes           — Free-form context (defects, customizations, history of repairs).
+  #   status          — active | inactive | disposed.
+  #   disposed:
+  #     date: null
+  #     reason: ""        # sold | donated | lost | stolen | replaced | recycled
+  #     proceeds: null    # if sold
+  #   tags            — Short labels for filtering.
+  #   created         — ISO 8601 date this row was added.
+  #   last_updated    — ISO 8601 of last meaningful update.
+  - id: ""
+    name: ""
+    kind: ""
+    sub_kind: ""
+    domain: ""
+    purchase_date: null
+    purchase_price: null
+    current_value: null
+    serial: ""
+    vin: ""
+    model: ""
+    make: ""
+    year: null
+    color: ""
+    warranty_expires: null
+    insurance: ""
+    location: ""
+    maintenance: []
+    receipts: []
+    photos: []
+    notes: ""
+    status: "active"
+    disposed: null
+    tags: []
+    created: null
+    last_updated: null
+
+# Disposed assets retained for tax / insurance history.
+disposed: []

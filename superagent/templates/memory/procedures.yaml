@@ -1,0 +1,28 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: reusable personal playbooks.
+# Add an entry whenever you codify a recurring routine ("how I file my taxes",
+# "annual house-prep checklist", "when one of the kids gets sick", "summer-trip
+# packing list", "year-end review template").
+
+schema_version: 1
+
+entries:
+  # Each procedure:
+  #   id            — "proc-<slug>"
+  #   name          — Short title.
+  #   trigger       — When to apply this (situation, keyword, calendar event, schedule).
+  #   steps         — Ordered list (strings or nested bullets as plain lines).
+  #   notes         — Caveats, exceptions, links to relevant Domain files.
+  #   learned_from  — Source (mistake, friend, book, agent suggestion).
+  #   created       — ISO 8601 date when first captured.
+  #   last_used     — ISO 8601 date when last applied; null if never.
+  #   tags          — Short labels.
+  - id: ""
+    name: ""
+    trigger: ""
+    steps: []
+    notes: ""
+    learned_from: ""
+    created: null
+    last_used: null
+    tags: []

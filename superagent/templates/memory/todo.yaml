@@ -1,0 +1,43 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: task list across all life domains.
+# Prefer stable ids for cross-references from logs and context.
+
+schema_version: 1
+
+tasks:
+  # Each task:
+  #   id                  — Stable id, format: "task-YYYYMMDD-NNN" (e.g. "task-20260428-001")
+  #   title               — Short headline.
+  #   description         — Details, links, acceptance criteria.
+  #   priority            — P0 | P1 | P2 | P3.
+  #                          P0 = today / urgent (a bill due today, a health-critical refill)
+  #                          P1 = this week (an appointment in 4 days, a deadline this Friday)
+  #                          P2 = active but not urgent (general "should do this month")
+  #                          P3 = future / aspirational (someday-maybe)
+  #   status              — open | in_progress | done | cancelled.
+  #   created             — ISO 8601 date / time when the task was added.
+  #   due_date            — ISO 8601 date or null.
+  #   completed_date      — ISO 8601 date / time when done; null otherwise.
+  #   related_domain      — Domain slug from domains-index, or null.
+  #   related_asset       — Asset id from assets-index, or null.
+  #   related_account     — Account id from accounts-index, or null.
+  #   related_appointment — Appointment id from appointments.yaml, or null.
+  #   related_bill        — Bill id from bills.yaml, or null.
+  #   tags                — Filters and reporting labels.
+  #   source              — Provenance: skill name or ingestor that created this task
+  #                          (e.g. "bills", "gmail-ingestor", "user").
+  - id: ""
+    title: ""
+    description: ""
+    priority: "P2"
+    status: "open"
+    created: null
+    due_date: null
+    completed_date: null
+    related_domain: null
+    related_asset: null
+    related_account: null
+    related_appointment: null
+    related_bill: null
+    tags: []
+    source: null

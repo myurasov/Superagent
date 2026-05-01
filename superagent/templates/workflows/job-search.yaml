@@ -1,0 +1,102 @@
+# [Do not change manually — managed by Superagent]
+# Workflow: structured job search.
+
+schema_version: 1
+id: "job-search"
+version: 1
+name: "Job search"
+description: "Time-bounded job-search project — target list, outreach, applications, interviews, decision."
+
+parameters:
+  - name: "intent"
+    type: "string"
+    required: true
+    description: "What kind of role you're looking for (e.g. 'staff SWE backend', 'product designer senior')."
+  - name: "duration_weeks"
+    type: "integer"
+    required: false
+    default: 12
+
+recurring: "none"
+default_priority: "P1"
+related_domains: ["career", "finance"]
+
+goal: "Land a {intent} role within {duration_weeks} weeks; offer signed and start date confirmed."
+
+scope_in:
+  - "Resume + LinkedIn updated."
+  - "Target-company list (~20-50)."
+  - "Outreach to 5+ warm contacts."
+  - "Apply to N roles per week."
+  - "Schedule + attend interviews."
+  - "Negotiate offer."
+  - "Decision."
+scope_out:
+  - "Long-term career planning (separate project)."
+  - "Salary research / benchmarking research (separate; feeds in)."
+
+success_criteria:
+  - "Resume + LinkedIn current."
+  - "≥ 20 applications submitted."
+  - "≥ 3 first-round interviews completed."
+  - "≥ 1 offer received."
+  - "Decision made + start date set."
+
+deliverables:
+  - "Updated resume PDF in Sources/documents/career/."
+  - "Target-company list (markdown table or spreadsheet)."
+  - "Application tracker (markdown or sheet)."
+  - "Offer letter PDF + decision rationale."
+
+seed_tasks:
+  - title: "Update resume to reflect last role's outcomes"
+    priority: "P1"
+    due_offset_days: -85
+  - title: "Update LinkedIn"
+    priority: "P2"
+    due_offset_days: -85
+  - title: "Build target-company list (20-50 names)"
+    priority: "P1"
+    due_offset_days: -80
+  - title: "Reach out to 5 warm contacts"
+    priority: "P1"
+    due_offset_days: -75
+  - title: "Apply to 5 roles this week"
+    priority: "P1"
+    due_offset_days: -70
+  - title: "Apply to 5 more this week"
+    priority: "P1"
+    due_offset_days: -63
+  - title: "Run a mock interview"
+    priority: "P2"
+    due_offset_days: -56
+  - title: "Mid-search retro: which channels are working?"
+    priority: "P3"
+    due_offset_days: -42
+  - title: "Offer-comparison checklist (in case of multiple)"
+    priority: "P2"
+    due_offset_days: -28
+  - title: "Negotiate offer"
+    priority: "P1"
+    due_offset_days: -14
+  - title: "Make decision"
+    priority: "P0"
+    due_offset_days: -7
+  - title: "Tell other companies the search is closing"
+    priority: "P1"
+    due_offset_days: -3
+  - title: "Start date confirmed"
+    priority: "P1"
+    due_offset_days: 0
+  - title: "Archive search artifacts in Sources/documents/career/{year}-job-search/"
+    priority: "P3"
+    due_offset_days: 14
+
+source_subfolders:
+  - "Sources/documents/career/{year}-job-search"
+
+notes: |
+  Tested patterns from prior job searches:
+  - Outreach via warm contacts converts ~10x better than cold apps.
+  - Mid-search retros at week 4 surface what's not working — change channels.
+  - Have the offer-comparison checklist BEFORE the offer arrives.

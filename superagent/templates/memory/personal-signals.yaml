@@ -1,0 +1,51 @@
+# [Do not change manually — managed by Superagent]
+# Personal signals — feedback, behavioural cues, and self-development hints
+# captured about your own practice / habits / growth areas.
+# Distinct from `action-signals.yaml` (which captures workspace + framework
+# changes the agent should make). Personal signals describe how YOU want to
+# grow / change behaviour.
+#
+# Capture sources:
+#   - Self-reflection in chat ("I should sleep more", "next time I should call
+#     ahead before showing up at the dentist's").
+#   - Partner / family feedback (relayed by the user).
+#   - Pattern Superagent notices (skipped gym 5 of 7 Tuesdays; called Mom
+#     once in the last 3 months when target was monthly; finished only 2 of
+#     last 8 books started).
+#
+# Surfaced via the `personal-signals` skill on request and rolled up
+# periodically into the `Self` domain's `history.md`.
+#
+# Append-only. Mutate only `status`, `surfaced_count`, `last_surfaced`,
+# `practiced_at`, and `notes` on existing rows.
+
+schema_version: 1
+last_updated: ""
+
+signals: []
+# Example row:
+# - id: "psig-2026-04-28-001"
+#   captured_at: "2026-04-28T10:15:00-07:00"
+#   category: "fitness"
+#                # one of: fitness | nutrition | sleep | mental-health |
+#                # relationships | parenting | finances | learning |
+#                # productivity | mindfulness | other
+#   trigger_phrase: |
+#     I keep skipping leg day. Three Tuesdays in a row.
+#   context: |
+#     Self-reflection after looking at WHOOP strain history. Pattern is
+#     consistent across 5 weeks. User mentioned this in chat without prompt.
+#   suggested_practice: |
+#     Move leg day to Monday so it doesn't compete with end-of-day Tuesday
+#     fatigue. Re-evaluate in 4 weeks.
+#   source: "self-reflection"
+#                # self-reflection | partner-feedback | family-feedback |
+#                # pattern-noticed
+#   related_skill: "weekly-review"  # optional
+#   related_domain: "Hobbies"       # optional; typically Self or Hobbies
+#   status: "open"
+#                # open | practicing | internalised | deferred | discarded
+#   surfaced_count: 0
+#   last_surfaced: null
+#   practiced_at: null
+#   notes: ""

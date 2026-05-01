@@ -1,0 +1,59 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: append-only log of meaningful decisions made by the user
+# (or, with explicit consent, by the agent on the user's behalf).
+#
+# Implements: ideas-better-structure.md item #24.
+#
+# Shape: time-shape (event-shape, append-only). Every row is a decision-event.
+# Mutate only `outcome_measured_at`, `outcome`, `revisited` on existing rows
+# when the decision's outcome becomes observable.
+#
+# Surfaced in `weekly-review` ("decisions made this week") and
+# `monthly-review` ("decisions whose outcome can now be measured").
+# The Tailor's strategic pass watches for decision-correction patterns
+# (decisions revisited or reversed).
+
+schema_version: 1
+last_updated: null
+
+decisions:
+  # Each decision:
+  #   id                    — "dec-YYYY-MM-DD-NNN"
+  #   ts                    — ISO 8601 datetime when the decision was recorded.
+  #   decision              — One sentence: the call that was made.
+  #   context               — Why the decision was needed.
+  #   alternatives_considered — List of strings; what was ruled out and why.
+  #   rationale             — Why THIS option won.
+  #   confidence            — high | medium | low — calibration self-assessment.
+  #   reversibility         — easy | medium | hard | one-way-door — how
+  #                           expensive it would be to undo.
+  #   related_domain        — Domain id from domains-index.yaml; null OK.
+  #   related_project       — Project id; null OK.
+  #   affects               — List of operational handles for entities the
+  #                            decision touches (e.g. ["account:chase-1234",
+  #                            "subscription:adobe-cc"]).
+  #   source                — user | agent (with user approval) | derived.
+  #   review_at             — ISO 8601 date — when to revisit / measure.
+  #   outcome_measured_at   — ISO 8601; null until measured.
+  #   outcome               — better | worse | neutral | inconclusive | null.
+  #   outcome_notes         — Free text on what actually happened.
+  #   revisited             — List of newer decision ids that supersede this.
+  #   tags                  — Short labels.
+  - id: ""
+    ts: null
+    decision: ""
+    context: ""
+    alternatives_considered: []
+    rationale: ""
+    confidence: "medium"
+    reversibility: "medium"
+    related_domain: null
+    related_project: null
+    affects: []
+    source: "user"
+    review_at: null
+    outcome_measured_at: null
+    outcome: null
+    outcome_notes: ""
+    revisited: []
+    tags: []

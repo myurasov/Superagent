@@ -1,0 +1,88 @@
+# [Do not change manually — managed by Superagent]
+# Workflow template schema (ideas-better-structure.md item #2).
+#
+# A workflow template is a versioned, parameterized recipe that
+# `add-project` can instantiate to produce a fully-charterd Project plus
+# its seed task list, success criteria, deliverables, and (optionally)
+# Sources sub-folder structure.
+#
+# Each workflow lives at `superagent/templates/workflows/<id>.yaml`.
+# Custom workflows go in `workspace/_custom/templates/workflows/`.
+#
+# When a Project is instantiated FROM a workflow, the project row carries
+# `workflow: <id>` so the agent knows where the lessons-learned should
+# feed back to. On project completion, the user is prompted with:
+#   "Anything to capture for the next time you run this workflow?"
+# The answer appends to `_memory/procedures.yaml` cross-referenced from
+# the workflow id.
+
+schema_version: 1
+
+# Schema reference for individual workflow files (not real data — see
+# tax-filing.yaml etc. for working examples):
+workflow_schema_example:
+  id: "tax-filing"
+  version: 1
+  name: "File annual taxes"
+  description: "End-to-end recipe for filing federal + state taxes."
+  parameters:
+    # Variables substituted into the generated project.
+    - name: "year"
+      type: "integer"
+      required: true
+      description: "Tax year being filed (e.g. 2026 for the return filed in 2026)."
+    - name: "country"
+      type: "string"
+      required: false
+      default: "US"
+  recurring: "annual"           # none | annual | quarterly | monthly | every_n_years
+  default_target_date: "{year}-04-15"   # supports {param} substitution
+  default_priority: "P1"
+  related_domains: ["finance"]
+  goal: "Federal + state {country} returns filed for {year}; refund received OR balance paid."
+  scope_in:
+    - "Gather W-2s, 1099s, K-1s, charitable receipts."
+    - "Compile deductions across the year."
+    - "Coordinate with accountant if applicable."
+    - "File electronically and archive the filed return PDF."
+  scope_out:
+    - "Tax planning for the FOLLOWING year (separate project)."
+    - "Estate / trust filings (separate project)."
+  success_criteria:
+    - "Return filed by deadline."
+    - "Refund received OR balance paid."
+    - "Filed-return PDF archived under Sources/documents/taxes/{year}/."
+    - "Year-end recap captured in Domains/Finance/history.md."
+  deliverables:
+    - "Filed return (PDF)."
+    - "Receipts archive (PDF or scans)."
+    - "1-paragraph year-end recap."
+  seed_tasks:
+    # Tasks created in todo.yaml when this workflow is instantiated.
+    # Each task carries `related_project: <new-project-slug>` and
+    # `priority` from this list.
+    - title: "Gather W-2s and 1099s"
+      priority: "P2"
+      due_offset_days: -75    # relative to default_target_date
+    - title: "Compile charitable receipts"
+      priority: "P2"
+      due_offset_days: -60
+    - title: "Schedule accountant call (if applicable)"
+      priority: "P2"
+      due_offset_days: -45
+    - title: "File return"
+      priority: "P1"
+      due_offset_days: 0
+    - title: "Archive filed return PDF in Sources/documents/taxes/{year}/"
+      priority: "P2"
+      due_offset_days: 7
+    - title: "Year-end recap entry in Finance history"
+      priority: "P3"
+      due_offset_days: 14
+  source_subfolders:
+    # Sources/documents subfolders to ensure exist for this project.
+    - "Sources/documents/taxes/{year}"
+  notes: |
+    On completion, the user will be prompted to capture lessons-learned
+    that feed into procedures.yaml under entry id 'tax-filing'. The
+    NEXT instantiation surfaces these notes upfront.

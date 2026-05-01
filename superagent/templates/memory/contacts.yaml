@@ -1,0 +1,46 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: people in your life — family, friends, professionals,
+# service providers, vendors, contractors, neighbours.
+# Append or edit entries; keep email unique where possible.
+
+schema_version: 1
+
+contacts:
+  # Each contact:
+  #   id                — Stable slug (e.g. "dr-smith-dentist"). Unique.
+  #   name              — Display name (the canonical way you write the person's name).
+  #   aliases           — List of alternate names / nicknames / spellings the model
+  #                        may encounter (e.g. ["Mike", "Michael Smith", "Mikey"]).
+  #   email             — Primary email (empty string if unknown).
+  #   phone             — Primary phone (empty string if unknown).
+  #   role              — Their role in your life: family | friend | professional |
+  #                        provider | vendor | neighbour | colleague | other.
+  #   relationship      — Specific relationship: spouse | parent | child | sibling |
+  #                        in-law | doctor | dentist | vet | mechanic | plumber |
+  #                        electrician | hairdresser | trainer | tutor | etc.
+  #   organization      — Their employer, practice, or company (when relevant).
+  #   address           — Street + city; only fill when needed for appointments / mail.
+  #   related_domains   — Domain slugs where this contact is relevant
+  #                        (e.g. ["pets","family"]).
+  #   related_assets    — Asset ids this contact is associated with
+  #                        (e.g. mechanic for a specific vehicle).
+  #   notes             — Free-form context (preferences, allergies, kids' names, gift ideas).
+  #   last_contacted    — ISO 8601 date or datetime of last touchpoint; null if never.
+  #   contact_cadence   — Optional: how often you want to be in touch
+  #                        (e.g. "monthly", "annually", "ad-hoc"). Drives Concierge nudges.
+  #   tags              — Short labels for filtering.
+  - id: ""
+    name: ""
+    aliases: []
+    email: ""
+    phone: ""
+    role: ""
+    relationship: ""
+    organization: ""
+    address: ""
+    related_domains: []
+    related_assets: []
+    notes: ""
+    last_contacted: null
+    contact_cadence: ""
+    tags: []

@@ -1,0 +1,65 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: index of financial / utility / subscription accounts.
+# This file is sensitive — DO NOT commit. The whole workspace/ is
+# gitignored, but this row is worth flagging explicitly.
+#
+# Account NUMBERS are stored as the LAST 4 only by default. Full numbers go in
+# a password manager (1Password / Bitwarden / Apple Keychain) and are referenced
+# here by `vault_ref` (a string the user pastes from the manager's "share" UI).
+
+schema_version: 1
+
+accounts:
+  # Each account:
+  #   id                — Stable slug (e.g. "chase-checking", "fidelity-401k", "pge-electric").
+  #   name              — Display name (e.g. "Chase Total Checking").
+  #   institution       — Bank / brokerage / utility / subscription provider.
+  #   kind              — checking | savings | credit_card | brokerage | retirement |
+  #                        loan | mortgage | utility | insurance | subscription |
+  #                        membership | wallet | hsa | fsa | hsa_invest | other.
+  #   number_last4      — Last 4 digits only (for matching transactions).
+  #   vault_ref         — Reference to where the full credential lives
+  #                        (e.g. "1Password://Personal/chase-checking", "keychain:bofa-savings").
+  #   url               — Web login URL.
+  #   primary_holder    — "self" | "joint" | "spouse" | "child:<name>" | other.
+  #   currency          — ISO 4217 (e.g. "USD"); defaults to config money.currency.
+  #   opened            — ISO 8601 date when opened.
+  #   closed            — ISO 8601 date when closed; null if open.
+  #   status            — active | dormant | closed.
+  #   beneficiaries     — List of beneficiary names (relevant for retirement / life ins).
+  #   linked_bills      — List of bill ids paid from this account.
+  #   linked_subs       — List of subscription ids charged to this account.
+  #   low_balance_threshold — USD; if balance dips below, P0 task auto-created.
+  #                            Default from config.preferences.money.low_balance_default.
+  #   plaid_item_id     — Internal id from Plaid ingestor; null if not Plaid-linked.
+  #   ingest_source     — Which ingestor mirrors this account: plaid | monarch | ynab |
+  #                        csv | manual.
+  #   notes             — Free-form (rate, terms, special instructions).
+  #   tags              — Short labels.
+  #   created           — ISO 8601 date this row was added.
+  #   last_updated      — ISO 8601 of last meaningful update.
+  - id: ""
+    name: ""
+    institution: ""
+    kind: ""
+    number_last4: ""
+    vault_ref: ""
+    url: ""
+    primary_holder: "self"
+    currency: "USD"
+    opened: null
+    closed: null
+    status: "active"
+    beneficiaries: []
+    linked_bills: []
+    linked_subs: []
+    low_balance_threshold: null
+    plaid_item_id: null
+    ingest_source: "manual"
+    notes: ""
+    tags: []
+    created: null
+    last_updated: null
+
+# Closed accounts retained for tax / audit purposes.
+closed: []

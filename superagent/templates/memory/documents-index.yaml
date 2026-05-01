@@ -1,0 +1,61 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: index of important documents.
+# Each row points to a file under Sources/documents/<category>/ AND records
+# the structured metadata (kind, expiration, holder) that drives surfacing.
+# Source documents are NEVER stored under Domains/<X>/ directly; Domains carry
+# pointers via Domains/<X>/sources.md. See procedures.md § 15 (Sources Contract).
+#
+# This is the "where is X?" answer for everything from passports to warranties.
+
+schema_version: 1
+
+documents:
+  # Each document:
+  #   id                — Stable id ("doc-<slug>", e.g. "doc-passport-self").
+  #   title             — Display title.
+  #   kind              — passport | drivers_license | state_id | social_security |
+  #                        birth_certificate | marriage_certificate | divorce_decree |
+  #                        death_certificate | naturalization | green_card | visa |
+  #                        deed | title | mortgage_doc | lease | will | trust |
+  #                        power_of_attorney | living_will | medical_directive |
+  #                        insurance_policy | warranty | receipt | tax_return |
+  #                        w2 | 1099 | k1 | property_tax | school_record | medical_record |
+  #                        vaccine_record | prescription | diploma | certification |
+  #                        contract | nda | other.
+  #   for_member        — Whose document: "self" | name | "household".
+  #   issuer            — Issuing authority / entity.
+  #   number            — Document number, or last 4 if sensitive.
+  #                        (Passport / SSN / etc. — store last 4 here, full number
+  #                        in password manager and reference via vault_ref.)
+  #   vault_ref         — Optional reference to where the full number / scan lives
+  #                        (e.g. "1Password://Personal/passport-self").
+  #   issued_date       — ISO 8601 date.
+  #   expires_at        — ISO 8601 date (if applicable; drives expiration alerts).
+  #   path              — Workspace-relative path to the digitized file
+  #                        (under Sources/documents/<category>/...).
+  #   physical_location — Where the physical original lives
+  #                        (e.g. "fireproof safe", "safe deposit box at Wells Fargo Hayward",
+  #                         "office filing cabinet drawer 2").
+  #   domain            — Domain id this document belongs to.
+  #   notes             — Free-form (e.g. "include for international travel").
+  #   tags              — Short labels.
+  #   status            — active | replaced | expired | lost.
+  #   created           — ISO 8601 date this row was added.
+  #   last_updated      — ISO 8601 of last meaningful update.
+  - id: ""
+    title: ""
+    kind: ""
+    for_member: ""
+    issuer: ""
+    number: ""
+    vault_ref: ""
+    issued_date: null
+    expires_at: null
+    path: ""
+    physical_location: ""
+    domain: null
+    notes: ""
+    tags: []
+    status: "active"
+    created: null
+    last_updated: null

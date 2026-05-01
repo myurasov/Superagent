@@ -1,0 +1,97 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: index of personal-life Projects.
+#
+# Distinct from Domains (which are ongoing areas of responsibility), Projects
+# are time-bounded efforts with a clear goal and end condition. Examples:
+#   - "File 2025 taxes"
+#   - "Plan summer Italy trip"
+#   - "Find a new dentist"
+#   - "Replace the dishwasher"
+#   - "Job search Q3 2026"
+#   - "Annual health tune-up 2026"
+#   - "Renovate the kitchen"
+#   - "Move to new house"
+#
+# Projects link UP to one or more Domains (e.g. tax project → Finance,
+# kitchen renovation → Home + Finance). Tasks in `todo.yaml` link DOWN to
+# a Project via `related_project: <id>`.
+#
+# Lifecycle (state machine):
+#   planning  → active  → completed
+#               active  → paused  → active | cancelled
+#               active  → cancelled
+#   completed → archived (after 90 days; reversible via `mv` from Archive/)
+
+schema_version: 1
+
+projects:
+  # Each project:
+  #   id              — Stable slug (e.g. "tax-2025", "kitchen-reno-2026").
+  #   name            — Human-readable title.
+  #   goal            — One-sentence outcome that defines "done".
+  #   scope           — Free-text scope statement; what's in / what's out.
+  #   priority        — P0 | P1 | P2 | P3.
+  #   status          — planning | active | paused | completed | cancelled | archived.
+  #   path            — Workspace-relative folder ("Projects/<slug>").
+  #   parent          — Optional id of a parent project (per ideas-better-structure
+  #                      item #10). null = top-level. Sub-project folders nest
+  #                      under parent's `Projects/<parent>/<sub-slug>/`.
+  #   handle          — Operational handle in `<kind>:<slug>` form (per item #20).
+  #                      Example: "project:tax-2026". Optional but recommended.
+  #   visibility      — private | household | public (per item #19).
+  #   provenance      — Where this row came from (per item #4):
+  #                      { source: "user|<skill>|<workflow-template>",
+  #                        source_id: "<optional anchor>",
+  #                        at: <iso datetime> }
+  #   workflow        — Optional id of a workflow template that this project
+  #                      was instantiated from (per item #2).
+  #                      Example: "tax-filing", "trip-planning".
+  #   related_domains — List of domain ids (e.g. ["finance"]) — Projects often
+  #                      cut across domains (a kitchen reno touches Home + Finance).
+  #   stakeholders    — List of contact ids from contacts.yaml that have a stake.
+  #   start_date      — ISO 8601 date when work began (or planned to begin).
+  #   target_date     — ISO 8601 date — the deadline / when "done" is expected.
+  #                      For recurring annual projects (taxes), this rolls over
+  #                      when the project completes (next year's instance auto-created).
+  #   completed_date  — ISO 8601 date when status flipped to completed; null otherwise.
+  #   recurring       — none | annual | quarterly | monthly | every_n_years.
+  #                      For annual: when this completes, a new project is auto-created
+  #                      with id "<base>-<next_year>".
+  #   recurring_n     — For every_n_years: integer N.
+  #   success_criteria — List of strings; observable outcomes that mean "done".
+  #   deliverables    — List of strings; concrete artifacts the project produces.
+  #   budget          — Optional: { planned: <amount>, spent: <amount>, currency: "USD" }.
+  #   tags            — Short labels.
+  #   notes           — Free-form context.
+  #   created         — ISO 8601 date this row was created.
+  #   last_updated    — ISO 8601 of last meaningful update.
+  - id: ""
+    name: ""
+    goal: ""
+    scope: ""
+    priority: "P2"
+    status: "planning"
+    path: ""
+    parent: null
+    handle: ""
+    visibility: "private"
+    provenance: { source: "user", at: null }
+    workflow: null
+    related_domains: []
+    stakeholders: []
+    start_date: null
+    target_date: null
+    completed_date: null
+    recurring: "none"
+    recurring_n: null
+    success_criteria: []
+    deliverables: []
+    budget: null
+    tags: []
+    notes: ""
+    created: null
+    last_updated: null
+
+# Archived projects retained for history; rolled here by `doctor` after
+# 90 days in `status: completed`. Path moves to `Archive/<YYYY-MM>/Projects/<slug>/`.
+archived: []

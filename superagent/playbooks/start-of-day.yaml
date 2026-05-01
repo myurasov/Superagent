@@ -1,0 +1,37 @@
+# [Do not change manually — managed by Superagent]
+
+schema_version: 1
+name: "Start of day"
+description: "The 5-minute morning check-in: status delta, overdue first, full briefing, then prep for today's appointments."
+
+trigger:
+  - "good morning"
+  - "starting my day"
+  - "what's today look like"
+  - "morning playbook"
+
+steps:
+  - skill: "whatsup"
+    note: "30-second delta since last check."
+  - if: "bills_overdue > 0"
+    then:
+      - skill: "bills"
+        args: "list --overdue"
+        note: "Surface overdue bills before the briefing buries them."
+  - if: "tasks_p0_open > 0"
+    then:
+      - skill: "todo"
+        args: "list --priority P0"
+        note: "P0 first."
+  - skill: "daily-update"
+    note: "Full briefing."
+  - if: "appointments_today > 0"
+    then:
+      - skill: "appointments"
+        args: "prep --today"
+        note: "Prep brief for today's appointments."
+  - if: "important_dates_today > 0"
+    then:
+      - skill: "important-dates"
+        args: "list --today"
+        note: "Acknowledge today's important dates."

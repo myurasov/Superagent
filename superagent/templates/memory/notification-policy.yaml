@@ -1,0 +1,177 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: declarative notification / surfacing policy.
+#
+# Implements: ideas-better-structure.md item #25.
+#
+# Cadence skills (daily-update, whatsup, weekly-review, monthly-review)
+# consume these rules to decide WHAT to surface WHERE and HOW LOUDLY.
+# Edit this file to change surfacing windows / severities WITHOUT editing
+# skill markdown.
+#
+# Rule evaluation: each rule is independently evaluated when the listed
+# skill runs. Multiple rules can fire for the same entity. The skill
+# renderer dedupes by (entity-id, rule-id) and chooses the highest severity.
+
+schema_version: 1
+last_updated: null
+
+# When a rule sets `auto_create_task: true` AND the matching entity has no
+# corresponding open task, the cadence skill auto-creates one with the
+# specified priority + a deterministic title (so it's idempotent).
+rules:
+  # Each rule:
+  #   id              — Stable slug (e.g. "bill-due-soon", "doc-expiring-30d").
+  #   description     — One-line for human reading.
+  #   when            — A small expression evaluated against an entity row.
+  #                      Supported shapes (parsed by tools/notify.py):
+  #                        "<field> <op> <value>"
+  #                          op ∈ { ==, !=, <, <=, >, >= }
+  #                          value can be:
+  #                            "now"          — current datetime
+  #                            "now+Nd"       — N days from now
+  #                            "now-Nd"       — N days ago
+  #                            literal string / number
+  #                        "<field> in (<a>, <b>, ...)"
+  #                        "<field> not in (...)"
+  #                        "missing <field>"
+  #                        "present <field>"
+  #                      Multiple conditions joined by " and " / " or ".
+  #   over            — Which entity index to evaluate against. One of:
+  #                      bills | subscriptions | appointments | important_dates
+  #                      | documents | tasks | assets | accounts | sources |
+  #                      health_meds | health_results | projects.
+  #   filter          — Optional pre-filter (e.g. status: active).
+  #   where           — List of skills that consume this rule
+  #                      (e.g. ["daily-update", "whatsup"]).
+  #   severity        — info | notice | warning | alert | critical.
+  #                      Drives placement (info → "Coming up", alert → "Today",
+  #                      critical → top of briefing).
+  #   auto_create_task — If true, missing-task auto-creation fires.
+  #   task_template   — { priority: P0|P1|P2|P3, title: "<format string>" }
+  #   suppress_after  — Optional: don't re-surface within N days of last surface.
+  #   tags            — Filter labels.
+  - id: ""
+    description: ""
+    when: ""
+    over: ""
+    filter: {}
+    where: []
+    severity: "info"
+    auto_create_task: false
+    task_template: null
+    suppress_after: null
+    tags: []
+
+# --- Default rules seeded by init (illustrative; the user can edit / remove) ---
+defaults_seeded: false  # init flips to true once defaults are written below.
+default_rules:
+  - id: "bill-due-today"
+    description: "Bill due today — surface in daily-update Today block."
+    when: "next_due == now"
+    over: "bills"
+    filter: { status: "active" }
+    where: ["daily-update", "whatsup"]
+    severity: "alert"
+    auto_create_task: true
+    task_template: { priority: "P0", title: "Pay {name} ({amount} {currency})" }
+  - id: "bill-due-soon"
+    description: "Bill due in next 7 days."
+    when: "next_due <= now+7d and next_due > now"
+    over: "bills"
+    filter: { status: "active" }
+    where: ["daily-update", "whatsup"]
+    severity: "info"
+  - id: "bill-overdue"
+    description: "Bill past due."
+    when: "next_due < now"
+    over: "bills"
+    filter: { status: "active" }
+    where: ["daily-update"]
+    severity: "critical"
+    auto_create_task: true
+    task_template: { priority: "P0", title: "OVERDUE: pay {name}" }
+  - id: "appt-today"
+    description: "Appointment today."
+    when: "start <= now+1d and start >= now"
+    over: "appointments"
+    filter: { status: "scheduled" }
+    where: ["daily-update", "whatsup"]
+    severity: "alert"
+  - id: "appt-tomorrow-needs-prep"
+    description: "Tomorrow's appointment lacks prep."
+    when: "start <= now+2d and start > now+1d and prep_done == false"
+    over: "appointments"
+    filter: { status: "scheduled" }
+    where: ["daily-update"]
+    severity: "warning"
+  - id: "doc-expiring-30d"
+    description: "Document expiring in 30 days."
+    when: "expires_at <= now+30d and expires_at > now"
+    over: "documents"
+    filter: { status: "active" }
+    where: ["daily-update", "monthly-review"]
+    severity: "warning"
+    auto_create_task: true
+    task_template: { priority: "P1", title: "Renew {title}" }
+  - id: "doc-expiring-90d"
+    description: "Document expiring in 60-90 days."
+    when: "expires_at <= now+90d and expires_at > now+30d"
+    over: "documents"
+    filter: { status: "active" }
+    where: ["monthly-review"]
+    severity: "info"
+  - id: "important-date-today"
+    description: "Important date today."
+    when: "next_occurrence == now"
+    over: "important_dates"
+    where: ["daily-update", "whatsup"]
+    severity: "alert"
+  - id: "important-date-soon"
+    description: "Important date within lookahead."
+    when: "next_occurrence <= now+30d and next_occurrence > now"
+    over: "important_dates"
+    where: ["daily-update"]
+    severity: "info"
+  - id: "task-overdue-p0p1"
+    description: "P0/P1 task overdue."
+    when: "due_date < now"
+    over: "tasks"
+    filter: { status: "open", priority_in: ["P0", "P1"] }
+    where: ["daily-update", "whatsup"]
+    severity: "critical"
+  - id: "subscription-trial-ending"
+    description: "Free-trial subscription ending in 7 days."
+    when: "trial_ends <= now+7d and trial_ends > now"
+    over: "subscriptions"
+    filter: { status: "trial" }
+    where: ["daily-update"]
+    severity: "warning"
+    auto_create_task: true
+    task_template: { priority: "P1", title: "Decide whether to keep {name} trial (ends {trial_ends})" }
+  - id: "med-refill-due"
+    description: "Medication refill due in 7 days."
+    when: "next_refill_due <= now+7d and next_refill_due > now"
+    over: "health_meds"
+    filter: { status: "active" }
+    where: ["daily-update"]
+    severity: "warning"
+  - id: "lab-result-abnormal"
+    description: "Abnormal lab result not yet followed up."
+    when: "abnormal == true and present source"
+    over: "health_results"
+    where: ["daily-update", "weekly-review"]
+    severity: "warning"
+  - id: "project-deadline-close"
+    description: "Active project's target_date within 14 days."
+    when: "target_date <= now+14d and target_date > now"
+    over: "projects"
+    filter: { status: "active" }
+    where: ["daily-update", "weekly-review"]
+    severity: "warning"
+  - id: "project-overdue"
+    description: "Active project past target_date without completion."
+    when: "target_date < now"
+    over: "projects"
+    filter: { status: "active" }
+    where: ["daily-update", "weekly-review"]
+    severity: "alert"

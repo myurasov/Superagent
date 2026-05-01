@@ -1,0 +1,1264 @@
+# Superagent — Operational Procedures
+
+---
+
+## Table of Contents
+
+- [Superagent — Operational Procedures](#superagent--operational-procedures)
+  - [1. MCP / CLI-tool Preflight Protocol](#1-mcp--cli-tool-preflight-protocol)
+  - [2. Data Ingestion Contract](#2-data-ingestion-contract)
+    - [2.1 What an ingestor is](#21-what-an-ingestor-is)
+    - [2.2 Ingestor obligations](#22-ingestor-obligations)
+    - [2.3 Capture modes](#23-capture-modes)
+    - [2.4 Per-source budgets](#24-per-source-budgets)
+    - [2.5 Idempotency and dedup](#25-idempotency-and-dedup)
+    - [2.6 Failure handling](#26-failure-handling)
+    - [2.7 Read path for skills](#27-read-path-for-skills)
+  - [3. Init flow](#3-init-flow)
+  - [4. Update Cadences](#4-update-cadences)
+    - [4.1 Daily update](#41-daily-update)
+    - [4.2 Weekly review](#42-weekly-review)
+    - [4.3 Monthly review](#43-monthly-review)
+    - [4.4 Quarterly Tailor review](#44-quarterly-tailor-review)
+  - [5. Task Management (todo skill)](#5-task-management-todo-skill)
+    - [5.1 Sync to status.md files](#51-sync-to-statusmd-files)
+  - [6. Domain & Asset Management](#6-domain--asset-management)
+    - [6.1 The 10 default domains](#61-the-10-default-domains)
+    - [6.2 4-file convention](#62-4-file-convention)
+    - [6.3 Maintenance banner](#63-maintenance-banner)
+    - [6.4 Adding a new domain](#64-adding-a-new-domain)
+    - [6.5 Adding an asset](#65-adding-an-asset)
+    - [6.6 Per-entity Resources/ (working artifacts)](#66-per-entity-resources-working-artifacts)
+    - [6.7 The 5-file Domain structure (info / status / history / rolodex / sources)](#67-the-5-file-domain-structure-info--status--history--rolodex--sources)
+    - [6.7 Archival rules](#67-archival-rules)
+  - [7. Capture Contracts](#7-capture-contracts)
+    - [7.1 Personal Signal Capture Contract](#71-personal-signal-capture-contract)
+    - [7.2 Action Signal Capture Contract](#72-action-signal-capture-contract)
+    - [7.3 Auto-capture from ingested data](#73-auto-capture-from-ingested-data)
+  - [8. Surfacing Contracts](#8-surfacing-contracts)
+    - [8.1 Bills surfacing](#81-bills-surfacing)
+    - [8.2 Subscription audit surfacing](#82-subscription-audit-surfacing)
+    - [8.3 Document expiration surfacing](#83-document-expiration-surfacing)
+    - [8.4 Maintenance window surfacing](#84-maintenance-window-surfacing)
+    - [8.5 Important date surfacing](#85-important-date-surfacing)
+  - [9. Memory Persistence Model](#9-memory-persistence-model)
+  - [10. Workspace Path Configuration](#10-workspace-path-configuration)
+  - [11. Custom Overlay Discovery](#11-custom-overlay-discovery)
+  - [12. Framework Artifact Creation Contract](#12-framework-artifact-creation-contract)
+  - [13. Outbound Surface Contract](#13-outbound-surface-contract)
+  - [14. Privacy and Sensitive Data](#14-privacy-and-sensitive-data)
+  - [15. Sources Contract (immutable reference library + cache)](#15-sources-contract-immutable-reference-library--cache)
+    - [15.1 Layout](#151-layout)
+    - [15.2 Immutability](#152-immutability)
+    - [15.3 The `.ref.md` file](#153-the-refmd-file)
+    - [15.4 Caching contract](#154-caching-contract)
+    - [15.5 Read pattern (local-first)](#155-read-pattern-local-first)
+    - [15.6 Index sync](#156-index-sync)
+    - [15.7 Project-scoped Sources](#157-project-scoped-sources)
+  - [16. Projects Contract (time-bounded efforts)](#16-projects-contract-time-bounded-efforts)
+    - [16.1 What's a Project (vs. a Domain, vs. a task)](#161-whats-a-project-vs-a-domain-vs-a-task)
+    - [16.2 Lifecycle](#162-lifecycle)
+    - [16.3 4-file structure](#163-4-file-structure)
+    - [16.4 Charter contract](#164-charter-contract)
+    - [16.5 Sync contract (status.md ↔ todo.yaml)](#165-sync-contract-statusmd--todoyaml)
+    - [16.6 Surfacing](#166-surfacing)
+    - [16.7 Recurring projects](#167-recurring-projects)
+    - [16.8 Cross-domain awareness](#168-cross-domain-awareness)
+    - [16.9 Archival](#169-archival)
+  - [17. Memory Taxonomy (entity / time / state shape)](#17-memory-taxonomy-entity--time--state-shape)
+  - [18. Operational Handles Contract](#18-operational-handles-contract)
+  - [19. Provenance Contract](#19-provenance-contract)
+  - [20. Visibility Contract](#20-visibility-contract)
+  - [21. Sensitive Tier Contract](#21-sensitive-tier-contract)
+  - [22. Hierarchies Contract (sub-domains / sub-projects)](#22-hierarchies-contract-sub-domains--sub-projects)
+  - [23. Tags Contract](#23-tags-contract)
+  - [24. World Graph Contract](#24-world-graph-contract)
+  - [25. Workflows Contract](#25-workflows-contract)
+  - [26. Playbooks Contract](#26-playbooks-contract)
+  - [27. Scenarios Contract](#27-scenarios-contract)
+  - [28. Decisions Log Contract](#28-decisions-log-contract)
+  - [29. Events Stream Contract](#29-events-stream-contract)
+  - [30. Audit Trail Contract](#30-audit-trail-contract)
+  - [31. Notification Policy Contract](#31-notification-policy-contract)
+  - [32. Briefing Cache Contract](#32-briefing-cache-contract)
+  - [33. Per-session Scratchpad Contract](#33-per-session-scratchpad-contract)
+  - [34. Working-set Contract](#34-working-set-contract)
+  - [35. Snapshot Diff Contract](#35-snapshot-diff-contract)
+  - [36. Outbox Lifecycle Contract](#36-outbox-lifecycle-contract)
+  - [37. Inbox Triage Contract](#37-inbox-triage-contract)
+  - [38. Local-first Read Order](#38-local-first-read-order)
+  - [39. Skill-anti-pattern Catalogue](#39-skill-anti-pattern-catalogue)
+
+---
+
+This document describes **how** Superagent skills and tools behave: ingestion, init, update cadences, task / domain / asset management, capture and surfacing patterns, autonomous behavior, memory persistence, MCP / CLI resilience, custom overlay discovery, and the framework artifact creation contract.
+
+Skills MUST cite the relevant section here rather than re-stating contracts inline.
+
+---
+
+## 1. MCP / CLI-tool Preflight Protocol
+
+Any skill that depends on MCP servers OR shell-installed CLI tools (`rem`, `ekctl`, `exiftool`, `healthsync`, `monarch-cli`, `plaid-cli`, `osascript` for AppleScript, etc.) runs this protocol before starting its main work.
+
+### Steps
+
+1. **Probe each required source** with a lightweight call.
+   - For MCPs: a health check or list-tools call.
+   - For CLI tools: `which <tool>` followed by `<tool> --version` (or the source's documented "smoke test" command in `data-sources.yaml`).
+   - Record each as **available** or **blocked** with the failure mode (auth, missing binary, timeout, permission denied, server error).
+
+2. **Probe each optional source** the skill intends to use.
+   - Optional sources are never blockers — record status and skip gracefully if unavailable.
+
+3. **Report to user** at the start of the skill output:
+   - All sources available → no report (proceed silently).
+   - Any source blocked → state which sources are available and which are blocked, e.g.:
+     > "Apple Health (CLI: `healthsync` not installed) and Google Calendar (auth expired) unavailable. Proceeding with bills and todo only."
+
+4. **Adapt skill execution.**
+   - Skip steps that depend entirely on a blocked source.
+   - Mark affected output sections as "[Source unavailable]" rather than omitting them silently.
+   - If a **required** source is blocked, halt the skill and surface the error.
+
+5. **On user retry** ("I installed `healthsync`, try again" / "I re-authed Gmail"):
+   - Re-run preflight for previously blocked sources only.
+   - Resume the skill from where it left off when possible, using `_memory/context.yaml.last_check` as the time-bounded checkpoint for delta queries.
+
+### Source error classification
+
+| Error type | Meaning | Retry strategy |
+|---|---|---|
+| `binary_missing` | CLI tool not on `$PATH` | User installs (skill suggests the install one-liner) |
+| `auth_expired` | OAuth token expired or revoked | User re-authenticates per source's docs |
+| `permission_denied` | macOS Full Disk Access / TCC, Keychain, etc. | User grants permission (skill cites the exact System Settings path) |
+| `timeout` | MCP / API slow or unreachable | Auto-retry once after 5 s |
+| `server_error` (5xx) | Upstream service issue | Auto-retry once; if still failing, skip |
+| `tool_not_found` | MCP doesn't expose expected tool | Skip source, note in output |
+| `quota_exceeded` | Rate-limit hit | Skip remainder of run, retry on next cadence |
+
+### Skill preamble convention
+
+MCP / CLI-dependent skills should begin their execution with:
+
+```
+Run the MCP / CLI-tool Preflight Protocol (procedures.md § 1) for this skill's required and optional sources.
+```
+
+This single line replaces ad-hoc error handling per skill.
+
+---
+
+## 2. Data Ingestion Contract
+
+Superagent's value scales with the breadth of ingested data. Every data source is wired in via an **ingestor**, and every ingestor obeys this contract. The contract makes ingestion safe to run on any cadence, idempotent within its window, and reversible if it goes wrong.
+
+### 2.1 What an ingestor is
+
+An **ingestor** is a Python script under `superagent/tools/ingest/<source>.py` that pulls data from one external source and writes structured rows into the right `_memory/` index file (`bills.yaml`, `subscriptions.yaml`, `appointments.yaml`, `interaction-log.yaml`, etc.) and / or appends narrative entries to the right `Domains/<domain>/history.md`.
+
+Ingestors are NOT skills. They are invoked by the **`ingest`** skill (which orchestrates them) or run directly from the command line.
+
+### 2.2 Ingestor obligations
+
+Every ingestor MUST:
+
+1. **Read its row from `data-sources.yaml`** to get `enabled`, `last_ingest`, `recency_window_days`, `max_items_per_run`, source-specific auth pointer, and any per-source filter rules.
+2. **Run the preflight** for its source (see § 1) and exit cleanly if blocked.
+3. **Pull only the delta** since `last_ingest` (or `recency_window_days` back from `now` on first run) up to `now`.
+4. **Cap the pull** at `max_items_per_run`. If the cap was hit, record `truncated: true` in the run summary so the next run picks up where this one left off.
+5. **Normalize each item** into the appropriate index row OR append it to the appropriate domain `history.md`. Per-source mapping rules live in the ingestor's docstring and in `docs/data-sources.md`.
+6. **Be idempotent within the window** — keyed by an upstream-stable identifier (Gmail message ID, Plaid transaction ID, Apple Health UUID, calendar event UID, …) so re-running over the same period does not duplicate rows.
+7. **Update `data-sources.yaml`**: set `last_ingest` to `now`, and write the per-run summary into the row's `last_run` field.
+8. **Append to `ingestion-log.yaml`** a row with timestamp, source, items pulled, items inserted, items updated, items skipped (already-present), errors, duration. **Append-only.**
+9. **Append to `interaction-log.yaml`** a single line summarizing the run (so daily-update / whatsup can surface "X new items from Y sources" without parsing the per-source ingestion log).
+10. **Read-only by default.** An ingestor that needs write access upstream MUST declare `writes_upstream: true` in `data-sources.yaml` for its row, MUST require explicit `--write` invocation, and MUST log every write.
+
+### 2.3 Capture modes
+
+Each row in `data-sources.yaml` has a `capture_mode` field:
+
+- **`disabled`** — source is configured (auth exists) but never runs. Default for a freshly-discovered source until the user confirms.
+- **`manual`** — runs only when the user explicitly invokes `ingest <source>` or `ingest --all`.
+- **`scheduled`** — runs on the cadence in `preferences.ingestion_schedule.<source>` (see `config.yaml`). Default cadences:
+  - email / calendar / reminders / messages: every `daily-update` run.
+  - banks / cards (Plaid / Monarch / YNAB): every `weekly-review` run.
+  - health (Apple Health / WHOOP / Strava / Garmin / Oura): every `daily-update` run.
+  - smart-home / vehicles: every `daily-update` run.
+  - notes / Obsidian / Notion: every `weekly-review` run (slow-changing).
+  - photos / location: every `monthly-review` run (heavy).
+
+The user can override any per-source cadence in `config.yaml`.
+
+### 2.4 Per-source budgets
+
+Every source row carries:
+
+- `recency_window_days` — for first-run ingestion (no `last_ingest` set), how many days of history to pull. Defaults vary by source — email might be 30, photos might be 7, health might be 365.
+- `max_items_per_run` — hard cap so a single run can never blow up disk / token budget. Defaults vary by source.
+- `backfill_window_days` (optional) — for **deferred backfill**: a separate, larger window the user can invoke explicitly via `ingest <source> --backfill`. Used for "now that I trust this, pull the last 5 years".
+
+### 2.5 Idempotency and dedup
+
+Every ingestor's normalized output rows include an `external_id` field carrying the upstream-stable identifier. Skills that read indexes (especially the Bookkeeper, the Concierge, the daily-update) MUST treat `external_id` as the primary dedup key when present, falling back to natural keys (date + amount + payee for transactions, date + summary for events) only if `external_id` is missing.
+
+### 2.6 Failure handling
+
+- A source that fails preflight is logged once per `data-sources.yaml.<source>.failure_streak`-bucket and skipped without aborting the rest of the ingest run.
+- After 3 consecutive failures, the source is auto-flipped to `capture_mode: manual` and the next daily-update surfaces it under "Sources needing attention".
+- The user can re-enable with `ingest <source> --enable` after fixing the problem.
+
+### 2.7 Read path for skills
+
+Skills should **never** call an MCP or CLI tool directly when the answer is already in a local index or domain file. The read order is:
+
+1. **Local YAML indexes** (`_memory/*.yaml`) for structured queries.
+2. **Local Domain history files** (`Domains/<domain>/history.md`) for narrative recall.
+3. **Local interaction-log / ingestion-log** for "what happened recently".
+4. **Live MCP / CLI source** ONLY for the strictly newer slice past `data-sources.yaml.<source>.last_ingest`, OR for live state (current bank balance, current sleep score) where staleness matters.
+
+When the live call happens, capture-through MUST run (per § 2.2 obligation 7-9) so the next read is local.
+
+---
+
+## 3. Init flow
+
+The full step-by-step is in `skills/init.md`. The contract:
+
+- **Quick-start path (default):** scaffold `_memory/`, scaffold the 10 default `Domains/`, ask the user three orientation questions (name, household composition, what hurts most today), enable zero data sources, and end with a 5-minute walkthrough of the most relevant capture skill (e.g. `add-bill` if "bills are stressful" was the top pain point).
+- **Heavy-import path (opt-in):** after the quick-start, init asks "Do you want me to look for data sources to enable now?" and probes for every supported MCP / CLI tool. For each one found, init shows what it can do, asks whether to enable, and (if yes) runs a first ingest with the conservative `recency_window_days` default. The user can opt out at any prompt and run `ingest --setup` later.
+- **No silent enables.** Init never enables a source without an explicit yes.
+
+---
+
+## 4. Update Cadences
+
+Cadences are aspirational defaults; the user can run any of them on demand at any time, and disable any of them in `config.yaml.preferences.cadences`.
+
+### 4.1 Daily update
+
+**Trigger:** user runs `daily-update` or natural-language equivalent ("morning briefing", "what's today look like").
+
+**Steps (high-level — full version in `skills/daily-update.md`):**
+
+1. Load config + context.
+2. Run scheduled ingestors (those with `capture_mode: scheduled` and cadence including `daily`) with light budgets.
+3. Compose:
+   - **Today's calendar** (from local mirror, fall through to live calendar source for newest items).
+   - **Bills due in the next 7 days** (from `bills.yaml`).
+   - **Today's appointments** (from `appointments.yaml`).
+   - **Important dates today / tomorrow** (from `important-dates.yaml`).
+   - **P0 / P1 tasks due today or overdue** (from `todo.yaml`).
+   - **Health / fitness signal of note** (last night's sleep, today's planned workout, prescription due to refill).
+   - **Inbox highlights** (top 5–10 from email ingest if enabled).
+   - **Anything new + interesting from other ingestors** (large transaction, low balance, new package shipped, document expiring this month).
+4. Update `context.yaml.last_check` to `now`; append a one-liner to `interaction-log.yaml`.
+
+### 4.2 Weekly review
+
+**Trigger:** user runs `weekly-review` (suggested cadence: Sunday evening or Friday end-of-day per `config.yaml`).
+
+**Steps:**
+
+1. Bookkeeper pass: spend by category vs. budget for the trailing 7 days; new recurring charges spotted; bills paid / unpaid.
+2. Coach pass: workouts logged, sleep average, weight trend, any personal-signal events captured.
+3. Concierge pass: appointments coming up in the next 14 days, important dates in the next 30 days, document expirations in the next 60 days.
+4. Quartermaster pass: any home / vehicle maintenance items due in the next 30 days, warranties expiring in the next 60 days.
+5. Tasks: what got done, what slipped, what's due.
+6. Append a `weekly-review` entry to `interaction-log.yaml` and to `Domains/Self/history.md`.
+
+### 4.3 Monthly review
+
+**Trigger:** user runs `monthly-review` (suggested cadence: 1st of the month).
+
+**Steps:**
+
+1. **Subscription audit** — every row in `subscriptions.yaml` with `last_used` older than 60 days surfaces with a "cancel?" prompt; new subscriptions detected from ingested transactions vs. last month surface for confirmation.
+2. **Document expiration scan** — surface every document expiring in the next 90 days.
+3. **Vehicle / home maintenance windows** — every maintenance row whose `next_due` falls in the next 60 days.
+4. **Financial recap** — month-over-month spend, savings rate, biggest categories, anomalies.
+5. **Health recap** — overdue cleanings / vaccines / screenings; med refill dates in the next 30 days.
+6. **Domain hygiene** — any domain with no `history.md` entry in the last 60 days surfaces for "is this still active?".
+7. Append entries to `interaction-log.yaml` and to `Domains/Self/history.md`.
+
+### 4.4 Quarterly Tailor review
+
+**Trigger:** user runs `tailor-review` (suggested cadence: every 90 days; daily-update nudges when stale).
+
+The Tailor's hygiene + strategic-improvement passes per `tailor.agent.md`. Outputs ranked suggestions in `pm-suggestions.yaml`; each tagged `destination: superagent` (handed to Coder) or `destination: _custom` (Tailor implements directly). The hard safeguard against personal data leaking into framework-bound writes is enforced here AND on receipt by the Coder.
+
+---
+
+## 5. Task Management (todo skill)
+
+The full skill is in `skills/todo.md`. The contract:
+
+- **Single source of truth:** `_memory/todo.yaml`. Every task has `id`, `title`, `description`, `priority` (P0–P3), `status` (open / in_progress / done / cancelled), `created`, `due_date`, `completed_date`, `related_domain`, `related_asset`, `tags`, `source` (skill name or ingestor that created it; `null` for user-added).
+- **Priority rules:** P0 = today / urgent (a bill due today, a health-critical refill); P1 = this week (a doctor's appointment in 4 days, a tax deadline this Friday); P2 = active but not urgent (general "should do this month"); P3 = future / aspirational.
+- **ID format:** `task-YYYYMMDD-NNN` (e.g. `task-20260428-001`) for human readability and natural sort order.
+
+### 5.1 Sync to status.md files
+
+After any add / complete / update operation:
+
+1. For each affected task, resolve its `related_domain`:
+   - If set → rewrite `workspace/Domains/<domain>/status.md` with all open tasks for that domain (priority then due date), plus recently completed tasks in the Done section.
+   - If unset → update `workspace/todo.md` (the workspace-level cross-cutting task view).
+2. Format as markdown tables, grouped by priority, with a separate Done section at the bottom (see `templates/todo.md` for the canonical shape).
+3. Update the `_Last updated:_` timestamp.
+4. If a `status.md` file does not exist for a domain, create it from `superagent/templates/domains/status.md`.
+
+---
+
+## 6. Domain & Asset Management
+
+### 6.1 The 10 default domains
+
+Init seeds these 10 by default. The user can delete the ones they don't need, add more via `add-domain`, or rename in-place.
+
+| Domain | Scope (illustrative) |
+|---|---|
+| **Health** | medical, dental, vision, mental health, prescriptions, vaccines, vitals, family medical history |
+| **Finance** | bills, accounts (banks, brokerage, retirement), taxes, budget, insurance (health / life / umbrella), credit |
+| **Home** | mortgage / rent, utilities, insurance, HOA, maintenance schedule, contractors, security, deliveries |
+| **Vehicles** | every vehicle owned (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel |
+| **Pets** | each pet's vet, vaccinations, prescriptions, food, grooming, boarding |
+| **Family** | spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events |
+| **Travel** | trips planned and past, flight / hotel / rental records, packing lists, frequent-flier numbers, passports |
+| **Career** | resume, certifications, performance reviews, learning goals, networking, salary history (if separate from Finance) |
+| **Hobbies** | each meaningful hobby — fitness goal, reading log, side project, garden, workshop, etc. |
+| **Self** | personal-development goals, journaling, books / podcasts / media log, life themes |
+
+### 6.2 4-file convention
+
+Every domain folder has the same 4 files:
+
+```
+Domains/<domain>/
+  info.md       # narrative overview, current state, key facts
+  status.md     # RAG status + open / done tasks
+  history.md    # chronological log of touchpoints (newest at top)
+  rolodex.md    # contact directory scoped to this domain
+  sources.md    # curated catalogue of Sources/ entries relevant to this domain
+  Resources/    # optional, lazily created — drafts, working files, agent-generated artifacts
+```
+
+### 6.3 Maintenance banner
+
+Every framework-managed markdown file under `workspace/Domains/` opens with the maintenance banner:
+
+```markdown
+> **[Do not change manually — managed by Superagent]**
+```
+
+(Plus an HTML comment block immediately below explaining the file's role and the schema contract.) This signals to a human reader that the file is auto-mutated by skills and that hand-edits may be overwritten — though hand-edits are still respected when the next sync runs (skills MUST diff and merge, not blindly clobber).
+
+### 6.4 Adding a new domain
+
+The full skill is in `skills/add-domain.md`. Summary:
+
+1. Ask the user: domain name, slug (auto-derived), one-line scope, priority (P0–P3).
+2. Append a row to `_memory/domains-index.yaml`.
+3. Create `Domains/<slug>/` with the four template files filled in.
+4. Append `domain_added` entry to `interaction-log.yaml`.
+
+### 6.5 Adding an asset
+
+Assets are physical things you own (vehicles, electronics, appliances, jewelry, instruments, tools, collectibles). The full skill is in `skills/add-asset.md`. Summary:
+
+1. Ask: name, kind (vehicle / appliance / electronics / jewelry / tool / instrument / collectible / other), domain (which Domain owns it — Vehicles, Home, Hobbies, …), purchase date, purchase price, serial / VIN if applicable, warranty expiration if applicable, notes.
+2. Append a row to `_memory/assets-index.yaml`.
+3. **Source documents** (titles, registrations, warranties, vault-grade receipts) → invoke `add-source --to-domain <domain> --asset <asset-slug>` for each. Files land in `Sources/documents/<category>/<asset-slug>/`; pointers added to `Domains/<Domain>/sources.md`. NEVER under `Domains/<X>/` directly.
+4. **Working files** (context photos, scratch worksheets, agent-rendered briefings) → `Domains/<Domain>/Resources/<asset-slug>/` (lazy; created on first write).
+4. If the asset has a recurring maintenance schedule (vehicle oil change, HVAC filter change, septic pump-out), the skill prompts to add maintenance rows to `bills.yaml` (one-shot or recurring) AND to the domain's `status.md` `Next Steps` section.
+
+### 6.6 Per-entity Resources/ (working artifacts)
+
+`Resources/` is created lazily, inside the relevant `Domains/<domain>/` (or `Projects/<slug>/`) folder, the first time a working file is written. There is no workspace-wide `Resources/`.
+
+`Resources/` holds **drafts, working files, photos-as-references, and agent-generated artifacts** that are NOT meant to leave the workspace (`Outbox/` is for those) and NOT vault-grade canonical records (`Sources/documents/<category>/` is for those).
+
+Per-asset / per-event sub-folders inside a domain's `Resources/` are encouraged (e.g. `Domains/Vehicles/Resources/blue-camry-2018/` for fuel-log CSVs and label photos; `Domains/Home/Resources/hvac/` for leak photos and scratch quote-comparisons).
+
+The 5-year test for placing a file: *"would I want this in five years even if its domain went away?"* If yes → `Sources/`. If no → `Resources/`.
+
+### 6.7 The 5-file Domain structure (info / status / history / rolodex / sources)
+
+Every Domain folder has **5** managed markdown files (the previous 4 + `sources.md`):
+
+- `info.md` — narrative overview, current state, key facts, routines, stakeholders, open questions.
+- `status.md` — RAG + open / done tasks (auto-synced from `_memory/todo.yaml`).
+- `history.md` — chronological log; H4 entries; newest at top.
+- `rolodex.md` — domain-scoped contact directory (auto-synced from `_memory/contacts.yaml`).
+- `sources.md` — curated catalogue of `Sources/` entries relevant to this domain. Auto-maintained by `add-source --to-domain <id>`; respects hand-edits.
+
+The same 5-file structure applies to Projects (`Projects/<slug>/`).
+
+### 6.7 Archival rules
+
+- A **domain** with no `history.md` entry in 12 months and no open tasks → surfaced by `doctor` for archive into `workspace/Archive/<YYYY-MM>/Domains/`.
+- An **asset** that the user marks `status: disposed` (sold, donated, lost, replaced) → moved to `_memory/assets-index.yaml.disposed[]` (kept for tax / insurance history) and the corresponding `Domains/<X>/Resources/<asset-slug>/` working folder moved to `Archive/`. The asset's source documents in `Sources/documents/<category>/<asset-slug>/` stay where they are (immutable per § 15.2); the user moves them manually if desired.
+- A **completed appointment / paid bill / past important date** → retained in indexes for 12 months (so the year-over-year skills work), then rotated by `doctor` into year-stamped archive YAMLs (`bills-2024.yaml`, etc.).
+
+Archival is **always reversible** — moving back from `Archive/` is a single `mv` command.
+
+---
+
+## 7. Capture Contracts
+
+### 7.1 Personal Signal Capture Contract
+
+Captures self-development feedback, behavioural cues, growth-area hints. Stored in `_memory/personal-signals.yaml`. Surfaced via the `personal-signals` skill on request and rolled up periodically into `Domains/Self/history.md`.
+
+**Triggers** (non-exhaustive):
+
+- Self-reflection: "I should be more patient on long drives", "next time I should prep groceries earlier", "I keep skipping leg day".
+- Family / partner feedback: "[partner] said I'm always late picking up the kids".
+- Pattern Superagent notices: missed gym sessions for 3 consecutive Tuesdays, three calls to the same friend that you intended to make and didn't.
+
+Capture is **ambient and silent** (one-line tag at the end of the reply). Surface is on request.
+
+### 7.2 Action Signal Capture Contract
+
+Two distinct kinds of "this should change" signals, both stored in `_memory/action-signals.yaml`:
+
+- **`target: tailor`** — change to Superagent itself (framework code under `superagent/` or per-user overlay under `_custom/`). Examples: "make that a skill", "Superagent should always remind me about X", "every time I have to dig for the same info".
+- **`target: superagent`** — change to the user's workspace (a domain file, a bill record, an outgoing email). Examples: "@superagent please act on this", "I should update the home domain with the new HVAC contract".
+
+**Default react UX (both targets): show first, ask before acting.**
+
+1. Capture the row, then print it inline (id, target, kind, trigger phrase, artifact ref, proposed direction) and ask **Capture / Edit / Discard?**
+2. After confirmation, draft the next step and ask **approve / decline / defer** before implementing.
+
+Ambient signals are captured silently with a one-line tag at the end of the reply (`_Captured signal sig-<id> (target: tailor|superagent)._`) and processed later in batch.
+
+Update skills (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`) and `tailor-review` surface **split unprocessed counts** ("N Tailor signals + M Superagent workspace actions pending").
+
+### 7.3 Auto-capture from ingested data
+
+Some signals come from ingestion, not chat. Examples and where they go:
+
+| Source signal | Captured to |
+|---|---|
+| New large transaction (> 1.5× P95 of last 90 days for that category) | `Finance/history.md` + alert in next daily-update |
+| Subscription unused 60+ days (heuristic: no related app-open / charge-event signal) | `subscriptions.yaml.<row>.audit_flag: true` + monthly-review surface |
+| Document with `expires_at` < 90 days from now | `documents-index.yaml.<row>.expiring_soon: true` + monthly-review surface |
+| Vehicle mileage crosses next-service threshold (from Tesla MCP / manual log) | New row in `bills.yaml` (kind: maintenance) + `Vehicles/<vehicle>/status.md` Next Steps |
+| Sleep < 6h for 5 consecutive nights | personal-signal row (`category: time-management`, `source: pattern-noticed`) + Health/status.md Active Blockers |
+| Bank balance < `accounts-index.yaml.<acct>.low_balance_threshold` | P0 task + alert in next daily-update |
+| Email from a contact in `rolodex.md` of a "recently inactive" domain | Concierge surfaces the contact in next daily-update under "Reconnect" |
+
+The full table (and how each ingestor signals each event) lives in `docs/auto-capture-rules.md`.
+
+---
+
+## 8. Surfacing Contracts
+
+How Superagent decides **when** to bring something to your attention. Surfacing is the inverse of capture: capture writes silently, surfacing reads loudly.
+
+### 8.1 Bills surfacing
+
+| Window | Where surfaced |
+|---|---|
+| Due today | `daily-update` "Today" section + P0 task auto-created |
+| Due in 1–7 days | `daily-update` "This week" section |
+| Due in 8–30 days | `weekly-review` "Coming up" section |
+| Overdue | `daily-update` "Overdue" section + P0 task + alert |
+| Auto-paid (per `bills.yaml.<row>.auto_pay: true`) | `daily-update` shows once on the due date as confirmation, then drops |
+| New recurring charge spotted in transactions but not in `bills.yaml` | `weekly-review` "New?" section, asks user to add or ignore |
+
+### 8.2 Subscription audit surfacing
+
+Per `monthly-review`. Each subscription row gets an audit verdict:
+
+- `keep` — used recently, cost reasonable.
+- `consider-cancelling` — `last_used` > 60 days OR cost > category P75.
+- `unsure` — no usage signal available; ask user.
+
+### 8.3 Document expiration surfacing
+
+Each document with an `expires_at` field:
+
+- `> 90 days` → invisible.
+- `60–90 days` → `monthly-review` "Coming up" section.
+- `30–60 days` → `weekly-review` "Action" section + auto P2 task.
+- `< 30 days` → `daily-update` "Today's alerts" + auto P1 task (or P0 if < 7 days).
+- Expired → `daily-update` `**EXPIRED**` block until the user resolves.
+
+### 8.4 Maintenance window surfacing
+
+Same window logic as documents, applied to:
+
+- Vehicle service intervals (oil, tires, brakes, registration, inspection).
+- Home maintenance items (HVAC service, filter changes, gutter cleaning, pest control, smoke-detector batteries).
+- Pet maintenance items (vaccines, parasite prevention, dental).
+
+### 8.5 Important date surfacing
+
+| Window | Surface |
+|---|---|
+| Today | `daily-update` "Today" |
+| Tomorrow | `daily-update` "Tomorrow" |
+| In 7 days | `daily-update` "Coming up" + offers to draft a card / pick a gift |
+| In 30 days | `weekly-review` "Coming up" |
+| Recurrence reset (the day after) | append to `important-dates.yaml.<row>.history[]`, recompute next occurrence |
+
+---
+
+## 9. Memory Persistence Model
+
+- `_memory/` is the structured-state vault. Everything in there is YAML. Append-only files (`interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml`) are NEVER rewritten — only appended to. Index files (`bills.yaml`, `subscriptions.yaml`, `appointments.yaml`, `important-dates.yaml`, `assets-index.yaml`, `accounts-index.yaml`, `contacts.yaml`, `documents-index.yaml`, `domains-index.yaml`, `health-records.yaml`, `data-sources.yaml`) are mutated in place.
+- `Domains/<domain>/` is the human-readable narrative layer. Markdown only. Skills auto-update `status.md` and `history.md`; `info.md` is mostly hand-curated (skills update specific named sections only); `rolodex.md` is auto-synced from contact mentions.
+- Schema versions live in each YAML's `schema_version` field. Schema migrations (when they happen) are handled by `tools/migrate.py`; the user is asked before any in-place migration.
+- Snapshots: a daily snapshot of `_memory/` is auto-saved to `_memory/_checkpoints/<date>/` on the first agent action of each day, with a 14-day retention. Lets the user roll back any "the agent did something I didn't want" mishap.
+
+---
+
+## 10. Workspace Path Configuration
+
+`workspace/` is the default workspace root. The user can override via `_memory/config.yaml.preferences.workspace_path` if they want the workspace somewhere else (e.g. on an encrypted external disk). Skills resolve the workspace root from `config.yaml` on every run; nothing is hardcoded except the default.
+
+---
+
+## 11. Custom Overlay Discovery
+
+Per `AGENTS.md` § "Custom overlay". The full reference is in `docs/custom-overlay.md`. Summary:
+
+- Overlay lives at `workspace/_custom/`.
+- Subdirectories: `rules/`, `skills/`, `agents/`, `templates/`, `tools/`.
+- Read on every Superagent turn, alphabetical by filename.
+- Custom rules apply additively on top of `AGENTS.md`.
+- Custom skills are first-class. Same-name collision: framework first, then custom as an addendum, with a chat banner.
+- Custom templates override framework templates on same-name match, with a chat banner announcing the override.
+
+---
+
+## 12. Framework Artifact Creation Contract
+
+(Copied here in full because it is universal across skills — the same text as `AGENTS.md` § "Framework Artifact Creation Contract", restated for skill authors.)
+
+Whenever a skill is about to create a new **skill**, **agent role**, **rule**, **template**, **tool**, or **doc page**:
+
+1. **Auto-classify destination** — `superagent` (generic, committed) or `_custom` (user-specific, gitignored). **Default to `_custom` when ambiguous.**
+2. **If unambiguous**, announce the destination at the top of the response and proceed.
+3. **If ambiguous**, **ask the user** with the `AskQuestion` tool: choose `superagent`, `_custom`, or `cancel`.
+4. **Safeguard**: scan the artifact body for any name from `_memory/contacts.yaml`, `domains-index.yaml`, `assets-index.yaml`, `accounts-index.yaml`, address fragments, account numbers, license-plate patterns. On any match, refuse the `superagent/` path and re-route to `workspace/_custom/`.
+5. **NEVER** silently write user-specific content under `superagent/`. The Coder enforces this with a refusal on receipt.
+
+This contract does NOT govern workspace **data** writes (domain files, contact entries, bill records, appointment rows) — those go to `workspace/` by their own conventions.
+
+### Default-routing table
+
+| Artifact | Default destination | Notes |
+|---|---|---|
+| New skill that is generic across users | `superagent/skills/` | "useful for anyone running Superagent" — rare; default `_custom` if uncertain |
+| New skill that mentions a specific person, asset, account, address | `_custom/skills/` | always |
+| New rule that codifies a workflow specific to this household | `_custom/rules/` | always |
+| New template that styles output for a specific recipient | `_custom/templates/` | always |
+| New ingestor for a previously unsupported source | `superagent/tools/ingest/` | generic if the source itself is generic |
+| New tool that processes generic data | `superagent/tools/` | otherwise `_custom/tools/` |
+| New doc page (architecture, faq, …) | `superagent/docs/` | almost always |
+
+---
+
+## 13. Outbound Surface Contract
+
+Whenever a skill is about to generate an artifact that the user will hand-carry outside the workspace (a draft email body, a printable shopping list, a PDF for a contractor, a CSV the user will attach to a tax return), the artifact MUST go through a scrub pipeline before it leaves `workspace/`:
+
+1. **Source-discretion check**: redact internal-only labels, `_memory` IDs, agent commentary, debug strings.
+2. **Voice-of-the-user check**: the artifact reads in the user's voice (not "Superagent thinks…"); preserves their tone preferences from `model-context.yaml.communication`.
+3. **PII compression**: include only the PII the recipient needs. Don't include the full insurance policy number when only the carrier name is required for the question.
+4. **File destination**: if no destination was specified, default to `workspace/Outbox/` (which is gitignored).
+
+The full pipeline (and which steps each outbound skill owns) is in `docs/outbound-surfaces.md`.
+
+---
+
+## 14. Privacy and Sensitive Data
+
+- Everything under `workspace/` is **gitignored** and **local-only**. No agent-initiated upload, sync, or telemetry.
+- The most sensitive files (`health-records.yaml`, `accounts-index.yaml`, anything under `Outbox/handoff/`) are surfaced explicitly in `docs/architecture.md` § "Sensitive subfiles" so the user knows which to symlink to encrypted storage if desired.
+- Skills that *produce* a sensitive artifact (e.g. `handoff` → "if I get hit by a bus" packet) write to a clearly-labelled subfolder (`Outbox/handoff/`) and surface the location in chat with a "store this somewhere safe" reminder.
+- Skills that *consume* sensitive data (medic prep brief, bookkeeper tax packet) include a "do not paste this into a chat assistant unless you trust it" banner at the top of the rendered output.
+- The Tailor / Coder safeguard scans every framework-bound write for names, addresses, account-number patterns, license-plate patterns. On any match, the destination is forcibly re-routed to `_custom/` regardless of the original tag.
+
+---
+
+## 15. Sources Contract (immutable reference library + cache)
+
+`Sources/` is the workspace's **reference library** — the long-term store of documents the user owns plus pointers (`.ref.md` files) to data that lives elsewhere. It exists so the agent can answer "where is X?" / "what does my X say?" without hitting the network every time, while leaving an audit trail of where each fact came from.
+
+### 15.1 Layout
+
+```
+Sources/
+  README.md              ← user-facing docs (templates/folder-readmes/Sources.md)
+  documents/             ← actual local files (PDFs, scans, exports, manuals)
+    <category>/<doc>.<ext>
+    <category>/<doc>.ref.md    ← optional sidecar metadata
+  references/            ← `.ref.md` files pointing at external data
+    <category>/<name>.ref.md
+  _cache/                ← agent-managed cache of fetched references
+    <source-hash>/
+      _meta.yaml
+      _summary.md
+      _toc.yaml
+      raw.<ext>
+      chunks/            ← lazily created for large fetches
+        chunk-001.md
+        ...
+        _index.yaml
+```
+
+### 15.2 Immutability
+
+`Sources/documents/` and `Sources/references/` are **immutable from the agent's perspective**. Skills MUST NOT delete or overwrite anything in these subtrees without an explicit user-confirmed action through `add-source --replace <id>`. The `doctor` skill is forbidden from touching them at all.
+
+`Sources/_cache/` is the only auto-managed subtree. Skills evict on TTL or LRU per `config.preferences.sources.cache_max_mb`. Cache eviction is silent; no user prompt needed.
+
+When the user wants to remove a document or reference, they do it manually with `mv` / `rm` from a shell. Superagent never deletes user-curated reference material.
+
+### 15.3 The `.ref.md` file
+
+Template: `superagent/templates/sources/ref.md`. Required frontmatter:
+
+| Field | Required | Notes |
+|---|---|---|
+| `ref_version` | yes | Schema version. Currently `1`. |
+| `title` | yes | Display title. |
+| `description` | yes | One-line summary. |
+| `kind` | yes | `mcp` / `cli` / `url` / `api` / `file` / `vault` / `manual`. |
+| `source` | yes | Source identifier (format depends on `kind`). |
+| `ttl_minutes` | no | Cache freshness (default from `config.preferences.sources.default_ttl_minutes`). |
+| `sensitive` | no | Default `false`; `true` triggers redaction in outbound surfaces. |
+| `chunk_for_large` | no | Default `true`; chunk fetches over `chunk_threshold_kb`. |
+| `auth_ref` | no | Vault reference for credentials. |
+| `params` | no | Key/value parameters specific to the source. |
+| `related_domain` / `related_project` / `related_asset` / `related_account` | no | Cross-references. |
+
+The body of the file (after the frontmatter) is free-text **notes** the agent reads BEFORE fetching. Sometimes the notes answer the question and the fetch is unnecessary.
+
+### 15.4 Caching contract
+
+Every fetch of a `.ref.md`-pointed source goes through the cache. The cache is a per-source folder under `Sources/_cache/<sha256(kind + source)>/`:
+
+| File | Purpose |
+|---|---|
+| `_meta.yaml` | `fetched_at`, `last_used`, `ttl_minutes`, `size_bytes`, `source` (full ref dict), `sensitive`, `read_count`. |
+| `_summary.md` | AI-generated short summary (≤ 500 words) of the fetched content. The cheap thing the agent reads first. |
+| `_toc.yaml` | Table of contents with section names + line ranges (or chunk indexes). Drives "fetch only the relevant bit". |
+| `raw.<ext>` | The raw fetched content. May be skipped entirely when chunks/ exists. |
+| `chunks/chunk-NNN.md` | Optional. For raw size > `chunk_threshold_kb`, the content is split into ~`chunk_target_kb` chunks. |
+| `chunks/_index.yaml` | Maps logical sections → chunk numbers. |
+
+**Eviction rules:**
+
+- **TTL eviction** runs lazily — when a skill goes to read a cached entry, if `now - fetched_at > ttl_minutes`, the entry is treated as missing and re-fetched.
+- **LRU eviction** runs at write time — when total cache size > `cache_max_mb`, oldest-`last_used` entries are deleted until under the cap. The user is never asked.
+- **Force refresh**: any skill that reads a source accepts `--refresh`, which bypasses cache and re-fetches.
+- **Force never-cache**: `ttl_minutes: 0` in the `.ref.md` skips caching entirely (every read = live fetch).
+
+### 15.5 Read pattern (local-first)
+
+Every skill that needs source data MUST follow this read order:
+
+1. **Read `_memory/sources-index.yaml`** to identify candidate `.ref.md` / document paths.
+2. For documents: read the file directly from `documents/<...>` — no fetch needed.
+3. For references: open the `.ref.md`, read frontmatter + notes (cheap).
+4. Compute `source_hash`; check `_cache/<hash>/_meta.yaml` for freshness.
+5. **If fresh**: read `_summary.md` first; if the answer is in the summary, stop. Else read `_toc.yaml` to find the relevant section; only then read the matching chunk OR matching range from `raw.<ext>`. **Never load the whole raw content into context unless it's small (≤ 4 KB).**
+6. **If stale or missing**: invoke the appropriate ingestor / shell / fetch (per `kind` + `source` in the `.ref.md`). Write the result to `_cache/<hash>/`. Then jump back to step 5.
+7. Update `_meta.yaml.last_used: now`; increment `_memory/sources-index.yaml.<row>.read_count`.
+
+Skills that violate this — e.g. that go straight to a live MCP without checking the cache — are flagged by the Tailor's strategic pass as candidates for refactor.
+
+### 15.6 Index sync
+
+Every operation on `Sources/`:
+
+- **Add a document** (`add-source --document <path>`): copy / move the file into `Sources/documents/<category>/`; write a row to `_memory/sources-index.yaml` with `kind: document`.
+- **Add a reference** (`add-source --reference`): write the `.ref.md` to `Sources/references/<category>/`; write a row to `_memory/sources-index.yaml` with `kind: reference`.
+- **Read a source** (any skill): increment `read_count`; update `last_accessed`.
+- **Cache write** (any fetch): no index change (cache is not user-visible).
+- **Cache evict** (silent): no index change; just updates `_meta.yaml.last_used` on remaining entries.
+
+### 15.7 Project-scoped Sources
+
+A Project may have its own `Projects/<slug>/Sources/` with the same layout. The index is still the workspace-level `_memory/sources-index.yaml`, but per-project sources carry `related_project: <slug>`.
+
+The same caching logic applies; the cache lives under `Projects/<slug>/Sources/_cache/` (project-scoped — when the project is archived, its cache goes with it).
+
+---
+
+## 16. Projects Contract (time-bounded efforts)
+
+A **Project** is anything in the user's life with a clear goal, a target date, and a finite set of tasks that — once done — achieve the goal. Distinct from **Domains** (ongoing areas of responsibility that never "complete").
+
+### 16.1 What's a Project (vs. a Domain, vs. a task)
+
+| Concept | Time shape | Example |
+|---|---|---|
+| **Domain** | indefinite | "Health" — managed forever |
+| **Project** | bounded | "File 2026 taxes" — Jan-April; then done |
+| **Task** | atomic | "Call accountant to confirm appointment" |
+
+Test: *"Will this benefit from a charter, a deadline, and a status briefing more than once?"* If yes → Project. If no → Task. If it has no end → Domain.
+
+### 16.2 Lifecycle
+
+```
+planning → active → completed → archived
+            ↑ ↓
+           paused
+              ↓
+         cancelled
+```
+
+- **planning** — charter is being drafted; not surfacing in cadences yet.
+- **active** — surfacing in `daily-update`, `weekly-review`, `monthly-review` per `config.preferences.projects.deadline_lookahead_days`.
+- **paused** — temporarily set aside; suppressed from active surfacing; restorable via `projects resume <slug>`.
+- **completed** — all success criteria met; project moves to read-only.
+- **cancelled** — abandoned. Reason captured in `history.md`. Counts as terminal.
+- **archived** — `doctor` moves to `Archive/<YYYY-MM>/Projects/<slug>/` after `config.preferences.projects.archive_after_days` (default 90) in `completed`. Reversible via `mv`.
+
+### 16.3 4-file structure
+
+Same shape as Domains:
+
+```
+Projects/<slug>/
+  info.md       — charter (goal, scope, success criteria, deliverables, team, dates, budget)
+  status.md     — RAG + open / done tasks (auto-synced from todo.yaml)
+  history.md    — chronological log; H4 entries; newest at top
+  rolodex.md    — project-scoped contact directory
+  sources.md    — curated catalogue of Sources/ entries for this project
+  Resources/    — optional, lazily created — drafts, working files, agent artifacts
+  Sources/      — optional project-scoped reference library (per § 15.7)
+```
+
+Templates: `superagent/templates/projects/<file>.md`.
+
+### 16.4 Charter contract
+
+The `add-project` skill collects the **charter** before creating the folder:
+
+1. **Name** (display title; auto-derives `slug`).
+2. **Goal** (one sentence — what does "done" look like?).
+3. **Scope** (what's in / out — explicit list).
+4. **Target date** (ISO 8601; required for `active` state).
+5. **Related domains** (multi-select from `_memory/domains-index.yaml`).
+6. **Success criteria** (3-5 checkboxes).
+7. **Deliverables** (concrete artifacts produced).
+8. **Stakeholders** (list of contact ids).
+9. **Recurring** (none / annual / quarterly / monthly / every_n_years).
+10. **Budget** (optional: planned amount + currency).
+
+A charter without `goal` and `target_date` cannot transition out of `planning`.
+
+### 16.5 Sync contract (status.md ↔ todo.yaml)
+
+For each Project with `status: active`:
+
+- The `## Open` block in `status.md` is **regenerated** on every change to `_memory/todo.yaml` where any task has `related_project: <slug>`. Tasks are sorted by priority then due date.
+- The `## Done` block lists tasks completed in the last 30 days for this project.
+- The `### Burn-down` block (only when the charter has ≥ 5 success criteria) renders `<checked>/<total> — <days> days to target`.
+
+`render_status.py --scope project:<slug>` regenerates a single project's status. The `todo` skill triggers this automatically after any task add / complete / update where `related_project` is set.
+
+### 16.6 Surfacing
+
+Active projects surface in cadence skills per these rules:
+
+| Window | Where surfaced |
+|---|---|
+| Target date < `config.preferences.projects.deadline_lookahead_days` (default 14) | `daily-update` "This week" section + P1 task auto-created if no open tasks for the project in next 7 days |
+| Target date in 14-30 days | `weekly-review` "Project deadlines" section |
+| Target date > 30 days | `monthly-review` "Active projects" rollup only |
+| Status flip (planning → active, active → paused, etc.) | `daily-update` "Project changes" line for the next run |
+| New tasks added to a project | counted in `weekly-review` per-project burn-down |
+| Stalled (no `history.md` entry in 14 days AND `status: active`) | `weekly-review` "Stalled projects" — prompts user to pause or push |
+
+### 16.7 Recurring projects
+
+For projects with `recurring` ≠ `none`, when the project completes:
+
+1. The current row stays in `_memory/projects-index.yaml` as historical record.
+2. The Coder-side helper (`_orchestrator`-equivalent) auto-creates the next-cycle row:
+   - `id: <base>-<next-period>` (e.g. `tax-2025` → `tax-2026`).
+   - Inherits `name` (with year-substitution if applicable), `scope`, `success_criteria`, `deliverables`, `stakeholders`, `related_domains`, `recurring`.
+   - `start_date: target_date + 1 day` (or rule-based — annual taxes default to "Jan 1 of next year").
+   - `target_date: prior target + 1 cycle`.
+   - `status: planning`.
+3. The new project's `info.md` carries a `## Prior cycles` link to the just-completed instance's `Archive/<YYYY-MM>/Projects/<old-slug>/history.md`.
+
+Disable per-project via `recurring: none` after completion if the user wants to stop the cycle.
+
+### 16.8 Cross-domain awareness
+
+`related_domains: [..]` makes a Project visible in its parent Domains:
+
+- The Domain's `status.md` § Next Steps surfaces a one-bullet summary per active linked project.
+- The Domain's `history.md` carries an H4 entry on every project status flip (planning → active, active → completed) related to that Domain.
+
+This is how a kitchen-reno Project shows up in BOTH `Domains/Home/status.md` AND `Domains/Finance/status.md` without duplicating the project itself.
+
+### 16.9 Archival
+
+90 days after `status: completed` (configurable), `doctor` proposes archive:
+
+1. Move `Projects/<slug>/` → `Archive/<YYYY-MM>/Projects/<slug>/`.
+2. Update `_memory/projects-index.yaml.<row>.path` to point at the new location.
+3. Move the row from `projects-index.yaml.projects[]` to `projects-index.yaml.archived[]`.
+4. Tasks for this project remain in `_memory/todo.yaml` but are no longer surfaced (filtered by status: completed / cancelled).
+5. The cache under `Projects/<slug>/Sources/_cache/` is dropped to disk savings; the documents and references stay (they're in `Sources/`, not in `_cache/`).
+
+Reversible: `mv Archive/<YYYY-MM>/Projects/<slug>/ Projects/<slug>/` and update the index. Cancelled projects follow the same archival path; they just never had completion criteria.
+
+---
+
+## 17. Memory Taxonomy (entity / time / state shape)
+
+Implements ideas-better-structure.md item #9. Codifies the three shapes of YAML files under `_memory/`. Tools enforce; the Tailor's hygiene pass flags violations.
+
+| Shape | Files | Mutation rule | Read pattern |
+|---|---|---|---|
+| **Entity** | `contacts.yaml`, `accounts-index.yaml`, `assets-index.yaml`, `domains-index.yaml`, `projects-index.yaml`, `documents-index.yaml`, `subscriptions.yaml`, `bills.yaml`, `appointments.yaml`, `important-dates.yaml`, `sources-index.yaml`, `tags.yaml`, `world.yaml`, `notification-policy.yaml` | Long-lived rows; mutate-in-place; cross-referenced by id | Full read on access; `<file>.history.jsonl` audit-trail sibling captures every mutation |
+| **Time (event-shape)** | `interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml`, `decisions.yaml`, `outbox-log.yaml`, `upstream-writes.yaml`, `pm-suggestions.yaml`, `health-records.yaml.{vitals,symptoms,vaccines,results,visits}`; AND `_memory/events/<YYYY-Qn>.yaml` partitions | Append-only; existing rows MAY mutate fields like `status`, `processed_at`, `outcome` but never the historical content | Time-windowed via `tools/log_window.py read --since --until`; `<file>.summary.yaml` sibling for cheap aggregate reads |
+| **State (singleton)** | `context.yaml`, `model-context.yaml`, `data-sources.yaml`, `config.yaml` | Read at session start; write at session end; never grows | Always full-read |
+
+**Enforcement**: `tools/audit.py.record_change()` rejects writes to time-shape and state-shape files (they audit themselves or don't need audit). The skip-list in `config.preferences.audit.skip_files` carries the official list.
+
+---
+
+## 18. Operational Handles Contract
+
+Implements ideas-better-structure.md item #20. Canonical: `<kind>:<slug>` (colon separator).
+
+**Kinds** (lowercase singular; see `tools/handles.py.KINDS`):
+
+`contact`, `account`, `asset`, `bill`, `subscription`, `appointment`, `important_date`, `document`, `domain`, `project`, `source`, `medication`, `vital`, `task`, `health_visit`, `decision`, `tag`, `event`, `skill`, `workflow`, `playbook`, `scenario`, `other`.
+
+**Slugs**: lowercase, hyphenated, no punctuation (per `tools/handles.py.slug_for(name)`).
+
+**Back-compat**: legacy bare ids (`contact-dr-smith`, `task-20260428-001`, `dec-2026-04-28-001`) are accepted by the parser via `LEGACY_PREFIXES` mapping. New writes SHOULD use the canonical form.
+
+**Where handles appear**:
+- Every entity-row carries an optional `handle` field.
+- Every cross-reference (`related_*`, `pay_from_account`, `provider`, `affects`, etc.) accepts a handle OR a bare id.
+- The world graph (`_memory/world.yaml`) is keyed by handle.
+- Every operational-handle string in chat (when the user types one or the agent surfaces one) parses unambiguously.
+
+**Tooling**: `tools/handles.py` is the single canonical parser / formatter. Skills MUST use it; never split on colon by hand.
+
+---
+
+## 19. Provenance Contract
+
+Implements ideas-better-structure.md item #4. Every fact carries a source pointer.
+
+**Schema** (additive optional field on every entity row):
+
+```yaml
+provenance:
+  source: "user|<skill>|<ingestor>|init|derived"
+  source_id: "<optional anchor — interaction-log id, ingest run id, etc.>"
+  at: <iso datetime>
+  verified_at: <optional iso — when the user last confirmed it>
+```
+
+**For markdown facts** (e.g. `info.md` § Key Facts bullets): inline annotation `<!-- src: <ref> -->` on the bullet. The agent respects the annotation when re-rendering and surfaces it on demand.
+
+**Default**: `provenance: { source: "user", at: <created> }` for hand-entered rows; the relevant skill / ingestor name for derived rows.
+
+**Surface contract**: when the agent makes a factual claim sourced from the workspace, prefer to cite the provenance:
+
+> "Yes — HVAC was installed in 2019 (source: install-receipt at `Sources/documents/warranties/hvac/install-2019.pdf`, verified 2024-03-12)."
+
+---
+
+## 20. Visibility Contract
+
+Implements ideas-better-structure.md item #19. Every entity carries an optional `visibility` field.
+
+**Values**:
+- `private` (default) — owner only; never appears in shared / multi-user views.
+- `household` — visible to anyone in the workspace's household scope.
+- `public` — included in any export (handoff packet, contractor brief, tax-prep packet) by default.
+
+**Outbound scrub** (per § "Outbound Surface Contract"): redacts `private` content; lets `public` through; treats `household` per the recipient.
+
+**Per-domain default**: a domain's `visibility` field cascades as the default for entities scoped to it (e.g. all `Domains/Home/` entities default to `household` since the Home domain itself is `household` in the seeded config).
+
+---
+
+## 21. Sensitive Tier Contract
+
+Implements ideas-better-structure.md item #18.
+
+**Tiered storage**: a `_memory/sensitive/` sub-folder. Files routed there get stricter handling. The `config.preferences.sensitive.path` setting can override the location (e.g. point at an encrypted disk-image mount):
+
+```yaml
+preferences:
+  sensitive:
+    enabled: true
+    path: "/Volumes/SuperagentVault/_memory/sensitive"   # null = in-workspace
+    auto_route_files:
+      - "health-records.yaml"
+      - "accounts-index.yaml"
+```
+
+**Auto-route**: files listed in `auto_route_files` are physically moved to the sensitive subdir at init (or first creation); skills that read them follow the symlink. The `tools/validate.py` schema check is sensitive-tier-aware.
+
+**Per-row sensitive flag**: any row may carry `sensitive: true` to opt that single row into outbound redaction even if its file isn't in the sensitive tier.
+
+**Backup convenience**: `rsync --exclude=sensitive/` excludes the entire tier in one shot.
+
+**No built-in encryption in MVP**: macOS FileVault is the assumed underlying encryption. The roadmap M-01 adds first-class encryption support.
+
+---
+
+## 22. Hierarchies Contract (sub-domains / sub-projects)
+
+Implements ideas-better-structure.md item #10. Strictly opt-in; flat is the default.
+
+**Schema addition** (`domains-index.yaml`, `projects-index.yaml`):
+
+```yaml
+- id: "health-mental"
+  name: "Mental Health"
+  parent: "health"
+  path: "workspace/Domains/Health/Mental-Health"
+```
+
+**Folder convention**: when `parent` is set, the folder lives under the parent's path (`Domains/<Parent>/<Child>/` for sub-domains; `Projects/<parent>/<sub-slug>/` for sub-projects).
+
+**Skill traversal**: skills SHOULD walk parents transparently — listing tasks for "Health" includes tasks for "Mental Health" by default. `--strict` flag opts out.
+
+**Use sparingly**: the cognitive overhead is real. Recommend converting to sub-X only when a single folder overflows 50+ files into natural sub-groups.
+
+---
+
+## 23. Tags Contract
+
+Implements ideas-better-structure.md item #11. Backed by `_memory/tags.yaml` and the `tags` skill.
+
+**Auto-register** (`config.preferences.tags.auto_register: true` default): when any skill writes a tag NOT in `tags.yaml`, the new canonical row is appended automatically with `created_by: <skill>`. The user curates description + category later.
+
+**Strict canonical** (`config.preferences.tags.strict_canonical: false` default): when true, skills MUST refuse to write a tag not in `tags.yaml`. Promoted by the Tailor when the tags taxonomy stabilizes.
+
+**Aliases**: every tag row carries an `aliases: []` list. Skills that read tags SHOULD canonicalize via `tags.yaml` lookup before treating "tax-deductible" and "deductible" as different.
+
+**Cross-cutting**: any entity may carry `tags: [..]`. The `tags` skill walks every entity-shape file to surface "show me everything tagged X".
+
+**Recount maintenance**: the `tags` skill's `recount` sub-action walks all entities and updates `uses_count` per tag; `tailor-review` runs it during the hygiene pass.
+
+---
+
+## 24. World Graph Contract
+
+Implements ideas-better-structure.md item #3 + perf-improvement-ideas.md BB-4. Backed by `_memory/world.yaml` and `tools/world.py`.
+
+**The graph is DERIVED state**. It can be fully rebuilt from entity files at any time via `tools/world.py rebuild`. Skills SHOULD update it incrementally; if they don't, the next rebuild fixes drift.
+
+**Every entity-mutating skill SHOULD**:
+
+1. Call `tools/world.py.ensure_node(workspace, handle, kind, path, label, tags)` after creating an entity row.
+2. Call `tools/world.py.ensure_edge(workspace, from_h, to_h, kind, evidence)` for every cross-reference written.
+
+**Edge kinds** (canonical; see `templates/memory/world.yaml`):
+`pay_from`, `provider`, `scoped`, `related_domain`, `related_project`, `related_asset`, `owns`, `holds`, `stakeholder`, `rolodex_member`, `covers`, `lives_under`, `tagged`, `supersedes`, `derives_from`, `triggered_by`, `affects`.
+
+**Query**: `tools/world.py related <handle> [--depth N]` returns all neighbors. The `world` skill is the user-facing front-end.
+
+**Validation**: `tools/world.py validate` walks edges and warns about references to missing nodes. `tailor-review` includes it in its hygiene pass.
+
+---
+
+## 25. Workflows Contract
+
+Implements ideas-better-structure.md item #2. Backed by `superagent/templates/workflows/<id>.yaml` (framework) and `workspace/_custom/templates/workflows/` (user overlay).
+
+**A workflow is a versioned, parameterized recipe** for instantiating a Project. The `add-project --workflow <id>` flow:
+
+1. Reads the workflow file.
+2. Prompts for parameters (`year`, `destination`, etc. per workflow).
+3. Substitutes `{param}` everywhere in the workflow body.
+4. Creates the Project (charter, success criteria, deliverables, related domains).
+5. Creates the seed tasks with `due_date = target_date + due_offset_days`.
+6. Creates the listed `source_subfolders` (lazy — only the path is recorded, no files).
+7. Sets the project's `workflow: <id>` field so lessons-learned feed back at completion.
+
+**Lessons-learned loop**: when a workflow-instantiated project completes, the user is prompted with "Anything to capture for next time?" — the answer appends to `_memory/procedures.yaml` cross-referenced from the workflow id. The NEXT instantiation surfaces these notes upfront.
+
+**Five starter workflows**: `tax-filing`, `trip-planning`, `annual-health-tuneup`, `job-search`, `appliance-replacement`. Schema reference: `templates/workflows/_schema.yaml`.
+
+---
+
+## 26. Playbooks Contract
+
+Implements ideas-better-structure.md item #21. Backed by `superagent/playbooks/<name>.yaml` (framework) and `workspace/_custom/playbooks/<name>.yaml` (user overlay). Resolver: `tools/play.py`.
+
+**A playbook is a sequence of skills with conditions**. The resolver evaluates conditions against current workspace state and yields the ordered list of skills. The agent then walks the list, invoking each skill in turn.
+
+**Conditions** (parsed by `tools/play.py.eval_condition`):
+```
+<query> <op> <value>
+```
+Where `<query>` is one of: `bills_overdue`, `appointments_today`, `tasks_p0_open`, `projects_active`, `important_dates_today`, `subscriptions_audit_flag`. `<op>` ∈ `{== != < <= > >=}`. `<value>` is an integer.
+
+Plus: `always`, `never`.
+
+**Custom overlay**: `_custom/playbooks/<name>.yaml` overrides framework playbook of same name. The override is announced in chat.
+
+**Five starter playbooks**: `start-of-day`, `end-of-week`, `tax-prep-season`, `pre-trip-week`, `health-checkup-quarter`. Schema reference: `playbooks/_schema.yaml`.
+
+---
+
+## 27. Scenarios Contract
+
+Implements ideas-better-structure.md item #14. Backed by `tools/scenarios.py` and the `scenarios` skill.
+
+**Five canned scenarios** (no generic engine in MVP):
+
+| Scenario | Question answered |
+|---|---|
+| `cancel-subscriptions <ids>` | Annual savings if these subscriptions are cancelled. |
+| `trial-end-impact` | Monthly increase if all currently-active trials convert. |
+| `bill-shock --percent N` | Monthly impact of every bill going up by N%. |
+| `balance-floor --account <id> --starting-balance <X> --days N` | When does this account dip below threshold given upcoming bills. |
+| `project-overrun <project> --percent N` | New total if the project goes N% over. |
+
+Output to stdout; optionally `--out <name>.md` writes to `Outbox/scenarios/<name>.md`.
+
+If a scenario reveals an actionable insight, the skill offers the next step (e.g. "Want me to walk through cancelling them via `subscriptions audit`?").
+
+---
+
+## 28. Decisions Log Contract
+
+Implements ideas-better-structure.md item #24. Backed by `_memory/decisions.yaml` and the `decisions` skill.
+
+**Append-only** (event-shape). Mutate only `outcome_measured_at`, `outcome`, `outcome_notes`, `revisited` on existing rows.
+
+**Schema**: see `templates/memory/decisions.yaml`. Required fields: `id`, `ts`, `decision`, `context`, `confidence`, `reversibility`. Optional but encouraged: `alternatives_considered`, `rationale`, `affects` (list of handles), `review_at`.
+
+**Surface windows**:
+- `weekly-review` lists decisions made in the trailing 7 days.
+- `monthly-review` lists decisions whose `review_at <= today` AND `outcome is null` (waiting to be measured).
+
+**Cross-reference**: when the user logs a decision sourced from a `scenarios` run, the skill adds `tags: ["from-scenario"]` and links to the scenario output in `notes`.
+
+---
+
+## 29. Events Stream Contract
+
+Implements ideas-better-structure.md item #16 + perf-improvement-ideas.md MI-2. Backed by `_memory/events/<YYYY-Qn>.yaml` (partitioned) + `_memory/events.yaml` (partition index) + `tools/log_window.py`.
+
+**The events stream is the unified canonical timeline.** Per-entity history.md files remain as denormalized projections.
+
+**Auto-mirror**:
+- `config.preferences.events.auto_mirror_history_md: true` (default) — every H4 entry appended to a `Domains/<X>/history.md` or `Projects/<X>/history.md` ALSO emits an event.
+- `config.preferences.events.auto_mirror_interaction_log: true` (default) — every row appended to `interaction-log.yaml` ALSO emits an event.
+
+**Partitioning**: quarterly by default (`config.preferences.events.partition: quarterly`). Monthly available for high-volume workspaces. The partition index `_memory/events.yaml` is updated atomically by `tools/log_window.py update_index`.
+
+**Reading**: skills query via `tools/log_window.py read --since --until` (ranged queries are O(quarters touched)). Cross-entity timelines ("what happened on April 15") are now a single-file query.
+
+**Writing**: skills call `tools/log_window.py.append_event(workspace, event_dict)`. The event id (`evt-YYYY-MM-DD-NNN`) is auto-generated.
+
+---
+
+## 30. Audit Trail Contract
+
+Implements ideas-better-structure.md item #17. Backed by `<file>.history.jsonl` siblings + `tools/audit.py`.
+
+**Every entity-mutating skill SHOULD** call:
+```python
+from superagent.tools.audit import record_change
+record_change(workspace, file_path, kind="update",
+              row_id=row_id, old=old_dict, new=new_dict,
+              who="user", source="<skill-name>", note="<optional>")
+```
+BEFORE persisting the new YAML state, so the diff captures the actual transition.
+
+**Skipped files** (per `config.preferences.audit.skip_files`): time-shape logs that audit themselves — defaults to `interaction-log.yaml`, `ingestion-log.yaml`, `user-queries.jsonl`, `events.yaml`.
+
+**Rotation**: when `config.preferences.audit.rotate_yearly: true`, `doctor` rotates `<file>.history.jsonl` to `Archive/<YYYY>/<file>.history.jsonl` at year flip.
+
+**Reading**: `audit history --file <path> --row <id>` returns the chronological transitions. The `audit` skill is the user-facing front-end.
+
+---
+
+## 31. Notification Policy Contract
+
+Implements ideas-better-structure.md item #25. Backed by `_memory/notification-policy.yaml`.
+
+**Cadence skills consume rules** to decide what to surface where:
+
+```yaml
+rules:
+  - id: "bill-due-today"
+    when: "next_due == now"
+    over: "bills"
+    filter: { status: "active" }
+    where: ["daily-update", "whatsup"]
+    severity: "alert"
+    auto_create_task: true
+    task_template: { priority: "P0", title: "Pay {name} ({amount} {currency})" }
+```
+
+**Default rules** seeded by `init` (see `templates/memory/notification-policy.yaml.default_rules`): bill-due-today, bill-due-soon, bill-overdue, appt-today, appt-tomorrow-needs-prep, doc-expiring-30d, doc-expiring-90d, important-date-today, important-date-soon, task-overdue-p0p1, subscription-trial-ending, med-refill-due, lab-result-abnormal, project-deadline-close, project-overdue.
+
+**Edit the policy without editing skill code**: change the cutoff in YAML, the next cadence-skill run reflects it.
+
+**Auto-create task**: when a rule sets `auto_create_task: true` and matches an entity with no corresponding open task, the cadence skill creates one with the specified priority + a deterministic title (idempotent across runs).
+
+---
+
+## 32. Briefing Cache Contract
+
+Implements perf-improvement-ideas.md QW-5 + MI-5. Backed by `_memory/_artifacts/<skill>/<key>.{md,meta.yaml}` + `tools/briefing_cache.py`.
+
+**Pattern**: any skill whose output is a candidate for re-read within the same day (briefings, summaries, dashboard renders) writes through the cache.
+
+**Cache write** (after producing fresh content):
+```python
+from superagent.tools.briefing_cache import put
+put(workspace, "daily-update", "2026-04-28",
+    body=rendered_body, input_paths=[bills_path, todo_path, ...],
+    ttl_minutes=720)
+```
+
+**Cache read** (before regenerating):
+```python
+from superagent.tools.briefing_cache import get
+result = get(workspace, "daily-update", "2026-04-28",
+             input_paths=[bills_path, todo_path, ...])
+if result is not None:
+    # cache hit
+    body = result["body"]
+```
+
+**Invalidation**: TTL (per-skill, default 720 min from `config.preferences.briefing_cache.ttl_minutes`) + input-hash (sha256 over input file paths' size + mtime, if `invalidate_on_source_mtime: true`). Force refresh by passing `--refresh` or by calling `put` again.
+
+**Eviction**: `tools/briefing_cache.py evict --skill <name> --older-than-minutes N` clears stale.
+
+---
+
+## 33. Per-session Scratchpad Contract
+
+Implements perf-improvement-ideas.md MI-1. Backed by `_memory/_session/<session-id>.yaml` + `tools/session_scratch.py`.
+
+**Pattern**: before any read, the agent (or skill orchestrator) checks the scratchpad. If the file's mtime + hash hasn't changed since the recorded `at`, the read is skipped.
+
+**Writes**: each read records: path, ts, size, mtime, hash. Each MCP call records: server, tool, args summary.
+
+**Cleanup**: `config.preferences.session.expire_days: 30` + `keep_recent_sessions: 20`. The `tools/session_scratch.py cleanup` command runs as part of `doctor` daily.
+
+---
+
+## 34. Working-set Contract
+
+Implements ideas-better-structure.md item #23 + perf-improvement-ideas.md (measurement section). Backed by `_memory/working-sets.jsonl` (append-only) + `tools/session_scratch.py` for the read-side.
+
+**Every skill invocation records** (when `config.preferences.telemetry.record_working_sets: true`): files read, MCP / CLI calls, outputs produced, total bytes in/out, est. tokens, latency.
+
+**Used by Tailor's strategic pass** to spot:
+- Skills that consistently over-read (loading 50 files when 5 would do).
+- Skills that miss obvious local sources (asking about a topic but not reading the relevant Sources entry).
+- Patterns where ingest-then-discard occurs (fetched data never read).
+
+**Privacy**: paths + sizes only — never contents.
+
+---
+
+## 35. Snapshot Diff Contract
+
+Implements ideas-better-structure.md item #6. Backed by `tools/snapshot_diff.py`.
+
+**Daily snapshots** (per `config.preferences.privacy.snapshot_memory_daily: true`): `_memory/_checkpoints/<YYYY-MM-DD>/` carries a copy of `_memory/` at the start of the first agent action of the day. Retention: `snapshot_retention_days: 14`.
+
+**Diff queries**:
+- `snapshot_diff --weekly` — today vs 7 days ago.
+- `snapshot_diff --monthly` — today vs 30 days ago.
+- `snapshot_diff --since <date>` / `--from <a> --to <b>` — explicit range.
+
+**Output**: markdown report with per-file changes (rows added / modified / removed) + status flips on existing entities.
+
+The `weekly-review` and `monthly-review` skills consume snapshot-diff output as part of their "what changed" sections.
+
+---
+
+## 36. Outbox Lifecycle Contract
+
+Implements ideas-better-structure.md item #13. Backed by `_memory/outbox-log.yaml` + sub-folders under `Outbox/`.
+
+**Lifecycle stages** (folders under `Outbox/`):
+
+- `drafts/` — in-progress; agent may revise; mutable.
+- `staging/` — finalized; awaiting user "send"; mutable until sent.
+- `sent/` — user marked sent; immutable thereafter.
+- `sealed/` — snapshots (e.g. handoff packet versions); immutable on creation.
+
+**Every artifact tracked**: append a row to `_memory/outbox-log.yaml.artifacts[]` on create + on each stage transition. The `artifact.path` field advances with the file as it moves between sub-folders.
+
+**Sealing**: on `seal`, the file is moved to `sealed/`, the row's `sealed: true` + `sealed_hash: <sha256>` is recorded. Future writes to the same path are refused.
+
+**Stale-drafts surfacing**: drafts older than `config.preferences.outbox.drafts_stale_days: 14` surface in `weekly-review`.
+
+---
+
+## 37. Inbox Triage Contract
+
+Implements ideas-better-structure.md item #5. Backed by `tools/inbox_triage.py` + the `inbox-triage` skill + `Inbox/_processed.yaml` decision log.
+
+**Walk + ask**: every file in `Inbox/` (not starting with `.` or `_`) is classified by extension + filename keyword heuristic, then surfaced for: file / discard / leave / defer.
+
+**Pattern learning**: after 3+ files matching the same pattern get filed to the same destination, the skill offers to auto-apply the rule next time. Rules accumulate in `_memory/inbox-rules.yaml` (lazily created).
+
+**Stale items** (per `config.preferences.inbox_triage.stale_days: 14`): surfaced by `daily-update` and `weekly-review`.
+
+---
+
+## 38. Local-first Read Order
+
+Implements perf-improvement-ideas.md QW-7. Codifies the read-order discipline.
+
+**Every skill that needs data MUST consult local first**:
+
+1. **Local index** (`_memory/<index>.yaml`).
+2. **Local Sources cache** (`Sources/_cache/<hash>/`) — `_summary.md` first, then `_toc.yaml`, then only relevant chunks.
+3. **Domain / Project history.md** for narrative recall.
+4. **Events stream** (`tools/log_window.py read`) for cross-entity timelines.
+5. **Live MCP / CLI source** ONLY when **all** are true:
+   (a) the local read returned no candidates that match the question; AND
+   (b) the time window the question is asking about extends past the source's `last_ingest`; AND
+   (c) freshness genuinely matters for the question.
+
+When the live call happens, capture-through MUST run (per § 2 ingestion contract) so the next read is local.
+
+**Anti-pattern**: "I'll check both" (local + live in parallel) — flagged by the anti-pattern scanner. Local first; fall through only when justified.
+
+---
+
+## 39. Skill-anti-pattern Catalogue
+
+Implements perf-improvement-ideas.md § "Anti-patterns to flag in skills". Backed by `tools/anti_patterns.py`.
+
+**The catalogue** (see also the scanner; PATTERNS list):
+
+| ID | Severity | Description | Mitigation |
+|---|---|---|---|
+| AP-1 | warning | Blanket 4-file read (info + status + history + rolodex). | Specify which sections to read. |
+| AP-2 | warning | Unfiltered "all open tasks" read. | Always include the filter (related_domain / project / asset). |
+| AP-3 | info | Whole-workspace grep without scope. | Scope to a Domain / Project folder. |
+| AP-4 | info | Sequential "run X then Y then Z" that may be parallelizable. | Use single-message tool-call batching. |
+| AP-5 | info | Full email-thread pull without checking interaction-log first. | Consult local mirror + Sources cache first. |
+| AP-6 | info | Briefing regen without cache check. | Call `tools/briefing_cache.py get` first. |
+| AP-7 | warning | Unbounded read of long doc (procedures.md / AGENTS.md). | Use Grep + `Read --offset --limit` against documented ranges. |
+| AP-8 | warning | Manifest-bypass: "read every skill markdown". | Read `skills/_manifest.yaml` first. |
+| AP-9 | info | Load-then-extract: large file loaded, single fact extracted. | Use Grep / FTS5 first. |
+
+**Scanning**: `tools/anti_patterns.py` walks every skill markdown, applies the regex patterns, prints findings. The Tailor's strategic pass runs it; `doctor` runs it (when `config.preferences.anti_patterns.scan_skills: true`).
+
+**Strict mode** (`--strict`): exit non-zero when any `warning` hit found. Suitable for CI.

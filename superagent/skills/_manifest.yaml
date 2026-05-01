@@ -1,0 +1,1151 @@
+schema_version: 1
+generated_at: '2026-05-01T03:49:05-07:00'
+skill_count: 47
+skills:
+- name: superagent-add-account
+  stem: add-account
+  path: superagent/skills/add-account.md
+  one_line: Register a financial / utility / subscription account in `accounts-index.yaml`. Captures last-4
+    only; full credentials live in your password manager and are referenced by `vault_ref`.
+  triggers:
+  - add an account
+  - register a bank / card / brokerage / utility / subscription account
+  - I opened a new <account>
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 145
+  h2_steps: 9
+  h3_subsections: 0
+  typical_token_cost: 1081
+  typical_files_read:
+  - _memory/accounts-index.yaml
+  - _memory/data-sources.yaml
+  - Domains/Finance/history.md
+  origin: framework
+- name: superagent-add-appointment
+  stem: add-appointment
+  path: superagent/skills/add-appointment.md
+  one_line: 'Register an appointment (doctor, dentist, vet, mechanic, hairdresser, school event, in-person
+    meeting, telehealth call) in `appointments.yaml`. Auto-creates a P1 prep task if the appointment has
+    prep '
+  triggers:
+  - add an appointment
+  - schedule a <doctor/dentist/vet/mechanic> visit
+  - book <appointment>
+  - I have an appointment with <provider>
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 126
+  h2_steps: 8
+  h3_subsections: 0
+  typical_token_cost: 930
+  typical_files_read: []
+  origin: framework
+- name: superagent-add-asset
+  stem: add-asset
+  path: superagent/skills/add-asset.md
+  one_line: Register a physical asset (vehicle, appliance, electronics, jewelry, instrument, tool, collectible)
+    — bootstrap a row in `assets-index.yaml`, optionally create per-asset Sources sub-folder for vault-g
+  triggers:
+  - add an asset
+  - register an asset
+  - I bought a new <vehicle/appliance/electronics>
+  - track this <thing>
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 163
+  h2_steps: 8
+  h3_subsections: 0
+  typical_token_cost: 1491
+  typical_files_read:
+  - _memory/assets-index.yaml
+  - workspace/Sources/documents/<category>/<asset-slug>/`
+  - _memory/bills.yaml
+  origin: framework
+- name: superagent-add-bill
+  stem: add-bill
+  path: superagent/skills/add-bill.md
+  one_line: Register a recurring or one-shot bill in `bills.yaml`. Captures cadence, amount, due day,
+    account links. Compute `next_due` immediately so daily-update / whatsup pick it up on the next run.
+  triggers:
+  - add a bill
+  - new recurring bill
+  - I have a new <utility / insurance / loan> bill
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 116
+  h2_steps: 8
+  h3_subsections: 0
+  typical_token_cost: 852
+  typical_files_read: []
+  origin: framework
+- name: superagent-add-contact
+  stem: add-contact
+  path: superagent/skills/add-contact.md
+  one_line: Register a person in `contacts.yaml` and add them to the relevant domain rolodex(es). Use
+    for family, friends, professionals, providers, vendors, neighbours, anyone you want Superagent to
+    know about.
+  triggers:
+  - add a contact
+  - new contact
+  - I have a new doctor / mechanic / vet / plumber
+  - register <person>
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 133
+  h2_steps: 7
+  h3_subsections: 0
+  typical_token_cost: 982
+  typical_files_read:
+  - _memory/contacts.yaml
+  origin: framework
+- name: superagent-add-document
+  stem: add-document
+  path: superagent/skills/add-document.md
+  one_line: Register an important document (passport, license, deed, will, insurance policy, warranty,
+    etc.) in `documents-index.yaml`. Tracks expiration dates for surfacing.
+  triggers:
+  - add a document
+  - register a document
+  - track this document / passport / license / policy / will
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 117
+  h2_steps: 7
+  h3_subsections: 0
+  typical_token_cost: 1141
+  typical_files_read:
+  - Sources/documents/<category>/`?
+  - _memory/sources-index.yaml
+  - Sources/documents/<category>/<...>`
+  origin: framework
+- name: superagent-add-domain
+  stem: add-domain
+  path: superagent/skills/add-domain.md
+  one_line: Bootstrap a new life domain (e.g. Boat, Cabin, Side-business, Volunteer) beyond the 10 defaults
+    seeded by init. Creates the folder, scaffolds the 4-file structure, registers it in `domains-index.yaml`
+  triggers:
+  - add a domain
+  - new domain
+  - create a domain
+  - I want to track <X> as a domain
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 93
+  h2_steps: 6
+  h3_subsections: 0
+  typical_token_cost: 686
+  typical_files_read:
+  - _memory/domains-index.yaml
+  origin: framework
+- name: superagent-add-important-date
+  stem: add-important-date
+  path: superagent/skills/add-important-date.md
+  one_line: Register a recurring date (birthday, anniversary, observance, deadline, document expiration)
+    in `important-dates.yaml`. Recurrence-aware; surfaces per the lookahead window in config.
+  triggers:
+  - add a birthday
+  - add an anniversary
+  - add an important date
+  - register <date>
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 89
+  h2_steps: 6
+  h3_subsections: 0
+  typical_token_cost: 718
+  typical_files_read: []
+  origin: framework
+- name: superagent-add-project
+  stem: add-project
+  path: superagent/skills/add-project.md
+  one_line: Bootstrap a new Project — a time-bounded effort with a clear goal and target date. Collects
+    the 5-question charter (name, goal, scope, target date, related domains) before creating the folder
+    + 4 file
+  triggers:
+  - add a project
+  - new project
+  - start a project
+  - I want to track <X> as a project
+  - file my taxes
+  - plan a trip
+  - renovate
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 221
+  h2_steps: 8
+  h3_subsections: 10
+  typical_token_cost: 1819
+  typical_files_read:
+  - _memory/projects-index.yaml
+  - _memory/domains-index.yaml
+  - _memory/contacts.yaml
+  - Sources/documents/taxes/<year>/"
+  - Sources/documents/warranties/"
+  origin: framework
+- name: superagent-add-source
+  stem: add-source
+  path: superagent/skills/add-source.md
+  one_line: Add a document or a `.ref.md` reference to `Sources/`. Documents are copied into `Sources/documents/<category>/`;
+    references are written as `.ref.md` files in `Sources/references/<category>/`. Both ar
+  triggers:
+  - add a source
+  - add this to <domain>
+  - add this to <project>
+  - file this document
+  - add a reference
+  - capture this URL / file / vault item
+  - put this in Sources
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 249
+  h2_steps: 9
+  h3_subsections: 6
+  typical_token_cost: 2586
+  typical_files_read:
+  - _memory/domains-index.yaml
+  - _memory/projects-index.yaml
+  - _memory/context.yaml
+  - workspace/Sources/documents/<category>/<filename>`.
+  - Sources/documents/<category>/<filename>"
+  - _memory/sources-index.yaml
+  - workspace/Sources/references/<category>/<short-slug>.ref.md`
+  - Sources/documents/<category>/<...>`
+  origin: framework
+- name: superagent-add-subscription
+  stem: add-subscription
+  path: superagent/skills/add-subscription.md
+  one_line: Register a recurring subscription (streaming, software, gym, donation, app sub) in `subscriptions.yaml`.
+    Used heavily by monthly-review's audit pass.
+  triggers:
+  - add a subscription
+  - new recurring subscription
+  - I started <service>
+  - I'm now paying for <service>
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 94
+  h2_steps: 6
+  h3_subsections: 0
+  typical_token_cost: 683
+  typical_files_read: []
+  origin: framework
+- name: superagent-appointments
+  stem: appointments
+  path: superagent/skills/appointments.md
+  one_line: List upcoming appointments, prep for one (assemble briefing context), mark complete (with
+    outcome + follow-ups), reschedule, cancel.
+  triggers:
+  - appointments
+  - upcoming appointments
+  - prep for <appointment>
+  - mark <appointment> done
+  - reschedule <appointment>
+  mcp_required: []
+  mcp_optional:
+  - calendar ingestors (gcal / icloud_calendar / outlook_calendar)
+  cli_required: []
+  cli_optional: []
+  lines: 99
+  h2_steps: 3
+  h3_subsections: 5
+  typical_token_cost: 1028
+  typical_files_read:
+  - _memory/appointments.yaml
+  - _memory/health-records.yaml
+  origin: framework
+- name: superagent-audit
+  stem: audit
+  path: superagent/skills/audit.md
+  one_line: 'Read the per-row audit history of any entity. Backed by sibling `<file>.history.jsonl` append-only
+    logs maintained by the audit-trail contract (procedures.md item #17).'
+  triggers:
+  - audit
+  - audit history
+  - when did X change
+  - history of
+  - row history
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 80
+  h2_steps: 4
+  h3_subsections: 2
+  typical_token_cost: 590
+  typical_files_read: []
+  origin: framework
+- name: superagent-bills
+  stem: bills
+  path: superagent/skills/bills.md
+  one_line: List, mark-paid, and reconcile bills. Cross-checks ingested transactions against `bills.yaml.history[]`
+    to flag missing payments and duplicate charges.
+  triggers:
+  - what bills are due
+  - mark <bill> paid
+  - bill list
+  - reconcile bills
+  - any bills due this week
+  mcp_required: []
+  mcp_optional:
+  - any finance ingestor (plaid / monarch / ynab) — for reconciliation
+  cli_required: []
+  cli_optional: []
+  lines: 92
+  h2_steps: 3
+  h3_subsections: 5
+  typical_token_cost: 803
+  typical_files_read:
+  - _memory/bills.yaml
+  - _memory/transactions.yaml
+  origin: framework
+- name: superagent-daily-update
+  stem: daily-update
+  path: superagent/skills/daily-update.md
+  one_line: 'Daily briefing: run scheduled ingestors, then aggregate today''s calendar, bills due, appointments,
+    important dates, P0/P1 tasks, health signals, inbox highlights, and anything notable from ingest sour'
+  triggers:
+  - daily update
+  - morning briefing
+  - what's today look like
+  - daily standup
+  - daily check
+  mcp_required: []
+  mcp_optional:
+  - any scheduled-cadence ingest source (gmail, gcal, icloud, apple_health, …)
+  cli_required: []
+  cli_optional: []
+  lines: 285
+  h2_steps: 25
+  h3_subsections: 0
+  typical_token_cost: 2736
+  typical_files_read:
+  - workspace/_memory/config.yaml
+  - workspace/_memory/context.yaml
+  - _memory/data-sources.yaml
+  - _memory/appointments.yaml
+  - _memory/bills.yaml
+  - _memory/important-dates.yaml
+  - _memory/todo.yaml
+  - _memory/health-records.yaml
+  origin: framework
+- name: superagent-decisions
+  stem: decisions
+  path: superagent/skills/decisions.md
+  one_line: Capture, list, and review meaningful decisions. Append-only log in `_memory/decisions.yaml`.
+    Surfaces in weekly-review (this week's decisions) and monthly-review (decisions whose review_at has
+    passed)
+  triggers:
+  - log a decision
+  - record a decision
+  - decisions
+  - decision log
+  - decisions made this week
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 124
+  h2_steps: 4
+  h3_subsections: 4
+  typical_token_cost: 865
+  typical_files_read:
+  - _memory/decisions.yaml
+  origin: framework
+- name: superagent-doctor
+  stem: doctor
+  path: superagent/skills/doctor.md
+  one_line: Workspace data hygiene — stale domains, duplicate contacts, near-duplicate todos, simplification
+    candidates, broken cross-references, expired documents not yet renewed. Distinct from `tailor-review`
+    (
+  triggers:
+  - doctor
+  - workspace hygiene
+  - clean up workspace
+  - data hygiene
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 146
+  h2_steps: 14
+  h3_subsections: 0
+  typical_token_cost: 1337
+  typical_files_read:
+  - _memory/domains-index.yaml
+  - Sources/documents/`
+  - Sources/references/`
+  - _memory/action-signals.yaml
+  origin: framework
+- name: superagent-draft-email
+  stem: draft-email
+  path: superagent/skills/draft-email.md
+  one_line: 'Compose a personal email with full context (recipient history, related domain, prior thread).
+    Writes the draft to `Outbox/emails/`. Read-only against email sources unless `writes_upstream: true`
+    for t'
+  triggers:
+  - draft an email to <recipient>
+  - reply to <thread>
+  - write a message to <person> about <topic>
+  mcp_required: []
+  mcp_optional:
+  - email ingestors (for prior-thread context)
+  cli_required: []
+  cli_optional: []
+  lines: 99
+  h2_steps: 6
+  h3_subsections: 0
+  typical_token_cost: 714
+  typical_files_read: []
+  origin: framework
+- name: superagent-events
+  stem: events
+  path: superagent/skills/events.md
+  one_line: Read or append events in the unified time-stream. Time-partitioned storage (`_memory/events/<YYYY-Qn>.yaml`)
+    so reads are O(log n). The source of truth for cross-entity timelines; per-entity history.m
+  triggers:
+  - events
+  - timeline
+  - what happened on
+  - log an event
+  - log event
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 87
+  h2_steps: 3
+  h3_subsections: 4
+  typical_token_cost: 713
+  typical_files_read:
+  - _memory/events.yaml
+  origin: framework
+- name: superagent-expenses
+  stem: expenses
+  path: superagent/skills/expenses.md
+  one_line: Categorize and review spending. Reads ingested transactions; renders by category, by merchant,
+    by domain. Spots anomalies vs trailing average. Cross-references against `bills.yaml` + `subscriptions.ya
+  triggers:
+  - expenses
+  - spending this month
+  - spending by category
+  - where did my money go
+  - expense audit
+  mcp_required: []
+  mcp_optional:
+  - finance ingestors (plaid / monarch / ynab / csv) — required for any data
+  cli_required: []
+  cli_optional: []
+  lines: 86
+  h2_steps: 4
+  h3_subsections: 6
+  typical_token_cost: 765
+  typical_files_read:
+  - _memory/expense-categories.yaml
+  origin: framework
+- name: superagent-follow-up
+  stem: follow-up
+  path: superagent/skills/follow-up.md
+  one_line: 'Hunt for dropped balls: overdue tasks, unanswered messages, unfulfilled commitments, stale
+    appointments waiting on confirmation. Surfaces a prioritized list with suggested next actions.'
+  triggers:
+  - what am I forgetting
+  - dropped balls
+  - follow-ups
+  - what needs a response
+  - what fell through the cracks
+  mcp_required: []
+  mcp_optional:
+  - email + message ingestors (to find unanswered)
+  cli_required: []
+  cli_optional: []
+  lines: 123
+  h2_steps: 9
+  h3_subsections: 6
+  typical_token_cost: 992
+  typical_files_read:
+  - _memory/todo.yaml
+  - _memory/appointments.yaml
+  origin: framework
+- name: superagent-handoff
+  stem: handoff
+  path: superagent/skills/handoff.md
+  one_line: Generate the "if I get hit by a bus" packet — a single readable document that an executor
+    / spouse / trusted person could use to take over your affairs. Includes account list, document locations,
+    bene
+  triggers:
+  - handoff
+  - hit by a bus packet
+  - emergency packet
+  - if something happens to me
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 201
+  h2_steps: 16
+  h3_subsections: 0
+  typical_token_cost: 1818
+  typical_files_read:
+  - _memory/config.yaml
+  - _memory/contacts.yaml
+  - _memory/accounts-index.yaml
+  - _memory/documents-index.yaml
+  - _memory/bills.yaml
+  - _memory/subscriptions.yaml
+  - _memory/health-records.yaml
+  - _memory/assets-index.yaml
+  origin: framework
+- name: superagent-health-log
+  stem: health-log
+  path: superagent/skills/health-log.md
+  one_line: Log a health event — symptom, vital reading, medication change, visit, vaccination, lab result.
+    Appends to the right list in `health-records.yaml` and updates the Health domain.
+  triggers:
+  - log a symptom
+  - log my BP / weight / sleep
+  - I started / stopped / changed <medication>
+  - I just had a vaccine
+  - log a doctor visit
+  - log a lab result
+  mcp_required: []
+  mcp_optional:
+  - apple_health / whoop / strava / garmin / oura — auto-ingest vitals
+  cli_required: []
+  cli_optional: []
+  lines: 156
+  h2_steps: 5
+  h3_subsections: 6
+  typical_token_cost: 1081
+  typical_files_read:
+  - _memory/health-records.yaml
+  - Domains/Health/info.md
+  - Domains/Health/status.md
+  - Domains/Health/history.md
+  - Sources/documents/medical/<member>/
+  - _memory/interaction-log.yaml
+  origin: framework
+- name: superagent-home-maintenance
+  stem: home-maintenance
+  path: superagent/skills/home-maintenance.md
+  one_line: Track home-care schedule — HVAC service, filter changes, gutter cleaning, pest control, smoke-detector
+    batteries, water-heater drain, etc. Surfaces what's due, logs completion, computes next due dates
+  triggers:
+  - home maintenance
+  - what's due on the house
+  - log <maintenance task>
+  - schedule home-maintenance
+  mcp_required: []
+  mcp_optional:
+  - home_assistant — could surface filter-due signals from sensor data
+  cli_required: []
+  cli_optional: []
+  lines: 115
+  h2_steps: 5
+  h3_subsections: 3
+  typical_token_cost: 869
+  typical_files_read:
+  - _memory/assets-index.yaml
+  - Domains/Home/history.md
+  - Domains/Home/status.md
+  origin: framework
+- name: superagent-important-dates
+  stem: important-dates
+  path: superagent/skills/important-dates.md
+  one_line: List upcoming important dates, draft a greeting, suggest a gift, mark a date acknowledged,
+    retire a date.
+  triggers:
+  - important dates
+  - upcoming birthdays / anniversaries
+  - draft a birthday card for <name>
+  - gift idea for <name>
+  - dates this week / month
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 88
+  h2_steps: 3
+  h3_subsections: 5
+  typical_token_cost: 827
+  typical_files_read:
+  - _memory/important-dates.yaml
+  - Domains/Family/info.md
+  origin: framework
+- name: superagent-inbox-triage
+  stem: inbox-triage
+  path: superagent/skills/inbox-triage.md
+  one_line: 'Walk every file in `Inbox/`, classify it by extension + filename, propose a destination under
+    `Sources/documents/<category>/`, and ask the user per file: file / discard / leave / defer. Records
+    every '
+  triggers:
+  - inbox triage
+  - drain inbox
+  - file inbox
+  - clean up inbox
+  - what is in my inbox
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 94
+  h2_steps: 6
+  h3_subsections: 0
+  typical_token_cost: 938
+  typical_files_read:
+  - Sources/documents/<category>/<filename>>
+  - _memory/sources-index.yaml
+  - Sources/references/<category>/`.
+  - Sources/documents/home/utilities/verizon/`
+  - _memory/inbox-rules.yaml
+  origin: framework
+- name: superagent-ingest
+  stem: ingest
+  path: superagent/skills/ingest.md
+  one_line: The data-ingestion front-end. Probes for available sources, lets the user enable / disable
+    each, runs ingestors on demand or per cadence, and surfaces the per-source last_run summary. The orchestrator
+  triggers:
+  - ingest
+  - import data
+  - sync from <source>
+  - run ingest
+  - set up data sources
+  mcp_required: []
+  mcp_optional:
+  - any source documented in docs/data-sources.md
+  cli_required: []
+  cli_optional: []
+  lines: 154
+  h2_steps: 5
+  h3_subsections: 16
+  typical_token_cost: 1952
+  typical_files_read:
+  - _memory/data-sources.yaml
+  - _memory/transactions.yaml
+  - Domains/Hobbies/history.md
+  - Domains/Home/history.md
+  - Domains/Vehicles/history.md
+  origin: framework
+- name: superagent-init
+  stem: init
+  path: superagent/skills/init.md
+  one_line: 'First-run initialization for the Superagent personal-life assistant after cloning: short
+    orientation questionnaire, scaffold workspace/ with the 10 default Domains and all _memory/ files,
+    optionally p'
+  triggers:
+  - User runs init / first-time setup / "initialize Superagent"
+  - User asks to set up Superagent / start using Superagent
+  - Fresh workspace with no workspace/_memory/ folder
+  mcp_required: []
+  mcp_optional:
+  - any of the data sources catalogued in superagent/docs/data-sources.md
+  cli_required: []
+  cli_optional:
+  - any of the CLI tools catalogued in superagent/docs/data-sources.md
+  lines: 288
+  h2_steps: 12
+  h3_subsections: 1
+  typical_token_cost: 4085
+  typical_files_read:
+  - workspace/_memory/config.yaml
+  - _memory/insights.yaml
+  - _memory/interaction-log.yaml
+  - workspace/_memory/data-sources.yaml
+  origin: framework
+- name: superagent-log-event
+  stem: log-event
+  path: superagent/skills/log-event.md
+  one_line: 'One-shot capture: "log this medical visit", "log this car service", "log this home repair",
+    "log this conversation with <person>". Routes the event to the right `Domains/<domain>/history.md`,
+    updates '
+  triggers:
+  - log this <event>
+  - just <happened|got back from|finished> <event>
+  - record this <event>
+  - capture this conversation / interaction
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 76
+  h2_steps: 4
+  h3_subsections: 0
+  typical_token_cost: 719
+  typical_files_read:
+  - _memory/interaction-log.yaml
+  origin: framework
+- name: superagent-monthly-review
+  stem: monthly-review
+  path: superagent/skills/monthly-review.md
+  one_line: 'Monthly heavy pass: subscription audit (cancel candidates), document expirations in next
+    90 days, vehicle / home maintenance windows in next 60 days, financial month recap, health overdue
+    items, domai'
+  triggers:
+  - monthly review
+  - first of the month
+  - month wrap
+  - month-end review
+  mcp_required: []
+  mcp_optional:
+  - any scheduled-cadence ingest source
+  cli_required: []
+  cli_optional: []
+  lines: 192
+  h2_steps: 21
+  h3_subsections: 0
+  typical_token_cost: 1779
+  typical_files_read:
+  - _memory/subscriptions.yaml
+  - _memory/documents-index.yaml
+  - _memory/assets-index.yaml
+  - _memory/health-records.yaml
+  - _memory/todo.yaml
+  - _memory/projects-index.yaml
+  - _memory/sources-index.yaml
+  - Sources/_cache/`
+  origin: framework
+- name: superagent-personal-signals
+  stem: personal-signals
+  path: superagent/skills/personal-signals.md
+  one_line: Capture personal signals (self-reflection, family feedback, patterns Superagent noticed) silently
+    as the user works; surface growth themes on request. Per the Personal Signal Capture Contract in proce
+  triggers:
+  - personal signals
+  - growth areas
+  - what feedback do I have
+  - what should I work on (about myself)
+  - show personal signals
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 128
+  h2_steps: 5
+  h3_subsections: 3
+  typical_token_cost: 985
+  typical_files_read:
+  - _memory/personal-signals.yaml
+  - Domains/Self/history.md
+  origin: framework
+- name: superagent-pet-care
+  stem: pet-care
+  path: superagent/skills/pet-care.md
+  one_line: 'Track per-pet vet schedule, vaccinations, medications, food, grooming, boarding, weight.
+    Cousin to `health-log` but pet-shaped — pets live in `contacts.yaml` (role: pet) and have a per-pet
+    folder unde'
+  triggers:
+  - pet care
+  - log a vet visit
+  - log <pet>'s vaccine
+  - <pet>'s medication
+  - what's due for <pet>
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 119
+  h2_steps: 6
+  h3_subsections: 7
+  typical_token_cost: 871
+  typical_files_read:
+  - Domains/Pets/status.md
+  origin: framework
+- name: superagent-play
+  stem: play
+  path: superagent/skills/play.md
+  one_line: Run a playbook — a named sequence of skills with optional conditions. Resolves the playbook
+    (per `tools/play.py`), then invokes each skill in the resolved order. Custom playbooks at `_custom/playbooks
+  triggers:
+  - play
+  - run playbook
+  - good morning
+  - end of week
+  - tax prep season
+  - pre-trip week
+  - quarterly health
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 80
+  h2_steps: 6
+  h3_subsections: 0
+  typical_token_cost: 628
+  typical_files_read: []
+  origin: framework
+- name: superagent-projects
+  stem: projects
+  path: superagent/skills/projects.md
+  one_line: List, show, complete, pause, resume, cancel, or archive Projects. Per-project burn-down. Drives
+    the Projects lifecycle per procedures.md section 16.
+  triggers:
+  - projects
+  - list projects
+  - show project
+  - complete project
+  - pause project
+  - resume project
+  - archive project
+  - project status
+  - what projects am I running
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 191
+  h2_steps: 5
+  h3_subsections: 8
+  typical_token_cost: 1535
+  typical_files_read:
+  - _memory/projects-index.yaml
+  origin: framework
+- name: superagent-research
+  stem: research
+  path: superagent/skills/research.md
+  one_line: Research a topic across local notes, ingested email / messages, web, and any knowledge MCPs
+    (Obsidian / Notion). Synthesizes a structured brief.
+  triggers:
+  - research <topic>
+  - what do I know about <topic>
+  - find me notes on <topic>
+  - look up <topic>
+  mcp_required: []
+  mcp_optional:
+  - obsidian / notion
+  - web search (if available in current IDE)
+  cli_required: []
+  cli_optional: []
+  lines: 99
+  h2_steps: 8
+  h3_subsections: 7
+  typical_token_cost: 736
+  typical_files_read:
+  - _memory/sources-index.yaml
+  - Sources/_cache/<*>/_summary.md`
+  origin: framework
+- name: superagent-scenarios
+  stem: scenarios
+  path: superagent/skills/scenarios.md
+  one_line: 'Run a what-if scenario against current workspace state. Five canned scenarios in MVP: cancel-subscriptions,
+    trial-end-impact, bill-shock, balance-floor, project-overrun. Outputs to stdout and optional'
+  triggers:
+  - scenario
+  - what if
+  - what would happen if
+  - simulate
+  - estimate impact
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 76
+  h2_steps: 6
+  h3_subsections: 0
+  typical_token_cost: 618
+  typical_files_read: []
+  origin: framework
+- name: superagent-sources
+  stem: sources
+  path: superagent/skills/sources.md
+  one_line: List, search, fetch (through cache), refresh, and inspect entries in `Sources/`. The user-facing
+    front-end to the immutable reference library + cache (procedures.md section 15).
+  triggers:
+  - sources
+  - list sources
+  - search sources
+  - what's in Sources
+  - fetch source
+  - refresh source
+  - what does my <X> say
+  - find <doc>
+  mcp_required: []
+  mcp_optional:
+  - any source-fetch ingestor (depends on the .ref.md kind)
+  cli_required: []
+  cli_optional: []
+  lines: 195
+  h2_steps: 8
+  h3_subsections: 7
+  typical_token_cost: 1700
+  typical_files_read:
+  - _memory/sources-index.yaml
+  - Sources/references/**/*.ref.md`
+  - Sources/_cache/<*>/_summary.md`.
+  - Sources/_cache/<hash>/_meta.yaml`.
+  - Sources/_cache/<hash>/
+  - Sources/_cache/<hash>/`
+  - Sources/_cache/`
+  origin: framework
+- name: superagent-subscriptions
+  stem: subscriptions
+  path: superagent/skills/subscriptions.md
+  one_line: List, audit, log-use, cancel, and analyze subscriptions. The audit pass flags candidates not
+    used in `config.surfacing.subscription_unused_days`, surfaces total annualized cost, and offers cancellatio
+  triggers:
+  - subscriptions
+  - subscription audit
+  - what am I subscribed to
+  - cancel <subscription>
+  - subscription cost
+  mcp_required: []
+  mcp_optional:
+  - any finance ingestor (for spotting new recurring charges)
+  - usage ingestors (Spotify / Strava / Apple Health → updates `last_used`)
+  cli_required: []
+  cli_optional: []
+  lines: 90
+  h2_steps: 3
+  h3_subsections: 5
+  typical_token_cost: 775
+  typical_files_read:
+  - _memory/subscriptions.yaml
+  - Domains/Finance/status.md
+  origin: framework
+- name: superagent-summarize-thread
+  stem: summarize-thread
+  path: superagent/skills/summarize-thread.md
+  one_line: Condense a long email or message thread into key points, decisions, action items. Reads from
+    local email / message mirror; falls through to live source for the strictly-newer slice.
+  triggers:
+  - summarize this thread
+  - tldr this email
+  - what's the upshot of <thread>
+  mcp_required: []
+  mcp_optional:
+  - email ingestors
+  - imessage / whatsapp / signal / slack ingestors
+  cli_required: []
+  cli_optional: []
+  lines: 82
+  h2_steps: 7
+  h3_subsections: 4
+  typical_token_cost: 476
+  typical_files_read: []
+  origin: framework
+- name: superagent-tags
+  stem: tags
+  path: superagent/skills/tags.md
+  one_line: List, search, rename, merge tags across every YAML index. Backed by `_memory/tags.yaml` (canonical
+    taxonomy + aliases + usage counts). Surfaces cross-cutting categorization (tax-deductible, must-do-qu
+  triggers:
+  - tags
+  - list tags
+  - what is tagged
+  - rename tag
+  - merge tags
+  - show entities tagged
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 128
+  h2_steps: 5
+  h3_subsections: 6
+  typical_token_cost: 842
+  typical_files_read:
+  - _memory/tags.yaml
+  origin: framework
+- name: superagent-tailor-review
+  stem: tailor-review
+  path: superagent/skills/tailor-review.md
+  one_line: Run the Tailor's two-pass review (hygiene + strategic). Hygiene applies mechanical reversible
+    repairs to the workspace. Strategic surfaces ranked framework-improvement suggestions and writes them
+    to `
+  triggers:
+  - tailor review
+  - run the tailor
+  - what should I improve in superagent
+  - audit the framework
+  - is anything broken in superagent
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 148
+  h2_steps: 8
+  h3_subsections: 5
+  typical_token_cost: 2243
+  typical_files_read:
+  - _memory/pm-suggestions.yaml
+  - _memory/contacts.yaml
+  - _memory/domains-index.yaml
+  - _memory/assets-index.yaml
+  - _memory/accounts-index.yaml
+  - _memory/context.yaml
+  origin: framework
+- name: superagent-todo
+  stem: todo
+  path: superagent/skills/todo.md
+  one_line: 'Manage the Superagent task list in `_memory/todo.yaml`: add, list, complete, update tasks.
+    P0-P3 priority rules with overdue awareness; auto-syncs the workspace `todo.md` and per-domain `status.md`
+    on'
+  triggers:
+  - User asks to add or list or complete or update tasks
+  - Mentions of todo.yaml or task list or P0-P3 priorities
+  - what is due
+  - show open tasks
+  - mark task done
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 158
+  h2_steps: 8
+  h3_subsections: 5
+  typical_token_cost: 1408
+  typical_files_read:
+  - workspace/_memory/config.yaml
+  - workspace/_memory/todo.yaml
+  origin: framework
+- name: superagent-triage-overdue
+  stem: triage-overdue
+  path: superagent/skills/triage-overdue.md
+  one_line: 'Force a decision on every overdue task. For each: done | reschedule | drop | delegate. Runs
+    in a tight loop until the queue is empty.'
+  triggers:
+  - triage overdue
+  - clean up overdue tasks
+  - what's overdue (and let's deal with it)
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 77
+  h2_steps: 5
+  h3_subsections: 0
+  typical_token_cost: 570
+  typical_files_read:
+  - _memory/todo.yaml
+  origin: framework
+- name: superagent-vehicle-log
+  stem: vehicle-log
+  path: superagent/skills/vehicle-log.md
+  one_line: Log a vehicle event — service, fuel-up, mileage reading, repair, accident, registration /
+    inspection / insurance renewal. Updates `assets-index.yaml` for the vehicle and appends to `Domains/Vehicles/h
+  triggers:
+  - log a service / oil change / tire rotation
+  - log fuel
+  - log mileage
+  - log a repair on <vehicle>
+  - log an accident
+  - log registration / inspection / insurance renewal
+  mcp_required: []
+  mcp_optional:
+  - tesla — auto-ingests mileage / charging
+  cli_required: []
+  cli_optional: []
+  lines: 135
+  h2_steps: 6
+  h3_subsections: 6
+  typical_token_cost: 1033
+  typical_files_read:
+  - Domains/Vehicles/history.md
+  - Domains/Vehicles/status.md
+  origin: framework
+- name: superagent-weekly-review
+  stem: weekly-review
+  path: superagent/skills/weekly-review.md
+  one_line: 'End-of-week wrap: spend by category vs budget for the trailing 7 days, fitness summary, what
+    got done, what slipped, what''s coming in the next 14 days. Captures one or two reflection notes into
+    `Domai'
+  triggers:
+  - weekly review
+  - friday wrap
+  - sunday wrap
+  - end of week
+  - week in review
+  mcp_required: []
+  mcp_optional:
+  - any finance ingestor (plaid / monarch / ynab)
+  - any health / fitness ingestor (apple_health / whoop / strava / garmin / oura)
+  cli_required: []
+  cli_optional: []
+  lines: 190
+  h2_steps: 17
+  h3_subsections: 0
+  typical_token_cost: 1653
+  typical_files_read:
+  - _memory/transactions.yaml
+  - Domains/Hobbies/status.md
+  - _memory/appointments.yaml
+  - _memory/important-dates.yaml
+  - _memory/documents-index.yaml
+  - _memory/projects-index.yaml
+  - _memory/assets-index.yaml
+  - _memory/todo.yaml
+  origin: framework
+- name: superagent-whatsup
+  stem: whatsup
+  path: superagent/skills/whatsup.md
+  one_line: 'Quick delta since last_check: bills due, today''s appointments, important dates, P0/P1 tasks
+    overdue, anything else needing attention. Updates context.last_check. Designed to be the user''s first
+    comman'
+  triggers:
+  - what's up
+  - status check
+  - catch me up
+  - quick status
+  - what should I know
+  mcp_required: []
+  mcp_optional:
+  - any scheduled-cadence ingest source
+  cli_required: []
+  cli_optional: []
+  lines: 147
+  h2_steps: 10
+  h3_subsections: 0
+  typical_token_cost: 1281
+  typical_files_read:
+  - _memory/config.yaml
+  - _memory/context.yaml
+  - _memory/bills.yaml
+  - _memory/appointments.yaml
+  - _memory/important-dates.yaml
+  - _memory/todo.yaml
+  - _memory/ingestion-log.yaml
+  - _memory/action-signals.yaml
+  origin: framework
+- name: superagent-world
+  stem: world
+  path: superagent/skills/world.md
+  one_line: Query and rebuild the world graph (`_memory/world.yaml`). Answers "show me everything connected
+    to X" in one cheap query instead of scanning multiple entity files.
+  triggers:
+  - world
+  - related
+  - show me everything connected to
+  - what is linked to
+  - graph
+  - rebuild graph
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 90
+  h2_steps: 4
+  h3_subsections: 7
+  typical_token_cost: 616
+  typical_files_read: []
+  origin: framework

@@ -1,0 +1,19 @@
+{
+  "_comment": [
+    "Template for MCP server configuration.",
+    "Copy this file to .mcp.json (which is gitignored) and add any servers you want available to Superagent.",
+    "",
+    "Superagent itself requires no MCP servers for the quick-start. Each ingestor declares its own MCP / CLI requirements; see superagent/docs/data-sources.md.",
+    "",
+    "Common personal-life servers you might wire up here:",
+    "  - apple-reminders / apple-notes (via osascript)",
+    "  - gmail / google-calendar (Google Workspace MCP)",
+    "  - apple-health (healthsync SQLite)",
+    "  - plaid / monarch / ynab (finance)",
+    "  - whoop / strava / oura / garmin (wearables)",
+    "  - home-assistant / tesla (smart-home / vehicles)",
+    "",
+    "Each ingestor probes its required source on first run; missing sources degrade gracefully — they never block other ingestors."
+  ],
+  "mcpServers": {}
+}

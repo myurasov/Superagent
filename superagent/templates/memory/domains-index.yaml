@@ -1,0 +1,174 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: index of life domains (Health, Finance, Home, Vehicles,
+# Pets, Family, Travel, Career, Hobbies, Self, plus any custom).
+# init() seeds the 10 default domains; user adds more via add-domain skill.
+
+schema_version: 1
+
+domains:
+  # Each domain:
+  #   id              — Stable slug (unique, lowercase, hyphenated). The folder under
+  #                      workspace/Domains/ uses Title-cased name; the id
+  #                      is the lowercase form.
+  #   name            — Human-readable title (folder name format).
+  #   scope           — One-line description of what this domain covers.
+  #   priority        — P0 | P1 | P2 | P3 (for sequencing; rarely set above P2).
+  #   status          — active | paused | completed | archived.
+  #   path            — Workspace-relative folder
+  #                      (e.g. "workspace/Domains/Health").
+  #   parent          — Optional id of a parent domain (per ideas-better-structure
+  #                      item #10). null = top-level. Sub-domain folders nest under
+  #                      parent's `Domains/<Parent>/<Child>/`.
+  #   handle          — Operational handle in `<kind>:<slug>` form (per item #20).
+  #                      Example: "domain:health". Optional but recommended.
+  #   visibility      — private | household | public (per item #19). Default private.
+  #                      Sets default for child entities scoped to this domain.
+  #   provenance      — Where this row came from (per item #4):
+  #                      { source: "user|<skill>|<ingestor>|init|derived",
+  #                        source_id: "<optional anchor>",
+  #                        at: <iso datetime>,
+  #                        verified_at: <optional iso> }
+  #   created         — ISO 8601 date when the row was created.
+  #   last_updated    — ISO 8601 of last meaningful update.
+  #   tags            — Labels for filtering and reporting.
+  #   notes           — Free-form supplementary notes.
+  - id: "health"
+    name: "Health"
+    scope: "Medical, dental, vision, mental health, prescriptions, vaccines, vitals, family medical history"
+    priority: "P1"
+    status: "active"
+    path: "workspace/Domains/Health"
+    parent: null
+    handle: "domain:health"
+    visibility: "private"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
+  - id: "finance"
+    name: "Finance"
+    scope: "Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance, credit"
+    priority: "P1"
+    status: "active"
+    path: "workspace/Domains/Finance"
+    parent: null
+    handle: "domain:finance"
+    visibility: "private"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
+  - id: "home"
+    name: "Home"
+    scope: "Mortgage / rent, utilities, HOA, maintenance schedule, contractors, security, deliveries"
+    priority: "P1"
+    status: "active"
+    path: "workspace/Domains/Home"
+    parent: null
+    handle: "domain:home"
+    visibility: "household"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
+  - id: "vehicles"
+    name: "Vehicles"
+    scope: "Every vehicle owned (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel"
+    priority: "P2"
+    status: "active"
+    path: "workspace/Domains/Vehicles"
+    parent: null
+    handle: "domain:vehicles"
+    visibility: "household"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
+  - id: "pets"
+    name: "Pets"
+    scope: "Each pet's vet, vaccinations, prescriptions, food, grooming, boarding"
+    priority: "P2"
+    status: "active"
+    path: "workspace/Domains/Pets"
+    parent: null
+    handle: "domain:pets"
+    visibility: "household"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
+  - id: "family"
+    name: "Family"
+    scope: "Spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events"
+    priority: "P1"
+    status: "active"
+    path: "workspace/Domains/Family"
+    parent: null
+    handle: "domain:family"
+    visibility: "household"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
+  - id: "travel"
+    name: "Travel"
+    scope: "Trips planned and past, flights, hotels, rentals, packing lists, frequent-flier numbers, passports"
+    priority: "P2"
+    status: "active"
+    path: "workspace/Domains/Travel"
+    parent: null
+    handle: "domain:travel"
+    visibility: "household"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
+  - id: "career"
+    name: "Career"
+    scope: "Resume, certifications, performance reviews, learning goals, networking, salary history"
+    priority: "P2"
+    status: "active"
+    path: "workspace/Domains/Career"
+    parent: null
+    handle: "domain:career"
+    visibility: "private"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
+  - id: "hobbies"
+    name: "Hobbies"
+    scope: "Each meaningful hobby — fitness, reading log, side project, garden, workshop, etc."
+    priority: "P3"
+    status: "active"
+    path: "workspace/Domains/Hobbies"
+    parent: null
+    handle: "domain:hobbies"
+    visibility: "private"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
+  - id: "self"
+    name: "Self"
+    scope: "Personal-development goals, journaling, books / podcasts / media log, life themes"
+    priority: "P2"
+    status: "active"
+    path: "workspace/Domains/Self"
+    parent: null
+    handle: "domain:self"
+    visibility: "private"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default", "self-development"]
+    notes: ""

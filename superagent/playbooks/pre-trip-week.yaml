@@ -1,0 +1,31 @@
+# [Do not change manually — managed by Superagent]
+
+schema_version: 1
+name: "Pre-trip week"
+description: "Week before a trip: confirm bookings, packing list, sitter, mail / subscriptions pause, document expirations."
+
+trigger:
+  - "pre-trip"
+  - "trip prep"
+  - "leaving in a week"
+  - "pre-trip week"
+
+steps:
+  - skill: "appointments"
+    args: "list --domain travel --upcoming-days 14"
+    note: "Confirm the upcoming trip's appointments are all in the calendar."
+  - skill: "documents"
+    args: "list --kind passport --kind license --kind state_id"
+    note: "Verify travel-document expirations."
+  - skill: "todo"
+    args: "list --domain travel"
+    note: "Open trip tasks."
+  - skill: "subscriptions"
+    args: "list --pauseable"
+    note: "Surface subscriptions to pause for the trip duration."
+  - skill: "pet-care"
+    args: "list --upcoming"
+    note: "Pet-sitter coordination if applicable."
+  - skill: "home-maintenance"
+    args: "list --due-while-away"
+    note: "Anything home-maintenance-wise that needs handling pre-trip."

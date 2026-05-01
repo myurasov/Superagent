@@ -1,0 +1,105 @@
+# [Do not change manually — managed by Superagent]
+# Workflow: plan a multi-day trip.
+
+schema_version: 1
+id: "trip-planning"
+version: 1
+name: "Plan a trip"
+description: "End-to-end recipe for planning + executing a multi-day trip (vacation, family visit, work travel)."
+
+parameters:
+  - name: "destination"
+    type: "string"
+    required: true
+  - name: "start_date"
+    type: "date"
+    required: true
+  - name: "end_date"
+    type: "date"
+    required: true
+  - name: "people"
+    type: "string"
+    required: false
+    default: "self"
+    description: "Comma-separated list of travelers (or 'self', 'family', etc.)."
+
+recurring: "none"
+default_target_date: "{end_date}"
+default_priority: "P2"
+related_domains: ["travel", "family"]
+
+goal: "Trip to {destination} ({start_date} → {end_date}) booked, packed, executed without missed flights or lost reservations."
+
+scope_in:
+  - "Flights / trains / rentals booked."
+  - "Lodging booked + confirmation captured."
+  - "Pet-sitter / house-sitter / childcare arranged."
+  - "Packing list built and acted on."
+  - "Travel documents (passport / visas / TSA pre / Global Entry) verified current."
+  - "Bills / mail paused if needed."
+  - "Trip itinerary saved + accessible offline."
+scope_out:
+  - "Itinerary detail beyond logistics (restaurants, sightseeing — keep light)."
+  - "Visa applications (separate project if needed)."
+
+success_criteria:
+  - "All bookings made and confirmation numbers captured."
+  - "Pet-sitter / house-sitter confirmed."
+  - "Packing list complete."
+  - "Document expirations verified."
+  - "Itinerary in Outbox/scenarios/trip-{destination}-{start_date}.md or similar."
+
+deliverables:
+  - "Itinerary doc."
+  - "Packing list (reusable for next trip to similar climate)."
+  - "Bookings confirmed and indexed in Sources/."
+
+seed_tasks:
+  - title: "Verify passport + IDs not expiring before {end_date}"
+    priority: "P1"
+    due_offset_days: -90
+  - title: "Book flights / transport"
+    priority: "P1"
+    due_offset_days: -60
+  - title: "Book lodging"
+    priority: "P1"
+    due_offset_days: -60
+  - title: "Set up pet-sitter / house-sitter"
+    priority: "P2"
+    due_offset_days: -30
+  - title: "Coordinate childcare / school notice (if applicable)"
+    priority: "P2"
+    due_offset_days: -30
+  - title: "Review travel insurance coverage"
+    priority: "P3"
+    due_offset_days: -30
+  - title: "Build packing list"
+    priority: "P2"
+    due_offset_days: -14
+  - title: "Pause unneeded subscriptions / mail forwarding"
+    priority: "P3"
+    due_offset_days: -7
+  - title: "Confirm bookings 48h out"
+    priority: "P1"
+    due_offset_days: -2
+  - title: "Pack"
+    priority: "P0"
+    due_offset_days: -1
+  - title: "Trip"
+    priority: "P0"
+    due_offset_days: 0
+  - title: "File receipts + itinerary in Sources after return"
+    priority: "P3"
+    due_offset_days: 3
+  - title: "Trip recap entry in Travel history (what went well / poorly)"
+    priority: "P3"
+    due_offset_days: 7
+
+source_subfolders:
+  - "Sources/documents/travel/{start_date}-{destination}"
+
+notes: |
+  Lessons from prior trips inherit here. Common ones:
+  - Take photos of every booking confirmation; offline access matters.
+  - Build the packing list TWO weeks out, not the night before.
+  - Confirm with pet-sitter the morning before.

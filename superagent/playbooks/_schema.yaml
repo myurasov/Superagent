@@ -1,0 +1,44 @@
+# [Do not change manually — managed by Superagent]
+# Playbook schema (ideas-better-structure.md item #21).
+#
+# A playbook is a small YAML file naming a sequence of skills to run, with
+# optional `if:` conditions and `then:`/`else:` branches. The `play` skill
+# (and `tools/play.py`) reads playbooks; the resolver evaluates conditions
+# against workspace state and prints the ordered list of skills to invoke.
+#
+# Files: superagent/playbooks/<name>.yaml (framework)
+#        workspace/_custom/playbooks/<name>.yaml (custom overlay)
+# Same-name custom playbook OVERRIDES the framework one (announced in chat).
+#
+# Supported condition queries (see tools/play.py):
+#   bills_overdue, appointments_today, tasks_p0_open, projects_active,
+#   important_dates_today, subscriptions_audit_flag.
+# Supported operators: == != < <= > >=.
+# Special: "always", "never".
+
+schema_version: 1
+
+# Schema reference for individual playbook files (not real data — see
+# start-of-day.yaml etc. for working examples):
+playbook_schema_example:
+  name: "Start of day"
+  description: "The 5-minute morning check-in."
+  trigger:
+    - "good morning"
+    - "starting my day"
+    - "what's today look like"
+  steps:
+    - skill: "whatsup"
+      note: "30-second status."
+    - if: "bills_overdue > 0"
+      then:
+        - skill: "bills"
+          args: "list --overdue"
+          note: "Pay overdue bills first."
+    - skill: "daily-update"
+      note: "Full briefing."
+    - if: "appointments_today > 0"
+      then:
+        - skill: "appointments"
+          args: "prep --today"
+          note: "Prep for today's appointments."

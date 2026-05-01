@@ -1,0 +1,74 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: action signals — raw observations of changes Superagent
+# should make.
+#
+# Two distinct kinds, distinguished by the `target` field:
+#
+#   target: tailor        — change to Superagent ITSELF (framework code under
+#                            superagent/ or per-user overlay under
+#                            workspace/_custom/). Digested by
+#                            tailor-review §  → entries in pm-suggestions.yaml.
+#                            Examples: "make that a skill", "Superagent should
+#                            always remind me about X", "I think I need to add
+#                            a feature for tracking gift ideas year-round".
+#
+#   target: superagent    — change to YOUR WORKSPACE (a domain file, an
+#                            outgoing email, a bill record, an asset, a
+#                            contact). Acted on in-turn (when explicit) or
+#                            surfaced in regular updates (when ambient).
+#                            Examples: "@superagent please act on this",
+#                            "I should update the Home info.md with the new
+#                            HVAC contract terms".
+#
+# Append-only. Mark a signal as consumed by flipping `status` to `processed`
+# (with `became_suggestion` for tailor / `became_action` for superagent) or
+# to `declined` with a `notes` reason — never delete rows.
+
+schema_version: 1
+last_updated: null
+
+signals:
+  # Each signal:
+  #   id                    — "sig-YYYY-MM-DD-NNN"
+  #   captured_at           — ISO 8601 when the agent captured the signal.
+  #   target                — tailor | superagent
+  #   kind                  — explicit | ambient | artifact-critique |
+  #                            artifact-rework | correction | wish | frustration
+  #   trigger_phrase        — Short excerpt (≤ 200 chars) of what the user said.
+  #   context               — 1-3 sentences: which skill / artifact / turn this
+  #                            arose in. For target=superagent, also note who or
+  #                            what the action would affect (a domain file, a
+  #                            bill, an email thread).
+  #   artifact_ref          — Reference to the artifact under critique / to be
+  #                            changed. Workspace-relative path
+  #                            ("Domains/<domain>/info.md"), framework path
+  #                            ("superagent/skills/<name>.md"), or external
+  #                            identifier ("gmail:<msg_id>"). null when none.
+  #   proposed_direction    — Optional one-liner hint from the user.
+  #   source_skill          — Skill name running when the signal fired, or
+  #                            "chat" for ad-hoc turns.
+  #   source_turn           — Optional anchor (e.g. transcript ref).
+  #   status                — captured | processed | declined.
+  #   became_suggestion     — pm-suggestions.yaml id if a target=tailor signal
+  #                            was promoted; null otherwise.
+  #   became_action         — Short label of the workspace action taken when a
+  #                            target=superagent signal was processed
+  #                            ("updated Home info.md with new HVAC terms").
+  #                            null otherwise.
+  #   processed_at          — ISO 8601 when status flipped, or null.
+  #   notes                 — Free-form note (decline reason, related signals).
+  - id: null
+    captured_at: null
+    target: ""
+    kind: ""
+    trigger_phrase: ""
+    context: ""
+    artifact_ref: null
+    proposed_direction: null
+    source_skill: ""
+    source_turn: null
+    status: "captured"
+    became_suggestion: null
+    became_action: null
+    processed_at: null
+    notes: null

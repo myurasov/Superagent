@@ -1,0 +1,63 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: birthdays, anniversaries, deadlines, observances —
+# anything date-shaped that you want to be reminded of. Recurrence-aware.
+
+schema_version: 1
+
+dates:
+  # Each date:
+  #   id                — Stable id ("date-<slug>", e.g. "date-mom-birthday").
+  #   title             — Display title (e.g. "Mom's birthday").
+  #   kind              — birthday | anniversary | deadline | observance |
+  #                        renewal | expiration | seasonal | other.
+  #   for_member        — Whose date: "self" | name | "household" | "world".
+  #   contact           — Optional contact id from contacts.yaml.
+  #   date              — ISO 8601 date. For recurring, this is the original / base date.
+  #   recurrence        — none | annual | monthly | weekly | every_n_years |
+  #                        leap | hebrew_calendar | lunar_calendar.
+  #                        (Calendar-system fields are MVP placeholders — basic
+  #                        Gregorian-annual is supported in MVP; others are
+  #                        marked with `recurrence_unsupported: true` until
+  #                        the calendar ingestor lands them.)
+  #   recurrence_n      — For every_n_years: integer N.
+  #   next_occurrence   — ISO 8601 date — auto-computed.
+  #   lookahead_days    — How many days in advance to surface (default from
+  #                        config.preferences.surfacing.important_dates_lookahead_days).
+  #                        Per-date override if you want longer lead time
+  #                        (e.g. mom's birthday: 21 days so you have time to ship a gift).
+  #   gift_ideas        — List of free-text gift / note ideas; daily-update suggests
+  #                        them when the date is in the gift-shopping window.
+  #   gift_log          — List of gifts you've given.
+  #     - year: 0
+  #       gift: ""
+  #       reaction: ""    # optional
+  #   greetings         — Optional: prefer "card" | "call" | "text" | "in-person" |
+  #                        "gift" | "just remember".
+  #   history           — Past occurrences and what you did.
+  #     - year: 0
+  #       acknowledged: false
+  #       notes: ""
+  #   tags              — Short labels.
+  #   notes             — Free-form context.
+  #   status            — active | paused | retired.
+  #   created           — ISO 8601 datetime.
+  #   last_updated      — ISO 8601 datetime.
+  - id: ""
+    title: ""
+    kind: ""
+    for_member: ""
+    contact: null
+    date: null
+    recurrence: "annual"
+    recurrence_n: null
+    next_occurrence: null
+    lookahead_days: null
+    gift_ideas: []
+    gift_log: []
+    greetings: ""
+    history: []
+    tags: []
+    notes: ""
+    status: "active"
+    created: null
+    last_updated: null

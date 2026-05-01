@@ -1,0 +1,28 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: distilled learnings (not raw logs).
+# Use for patterns, lessons, optimizations spotted, hard-won knowledge worth
+# remembering ("the dog gets carsick if I feed her within 2 hours of driving",
+# "high-deductible plan was wrong for us in 2024 — we hit OOP max in March").
+
+schema_version: 1
+
+insights:
+  # Each insight:
+  #   id              — "insight-<slug>"
+  #   date            — ISO 8601 date when captured
+  #   category        — health | finance | home | vehicles | pets | family |
+  #                      travel | career | hobbies | self | process | other
+  #   insight         — One concise sentence.
+  #   source          — Where it came from (e.g. "annual physical 2026-04",
+  #                      "tax-prep retro", "talking to <friend>").
+  #   actionable      — true / false.
+  #   action_taken    — What you did, or null.
+  #   tags            — Short labels.
+  - id: ""
+    date: null
+    category: ""
+    insight: ""
+    source: ""
+    actionable: false
+    action_taken: null
+    tags: []

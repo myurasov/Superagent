@@ -1,0 +1,63 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: recurring + one-shot bills.
+# This file is the source of truth for "what do I owe and when".
+# The Bookkeeper persona reconciles ingested transactions against these rows.
+
+schema_version: 1
+
+bills:
+  # Each bill:
+  #   id                — Stable id ("bill-<slug>", e.g. "bill-pge-electric").
+  #   name              — Display name (e.g. "PG&E electric").
+  #   payee             — Who you pay (e.g. "Pacific Gas & Electric").
+  #   account           — id from accounts-index (utility / subscription account).
+  #   pay_from_account  — id from accounts-index (which checking / card pays it).
+  #   amount            — Numeric. For variable bills, last known amount.
+  #   amount_kind       — fixed | variable | usage-based.
+  #   currency          — ISO 4217; defaults to config money.currency.
+  #   cadence           — monthly | quarterly | semi-annual | annual | one-shot |
+  #                        weekly | bi-weekly | semi-monthly | bi-monthly | irregular.
+  #   due_day           — Day of cadence (e.g. 15 = the 15th of every month;
+  #                        for weekly: 1=Mon..7=Sun; for one-shot: null).
+  #   next_due          — ISO 8601 date — when the next payment is due. Auto-computed.
+  #   auto_pay          — true | false. If true, skill surfaces a confirmation on
+  #                        due date instead of an action.
+  #   grace_period_days — How many days late before this becomes urgent (default 0).
+  #   late_fee          — Numeric. For surfacing in monthly review.
+  #   url               — Where to pay manually.
+  #   domain            — Domain id this bill belongs to (Home, Vehicles, …).
+  #   asset             — Asset id (for asset-linked bills like vehicle insurance).
+  #   tags              — Short labels.
+  #   notes             — Free-form (rate plan, contract end date, promo info).
+  #   history:          — List of payment events.
+  #     - date: null    —   ISO 8601 date paid
+  #       amount: null  —   Numeric paid (may differ from canonical amount)
+  #       confirmation: ""  Optional confirmation number or ingestor txn id
+  #       source: ""    —   "manual" | ingestor name
+  #       notes: ""     —   Optional notes (late, refunded, etc.)
+  #   status            — active | paused | cancelled.
+  #   created           — ISO 8601 date this row was added.
+  #   last_updated      — ISO 8601 of last meaningful update.
+  - id: ""
+    name: ""
+    payee: ""
+    account: null
+    pay_from_account: null
+    amount: null
+    amount_kind: "fixed"
+    currency: "USD"
+    cadence: "monthly"
+    due_day: null
+    next_due: null
+    auto_pay: false
+    grace_period_days: 0
+    late_fee: null
+    url: ""
+    domain: null
+    asset: null
+    tags: []
+    notes: ""
+    history: []
+    status: "active"
+    created: null
+    last_updated: null

@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#
+# Superagent commit-msg hook — blocks AI-attribution patterns at commit time.
+#
+# Install:
+#   cp superagent/templates/githooks/commit-msg .githooks/commit-msg
+#   chmod +x .githooks/commit-msg
+#   git config core.hooksPath .githooks
+#
+# Reference: AGENTS.md § "Git commits".
+#
+# Why a hook? Cursor auto-injects `Made-with: Cursor` on every commit it runs;
+# Claude Code does not currently inject anything. The post-commit strip in
+# AGENTS.md handles `Made-with` specifically; this hook is a wider catch-net
+# for the broader catalogue of forbidden patterns.
+
+set -euo pipefail
+
+msg_file="$1"
+msg="$(cat "$msg_file")"
+
+# Patterns that must never appear in a Superagent commit message.
+# Match is case-insensitive. The vendor-name alternation is parenthesized
+# so the pipe operator scopes correctly.
+forbidden_patterns=(
+  '^(Made-with|Co-authored-by|Generated-by|Generated-with):.*(Cursor|Claude|Copilot|Gemini|GPT|ChatGPT|Anthropic|OpenAI)'
+  '(generated|written|authored|drafted|created)[[:space:]]+(with|by)[[:space:]]+(\[?(Claude|GPT|ChatGPT|Cursor|Copilot|Gemini|Codex|Anthropic|OpenAI))'
+  'via[[:space:]]+(Cursor|Claude[[:space:]]+Code|Copilot|ChatGPT)'
+  '(claude|gpt|gemini|composer)-[0-9]'
+)
+
+for pattern in "${forbidden_patterns[@]}"; do
+  if echo "$msg" | grep -qiE "$pattern"; then
+    echo "" >&2
+    echo "ERROR: commit message contains a forbidden AI-attribution pattern." >&2
+    echo "Matched: $pattern" >&2
+    echo "" >&2
+    echo "Per AGENTS.md § 'Git commits', commit messages must not" >&2
+    echo "include AI-attribution lines (Made-with, Co-Authored-By with an AI" >&2
+    echo "vendor, 'generated with X', 'via Cursor / Claude Code', model names" >&2
+    echo "like claude-x.y / gpt-x). Edit the message and try again." >&2
+    echo "" >&2
+    exit 1
+  fi
+done
+
+# Reject UTF-8 quotes / dashes / NBSP that sneak into agent-authored messages.
+if echo "$msg" | LC_ALL=C grep -qP '[^\x00-\x7F]'; then
+  echo "" >&2
+  echo "ERROR: commit message contains non-ASCII characters." >&2
+  echo "Per AGENTS.md, commit messages stay ASCII-only." >&2
+  echo "" >&2
+  exit 1
+fi
+
+exit 0

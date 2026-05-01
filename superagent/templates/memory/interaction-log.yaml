@@ -1,0 +1,30 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: append-only log of touchpoints and significant agent actions.
+# New entries go at the end; do NOT rewrite history.
+
+schema_version: 1
+
+entries:
+  # Each entry:
+  #   timestamp           — ISO 8601 when the interaction occurred (or was logged).
+  #   type                — email | message | meeting | call | note | skill_run |
+  #                          ingest_run | bill_paid | appointment | health_event |
+  #                          maintenance | important_date | document_event | other.
+  #   subject             — Short title or thread subject.
+  #   participants        — List of names or emails (people involved); empty for self-events.
+  #   summary             — What happened or was decided.
+  #   related_domain      — Domain slug from domains-index, or null.
+  #   related_asset       — Asset id from assets-index, or null.
+  #   related_account     — Account id from accounts-index, or null.
+  #   action_items        — List of strings; open tasks or follow-ups from this touchpoint.
+  #   ingestion_log_ref   — When type==ingest_run, points to ingestion-log.yaml row id.
+  - timestamp: null
+    type: "note"
+    subject: ""
+    participants: []
+    summary: ""
+    related_domain: null
+    related_asset: null
+    related_account: null
+    action_items: []
+    ingestion_log_ref: null

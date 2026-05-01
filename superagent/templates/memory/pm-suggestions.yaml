@@ -1,0 +1,54 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: Tailor improvement suggestions tracked through their lifecycle.
+# New suggestions are appended; status is updated in place.
+
+schema_version: 1
+last_updated: null
+
+suggestions:
+  # Each suggestion:
+  #   id                    — Unique ID: "pm-YYYY-MM-DD-NNN"
+  #   proposed_at           — ISO 8601 when suggested.
+  #   category              — new-skill | skill-improvement | memory-schema |
+  #                            template | workflow | hygiene | config |
+  #                            new-ingestor | auto-capture-rule | surfacing-rule
+  #   destination           — superagent | _custom (see tailor.agent.md
+  #                            § Destination Classification).
+  #                            superagent → generic; implemented by Coder
+  #                            into the committed framework tree.
+  #                            _custom      → user-specific; implemented by
+  #                            Tailor directly into workspace/_custom/.
+  #                            Tailor defaults to _custom for anything referencing
+  #                            specific personal names, addresses, accounts, assets.
+  #                            Coder REFUSES briefs whose destination is superagent
+  #                            but whose body contains workspace-specific content.
+  #   priority              — high | medium | low
+  #   title                 — Short descriptive title.
+  #   problem               — What friction or gap was observed.
+  #   evidence              — Specific data points from logs, transcripts, workspace.
+  #   suggestion            — Concrete proposed change.
+  #   implementation_sketch — Brief outline of what will be implemented and where
+  #                            (full file paths).
+  #   effort                — small | medium | large
+  #   risk                  — Migration concerns or breakage potential.
+  #   status                — proposed | approved | declined | implemented | deferred
+  #   resolved_at           — ISO 8601 when resolved, or null.
+  #   implementation_notes  — Notes after implementation (who: Tailor-direct for
+  #                            _custom, Coder for superagent; files created or
+  #                            modified; safeguard re-routes; commit SHA),
+  #                            or null.
+  - id: null
+    proposed_at: null
+    category: ""
+    destination: ""
+    priority: ""
+    title: ""
+    problem: ""
+    evidence: ""
+    suggestion: ""
+    implementation_sketch: ""
+    effort: ""
+    risk: ""
+    status: "proposed"
+    resolved_at: null
+    implementation_notes: null

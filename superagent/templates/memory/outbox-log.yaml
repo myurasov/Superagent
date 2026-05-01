@@ -1,0 +1,56 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: outbox lifecycle log.
+#
+# Implements: ideas-better-structure.md item #13 (Outbox lifecycle).
+#
+# Tracks every artifact written to Outbox/ across its lifecycle
+# (drafts → staging → sent → sealed). Append-only; mutate only the row
+# whose lifecycle is advancing.
+#
+# Folder layout (mirrored in workspace/Outbox/):
+#   drafts/   — in-progress; agent may revise; mutable.
+#   staging/  — finalized; awaiting user "send"; mutable until sent.
+#   sent/     — user marked sent; immutable thereafter.
+#   sealed/   — snapshots (e.g. handoff-packet versions); immutable on creation.
+
+schema_version: 1
+last_updated: null
+
+artifacts:
+  # Each artifact:
+  #   id              — Stable slug ("art-YYYY-MM-DD-NNN" or skill-derived).
+  #   created_by      — Skill that produced the artifact.
+  #   kind            — email | summary | brief | shopping-list | csv |
+  #                      handoff-packet | report | other.
+  #   title           — Display title.
+  #   path            — Workspace-relative path; advances with lifecycle:
+  #                      Outbox/drafts/<...>  ->  staging/<...>  ->  sent/<...>
+  #   stage           — drafts | staging | sent | sealed | discarded.
+  #   stage_history   — List of { stage, ts, note } transitions.
+  #   recipient       — For emails / outbound — the addressed party
+  #                      (contact id or free-text).
+  #   sensitive       — bool; if true, redacted from cross-skill summaries.
+  #   sealed          — bool; once true, file is immutable.
+  #   sealed_hash     — sha256 of the file contents at seal time.
+  #   inputs_hash     — sha256 of the source files that produced this artifact
+  #                      (used by briefing-cache invalidation).
+  #   ttl_minutes     — How long this artifact stays useful (for caches).
+  #   created_at      — ISO 8601.
+  #   last_updated    — ISO 8601.
+  #   notes           — Free text.
+  - id: ""
+    created_by: ""
+    kind: ""
+    title: ""
+    path: ""
+    stage: "drafts"
+    stage_history: []
+    recipient: ""
+    sensitive: false
+    sealed: false
+    sealed_hash: ""
+    inputs_hash: ""
+    ttl_minutes: null
+    created_at: null
+    last_updated: null
+    notes: ""

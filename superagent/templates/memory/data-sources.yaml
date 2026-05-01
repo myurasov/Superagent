@@ -1,0 +1,72 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: per-source ingestion configuration and state.
+# Coarse "is auth set up?" booleans live in config.yaml.data_sources_configured.
+# THIS file carries the operational details — last_ingest, recency_window_days,
+# max_items_per_run, capture_mode, failure_streak, last_run summary.
+#
+# Every ingestor under superagent/tools/ingest/ reads its row from this file
+# before running and writes its row back at the end. See procedures.md
+# § "Data Ingestion Contract".
+
+schema_version: 1
+last_updated: null
+
+sources:
+  # Each source:
+  #   id                — Slug matching the ingestor filename
+  #                        (gmail, google_calendar, icloud_calendar,
+  #                         apple_reminders, apple_notes, apple_health,
+  #                         plaid, monarch, ynab, csv, strava, whoop, garmin,
+  #                         oura, fitbit, home_assistant, smartthings, tesla,
+  #                         imessage, obsidian, notion, photos, gmaps_timeline,
+  #                         outlook, slack, etc.)
+  #   kind              — mcp | cli | api | file
+  #   enabled           — bool. False = ingestor never runs even if invoked.
+  #   capture_mode      — disabled | manual | scheduled (see procedures § 2.3).
+  #   schedule          — daily | weekly | monthly | "every <n> days" | manual.
+  #                        Honors config.preferences.ingestion_schedule.<id> override.
+  #   recency_window_days  — On first run (no last_ingest), how many days back to pull.
+  #   backfill_window_days — Optional larger window for explicit `ingest --backfill`.
+  #   max_items_per_run    — Hard cap per run (truncates if exceeded).
+  #   writes_upstream      — bool. Most sources are read-only; flip true ONLY for
+  #                          ingestors that must write back to upstream
+  #                          (e.g. a future "create reminder in Apple Reminders").
+  #                          Skills check this before any write call.
+  #   auth:
+  #     kind: ""           # oauth | api_key | basic | keychain | mcp_server | none
+  #     ref: ""            # vault reference (e.g. "1Password://...", "keychain:gmail")
+  #     scope: []          # list of OAuth scopes if relevant
+  #     server_id: ""      # MCP server identifier if kind == mcp_server
+  #   last_ingest         — ISO 8601 of the most recent successful run.
+  #   last_run:
+  #     started_at: null
+  #     finished_at: null
+  #     items_pulled: 0
+  #     items_inserted: 0
+  #     items_updated: 0
+  #     items_skipped: 0
+  #     errors: []
+  #     truncated: false
+  #     duration_ms: 0
+  #     run_log_id: ""     # link to the row in ingestion-log.yaml
+  #   failure_streak      — Consecutive failures since last success (auto-flips
+  #                          enabled to false after 3, requires user reset).
+  #   notes               — Free-form (auth quirks, rate-limit notes, links).
+  #
+  # The full source catalogue is documented in docs/data-sources.md.
+  # init() seeds rows for every supported source with enabled: false; the user
+  # opts in via the init questionnaire or `ingest --setup`.
+  - id: ""
+    kind: ""
+    enabled: false
+    capture_mode: "disabled"
+    schedule: ""
+    recency_window_days: 30
+    backfill_window_days: 365
+    max_items_per_run: 200
+    writes_upstream: false
+    auth: null
+    last_ingest: null
+    last_run: null
+    failure_streak: 0
+    notes: ""

@@ -1,0 +1,90 @@
+# [Do not change manually — managed by Superagent]
+# Workflow: replace a failing appliance.
+
+schema_version: 1
+id: "appliance-replacement"
+version: 1
+name: "Replace appliance"
+description: "Replace a failing home appliance (dishwasher, washer, dryer, water heater, HVAC, refrigerator)."
+
+parameters:
+  - name: "appliance"
+    type: "string"
+    required: true
+    description: "What's being replaced (dishwasher / washer / dryer / etc.)."
+  - name: "asset_id"
+    type: "string"
+    required: false
+    description: "Existing asset id (in assets-index.yaml) being replaced."
+
+recurring: "none"
+default_priority: "P2"
+related_domains: ["home", "finance"]
+
+goal: "{appliance} replaced; old unit hauled away; new unit installed and operating; warranty + receipt filed."
+
+scope_in:
+  - "Research + 3 model candidates."
+  - "Get 2-3 install quotes (if not DIY)."
+  - "Order + schedule delivery."
+  - "Coordinate haul-away of old unit."
+  - "Install + first cycle test."
+  - "File receipt + warranty + manual."
+  - "Update assets-index.yaml (mark old disposed, add new)."
+scope_out:
+  - "Whole-room renovation (separate project)."
+  - "Plumbing / electrical upgrades (separate sub-project)."
+
+success_criteria:
+  - "New appliance installed and tested through one full cycle."
+  - "Old unit removed."
+  - "Receipt + warranty + manual in Sources/documents/warranties/<asset-slug>/."
+  - "Old asset marked status: disposed in assets-index.yaml."
+  - "New asset registered with maintenance schedule."
+
+deliverables:
+  - "New asset row in assets-index.yaml."
+  - "Receipt + warranty PDFs in Sources/documents/warranties/."
+  - "Manual PDF (or scan) in same folder."
+  - "Recurring maintenance items added to bills.yaml."
+
+seed_tasks:
+  - title: "Research 3 candidate models for {appliance}"
+    priority: "P2"
+    due_offset_days: -14
+  - title: "Get 2-3 install quotes"
+    priority: "P2"
+    due_offset_days: -10
+  - title: "Order new {appliance}"
+    priority: "P1"
+    due_offset_days: -7
+  - title: "Schedule install + haul-away"
+    priority: "P1"
+    due_offset_days: -5
+  - title: "Install day"
+    priority: "P0"
+    due_offset_days: 0
+  - title: "Run first cycle / pressure test"
+    priority: "P1"
+    due_offset_days: 1
+  - title: "File receipt + warranty + manual in Sources"
+    priority: "P2"
+    due_offset_days: 3
+  - title: "Mark old asset disposed in assets-index.yaml"
+    priority: "P3"
+    due_offset_days: 3
+  - title: "Register new asset with maintenance schedule"
+    priority: "P2"
+    due_offset_days: 3
+  - title: "Set 1-month check-in to verify no install issues"
+    priority: "P3"
+    due_offset_days: 30
+
+source_subfolders:
+  - "Sources/documents/warranties"
+
+notes: |
+  Common gotchas:
+  - Verify rough-in dimensions BEFORE ordering.
+  - Coordinate water shutoff timing if plumbing involved.
+  - Some retailers require haul-away to be added at order time.

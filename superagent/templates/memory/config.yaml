@@ -1,0 +1,279 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: global configuration copied to workspace/_memory/
+# on first init. Edit values to match your profile and preferences.
+
+schema_version: 1
+
+last_updated: null
+# ISO 8601 datetime string when this file was last edited (e.g. "2026-04-28T01:00:00-07:00").
+
+profile:
+  # Who this workspace represents (you).
+  name: ""
+  preferred_name: ""           # what you want Superagent to call you in chat
+  email: ""
+  phone: ""                    # optional; used by some templates (e.g. handoff)
+  birth_date: null             # ISO 8601 date; drives age-based defaults & important dates
+  timezone: ""                 # IANA tz, e.g. "America/Los_Angeles"
+  city: ""
+  region: ""                   # state / province
+  country: ""
+  household_composition: ""    # free text, e.g. "married, two kids (8, 11), one dog, two cats"
+
+preferences:
+  # Automation and reminder toggles.
+  workspace_path: "workspace"
+  autonomous_enabled: true     # if false, every action requires explicit confirmation
+  daily_update_auto: true
+  weekly_review_auto: true
+  monthly_review_auto: true
+  terse_mode: false            # concise output for routine operations
+  archive_remind: true
+  tailor_enabled: true
+
+  # Cadence schedule (when the cadence skills SHOULD run if you let them).
+  cadences:
+    daily_update: "08:30"
+    weekly_review: "Sunday 18:00"
+    monthly_review: "1st 09:00"
+    tailor_review: "every 90 days"
+    doctor: "every 180 days"
+
+  # Per-source ingestion cadence override (if not present, ingestor's default fires).
+  ingestion_schedule:
+    gmail: "daily"
+    google_calendar: "daily"
+    icloud_calendar: "daily"
+    apple_reminders: "daily"
+    apple_notes: "weekly"
+    apple_health: "daily"
+    plaid: "weekly"
+    monarch: "weekly"
+    strava: "daily"
+    whoop: "daily"
+    garmin: "daily"
+    oura: "daily"
+    home_assistant: "daily"
+    tesla: "daily"
+    obsidian: "weekly"
+    notion: "weekly"
+    photos: "monthly"
+    google_maps_timeline: "monthly"
+
+  # What hurts most (set during init from the questionnaire).
+  pain_points: []              # e.g. ["bills","subscriptions","health-tracking","important-dates"]
+
+  # Money preferences (used by the Bookkeeper persona).
+  money:
+    currency: "USD"
+    budget_method: "zero-based"     # zero-based | 50-30-20 | category | none
+    fiscal_year_start_month: 1      # January
+    paycheck_cadence: "biweekly"    # weekly | biweekly | semimonthly | monthly | irregular
+    low_balance_default: 500        # USD; per-account override in accounts-index.yaml
+
+  # Surfacing windows (where each kind of upcoming thing first crosses your radar).
+  surfacing:
+    bills_lookahead_days: 7
+    appointments_lookahead_days: 14
+    important_dates_lookahead_days: 30
+    documents_lookahead_days: 60
+    maintenance_lookahead_days: 30
+    subscription_unused_days: 60     # subscription not used in N days = audit candidate
+
+  # Privacy posture.
+  privacy:
+    log_user_queries: true           # populate _memory/user-queries.jsonl (used by Tailor)
+    snapshot_memory_daily: true      # _memory/_checkpoints/<date>/
+    snapshot_retention_days: 14
+    redact_outbound: true            # outbound surfaces go through scrub pipeline
+
+  # Sources / cache configuration (see procedures.md § "Sources Contract").
+  sources:
+    # Hard cap on _cache/ size in MB. When exceeded, LRU eviction runs.
+    cache_max_mb: 500
+    # Default TTL for cached fetches (overridable per-`.ref.md`).
+    default_ttl_minutes: 1440
+    # When a cached fetch's raw size exceeds this threshold, the cache is
+    # split into chunks (under `_cache/<hash>/chunks/`) for cheaper retrieval.
+    chunk_threshold_kb: 100
+    # Target chunk size when splitting (rough; respects natural boundaries).
+    chunk_target_kb: 8
+    # Always read _summary.md + _toc.yaml first; only pull raw / chunks
+    # when the agent decides the content is needed.
+    summary_first: true
+    # When true, agent must re-confirm before touching `Sources/documents/`
+    # or `Sources/references/` (immutable by default; only `_cache/` is
+    # auto-managed). The `doctor` skill never touches Sources/ in either case.
+    immutable_strict: true
+
+  # Project surfacing (see procedures.md § "Projects Contract").
+  projects:
+    # Lookahead window for project deadlines in daily-update.
+    deadline_lookahead_days: 14
+    # Days after status: completed before doctor proposes archive.
+    archive_after_days: 90
+    # Auto-create the next-cycle project when a recurring project completes.
+    auto_create_next_cycle: true
+
+  # Events stream (see procedures.md § "Events Stream Contract" / item #16).
+  events:
+    # Time partitioning. Quarterly default; monthly for high-volume workspaces.
+    partition: "quarterly"   # quarterly | monthly | yearly
+    # Mirror entity-history-md writes into the events stream automatically.
+    auto_mirror_history_md: true
+    # Mirror interaction-log writes into the events stream automatically.
+    auto_mirror_interaction_log: true
+    # Per-skill event-emission opt-out (rare).
+    skip_kinds: []
+
+  # Audit trail (see procedures.md § "Audit Trail Contract" / item #17).
+  audit:
+    # Master switch. When false, no <file>.history.jsonl is written.
+    enabled: true
+    # Files to skip auditing (e.g. high-write logs that audit themselves).
+    skip_files: ["interaction-log.yaml", "ingestion-log.yaml", "user-queries.jsonl"]
+    # Yearly rotate the .history.jsonl files into Archive/.
+    rotate_yearly: true
+
+  # Tags (see procedures.md § "Tags Contract" / item #11).
+  tags:
+    # When the user (or a skill) introduces a new tag, automatically add a
+    # row to tags.yaml with placeholder description.
+    auto_register: true
+    # Validation: refuse to write a tag that doesn't exist in tags.yaml.
+    # Default false (lenient); flip true once tags.yaml is curated.
+    strict_canonical: false
+
+  # Decisions (see procedures.md § "Decisions Log Contract" / item #24).
+  decisions:
+    # Surface decisions made this week in weekly-review.
+    surface_in_weekly_review: true
+    # Surface decisions whose review_at <= now in monthly-review.
+    surface_in_monthly_review: true
+
+  # Briefing cache (see procedures.md § "Briefing Cache Contract" / QW-5 + MI-5).
+  briefing_cache:
+    # Master switch.
+    enabled: true
+    # TTL for cached briefings (minutes). 720 = 12h (covers a workday).
+    ttl_minutes: 720
+    # Auto-invalidate when any source file mtime > briefing.created_at.
+    invalidate_on_source_mtime: true
+
+  # Per-session scratchpad (see procedures.md § "Per-session Scratchpad" / MI-1).
+  session:
+    # Master switch.
+    enabled: true
+    # How many sessions to keep before evicting oldest.
+    keep_recent_sessions: 20
+    # Auto-cleanup sessions older than N days.
+    expire_days: 30
+
+  # Working sets / telemetry (item #23 / measurement section).
+  telemetry:
+    # Append a row to working-sets.jsonl per skill invocation.
+    record_working_sets: true
+    # Append a row to _telemetry/<YYYY-MM-DD>.jsonl per skill invocation.
+    record_per_turn: true
+    # Surface efficiency deltas in monthly-review.
+    surface_in_monthly_review: true
+
+  # Sensitive tier (see procedures.md § "Sensitive Tier" / item #18).
+  sensitive:
+    # Master switch.
+    enabled: true
+    # Where the sensitive sub-tree lives. Default: in-workspace.
+    # Override to point at an encrypted disk image / external mount:
+    #   path: "/Volumes/SuperagentVault/_memory/sensitive"
+    path: null              # null = workspace/_memory/sensitive
+    # Files routed to sensitive/ by default (additive to per-row sensitive flag).
+    auto_route_files:
+      - "health-records.yaml"
+      - "accounts-index.yaml"
+
+  # Visibility (see procedures.md § "Visibility Contract" / item #19).
+  visibility:
+    # Default visibility for newly-created entities.
+    default: "private"      # private | household | public
+    # When the workspace is shared (household mode), this is the household name.
+    household_name: ""
+
+  # Operational handles (see procedures.md § "Operational Handles" / item #20).
+  handles:
+    # Master switch — when true, every new entity gets a `handle` field
+    # populated as `<kind>:<id>`. Existing entities are backfilled by
+    # `tools/world.py rebuild`.
+    enabled: true
+
+  # Outbox lifecycle (see procedures.md § "Outbox Lifecycle" / item #13).
+  outbox:
+    # Sub-folders to scaffold and auto-route artifacts through.
+    lifecycle_stages: ["drafts", "staging", "sent", "sealed"]
+    # Max age (days) before stage:drafts artifacts are surfaced as stale.
+    drafts_stale_days: 14
+
+  # Inbox triage (see procedures.md § "Inbox Triage" / item #5).
+  inbox_triage:
+    # Days before files in Inbox/ surface as stale to triage.
+    stale_days: 14
+    # Pre-classify by extension before asking the user.
+    auto_classify: true
+
+  # Anti-pattern scanner (perf-improvement-ideas.md § "Anti-patterns").
+  anti_patterns:
+    # When true, doctor / tailor-review run the anti-pattern scanner over
+    # skills/*.md and surface findings.
+    scan_skills: true
+
+# --- Data sources (which MCPs / CLI tools you've authorized) ---
+# This block carries the COARSE flag (have you set up the auth at all?). The detailed
+# per-source config (last_ingest, recency_window_days, max_items_per_run, capture_mode,
+# failure_streak) lives in workspace/_memory/data-sources.yaml.
+#
+# init() flips an entry from `false` to `true` after a successful health check.
+data_sources_configured:
+  email:
+    gmail: false
+    icloud_mail: false
+    outlook: false
+  calendar:
+    google_calendar: false
+    icloud_calendar: false
+    outlook_calendar: false
+  reminders_and_notes:
+    apple_reminders: false       # via `rem` CLI or osascript
+    apple_notes: false           # via osascript / JXA
+    obsidian: false
+    notion: false
+  finance:
+    plaid: false
+    monarch: false
+    ynab: false
+    csv_only: false              # generic bank CSV import
+  health:
+    apple_health: false          # via `healthsync` CLI or Apple Health MCP
+    whoop: false
+    strava: false
+    garmin: false
+    oura: false
+    fitbit: false
+  smart_home:
+    home_assistant: false
+    smartthings: false
+    homekit: false               # via Apple Shortcuts / osascript
+  vehicles:
+    tesla: false
+    obd_csv: false
+  messaging:
+    imessage: false              # via imessage-exporter
+    whatsapp: false
+    signal: false
+    slack: false                 # personal Slack workspaces
+  media_and_files:
+    icloud_drive: false
+    google_drive: false
+    dropbox: false
+    onedrive: false
+    photos_exif: false           # via exiftool
+  location:
+    google_maps_timeline: false

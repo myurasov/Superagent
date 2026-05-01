@@ -1,0 +1,51 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: append-only audit log of writes that went UPSTREAM
+# (to a third-party service, not to local files).
+#
+# Implements: ideas-better-structure.md item #15 (skeleton) + the
+# Sensitive-Tier safety contract.
+#
+# Background: every ingestor in MVP is `writes_upstream: false` — read-only.
+# When an ingestor or skill is configured to write upstream (e.g. create
+# a Google Calendar event, modify a Notion page, post to a Slack channel),
+# every such write MUST log a row here AND request user confirmation per
+# call. Read by the user (manually) and by the Tailor's strategic pass
+# (looking for unusual patterns).
+
+schema_version: 1
+last_updated: null
+
+writes:
+  # Each write:
+  #   id              — "uw-YYYY-MM-DD-NNN".
+  #   ts              — ISO 8601.
+  #   skill           — Which skill initiated the write.
+  #   source          — Source slug from data-sources.yaml.
+  #   target          — Specific target identifier (e.g.
+  #                      "google_calendar:primary/event/<id>",
+  #                      "notion:page/<id>", "outlook:calendar/<id>").
+  #   action          — create | update | delete | other.
+  #   payload_summary — Short description of what was written
+  #                      (the skill must NOT log the full payload — that
+  #                      bloats the file and may include sensitive data).
+  #   user_confirmed  — bool; must be true for any write to land.
+  #   user_confirmed_at — ISO 8601.
+  #   confirmation_method — chat-prompt | yaml-pre-approval | none.
+  #   reversible      — bool; if true, the action can be rolled back.
+  #   rollback_hint   — How to undo (e.g. "delete event with id X").
+  #   result          — success | failure | partial.
+  #   error           — Error string if failure.
+  - id: ""
+    ts: null
+    skill: ""
+    source: ""
+    target: ""
+    action: ""
+    payload_summary: ""
+    user_confirmed: false
+    user_confirmed_at: null
+    confirmation_method: ""
+    reversible: false
+    rollback_hint: ""
+    result: ""
+    error: ""

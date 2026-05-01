@@ -1,0 +1,17 @@
+[project]
+name = "superagent"
+version = "0.1.0"
+description = "Superagent — personal-life AI assistant framework. Local-first, markdown + YAML, IDE-agnostic, self-improving."
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["superagent/tests"]
+pythonpath = ["."]

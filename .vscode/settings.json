@@ -1,0 +1,5 @@
+{
+    "files.exclude": {
+        "superagent/__pycache__": true
+    }
+}

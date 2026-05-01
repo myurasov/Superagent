@@ -1,0 +1,77 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: the world graph — explicit entity-relationship index.
+#
+# This file is DERIVED state: it can be fully reconstructed from the entity
+# files (contacts.yaml, accounts-index.yaml, assets-index.yaml, bills.yaml,
+# subscriptions.yaml, appointments.yaml, important-dates.yaml,
+# documents-index.yaml, domains-index.yaml, projects-index.yaml,
+# sources-index.yaml, health-records.yaml) by running
+# `python3 -m superagent.tools.world rebuild`.
+#
+# Every entity-mutating skill SHOULD update the graph in the same
+# transaction (per `procedures.md` § "World Graph Contract").
+# If the graph drifts, `tools/world.py rebuild` regenerates it from scratch.
+# `tools/validate.py` checks that every node has a corresponding entity row.
+#
+# Shape: nodes describe entities (id + kind); edges describe relationships
+# (from -> to + kind). Both are append-mostly; deletes happen only on
+# entity removal (rare; entities normally archive, not delete).
+#
+# Implements: ideas-better-structure.md item #3 + perf-improvement-ideas.md BB-4.
+
+schema_version: 1
+last_updated: null
+last_rebuild: null
+
+# --- Nodes: one per entity in the workspace ---
+nodes:
+  # Each node:
+  #   id        — Operational handle in `<kind>:<slug>` form
+  #                (e.g. "contact:dr-smith-dentist", "bill:pge-electric").
+  #                Per the operational-handles convention (procedures.md §
+  #                "Operational Handles Contract"). For back-compat, the
+  #                bare slug is accepted; the world rebuilder normalizes.
+  #   kind      — entity kind: contact | account | asset | bill | subscription
+  #                | appointment | important_date | document | domain | project
+  #                | source | medication | vital_log | task | health_visit
+  #                | decision | tag | other
+  #   path      — Workspace-relative path to the entity's row OR file:
+  #                "_memory/contacts.yaml#contact-dr-smith-dentist" for indexed,
+  #                "Domains/Health/info.md" for a markdown-only entity.
+  #   label     — Display name (free-text; usually the entity's `name` field).
+  #   tags      — Cached tags from the entity (for fast tag-based traversal).
+  - id: ""
+    kind: ""
+    path: ""
+    label: ""
+    tags: []
+
+# --- Edges: directed relationships ---
+edges:
+  # Each edge:
+  #   from      — Source node id (operational handle).
+  #   to        — Target node id.
+  #   kind      — Relationship kind. Canonical set:
+  #                pay_from        — bill / subscription -> account
+  #                provider        — appointment / health_visit -> contact
+  #                scoped          — anything -> domain / project
+  #                related_domain  — project -> domain
+  #                related_project — task / event / source -> project
+  #                related_asset   — bill / appointment / document -> asset
+  #                owns            — domain -> asset
+  #                holds           — account -> asset (e.g. brokerage holdings)
+  #                stakeholder     — project -> contact
+  #                rolodex_member  — domain / project -> contact
+  #                covers          — document -> asset / domain
+  #                lives_under     — sub-entity -> parent (per #10 hierarchy)
+  #                tagged          — anything -> tag
+  #                supersedes      — newer entity -> older
+  #                derives_from    — derived entity -> source entity
+  #                triggered_by    — event -> entity that caused it
+  #                affects         — decision -> entities decision touches
+  #   evidence  — Optional pointer to where this relationship was sourced
+  #                (e.g. "bills.yaml.<id>.pay_from_account field").
+  - from: ""
+    to: ""
+    kind: ""
+    evidence: ""

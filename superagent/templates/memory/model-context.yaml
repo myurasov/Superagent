@@ -1,0 +1,53 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: the model's accumulated understanding across sessions.
+# Unlike context.yaml (operational state) or config.yaml (profile / preferences),
+# this file captures what the AI model has *learned* about you, your life,
+# and your routines through interaction — things that aren't stored elsewhere.
+#
+# PRIVACY: This file contains personal behavioral data — communication preferences,
+# household routines, idiosyncratic terminology. It is gitignored (inside
+# workspace/) and stays local to this machine.
+#
+# Read at session start. Update at session end or when significant learnings occur.
+# Keep entries concise and high-signal; prune stale items periodically.
+
+schema_version: 1
+last_updated: null
+
+# --- How the user prefers to interact with the model ---
+communication:
+  style: ""                    # e.g. "terse, no preamble"; "thorough, with caveats"
+  abbreviations: []            # personal shorthand the model should canonicalize, e.g. "AP = annual physical"
+  addressing: ""               # e.g. "use first name"; "no honorifics"
+  corrections_given: []        # short list of corrections you've given that the model should remember
+
+# --- Observed habits, routines, working patterns ---
+working_patterns:
+  schedule: ""                 # e.g. "early bird, in bed by 22:30"
+  weekly_rhythm: ""            # e.g. "weekend chores Sat morning; meal prep Sunday afternoon"
+  tools: []                    # personal tools that come up often
+  workflow_notes: []
+
+# --- Household / relationships context (terminology, who-is-who shorthand) ---
+household_context:
+  pets: []                     # e.g. ["Bella (cat, 8 yo)", "Max (dog, 3 yo)"]
+  kids: []                     # e.g. ["Liam (8)", "Maya (11)"]
+  parents: []                  # e.g. ["Mom (lives in Boston)", "Dad (in NYC)"]
+  partner: ""                  # short name + relationship
+  routines: []                 # e.g. ["Tuesday school pickup", "Friday family movie night"]
+
+# --- Accumulated domain knowledge the model has built up ---
+domain_knowledge: {}
+# Free-form mapping of topic → notes the model wants to remember.
+# E.g.:
+#   home_hvac: "Carrier 5-ton, installed 2019, filter is 16x25x4 MERV 11"
+#   dog_food: "Bella eats grain-free chicken; switch to fish if she scratches"
+#   mortgage: "Wells Fargo, 30-yr fixed at 3.125%, recast in 2022"
+
+# --- Things the user has explicitly corrected or clarified ---
+corrections:
+  # format: { date: "YYYY-MM-DD", what: "description", learned: "what model should do instead" }
+  []
+
+# --- Brief session summaries for continuity (most recent first, keep last 10) ---
+sessions: []

@@ -1,0 +1,95 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: unified events stream.
+#
+# Implements: ideas-better-structure.md item #16 + perf-improvement-ideas.md MI-2.
+#
+# This file is the SCHEMA reference for the events stream. The actual events
+# are stored in `_memory/events/<YYYY-Qn>.yaml` (quarterly partitions, per
+# the time-windowed-views contract — perf-improvement-ideas.md MI-2). The
+# CURRENT quarter's file is the live writer; older quarters are read-only.
+#
+# Every cross-entity event (interaction, ingest run, status flip, decision,
+# audit-trail entry, completed task, captured signal, source access, etc.)
+# is written here as a row. Per-entity history.md / per-entity history fields
+# remain as denormalized projections of this stream.
+#
+# Shape: event-shape (append-only, partitioned). The writer is
+# `tools/events.py append`. Readers use `tools/log_window.py` for ranged
+# queries.
+#
+# Bootstrap: when this template is copied to _memory/events.yaml, treat it as
+# an INDEX over the events/ directory rather than the data file. The data
+# files are events/<YYYY-Qn>.yaml.
+
+schema_version: 1
+generated_at: null
+
+# Per-quarter partition index — maintained by tools/events.py
+partitions:
+  # Each partition:
+  #   quarter         — "YYYY-Qn" (e.g. "2026-Q2").
+  #   path            — "_memory/events/<quarter>.yaml".
+  #   first_event_at  — ISO 8601.
+  #   last_event_at   — ISO 8601.
+  #   event_count     — Integer.
+  #   by_kind         — Map of event-kind -> count.
+  - quarter: ""
+    path: ""
+    first_event_at: null
+    last_event_at: null
+    event_count: 0
+    by_kind: {}
+
+# Schema for individual event rows in the partition files.
+# Each row:
+#   id              — "evt-YYYY-MM-DD-NNN".
+#   ts              — ISO 8601 datetime (with TZ).
+#   kind            — Event kind. Canonical taxonomy:
+#                      interaction      — chat / email / message / meeting
+#                      ingest_run       — ingestor invocation summary
+#                      skill_run        — any skill invocation
+#                      status_flip      — entity status change
+#                      bill_paid        — bill marked paid
+#                      task_completed
+#                      task_created
+#                      appointment_completed
+#                      health_event     — symptom / vital / med change / visit
+#                      maintenance_done
+#                      decision         — see decisions.yaml
+#                      important_date_marked
+#                      source_added
+#                      source_accessed
+#                      project_milestone
+#                      audit            — entity field mutation
+#                      capture_signal   — personal / action signal captured
+#                      cache_evict      — sources cache eviction
+#                      ingest_failure
+#                      other
+#   actor           — user | <skill-name> | <ingestor-name>.
+#   subject         — Short headline.
+#   summary         — One-paragraph; what happened.
+#   entities        — List of operational handles touched
+#                      (per the operational-handles contract).
+#   related_domain  — Domain id; null OK.
+#   related_project — Project id; null OK.
+#   payload         — Free-form dict of event-specific structured data
+#                      (e.g. for ingest_run: items_pulled / inserted / errors;
+#                       for bill_paid: amount / confirmation; for status_flip:
+#                       from / to).
+#   tags            — Short labels.
+event_schema_example:
+  id: "evt-2026-04-28-001"
+  ts: "2026-04-28T08:30:00-07:00"
+  kind: "skill_run"
+  actor: "daily-update"
+  subject: "Daily update — 2026-04-28"
+  summary: "Ran daily briefing; 3 P0 items, 2 bills due today, 1 appointment."
+  entities:
+    - "skill:daily-update"
+  related_domain: null
+  related_project: null
+  payload:
+    p0_count: 3
+    bills_due_today: 2
+    appointments_today: 1
+  tags: ["cadence"]

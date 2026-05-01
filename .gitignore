@@ -1,0 +1,54 @@
+# User-generated workspace data — never committed.
+workspace/
+
+# Development / temporary scratch
+.tmp/
+__dev/
+__workspace-*/
+
+# Python
+*.pyc
+*.pyo
+__pycache__/
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+.venv/
+venv/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Export files (may contain workspace data)
+superagent-export-*.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE — keep .vscode/settings.json tracked, ignore the rest
+!.vscode/
+.vscode/*
+!.vscode/settings.json
+
+# Cursor — keep rules and hooks tracked
+!.cursor/
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
+!.cursor/hooks.json
+
+# Claude Code — keep project settings tracked, ignore per-user local overrides
+!.claude/
+.claude/*
+!.claude/settings.json
+.claude/settings.local.json
+
+# MCP project config — .mcp.json carries auth tokens and is never committed.
+# .mcp.json.example is the redacted template that ships with the repo.
+.mcp.json
+!.mcp.json.example

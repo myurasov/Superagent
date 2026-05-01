@@ -1,0 +1,81 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: scheduled appointments (doctor, dentist, vet, mechanic,
+# hairdresser, school events, in-person meetings, etc.).
+# Distinct from calendar EVENTS — appointments are a subset that warrant their
+# own structured record (provider info, prep notes, follow-up).
+#
+# Calendar ingestors (gcal, icloud-cal, outlook-cal) push items here when their
+# heuristic decides a calendar event is "appointment-shaped" (single-attendee
+# external location with a known provider in contacts.yaml, or matches one of
+# the appointment-pattern regexes documented in tools/ingest/_patterns.yaml).
+
+schema_version: 1
+
+appointments:
+  # Each appointment:
+  #   id                — Stable id ("appt-<YYYYMMDD>-<slug>",
+  #                        e.g. "appt-20260512-dr-smith-cleaning").
+  #   title             — Short title.
+  #   kind              — medical | dental | vision | mental_health | vet |
+  #                        mechanic | home_repair | beauty | school | legal |
+  #                        financial | personal | other.
+  #   start             — ISO 8601 datetime (with timezone offset).
+  #   end               — ISO 8601 datetime (optional; null if duration unknown).
+  #   location          — Free text (street + city, or "telehealth", or "phone").
+  #   provider          — Contact id from contacts.yaml (if a person)
+  #                        OR free text (if a clinic / shop).
+  #   for_member        — Who is the appointment for: "self" | name (spouse, child, pet).
+  #                        Pet appointments use the pet's name from assets-index? No —
+  #                        pets are in contacts.yaml with role: "pet" so the same
+  #                        for_member field works.
+  #   domain            — Domain this falls under (Health, Pets, Vehicles, …).
+  #   asset             — Asset id (for asset-linked appointments).
+  #   purpose           — One-liner: "annual cleaning", "30k mile service",
+  #                        "yearly physical", "haircut".
+  #   prep_notes        — Free text — what to bring, things to discuss, history to mention.
+  #   prep_done         — true / false (set by user or by `appointments prep <id>`).
+  #   status            — scheduled | completed | cancelled | rescheduled | no-show.
+  #   completed_at      — ISO 8601 datetime; null if not completed.
+  #   outcome           — Free text — what happened, what was decided, what's next.
+  #   followup          — Optional list of action items emitted by completion.
+  #     - description: ""
+  #       due_date: null
+  #       task_id: null   # if a row was added to todo.yaml
+  #   confirmation      — Free text (provider's confirmation #).
+  #   reminder_sent     — true once daily-update has surfaced the day-before reminder.
+  #   recurrence        — Optional: { interval: "annual" | "semi-annual" | "quarterly" |
+  #                                   "monthly" | "weekly" | "every_n_months", n: 0 }
+  #                        For recurring appointments, set this so the next
+  #                        occurrence is auto-created on completion.
+  #   external_id       — Calendar event UID (if ingested from a calendar source).
+  #   ingest_source     — Calendar source the row came from, or "manual".
+  #   tags              — Short labels.
+  #   notes             — Free-form (parking tips, "she's chatty", etc.).
+  #   created           — ISO 8601 datetime.
+  #   last_updated      — ISO 8601 datetime.
+  - id: ""
+    title: ""
+    kind: ""
+    start: null
+    end: null
+    location: ""
+    provider: null
+    for_member: "self"
+    domain: null
+    asset: null
+    purpose: ""
+    prep_notes: ""
+    prep_done: false
+    status: "scheduled"
+    completed_at: null
+    outcome: ""
+    followup: []
+    confirmation: ""
+    reminder_sent: false
+    recurrence: null
+    external_id: null
+    ingest_source: "manual"
+    tags: []
+    notes: ""
+    created: null
+    last_updated: null

@@ -1,0 +1,29 @@
+# [Do not change manually — managed by Superagent]
+
+schema_version: 1
+name: "End of week"
+description: "Friday wrap: reconcile, audit, plan the next week, capture lessons."
+
+trigger:
+  - "end of week"
+  - "friday wrap"
+  - "weekly playbook"
+  - "wrap the week"
+
+steps:
+  - skill: "weekly-review"
+    note: "Bookkeeper + Coach + Concierge + Quartermaster passes."
+  - skill: "follow-up"
+    note: "Hunt for dropped balls before the weekend."
+  - if: "tasks_p0_open > 0"
+    then:
+      - skill: "triage-overdue"
+        note: "Force a decision on every overdue P0 / P1 before logging off."
+  - if: "subscriptions_audit_flag > 0"
+    then:
+      - skill: "subscriptions"
+        args: "audit"
+        note: "Cancel candidates flagged this week."
+  - skill: "personal-signals"
+    args: "surface"
+    note: "Review captured personal signals."

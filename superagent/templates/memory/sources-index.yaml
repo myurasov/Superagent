@@ -1,0 +1,55 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: index of every entry in `Sources/`.
+#
+# Sources/ is the workspace's reference library. It holds:
+#   - documents/  — actual local files (PDFs, scans, exports) — the "vault" of
+#                    truth for things the user owns and wants preserved.
+#   - references/ — `.ref.md` files describing where to fetch external data
+#                    (via MCP, CLI, URL, vault, API, file path).
+#   - _cache/     — fetched copies of `.ref`-pointed sources, with TTL/LRU
+#                    eviction. The ONLY part of Sources/ that skills may
+#                    delete (per the immutability contract in procedures.md
+#                    § "Sources Contract").
+#
+# This index keeps a row per document and per .ref so skills can query the
+# library without walking the filesystem every time.
+
+schema_version: 1
+
+sources:
+  # Each source:
+  #   id              — Stable slug (e.g. "doc-camry-title-2018",
+  #                      "ref-medicare-eob-portal").
+  #   kind            — document | reference
+  #                      document  → file lives at `path` under
+  #                                  Sources/documents/.
+  #                      reference → `path` is a `.ref.md` file under
+  #                                  Sources/references/.
+  #   title           — Display title.
+  #   path            — Workspace-relative path under Sources/.
+  #   category        — Free-text category (e.g. "vehicles", "taxes",
+  #                      "medical", "warranties", "legal"). Drives the
+  #                      sub-folder under documents/ or references/.
+  #   related_domain  — Domain id from domains-index.yaml (optional).
+  #   related_project — Project id from projects-index.yaml (optional).
+  #   related_asset   — Asset id from assets-index.yaml (optional).
+  #   sensitive       — bool. If true, redacted from outbound surfaces.
+  #   added           — ISO 8601 date when added.
+  #   last_accessed   — ISO 8601 of last read by a skill or by the user.
+  #   read_count      — How many times this source has been pulled into context.
+  #   tags            — Short labels.
+  #   notes           — Free-form (where the physical original lives, why we keep it).
+  - id: ""
+    kind: ""
+    title: ""
+    path: ""
+    category: ""
+    related_domain: null
+    related_project: null
+    related_asset: null
+    sensitive: false
+    added: null
+    last_accessed: null
+    read_count: 0
+    tags: []
+    notes: ""

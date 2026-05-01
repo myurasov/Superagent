@@ -1,0 +1,194 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: health records — conditions, medications, allergies,
+# vitals, vaccinations, test results, family medical history.
+#
+# SENSITIVITY: This is one of the most sensitive files in the workspace.
+# It is gitignored along with the rest of workspace/ but should
+# also be considered for symlinking to an encrypted disk image; see
+# docs/architecture.md § "Sensitive subfiles".
+#
+# This file is NOT a substitute for an actual EHR / patient portal. It is the
+# user's personal log so they walk into appointments prepared.
+
+schema_version: 1
+
+# --- Per-person profiles (self + household members; one entry per person) ---
+profiles:
+  # Each profile:
+  #   member            — "self" | name (spouse, child).
+  #   blood_type        — e.g. "O+"; "" if unknown.
+  #   primary_care      — Contact id from contacts.yaml.
+  #   pharmacy          — Contact id from contacts.yaml.
+  #   insurance:
+  #     carrier: ""
+  #     plan: ""
+  #     member_id: ""           # last 4 only; full id in vault
+  #     vault_ref: ""
+  #     group_number: ""
+  #   conditions:               — Chronic / ongoing conditions.
+  #     - name: ""
+  #       diagnosed: null
+  #       severity: ""           # mild | moderate | severe
+  #       managed_by: ""         # contact id
+  #       notes: ""
+  #   allergies:
+  #     - allergen: ""
+  #       reaction: ""           # rash | anaphylaxis | gi | …
+  #       severity: ""
+  #       notes: ""
+  #   surgeries:
+  #     - procedure: ""
+  #       date: null
+  #       surgeon: ""            # contact id or free text
+  #       hospital: ""
+  #       notes: ""
+  #   family_history:
+  #     - relation: ""           # mother | father | sibling | grandparent
+  #       condition: ""
+  #       notes: ""
+  - member: ""
+    blood_type: ""
+    primary_care: null
+    pharmacy: null
+    insurance: null
+    conditions: []
+    allergies: []
+    surgeries: []
+    family_history: []
+
+# --- Active medications (one row per current med per person) ---
+medications:
+  # Each med:
+  #   id                — "med-<slug>"
+  #   member            — "self" | name
+  #   name              — Brand or generic
+  #   dose              — e.g. "20 mg"
+  #   form              — tablet | capsule | liquid | injection | inhaler | topical | other
+  #   schedule          — Free text, e.g. "1 tab AM with food"
+  #   prescribed_by     — Contact id
+  #   prescribed_for    — Condition this treats
+  #   start_date        — ISO 8601 date
+  #   end_date          — ISO 8601 date (or null if ongoing)
+  #   refills_left      — Integer
+  #   next_refill_due   — ISO 8601 date (auto-computed; surfaces in daily-update)
+  #   pharmacy          — Contact id
+  #   notes             — Side effects, interactions, special instructions
+  #   status            — active | paused | discontinued
+  - id: ""
+    member: ""
+    name: ""
+    dose: ""
+    form: ""
+    schedule: ""
+    prescribed_by: null
+    prescribed_for: ""
+    start_date: null
+    end_date: null
+    refills_left: 0
+    next_refill_due: null
+    pharmacy: null
+    notes: ""
+    status: "active"
+
+# --- Vital readings (append-only) ---
+vitals:
+  # Each row:
+  #   timestamp         — ISO 8601 datetime
+  #   member            — "self" | name
+  #   kind              — blood_pressure | heart_rate | weight | temperature |
+  #                        glucose | spo2 | sleep_score | hrv | other
+  #   value             — Numeric (or string for compound, e.g. "120/80")
+  #   unit              — bpm | mmHg | kg | lb | C | F | mg/dL | %
+  #   source            — manual | apple_health | whoop | strava | garmin | oura |
+  #                        ingest:<source>
+  #   notes             — Free text
+  - timestamp: null
+    member: ""
+    kind: ""
+    value: null
+    unit: ""
+    source: "manual"
+    notes: ""
+
+# --- Symptom log (append-only; for chronic-symptom tracking) ---
+symptoms:
+  # Each row:
+  #   timestamp         — ISO 8601
+  #   member            — "self" | name
+  #   symptom           — Short description
+  #   severity          — 0-10 scale
+  #   triggers          — List of suspected triggers
+  #   what_helped       — List of mitigations tried
+  #   notes             — Free text
+  - timestamp: null
+    member: ""
+    symptom: ""
+    severity: 0
+    triggers: []
+    what_helped: []
+    notes: ""
+
+# --- Vaccinations (append-only) ---
+vaccines:
+  # Each row:
+  #   member            — "self" | name
+  #   vaccine           — Display name (Tdap, MMR, COVID, flu, …)
+  #   date              — ISO 8601 date
+  #   dose_in_series    — e.g. "1/2", "booster"
+  #   provider          — Contact id or free text
+  #   lot               — Lot number (optional; useful for recalls)
+  #   site              — Where on the body (optional)
+  #   notes             — Free text
+  - member: ""
+    vaccine: ""
+    date: null
+    dose_in_series: ""
+    provider: ""
+    lot: ""
+    site: ""
+    notes: ""
+
+# --- Lab results / imaging summaries (append-only summaries; PDFs go in Sources/documents/medical/<member>/) ---
+results:
+  # Each row:
+  #   date              — ISO 8601
+  #   member            — "self" | name
+  #   kind              — lipid_panel | cbc | a1c | tsh | imaging | biopsy | other
+  #   ordered_by        — Contact id
+  #   abnormal          — true | false (true = surface in next monthly review)
+  #   summary           — One-paragraph summary (the user's takeaway)
+  #   path              — Optional path to the PDF / scan in Sources/documents/medical/<member>/
+  #   notes             — Free text
+  - date: null
+    member: ""
+    kind: ""
+    ordered_by: null
+    abnormal: false
+    summary: ""
+    path: ""
+    notes: ""
+
+# --- Visit notes (append-only summaries of doctor / dentist / vet visits) ---
+visits:
+  # Each row:
+  #   date              — ISO 8601
+  #   member            — "self" | name
+  #   provider          — Contact id
+  #   reason            — Free text — why you went
+  #   findings          — Free text — what they said
+  #   plan              — Free text — what you agreed to do
+  #   medications_changed — true | false
+  #   followup          — Optional list of follow-up items
+  #     - description: ""
+  #       due_date: null
+  #       task_id: null
+  #   appointment_id    — Optional id from appointments.yaml.
+  - date: null
+    member: ""
+    provider: null
+    reason: ""
+    findings: ""
+    plan: ""
+    medications_changed: false
+    followup: []
+    appointment_id: null

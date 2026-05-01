@@ -1,0 +1,58 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: per-skill working-set telemetry (schema reference).
+#
+# Implements: ideas-better-structure.md item #23 + perf-improvement-ideas.md
+# (anti-patterns + measurement).
+#
+# The actual telemetry is stored in `_memory/working-sets.jsonl` (one JSON
+# row per skill invocation; appended in real time). This YAML file documents
+# the row schema and serves as the agent's reference when reading the log.
+#
+# What gets recorded per skill invocation:
+#   - Files read (with paths + size in bytes + offset/limit if range-read)
+#   - Sources cache hits / misses
+#   - MCP / CLI tool calls (server, tool, args hash, latency)
+#   - Outputs produced (paths + bytes)
+#   - Total estimated tokens consumed (heuristic: total bytes / 4)
+#   - Total wall-clock latency in milliseconds
+#
+# The Tailor's strategic pass reads this log to spot:
+#   - Skills that consistently over-read.
+#   - Skills that re-read the same file multiple times in one invocation.
+#   - Skills that skip obvious local sources and go straight to MCPs.
+#   - Skills that should batch parallel reads but chain them sequentially.
+#
+# Privacy note: working-sets.jsonl contains paths and sizes — NOT content.
+# Lives in workspace/_memory/ (gitignored) like everything else.
+
+schema_version: 1
+generated_at: null
+
+# Schema for individual rows in working-sets.jsonl
+row_schema_example:
+  ts: "2026-04-28T08:30:14-07:00"
+  session_id: "sess-2026-04-28-A7F2"
+  skill: "daily-update"
+  trigger: "user-explicit"            # user-explicit | playbook | cadence | ambient
+  started_at: "2026-04-28T08:30:00-07:00"
+  finished_at: "2026-04-28T08:30:14-07:00"
+  duration_ms: 14_412
+  files_read:
+    - { path: "_memory/config.yaml", bytes: 3200 }
+    - { path: "_memory/context.yaml", bytes: 1100 }
+    - { path: "_memory/todo.yaml", bytes: 12500 }
+    - { path: "_memory/bills.yaml", bytes: 4200 }
+    - { path: "Domains/Health/status.md", bytes: 1800 }
+  sources_cache:
+    hits: 2
+    misses: 0
+    fetched: []
+  mcp_calls: []
+  cli_calls: []
+  outputs:
+    - { path: "_memory/_briefings/2026-04-28.md", bytes: 2300 }
+  total_bytes_in: 22_800
+  total_bytes_out: 2_300
+  est_tokens_in: 5_700
+  est_tokens_out: 575
+  notes: ""

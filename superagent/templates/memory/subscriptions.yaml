@@ -1,0 +1,65 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: recurring subscriptions (streaming, software, memberships,
+# donations, app subscriptions, gym, magazine, anything that auto-renews).
+#
+# Distinguished from bills.yaml — subscriptions tend to be discretionary and
+# audit-prone (the average household has 12-15 active subs and forgets ~4 of
+# them). The monthly-review skill audits this file aggressively.
+
+schema_version: 1
+
+subscriptions:
+  # Each subscription:
+  #   id                — Stable id ("sub-<slug>", e.g. "sub-netflix").
+  #   name              — Display name (e.g. "Netflix").
+  #   provider          — Company name.
+  #   category          — entertainment | software | gym | media | news | gaming |
+  #                        cloud_storage | hosting | charity | other.
+  #   amount            — Numeric.
+  #   currency          — ISO 4217; defaults to config money.currency.
+  #   cadence           — monthly | annual | quarterly | weekly | one-shot.
+  #   next_renewal      — ISO 8601 date.
+  #   pay_from_account  — id from accounts-index.
+  #   url               — Where to manage (cancel, change plan).
+  #   started_at        — ISO 8601 date.
+  #   trial_ends        — ISO 8601 date or null. For free trials, set this and
+  #                        the daily-update will alert 7 days + 1 day before.
+  #   shared_with       — List of names (family-plan members), if applicable.
+  #   last_used         — ISO 8601 date — when you last consciously used this service.
+  #                        Updated by:
+  #                          • Manual: log via `subscriptions log-use <id>`.
+  #                          • Auto: ingestor signal (e.g. Spotify ingestor sets
+  #                            `last_used` for the Spotify sub on every play day).
+  #   audit_flag        — true if not used in last `config.preferences.surfacing.subscription_unused_days`.
+  #                        Set by monthly-review.
+  #   replaceable_by    — List of free / cheaper alternatives (e.g. "Pluto TV", "library Hoopla").
+  #   tags              — Short labels.
+  #   notes             — Free-form (e.g. "discounted via family plan", "essential for work").
+  #   status            — active | paused | cancelled | trial | unsure.
+  #   cancelled_at      — ISO 8601 date or null.
+  #   cancellation_reason — Free text.
+  #   created           — ISO 8601 date.
+  #   last_updated      — ISO 8601 of last meaningful update.
+  - id: ""
+    name: ""
+    provider: ""
+    category: ""
+    amount: null
+    currency: "USD"
+    cadence: "monthly"
+    next_renewal: null
+    pay_from_account: null
+    url: ""
+    started_at: null
+    trial_ends: null
+    shared_with: []
+    last_used: null
+    audit_flag: false
+    replaceable_by: []
+    tags: []
+    notes: ""
+    status: "active"
+    cancelled_at: null
+    cancellation_reason: ""
+    created: null
+    last_updated: null

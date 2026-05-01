@@ -1,0 +1,43 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: tag taxonomy + canonical aliases.
+#
+# Implements: ideas-better-structure.md item #11.
+#
+# Today, every YAML row may carry `tags: [...]` as free-form strings.
+# This file gives those tags structure: canonical names, aliases the agent
+# should canonicalize TO the canonical name, brief descriptions, and a
+# usage counter the `tags` skill maintains.
+#
+# Shape: entity-shape (mutate-in-place). The `tags` skill is the canonical
+# writer; other skills can append a row when they introduce a new tag,
+# but should prefer to use existing canonical names.
+
+schema_version: 1
+last_updated: null
+
+tags:
+  # Each tag:
+  #   id              — Stable canonical slug (lowercase, hyphenated).
+  #                      Examples: "tax-deductible", "must-do-quarterly",
+  #                      "urgent", "household", "personal", "external".
+  #   aliases         — List of strings the model may encounter that should
+  #                      canonicalize TO this id. E.g. for "tax-deductible":
+  #                      ["taxdeductible", "tax-ded", "deductible-2025"].
+  #   description     — One-line.
+  #   color           — Optional hex color for renderers.
+  #   category        — Free-text grouping (e.g. "finance", "lifecycle",
+  #                      "priority", "scope").
+  #   uses_count      — Maintained by the `tags` skill; how many entity rows
+  #                      currently carry this tag (across all index files).
+  #   first_seen      — ISO 8601 date.
+  #   last_seen       — ISO 8601 date.
+  #   created_by      — user | <skill-name> | <ingestor-name>.
+  - id: ""
+    aliases: []
+    description: ""
+    color: ""
+    category: ""
+    uses_count: 0
+    first_seen: null
+    last_seen: null
+    created_by: "user"

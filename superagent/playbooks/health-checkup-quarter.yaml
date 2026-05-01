@@ -1,0 +1,29 @@
+# [Do not change manually — managed by Superagent]
+
+schema_version: 1
+name: "Quarterly health checkup"
+description: "End-of-quarter health pass: refills, overdue cleanings, lab follow-ups, sleep / fitness streak status."
+
+trigger:
+  - "quarterly health"
+  - "health quarterly"
+  - "end of quarter health"
+
+steps:
+  - skill: "health-log"
+    args: "list --window 90d"
+    note: "Surface anything captured this quarter (symptoms, vitals, med changes)."
+  - skill: "appointments"
+    args: "list --domain health --upcoming-days 90"
+    note: "Upcoming health appointments."
+  - skill: "follow-up"
+    args: "--lab-results-abnormal"
+    note: "Any abnormal lab results not yet followed up."
+  - if: "subscriptions_audit_flag > 0"
+    then:
+      - skill: "subscriptions"
+        args: "audit --category gym --category wellness"
+        note: "Are wellness subscriptions earning their cost?"
+  - skill: "personal-signals"
+    args: "surface --category fitness --category sleep --category mental-health"
+    note: "Review health-themed personal signals captured this quarter."
