@@ -42,7 +42,7 @@ A diagnostic of the burn pattern in Superagent as of MVP:
 | Source of waste | Why it happens | Fix layer |
 |---|---|---|
 | Whole-file reads of long skills (`init.md` ≈ 460 lines, `procedures.md` ≈ 1500 lines) when only one section is needed | Agent reads top-to-bottom; no per-section index | Skill / doc shape |
-| Whole-YAML reads of `interaction-log.yaml`, `ingestion-log.yaml`, `pm-suggestions.yaml` — append-only files that grow unbounded | No partitioning; no summary; no offset-aware reader | Memory schema |
+| Whole-YAML reads of `interaction-log.yaml`, `ingestion-log.yaml`, `supertailor-suggestions.yaml` — append-only files that grow unbounded | No partitioning; no summary; no offset-aware reader | Memory schema |
 | Re-reading the same file multiple times in one conversation | Agent has no "I already loaded this" memory | Session cache |
 | MCP / API calls when the local mirror would do | Already mostly solved (email + slack archive contracts; Sources/_cache); the discipline is per-skill, not enforced | Read-side contract wording |
 | Speculative reads ("let me load `<entity>` info just in case") | Agent's natural pattern when a skill says "read the entity's info" without specifying which sections | Skill instruction shape |
@@ -129,7 +129,7 @@ Costs nothing to add; bumps agent discipline noticeably across every invocation.
 - **LOE**: S (small writer + reader).
 - **Saves**: 5-50k tokens per skill that previously full-loaded a long log.
 
-For files that grow without bound (`interaction-log.yaml`, `ingestion-log.yaml`, `pm-suggestions.yaml`):
+For files that grow without bound (`interaction-log.yaml`, `ingestion-log.yaml`, `supertailor-suggestions.yaml`):
 
 Maintain a sibling `<file>.summary.yaml`, updated on every write OR nightly:
 

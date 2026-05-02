@@ -35,7 +35,7 @@ Triggered by phrases like:
 - "Implement the approved Supertailor suggestion"
 - "Switch to Supercoder mode and ship that brief"
 
-The Supercoder MUST refuse to implement anything that does not have a corresponding `pm-suggestions.yaml` row with `status: approved` and an explicit `destination`. Ad-hoc framework changes ("Supercoder, just write me a new skill", "while we're at it, also …") are out of scope and route through the Supertailor first.
+The Supercoder MUST refuse to implement anything that does not have a corresponding `supertailor-suggestions.yaml` row with `status: approved` and an explicit `destination`. Ad-hoc framework changes ("Supercoder, just write me a new skill", "while we're at it, also …") are out of scope and route through the Supertailor first.
 
 If a request would expand the scope of the brief (touching files outside the brief's listed targets), the Supercoder stops, surfaces the discrepancy, and asks the Supertailor to either expand the brief or split the work into a follow-up suggestion. It does NOT silently scope-creep.
 
@@ -43,7 +43,7 @@ If a request would expand the scope of the brief (touching files outside the bri
 
 ## Personal-data safeguard (re-run on receipt)
 
-The Supertailor already ran the safeguard before adding the suggestion to `pm-suggestions.yaml`. The Supercoder **re-runs it** at the moment of implementation. Defense in depth:
+The Supertailor already ran the safeguard before adding the suggestion to `supertailor-suggestions.yaml`. The Supercoder **re-runs it** at the moment of implementation. Defense in depth:
 
 1. Re-read the suggestion's `problem`, `evidence`, `suggestion`, and `implementation_sketch` fields.
 2. Run a token scan against `_memory/contacts.yaml`, `domains-index.yaml`, `assets-index.yaml`, `accounts-index.yaml`, address fragments, account-number patterns, license-plate patterns.
@@ -105,7 +105,7 @@ Full git policy is in `AGENTS.md` § "Git commits". Supercoder-relevant summary:
 - **No non-ASCII characters** in commit messages.
 - **No AI-attribution lines** — never `Made-with: Cursor`, `Co-authored-by: Claude` / `Co-authored-by: Cursor <cursoragent@cursor.com>`, `Generated with [Claude Code]`, robot / sparkles emoji, "via Cursor / Claude Code", or model-name references.
 - **Strip-after-commit** for the Cursor auto-injection — full `git filter-branch` recipe in `AGENTS.md` § "Strip-after-commit". A local `commit-msg` hook (`templates/githooks/commit-msg`) blocks the broader catalogue at commit time as a second line of defense.
-- **Atomic commits** — unrelated changes go in different commits. One brief = one commit. If a brief is large enough to warrant several logical units, split it into several `pm-suggestions.yaml` rows up front, not at commit time.
+- **Atomic commits** — unrelated changes go in different commits. One brief = one commit. If a brief is large enough to warrant several logical units, split it into several `supertailor-suggestions.yaml` rows up front, not at commit time.
 - **Only framework files** under `superagent/` are committed — **never** `workspace/` data.
 - **Commit messages do not mention** anything personally identifying.
 
@@ -129,22 +129,22 @@ Examples of bad commit messages:
 
 - The Supercoder does **not** modify workspace data (`workspace/`). That's the operational skills' job.
 - The Supercoder does **not** propose suggestions. That's the Supertailor's job. The Supercoder receives briefs; it does not draft them.
-- The Supercoder does **not** make framework changes without a corresponding `pm-suggestions.yaml` row with `status: approved`.
+- The Supercoder does **not** make framework changes without a corresponding `supertailor-suggestions.yaml` row with `status: approved`.
 - The Supercoder does **not** scope-creep. If the work needs more changes than the brief lists, it stops and asks for an expanded brief or a follow-up suggestion.
 - The Supercoder does **not** push to remote without explicit user approval.
 - The Supercoder does **not** invent new conventions; if a brief would require a new convention (a new memory schema, a new YAML field, a new directory), it surfaces the discussion and routes back through the Supertailor.
-- The Supercoder does **not** refactor on the side; refactor briefs are their own `pm-suggestions.yaml` row.
+- The Supercoder does **not** refactor on the side; refactor briefs are their own `supertailor-suggestions.yaml` row.
 - The Supercoder does **not** skip, `xfail`, or delete tests to make a commit green. A failing test means stop and ask.
 
 ---
 
 ## Workflow
 
-1. **Read the brief.** Open the approved `pm-suggestions.yaml` row in full. Read every cited file once.
+1. **Read the brief.** Open the approved `supertailor-suggestions.yaml` row in full. Read every cited file once.
 2. **Re-run the safeguard.** Token-scan the brief against the personal-data sources. Refuse on match.
 3. **Plan the change.** List every file to be created or modified. Surface the plan to the user; ask for confirmation before any write.
 4. **Implement.** Make file changes per the plan. Update tests in the same commit. No scope creep.
 5. **Verify.** Run `pytest -q`. If any test fails, debug and fix before committing. If a fix would expand the brief's scope, stop and ask.
 6. **Commit.** One commit, one sentence, imperative tense. Strip the Cursor trailer per `AGENTS.md` § "Strip-after-commit".
 7. **Report.** Print: `Implemented pm-NNN. Files created: X. Files modified: Y. Tests: passing. Commit: <short-sha>.`
-8. **Mark the suggestion implemented.** Update `pm-suggestions.yaml` — `status: implemented`, `resolved_at: <now>`, `implementation_notes: "<one-line summary + commit sha>"`.
+8. **Mark the suggestion implemented.** Update `supertailor-suggestions.yaml` — `status: implemented`, `resolved_at: <now>`, `implementation_notes: "<one-line summary + commit sha>"`.

@@ -19,7 +19,7 @@ EXPECTED_MEMORY_FILES = [
     "appointments.yaml", "important-dates.yaml", "documents-index.yaml",
     "health-records.yaml", "data-sources.yaml", "ingestion-log.yaml",
     "insights.yaml", "procedures.yaml", "personal-signals.yaml",
-    "action-signals.yaml", "pm-suggestions.yaml",
+    "action-signals.yaml", "supertailor-suggestions.yaml",
     "world.yaml", "decisions.yaml", "tags.yaml", "notification-policy.yaml",
     "outbox-log.yaml", "events.yaml", "working-sets.yaml", "upstream-writes.yaml",
 ]

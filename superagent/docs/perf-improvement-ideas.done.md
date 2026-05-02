@@ -36,7 +36,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 ### QW-4 — `summary.md` siblings for unbounded YAML logs ✓
 
 - Tool: `tools/log_summarize.py` (--workspace / --file / --all).
-- Targets: `interaction-log.yaml`, `ingestion-log.yaml`, `pm-suggestions.yaml`, `personal-signals.yaml`, `action-signals.yaml`, `decisions.yaml`.
+- Targets: `interaction-log.yaml`, `ingestion-log.yaml`, `supertailor-suggestions.yaml`, `personal-signals.yaml`, `action-signals.yaml`, `decisions.yaml`.
 - Output: `<file>.summary.yaml` sibling with totals, last_30_days breakdown, last_7_days breakdown, notable rows.
 - Tests: `tests/test_log_summarize_and_diff.py::test_log_summarize_interaction_log`.
 

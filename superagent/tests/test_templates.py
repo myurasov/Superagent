@@ -39,7 +39,7 @@ REQUIRED_MEMORY_TEMPLATES = [
     "procedures.yaml",
     "personal-signals.yaml",
     "action-signals.yaml",
-    "pm-suggestions.yaml",
+    "supertailor-suggestions.yaml",  # was pm-suggestions.yaml
     # Added by the second-pass implementation of ideas-better-structure +
     # perf-improvement-ideas:
     "world.yaml",

@@ -198,7 +198,7 @@ Store with a small format like `numpy .npz` per file or one consolidated `vector
 Looking at the YAML indexes, there are three distinct shapes:
 
 - **Entity-shape**: `contacts.yaml`, `accounts-index.yaml`, `assets-index.yaml`, `domains-index.yaml`, `projects-index.yaml`, `documents-index.yaml`, `subscriptions.yaml`, `bills.yaml` — each row is a long-lived thing.
-- **Time-shape (append-only)**: `interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml`, `health-records.yaml.{vitals,symptoms,vaccines,results,visits}`, `pm-suggestions.yaml`. Each row is an event in time.
+- **Time-shape (append-only)**: `interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml`, `health-records.yaml.{vitals,symptoms,vaccines,results,visits}`, `supertailor-suggestions.yaml`. Each row is an event in time.
 - **State-shape (mutable)**: `context.yaml`, `model-context.yaml`, `data-sources.yaml`. A mostly-singleton snapshot of "now".
 
 **Idea**: codify this taxonomy. Every index file declares one of `{entity, time, state}` in its header comment. Tools handle each kind differently:

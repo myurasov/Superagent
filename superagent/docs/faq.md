@@ -153,7 +153,7 @@ Implementing a stub means: add a real `<source>.py` that subclasses `IngestorBas
 
 Yes — drop a markdown file into `workspace/_custom/skills/<your-skill>.md` with the standard frontmatter (`name`, `description`, `triggers`, `mcp_required`, `mcp_optional`). The agent finds it the next turn and treats it as first-class.
 
-If your skill turns out to be useful for everyone, the Supertailor's strategic pass may surface it as a `pm-suggestions.yaml` candidate to promote into the committed framework. The Supercoder will only take it if it's generic (the safeguard refuses anything with personal-data tokens).
+If your skill turns out to be useful for everyone, the Supertailor's strategic pass may surface it as a `supertailor-suggestions.yaml` candidate to promote into the committed framework. The Supercoder will only take it if it's generic (the safeguard refuses anything with personal-data tokens).
 
 ## What's the long-term plan?
 

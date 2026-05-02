@@ -156,7 +156,7 @@ The full skill catalog and one-liners live in [`docs/skills-reference.md`](docs/
 | **ingest** | Run one or more configured ingestors (Gmail, Plaid, Apple Health, etc.). Front-end for `tools/ingest/`. |
 | **personal-signals** | Capture self-development feedback; surface growth themes on request. |
 | **doctor** | Workspace data hygiene — stale domains, duplicate contacts, near-duplicate todos, simplification candidates. |
-| **tailor-review** | Framework hygiene + strategic improvement; produces ranked suggestions in `pm-suggestions.yaml`. |
+| **tailor-review** | Framework hygiene + strategic improvement; produces ranked suggestions in `supertailor-suggestions.yaml`. |
 | **handoff** | Generate the "if I get hit by a bus" packet — account list, document locations, executor instructions. |
 
 ---
@@ -393,7 +393,7 @@ Per `procedures.md` § "Memory Taxonomy" (item #9), every YAML file in `_memory/
 - **Entity-shape** — long-lived rows; mutate-in-place; cross-referenced by id.
   Files: `contacts.yaml`, `accounts-index.yaml`, `assets-index.yaml`, `domains-index.yaml`, `projects-index.yaml`, `documents-index.yaml`, `subscriptions.yaml`, `bills.yaml`, `appointments.yaml`, `important-dates.yaml`, `sources-index.yaml`, `tags.yaml`, `world.yaml`, `notification-policy.yaml`.
 - **Time-shape (append-only)** — each row is an event in time; never rewritten in place.
-  Files: `interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml`, `decisions.yaml`, `outbox-log.yaml`, `upstream-writes.yaml`, `pm-suggestions.yaml`, `health-records.yaml.{vitals,symptoms,vaccines,results,visits}`.
+  Files: `interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml`, `decisions.yaml`, `outbox-log.yaml`, `upstream-writes.yaml`, `supertailor-suggestions.yaml`, `health-records.yaml.{vitals,symptoms,vaccines,results,visits}`.
   AND the partitioned event stream under `_memory/events/<YYYY-Qn>.yaml`.
 - **State-shape (singleton snapshot)** — one current snapshot of "now"; read at session start, write at session end.
   Files: `context.yaml`, `model-context.yaml`, `data-sources.yaml`, `config.yaml`.

@@ -116,7 +116,7 @@ The two layers serve different access patterns:
 | `data-sources.yaml` | per-source ingestion config and state | every ingestor, `ingest` skill |
 | `personal-signals.yaml` | self-development feedback (capture + surface) | `personal-signals`, `weekly-review`, Supertailor |
 | `action-signals.yaml` | "this should change" signals (target: tailor / superagent) | every skill (capture); Supertailor (drain) |
-| `pm-suggestions.yaml` | Supertailor's framework-improvement backlog | Supertailor, Supercoder |
+| `supertailor-suggestions.yaml` | Supertailor's framework-improvement backlog | Supertailor, Supercoder |
 | `procedures.yaml` | personal playbooks | `research`, ad-hoc retrieval |
 | `insights.yaml` | distilled learnings | `research`, ad-hoc retrieval |
 
@@ -166,7 +166,7 @@ Superagent ships with built-in introspection. The full role definitions are in `
 │    2. STRATEGIC PASS — friction patterns, capability gaps, novel needs  │
 │    Each suggestion: tagged destination = superagent | _custom         │
 │    Hard safeguard: token-scan for personal data → forces _custom        │
-│    Writes to _memory/pm-suggestions.yaml; surfaces report               │
+│    Writes to _memory/supertailor-suggestions.yaml; surfaces report               │
 └────────────────────────┬───────────────────────────────────────────────┘
                          │
                          │  user approves / declines / defers

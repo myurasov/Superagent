@@ -30,7 +30,7 @@ This roadmap is structured by **LOE tier (T-shirt size)**, not by quarter. Each 
 - **Done when** — observable success criterion.
 - **Depends on** — explicit dependencies on other items, where they exist.
 
-The roadmap is **continuously re-prioritized** by the Supertailor's strategic pass (`tailor-review` skill, which writes to `_memory/pm-suggestions.yaml`). Items here are starting points; the actual sequence is set by what the user keeps tripping over.
+The roadmap is **continuously re-prioritized** by the Supertailor's strategic pass (`tailor-review` skill, which writes to `_memory/supertailor-suggestions.yaml`). Items here are starting points; the actual sequence is set by what the user keeps tripping over.
 
 ## LOE legend
 
@@ -181,7 +181,7 @@ What Superagent will NOT do, by design:
 
 ## How items get prioritized
 
-The Supertailor reads `_memory/user-queries.jsonl` to spot which roadmap items would address recurring questions you couldn't get answered. Approved promotions move from this file into `_memory/pm-suggestions.yaml` with `status: approved` and the right destination tag.
+The Supertailor reads `_memory/user-queries.jsonl` to spot which roadmap items would address recurring questions you couldn't get answered. Approved promotions move from this file into `_memory/supertailor-suggestions.yaml` with `status: approved` and the right destination tag.
 
 You can also pin priority manually:
 

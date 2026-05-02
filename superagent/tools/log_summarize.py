@@ -4,7 +4,7 @@
 Implements perf-improvement-ideas.md QW-4.
 
 For files that grow without bound (`interaction-log.yaml`,
-`ingestion-log.yaml`, `pm-suggestions.yaml`), maintain a small sibling
+`ingestion-log.yaml`, `supertailor-suggestions.yaml`), maintain a small sibling
 `<file>.summary.yaml` with aggregate counts, last-N-day breakdowns, and
 notable-row pointers. Skills consult the summary first; only pull actual
 rows when the summary tells them they need to.
@@ -28,7 +28,7 @@ import yaml
 SUMMARIZABLE: dict[str, str] = {
     "interaction-log.yaml": "entries",
     "ingestion-log.yaml": "runs",
-    "pm-suggestions.yaml": "suggestions",
+    "supertailor-suggestions.yaml": "suggestions",
     "personal-signals.yaml": "signals",
     "action-signals.yaml": "signals",
     "decisions.yaml": "decisions",

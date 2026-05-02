@@ -40,7 +40,7 @@ LIST_FILES: dict[str, str] = {
     "procedures.yaml": "entries",
     "personal-signals.yaml": "signals",
     "action-signals.yaml": "signals",
-    "pm-suggestions.yaml": "suggestions",
+    "supertailor-suggestions.yaml": "suggestions",
     "data-sources.yaml": "sources",
 }
 

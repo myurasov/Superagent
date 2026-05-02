@@ -7,7 +7,7 @@
 #   target: tailor        — change to Superagent ITSELF (framework code under
 #                            superagent/ or per-user overlay under
 #                            workspace/_custom/). Digested by
-#                            tailor-review §  → entries in pm-suggestions.yaml.
+#                            tailor-review §  → entries in supertailor-suggestions.yaml.
 #                            Examples: "make that a skill", "Superagent should
 #                            always remind me about X", "I think I need to add
 #                            a feature for tracking gift ideas year-round".
@@ -49,7 +49,7 @@ signals:
   #                            "chat" for ad-hoc turns.
   #   source_turn           — Optional anchor (e.g. transcript ref).
   #   status                — captured | processed | declined.
-  #   became_suggestion     — pm-suggestions.yaml id if a target=tailor signal
+  #   became_suggestion     — supertailor-suggestions.yaml id if a target=tailor signal
   #                            was promoted; null otherwise.
   #   became_action         — Short label of the workspace action taken when a
   #                            target=superagent signal was processed

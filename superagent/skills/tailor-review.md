@@ -4,7 +4,7 @@ description: >-
   Run the Supertailor's two-pass review (hygiene + strategic). Hygiene applies
   mechanical reversible repairs to the workspace. Strategic surfaces
   ranked framework-improvement suggestions and writes them to
-  `pm-suggestions.yaml`, tagged `superagent` (handed to Supercoder) or
+  `supertailor-suggestions.yaml`, tagged `superagent` (handed to Supercoder) or
   `_custom` (Supertailor implements directly).
 triggers:
   - tailor review
@@ -68,7 +68,7 @@ Per `supertailor.agent.md` § "Strategic pass":
 5. **Auto-capture rule misses** — manual signals captured shortly after an ingest run (likely missed auto-capture rules).
 6. **Output / template critiques** from `action-signals.yaml.kind: artifact-critique`.
 
-Each strategic finding becomes a row in `_memory/pm-suggestions.yaml` with full context (problem, evidence, suggestion, implementation_sketch, effort, risk, destination).
+Each strategic finding becomes a row in `_memory/supertailor-suggestions.yaml` with full context (problem, evidence, suggestion, implementation_sketch, effort, risk, destination).
 
 ## 2½. Consult improvement-ideas catalogues
 
@@ -99,7 +99,7 @@ For each friction theme from step 2, check whether a catalogue entry addresses i
 
 ### 2½c. Cite the match in the suggestion
 
-When a friction theme matches a catalogue entry, the resulting `pm-suggestions.yaml` row MUST cite it:
+When a friction theme matches a catalogue entry, the resulting `supertailor-suggestions.yaml` row MUST cite it:
 
 - `evidence`: append `" — matches catalogue: <doc-short-name> § <id> (<title>)"`. Example: `"4 user-queries.jsonl entries this week of the form 'what changed since…' — matches catalogue: ideas-better-structure § #6 (Differential snapshots)"`.
 - `implementation_sketch`: prefer pointing at the catalogue's existing sketch over re-deriving it.
@@ -110,7 +110,7 @@ If a friction theme matches NO catalogue entry, note it in the report under `###
 
 ### 2½e. Do not mutate the catalogues
 
-The catalogues are READ-ONLY for the Supertailor. New ideas surfaced here go into `pm-suggestions.yaml` as normal; promoting them into the catalogue is a manual user step.
+The catalogues are READ-ONLY for the Supertailor. New ideas surfaced here go into `supertailor-suggestions.yaml` as normal; promoting them into the catalogue is a manual user step.
 
 ## 3. Destination classification
 
@@ -144,5 +144,5 @@ For approved suggestions:
 
 1. `_memory/context.yaml.last_runs.tailor_review` → now.
 2. Append to `interaction-log.yaml`.
-3. `pm-suggestions.yaml` updated with the new rows.
+3. `supertailor-suggestions.yaml` updated with the new rows.
 4. `_memory/_checkpoints/<date>/` populated with backups of any files modified by hygiene-pass repairs.
