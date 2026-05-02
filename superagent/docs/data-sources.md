@@ -393,7 +393,7 @@ Run `python3 -m superagent.tools.ingest._orchestrator setup` to probe every sour
 
 ## Adding a new data source
 
-The full procedure is documented in `superagent/coder.agent.md` and `superagent/tools/ingest/_base.py`. Summary:
+The full procedure is documented in `superagent/supercoder.agent.md` and `superagent/tools/ingest/_base.py`. Summary:
 
 1. Add a row to `superagent/tools/ingest/_registry.py.REGISTRY`.
 2. Create `superagent/tools/ingest/<source>.py` exporting a class `<Source>Ingestor` that subclasses `IngestorBase`.
@@ -402,4 +402,4 @@ The full procedure is documented in `superagent/coder.agent.md` and `superagent/
 5. Add a smoke test in `superagent/tests/test_ingest_registry.py`.
 6. Document the source in this catalogue.
 
-The Tailor's strategic pass watches for "user keeps asking about X but has no ingestor for it" patterns and proposes new ingestors as `pm-suggestions.yaml` rows tagged `category: new-ingestor, destination: superagent` — handing off to the Coder for implementation.
+The Tailor's strategic pass watches for "user keeps asking about X but has no ingestor for it" patterns and proposes new ingestors as `pm-suggestions.yaml` rows tagged `category: new-ingestor, destination: superagent` — handing off to the Supercoder for implementation.

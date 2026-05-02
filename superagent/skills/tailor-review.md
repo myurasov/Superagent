@@ -4,7 +4,7 @@ description: >-
   Run the Tailor's two-pass review (hygiene + strategic). Hygiene applies
   mechanical reversible repairs to the workspace. Strategic surfaces
   ranked framework-improvement suggestions and writes them to
-  `pm-suggestions.yaml`, tagged `superagent` (handed to Coder) or
+  `pm-suggestions.yaml`, tagged `superagent` (handed to Supercoder) or
   `_custom` (Tailor implements directly).
 triggers:
   - tailor review
@@ -138,7 +138,7 @@ Per `tailor.agent.md` § "Report format". The report includes:
 
 For approved suggestions:
 - `destination: _custom` → Tailor implements directly into `workspace/_custom/`. Sets `status: implemented`, `implementation_notes: "<file path + summary>"`.
-- `destination: superagent` → Tailor packages a brief and hands to the Coder ("Coder, implement pm-NNN per the brief"). The Coder re-runs the safeguard, implements into `superagent/`, runs `pytest`, commits, reports back. Tailor flips status to `implemented` with the commit SHA.
+- `destination: superagent` → Tailor packages a brief and hands to the Supercoder ("Supercoder, implement pm-NNN per the brief"). The Supercoder re-runs the safeguard, implements into `superagent/`, runs `pytest`, commits, reports back. Tailor flips status to `implemented` with the commit SHA.
 
 ## 6. Update memory
 

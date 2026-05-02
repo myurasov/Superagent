@@ -14,13 +14,13 @@ suggestions:
   #                            new-ingestor | auto-capture-rule | surfacing-rule
   #   destination           — superagent | _custom (see tailor.agent.md
   #                            § Destination Classification).
-  #                            superagent → generic; implemented by Coder
+  #                            superagent → generic; implemented by Supercoder
   #                            into the committed framework tree.
   #                            _custom      → user-specific; implemented by
   #                            Tailor directly into workspace/_custom/.
   #                            Tailor defaults to _custom for anything referencing
   #                            specific personal names, addresses, accounts, assets.
-  #                            Coder REFUSES briefs whose destination is superagent
+  #                            Supercoder REFUSES briefs whose destination is superagent
   #                            but whose body contains workspace-specific content.
   #   priority              — high | medium | low
   #   title                 — Short descriptive title.
@@ -34,7 +34,7 @@ suggestions:
   #   status                — proposed | approved | declined | implemented | deferred
   #   resolved_at           — ISO 8601 when resolved, or null.
   #   implementation_notes  — Notes after implementation (who: Tailor-direct for
-  #                            _custom, Coder for superagent; files created or
+  #                            _custom, Supercoder for superagent; files created or
   #                            modified; safeguard re-routes; commit SHA),
   #                            or null.
   - id: null

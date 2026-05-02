@@ -110,7 +110,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 
 - AGENTS.md: § "Prompt-cache discipline" — explicit guidance:
   - Don't edit AGENTS.md / procedures.md mid-session.
-  - The Tailor / Coder commit-then-restart cycle aligns naturally.
+  - The Tailor / Supercoder commit-then-restart cycle aligns naturally.
   - Don't open many framework files mid-session.
   - Long ingestion / scenario sessions: prefer dedicated tool invocations.
 - The forward-looking BB-2-a path is documented in the same section for when a CLI wrapper ships.

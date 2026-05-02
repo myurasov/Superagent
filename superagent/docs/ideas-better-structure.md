@@ -566,4 +566,4 @@ If you can do **3 more** in the quarter after, do these:
 
 The remaining ideas are valuable but situational — pursue when the specific pain emerges.
 
-The **Tailor's strategic pass** is the right mechanism for prioritizing these. It watches usage; it surfaces friction; it proposes the matching idea. You confirm; the Coder ships. That loop will pull the right ideas forward in the right order, without requiring you to predict the future from this document.
+The **Tailor's strategic pass** is the right mechanism for prioritizing these. It watches usage; it surfaces friction; it proposes the matching idea. You confirm; the Supercoder ships. That loop will pull the right ideas forward in the right order, without requiring you to predict the future from this document.

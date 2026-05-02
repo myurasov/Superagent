@@ -1,0 +1,21 @@
+# [Do not change manually — managed by Supercoder]
+# Append-only decisions log scoped to this code project.
+# Mirrors the shape of workspace/_memory/decisions.yaml but kept inside the
+# project folder so the project is self-contained (per procedures.md § 40.2).
+
+schema_version: 1
+last_updated: null
+
+decisions: []
+# Each decision row:
+#   id: dec-<YYYY-MM-DD>-<NNN>
+#   at: <iso-datetime>
+#   scope: code-project:<slug>
+#   summary: <one-line>
+#   context: <why this came up; what alternatives were considered>
+#   chosen: <what was chosen>
+#   rejected: [<rejected option 1>, <rejected option 2>]
+#   review_at: <iso-date|null>           # when (if ever) to revisit
+#   provenance:
+#     source: "user|supercoder|derived"
+#     at: <iso-datetime>

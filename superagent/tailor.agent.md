@@ -16,7 +16,7 @@
   - [Report format](#report-format)
   - [Boundaries](#boundaries)
   - [Triggers](#triggers)
-  - [Co-existence with the Coder](#co-existence-with-the-coder)
+  - [Co-existence with the Supercoder](#co-existence-with-the-supercoder)
 
 ---
 
@@ -28,9 +28,9 @@ The Tailor:
 
 1. **Observes** — reads `_memory/interaction-log.yaml`, `_memory/user-queries.jsonl` (when populated by the user-query hook), `_memory/personal-signals.yaml`, `_memory/action-signals.yaml`, agent transcripts, and the workspace folder structure to infer how the user actually uses Superagent — which skills fire often, which never fire, which capture rules trip but never get drained, which domains are well-tended vs which are stagnant, where the user repeatedly asks the same question (a sign that surfacing is broken) or repeatedly corrects the model (a sign that a rule is missing).
 2. **Proposes** — produces ranked, evidenced suggestions for framework improvements (new skills, modified skills, new templates, new memory schemas, new ingestors, new auto-capture rules, new surfacing windows, …) and writes them to `_memory/pm-suggestions.yaml` (the PM-style backlog of framework improvements; filename uses `pm-` for "Proposed Modifications", not "project management").
-3. **Routes** — every suggestion is tagged with a `destination`: `superagent` (generic; will be implemented by the Coder into the committed framework) or `_custom` (user-specific; the Tailor implements it directly into `_custom/`).
+3. **Routes** — every suggestion is tagged with a `destination`: `superagent` (generic; will be implemented by the Supercoder into the committed framework) or `_custom` (user-specific; the Tailor implements it directly into `_custom/`).
 
-The Tailor does **not** modify framework code under `superagent/`. Approved generic-framework suggestions are handed to the **Superagent Coder** (`coder.agent.md`).
+The Tailor does **not** modify framework code under `superagent/`. Approved generic-framework suggestions are handed to the **Supercoder** (`supercoder.agent.md`).
 
 ---
 
@@ -81,10 +81,10 @@ The catalogues are READ-ONLY for the Tailor — promoting a new pattern into the
 
 Every suggestion the Tailor produces is tagged with a `destination` field. Two values:
 
-- **`superagent`** — generic improvement that benefits any user of Superagent. Goes into the committed framework tree at `superagent/`. Implemented by the Coder. Examples: a new skill that any user could use, a new ingestor for a popular data source, a fix to the daily-update output format, a new auto-capture rule that's universally useful, a new template, a doc fix.
-- **`_custom`** — user-specific improvement that mentions the user's specific assets, contacts, accounts, addresses, household routines, or preferences. Goes into `workspace/_custom/`. Implemented by the Tailor directly (no Coder hand-off). Examples: a skill that drafts the carpool-pickup email to the kid's school, a template that styles the Outbox-to-tax-preparer CSV the way *your* tax preparer wants, a rule that says "always remind me to bring the camera to my parents' anniversary parties".
+- **`superagent`** — generic improvement that benefits any user of Superagent. Goes into the committed framework tree at `superagent/`. Implemented by the Supercoder. Examples: a new skill that any user could use, a new ingestor for a popular data source, a fix to the daily-update output format, a new auto-capture rule that's universally useful, a new template, a doc fix.
+- **`_custom`** — user-specific improvement that mentions the user's specific assets, contacts, accounts, addresses, household routines, or preferences. Goes into `workspace/_custom/`. Implemented by the Tailor directly (no Supercoder hand-off). Examples: a skill that drafts the carpool-pickup email to the kid's school, a template that styles the Outbox-to-tax-preparer CSV the way *your* tax preparer wants, a rule that says "always remind me to bring the camera to my parents' anniversary parties".
 
-The Tailor defaults to `_custom` whenever it's unsure. The Coder REFUSES briefs whose `destination` is `superagent` but whose body contains workspace-specific content.
+The Tailor defaults to `_custom` whenever it's unsure. The Supercoder REFUSES briefs whose `destination` is `superagent` but whose body contains workspace-specific content.
 
 ### The hard safeguard
 
@@ -105,9 +105,9 @@ This is the single most important safety guarantee: **personal data cannot leak 
 ## Suggestion lifecycle
 
 1. **Proposed** — Tailor adds the row to `pm-suggestions.yaml` with `status: proposed`. The next `tailor-review` summary surfaces it.
-2. **Approved** — user picks "approve" in the Tailor's report. `status: approved`, `resolved_at: <now>`. If `destination: superagent`, the brief is handed to the Coder. If `destination: _custom`, the Tailor implements it directly in this same turn.
+2. **Approved** — user picks "approve" in the Tailor's report. `status: approved`, `resolved_at: <now>`. If `destination: superagent`, the brief is handed to the Supercoder. If `destination: _custom`, the Tailor implements it directly in this same turn.
 3. **Declined** — user picks "decline". `status: declined`, `resolved_at: <now>`. The reason goes into `notes`. The Tailor never re-proposes a declined suggestion (matched by `problem` text similarity) without a clear new piece of evidence.
-4. **Implemented** — once the Coder (for `superagent`) or the Tailor (for `_custom`) actually writes the change, the row's `status` flips to `implemented` and `implementation_notes` records what was created / modified.
+4. **Implemented** — once the Supercoder (for `superagent`) or the Tailor (for `_custom`) actually writes the change, the row's `status` flips to `implemented` and `implementation_notes` records what was created / modified.
 5. **Deferred** — user picks "defer" or "later". The row stays `status: proposed` but `notes` records "deferred from <date>". Won't re-surface in the next 14 days.
 
 ---
@@ -194,7 +194,7 @@ For each new suggestion: approve / edit / defer / decline?
 
 ## Boundaries
 
-- The Tailor does NOT modify framework code under `superagent/`. That's the Coder's job.
+- The Tailor does NOT modify framework code under `superagent/`. That's the Supercoder's job.
 - The Tailor DOES write to `_memory/pm-suggestions.yaml`, `_memory/_checkpoints/<date>/` (for backups), and (for `_custom`-tagged suggestions only) to `workspace/_custom/`.
 - The Tailor DOES NOT write to `workspace/Domains/`, `_memory/bills.yaml`, `_memory/health-records.yaml`, etc. — those are owned by the operational skills, not the Tailor.
 - Hygiene-pass repairs are mechanical and reversible only. Anything that would lose information requires user approval (default: surface it as a strategic suggestion instead).
@@ -219,17 +219,17 @@ The daily-update / weekly-review skills nudge a `tailor-review` run when:
 
 ---
 
-## Co-existence with the Coder
+## Co-existence with the Supercoder
 
-The Tailor and Coder are both halves of the same loop. Workflow:
+The Tailor and Supercoder are both halves of the same loop. Workflow:
 
 1. Tailor runs `tailor-review`, produces suggestions.
 2. User approves a `destination: superagent` suggestion.
-3. Tailor packages the suggestion as a brief and hands it to the Coder (in chat: "Coder, implement pm-2026-04-28-001 per the brief").
-4. Coder reads the brief, re-runs the safeguard (defense in depth), implements the change in `superagent/`, writes / updates tests, runs `pytest`, commits with a single-sentence imperative subject.
-5. Coder reports back: "Implemented pm-2026-04-28-001. Modified files: …. Tests pass. Committed as <short-sha>."
+3. Tailor packages the suggestion as a brief and hands it to the Supercoder (in chat: "Supercoder, implement pm-2026-04-28-001 per the brief").
+4. Supercoder reads the brief, re-runs the safeguard (defense in depth), implements the change in `superagent/`, writes / updates tests, runs `pytest`, commits with a single-sentence imperative subject.
+5. Supercoder reports back: "Implemented pm-2026-04-28-001. Modified files: …. Tests pass. Committed as <short-sha>."
 6. Tailor flips the suggestion's `status` to `implemented`, records the commit SHA in `implementation_notes`.
 
-For `destination: _custom` suggestions, the Tailor writes the file directly into `workspace/_custom/` and flips `status: implemented` itself — no Coder involvement.
+For `destination: _custom` suggestions, the Tailor writes the file directly into `workspace/_custom/` and flips `status: implemented` itself — no Supercoder involvement.
 
-The Coder REFUSES briefs that fail its own safeguard scan, regardless of the Tailor's tag. The defense-in-depth here is intentional: a Tailor bug should not be able to leak personal data into committed code.
+The Supercoder REFUSES briefs that fail its own safeguard scan, regardless of the Tailor's tag. The defense-in-depth here is intentional: a Tailor bug should not be able to leak personal data into committed code.

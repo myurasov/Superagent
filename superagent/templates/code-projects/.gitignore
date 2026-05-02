@@ -1,0 +1,41 @@
+# Default code-project .gitignore (Python-flavored).
+# Replace with language-specific patterns once the project's stack is final.
+
+# Python
+*.pyc
+*.pyo
+__pycache__/
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+
+# Test / cache artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Node / JS (kept here so a project that swaps to TS/JS still has the basics)
+node_modules/
+.next/
+.turbo/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+*.swp
+*.swo
+
+# Secrets — never commit
+.env
+.env.local
+*.key
+*.pem

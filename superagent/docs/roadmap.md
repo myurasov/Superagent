@@ -167,7 +167,7 @@ The 5-year picture, recorded so the framework has a shape to grow toward:
 - **Predictive surfacing.** Today's daily-update reacts to what's in the indexes. The vision is to predict — "you usually book the dentist around this time of year; want me to reach out?", "this bill amount is unusual based on the last 12 months; want to question it?", "the dishwasher is making a noise per Home Assistant; based on similar patterns, it's likely the rinse aid pump; here are three contractors who've fixed this".
 - **Conversational depth.** The user can ask anything about their own life and get a sourced answer. "Where did I leave that umbrella?" "What was Mom's reaction when we got her the watch in 2024?" "How much have I spent on coffee this year?" "Is my heart-rate trend healthy compared to a year ago?"
 - **Outbound automation, opt-in.** With explicit per-task approval, Superagent can send the email / file the doc / book the appointment — using the user's voice, their preferences, their accounts. The trust is built from a thousand correct surface-and-ask interactions before any automate-and-tell move.
-- **The Tailor / Coder loop runs hot.** The framework that builds itself becomes self-sustaining; the user maintains it by saying "this should be different" rather than by writing code.
+- **The Tailor / Supercoder loop runs hot.** The framework that builds itself becomes self-sustaining; the user maintains it by saying "this should be different" rather than by writing code.
 
 ## Explicitly out of scope
 

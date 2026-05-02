@@ -5,9 +5,11 @@ Creates `workspace/` (or the path configured via
 `--workspace`) with:
   - `_memory/`  — copied from `superagent/templates/memory/`
   - `Domains/`  — the 10 default domains, each with the 4-file structure
-  - `Inbox/`, `Outbox/`, `Archive/`, `Tmp/` — staging / output / archive folders
-  - `_custom/`  — empty per-user overlay scaffold
-  - `todo.md`   — workspace-level cross-cutting task view
+  - `Inbox/`, `Outbox/`, `Archive/` — staging / output / archive folders
+  - `Projects/`, `Sources/`         — personal-life folders
+  - `Code/`                         — Supercoder Mode 2 code projects
+  - `_custom/`                      — empty per-user overlay scaffold
+  - `todo.md`                       — workspace-level cross-cutting task view
 
 Re-running this script never overwrites existing files. Safe to invoke
 repeatedly — useful after pulling framework updates that ship new
@@ -228,6 +230,7 @@ def init_folders(workspace: Path, framework: Path, dry_run: bool, log: list[str]
         ("Archive", readmes / "Archive.md"),
         ("Projects", readmes / "Projects.md"),
         ("Sources", readmes / "Sources.md"),
+        ("Code", readmes / "Code.md"),
     ]
     touched = 0
     for name, readme_src in folders:

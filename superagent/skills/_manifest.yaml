@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-05-01T03:49:05-07:00'
-skill_count: 47
+generated_at: '2026-05-01T16:58:30-07:00'
+skill_count: 48
 skills:
 - name: superagent-add-account
   stem: add-account
@@ -944,6 +944,41 @@ skills:
   typical_token_cost: 476
   typical_files_read: []
   origin: framework
+- name: superagent-supercoder
+  stem: supercoder
+  path: superagent/skills/supercoder.md
+  one_line: 'Build standalone coding projects under workspace/Code/<slug>/. Subcommands: new / list /
+    open / status / work / close / archive. Self-contained per procedures.md § 40; the Supercoder cannot
+    write outs'
+  triggers:
+  - supercoder
+  - supercoder new
+  - supercoder open
+  - supercoder list
+  - supercoder status
+  - supercoder work
+  - supercoder close
+  - supercoder archive
+  - new code project
+  - start a code project
+  - work on <project>
+  - what code projects am I running
+  - list code projects
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 182
+  h2_steps: 3
+  h3_subsections: 7
+  typical_token_cost: 2550
+  typical_files_read:
+  - _memory/code-projects-index.yaml
+  - workspace/_memory/code-projects-index.yaml
+  - workspace/_memory/context.yaml
+  - workspace/_memory/interaction-log.yaml
+  - workspace/_memory/decisions.yaml
+  origin: framework
 - name: superagent-tags
   stem: tags
   path: superagent/skills/tags.md
@@ -986,7 +1021,7 @@ skills:
   lines: 148
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2243
+  typical_token_cost: 2248
   typical_files_read:
   - _memory/pm-suggestions.yaml
   - _memory/contacts.yaml

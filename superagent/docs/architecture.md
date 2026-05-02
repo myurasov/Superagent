@@ -9,7 +9,7 @@
   - [Two halves of the repo](#two-halves-of-the-repo)
   - [Memory: structured + narrative](#memory-structured--narrative)
   - [Skills, tools, ingestors](#skills-tools-ingestors)
-  - [The dual-agent loop (Tailor + Coder)](#the-dual-agent-loop-tailor--coder)
+  - [The dual-agent loop (Tailor + Supercoder)](#the-dual-agent-loop-tailor--supercoder)
   - [The hard safeguard](#the-hard-safeguard)
   - [The 4-file domain convention](#the-4-file-domain-convention)
   - [The PARA / GTD / CODE lineage](#the-para--gtd--code-lineage)
@@ -29,7 +29,7 @@ Superagent is a **personal-life operating system** built on five layers:
 4. **A reference library — Sources** (`workspace/Sources/`) — immutable documents the user owns (`documents/`) plus pointers to external data (`references/<*>.ref.md`), with an evictable cache (`_cache/`) so the agent reads local first.
 5. **An agent skin** (`superagent/skills/*.md` + `superagent/tools/`) — invocable behaviours that read all four layers, write to layers 1-3, and speak the user's language.
 
-All layers are designed for **graceful degradation**. Structured vault works without narrative. Narrative works without structured. Sources work without ingestion. Agent skin works at the most basic level by reading and writing markdown — every advanced feature (ingestion, caching, surfacing, audit, the Tailor / Coder loop) layers on top.
+All layers are designed for **graceful degradation**. Structured vault works without narrative. Narrative works without structured. Sources work without ingestion. Agent skin works at the most basic level by reading and writing markdown — every advanced feature (ingestion, caching, surfacing, audit, the Tailor / Supercoder loop) layers on top.
 
 The split between Domains and Projects is the PARA distinction made explicit:
 
@@ -42,53 +42,52 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 
 ```
 <repo-root>/
-├── superagent/                 ← framework code (committed; this is the product)
-│   ├── AGENTS.md                 ← canonical IDE-agnostic rules (read on demand)
-│   ├── superagent.agent.md     ← role definitions (Superagent + helpers)
-│   ├── procedures.md             ← contracts: ingestion, capture, surfacing, cadences
-│   ├── tailor.agent.md           ← Tailor's role
-│   ├── coder.agent.md            ← Coder's role
-│   ├── skills/                   ← every skill, one .md per skill
-│   ├── templates/
-│   │   ├── memory/               ← YAML templates copied to _memory/ on init
-│   │   ├── domains/              ← markdown templates per the 4-file convention
-│   │   ├── folder-readmes/       ← READMEs scaffolded into top-level workspace folders
-│   │   ├── githooks/             ← commit-msg hook reference implementation
-│   │   └── todo.md               ← scoped task-view template
-│   ├── tools/
-│   │   ├── workspace_init.py     ← idempotent scaffold
-│   │   ├── validate.py           ← schema-check the workspace
-│   │   ├── render_status.py      ← regenerate scoped status.md / todo.md
-│   │   ├── log_user_query.py     ← UserPromptSubmit hook for the Tailor's friction analysis
-│   │   └── ingest/
-│   │       ├── _base.py          ← IngestorBase contract
-│   │       ├── _registry.py      ← every supported source's metadata
-│   │       ├── _stubs.py         ← StubIngestor for not-yet-implemented sources
-│   │       ├── _orchestrator.py  ← `ingest` skill's CLI
-│   │       └── <source>.py       ← per-source ingestor
-│   ├── tests/                    ← pytest; runs against templates + tools + skills
-│   └── docs/                     ← this file and friends
+├── AGENTS.md                       ← canonical IDE-agnostic rules (read on demand)
+├── README.md                       ← repo intro
+├── CLAUDE.md                       ← Claude Code shim that imports AGENTS.md
+├── pyproject.toml                  ← Python project config
+├── .gitignore, .githooks/, .mcp.json.example, .cursor/, .claude/
 │
-└── workspace/       ← user data (gitignored; created by init)
-    ├── _memory/                  ← YAML indexes (the structured-state vault)
-    ├── _custom/                  ← per-user overlay (additive; rules / skills / templates)
-    ├── _checkpoints/<date>/      ← daily memory snapshots (auto, 14-day retention)
-    ├── Domains/                  ← per-domain folders (ongoing responsibilities)
-    │   └── <Domain>/             ←   info.md / status.md / history.md / rolodex.md / sources.md
-    │       └── Resources/        ←     drafts / working files / agent artifacts (lazy)
-    ├── Projects/                 ← per-project folders (time-bounded efforts)
-    │   └── <project-slug>/       ←   info.md (charter) / status.md / history.md / rolodex.md / sources.md
-    │       ├── Resources/        ←     drafts / working files (lazy)
-    │       └── Sources/          ←     project-scoped reference library (lazy)
-    ├── Sources/                  ← reference library (IMMUTABLE)
-    │   ├── documents/            ←   actual local files; never deleted by skills
-    │   ├── references/           ←   `.ref.md` pointers to external data
-    │   └── _cache/               ←   fetched copies (TTL + LRU eviction; only auto-managed sub-tree)
-    ├── Inbox/                    ← staging for incoming files
-    ├── Outbox/                   ← shareable artifacts (drafts, summaries, handoff packet)
-    ├── Archive/                  ← reversible archive (per `doctor` skill)
-    ├── Tmp/                      ← scratch (per skill, lazily created)
-    └── todo.md                   ← cross-cutting task view
+├── superagent/                     ← framework code (committed; this is the product)
+│   ├── superagent.agent.md         ← role definitions (Superagent + helpers)
+│   ├── procedures.md               ← contracts: ingestion, capture, surfacing, cadences
+│   ├── tailor.agent.md             ← Tailor's role (observer + proposer)
+│   ├── supercoder.agent.md         ← Supercoder's role (Mode 1 framework + Mode 2 project build)
+│   ├── skills/                     ← every skill, one .md per skill (incl. `supercoder.md`)
+│   ├── templates/
+│   │   ├── memory/                 ← YAML templates copied to _memory/ on init
+│   │   ├── domains/                ← markdown templates per the 4-file convention
+│   │   ├── projects/               ← personal-life Project templates
+│   │   ├── code-projects/          ← code-project scaffold (.supercoder/ + README + .gitignore)
+│   │   ├── folder-readmes/         ← READMEs scaffolded into top-level workspace folders
+│   │   ├── workflows/, sources/, githooks/
+│   │   └── todo.md                 ← scoped task-view template
+│   ├── tools/                      ← workspace_init, validate, render_status, log_user_query, …
+│   │   └── ingest/                 ← _base, _registry, _orchestrator, _stubs, per-source ingestors
+│   ├── tests/                      ← pytest; runs against templates + tools + skills
+│   └── docs/                       ← this file and friends
+│
+└── workspace/                      ← user data (gitignored; created by init)
+    ├── _memory/                    ← YAML indexes (the structured-state vault)
+    ├── _custom/                    ← per-user overlay (additive; rules / skills / templates)
+    ├── _checkpoints/<date>/        ← daily memory snapshots (auto, 14-day retention)
+    ├── Domains/                    ← per-domain folders (ongoing responsibilities)
+    │   └── <Domain>/               ←   info.md / status.md / history.md / rolodex.md / sources.md
+    │       └── Resources/          ←     drafts / working files / agent artifacts (lazy)
+    ├── Projects/                   ← personal-life projects (time-bounded efforts)
+    │   └── <project-slug>/         ←   info.md / status.md / history.md / rolodex.md / sources.md
+    ├── Code/                       ← Supercoder Mode 2 code projects (NEW)
+    │   └── <slug>/                 ←   .supercoder/ (info / status / history / decisions)
+    │                               ←   + actual source code, optional .git/, README.md
+    ├── Sources/                    ← reference library (IMMUTABLE except _cache/)
+    │   ├── documents/              ←   actual local files; never deleted by skills
+    │   ├── references/             ←   `.ref.md` pointers to external data
+    │   └── _cache/                 ←   fetched copies (TTL + LRU eviction)
+    ├── Inbox/                      ← staging for incoming files
+    ├── Outbox/                     ← shareable artifacts (drafts, summaries, handoff packet)
+    ├── Archive/                    ← reversible archive (per `doctor` skill)
+    │   └── code/                   ←   archived code projects
+    └── todo.md                     ← cross-cutting task view
 ```
 
 The two halves never write into each other. The framework reads the workspace and may modify the workspace; the workspace never modifies the framework. The framework code is committable; the workspace is gitignored and stays local to the user's machine forever.
@@ -122,7 +121,7 @@ The two layers serve different access patterns:
 | `data-sources.yaml` | per-source ingestion config and state | every ingestor, `ingest` skill |
 | `personal-signals.yaml` | self-development feedback (capture + surface) | `personal-signals`, `weekly-review`, Tailor |
 | `action-signals.yaml` | "this should change" signals (target: tailor / superagent) | every skill (capture); Tailor (drain) |
-| `pm-suggestions.yaml` | Tailor's framework-improvement backlog | Tailor, Coder |
+| `pm-suggestions.yaml` | Tailor's framework-improvement backlog | Tailor, Supercoder |
 | `procedures.yaml` | personal playbooks | `research`, ad-hoc retrieval |
 | `insights.yaml` | distilled learnings | `research`, ad-hoc retrieval |
 
@@ -150,9 +149,9 @@ The three are deliberately separated:
 
 This separation means **skills are language**, **tools are code**, and **ingestors are pluggable**. A user can write a custom skill (in `_custom/skills/`) without touching code; a developer can add a new tool without changing any skill; a community contributor can add a new ingestor for a new data source by dropping a file in `tools/ingest/` and adding a row to `_registry.py`.
 
-## The dual-agent loop (Tailor + Coder)
+## The dual-agent loop (Tailor + Supercoder)
 
-Superagent ships with built-in introspection. The full role definitions are in `tailor.agent.md` and `coder.agent.md`; the user-facing skill is `tailor-review`. The high-level loop:
+Superagent ships with built-in introspection. The full role definitions are in `tailor.agent.md` and `supercoder.agent.md`; the user-facing skill is `tailor-review`. The high-level loop:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -181,25 +180,25 @@ Superagent ships with built-in introspection. The full role definitions are in `
 │  destination = _custom           │  destination = superagent         │
 │   ────────────────────           │   ───────────────────────           │
 │  Tailor implements directly      │  Tailor packages a brief            │
-│   into workspace/   │   and hands to Coder                │
+│   into workspace/   │   and hands to Supercoder                │
 │   _custom/                       │                                     │
-│  Sets status: implemented        │  Coder re-runs safeguard            │
+│  Sets status: implemented        │  Supercoder re-runs safeguard            │
 │                                  │    REFUSE on personal-data match    │
-│                                  │  Coder modifies superagent/       │
-│                                  │  Coder updates tests                │
-│                                  │  Coder runs `pytest -q`             │
-│                                  │  Coder commits (single-sentence,    │
+│                                  │  Supercoder modifies superagent/       │
+│                                  │  Supercoder updates tests                │
+│                                  │  Supercoder runs `pytest -q`             │
+│                                  │  Supercoder commits (single-sentence,    │
 │                                  │    imperative, no AI-attribution)   │
 │                                  │  Tailor flips status: implemented   │
 │                                  │  with commit SHA                    │
 └──────────────────────────────────┴─────────────────────────────────────┘
 ```
 
-This is "the framework that builds itself." It works because the safeguards and the destination contract make it provably safe to commit Coder's output: workspace data CANNOT leak into committed framework code.
+This is "the framework that builds itself." It works because the safeguards and the destination contract make it provably safe to commit Supercoder's output: workspace data CANNOT leak into committed framework code.
 
 ## The hard safeguard
 
-Both Tailor and Coder run a token scan before writing anything to `superagent/`:
+Both Tailor and Supercoder run a token scan before writing anything to `superagent/`:
 
 - Every name from `_memory/contacts.yaml.contacts[].name` and `.aliases[]`.
 - Every domain id from `_memory/domains-index.yaml`.
@@ -209,7 +208,7 @@ Both Tailor and Coder run a token scan before writing anything to `superagent/`:
 
 On any match, the destination is **forcibly re-routed to `_custom/`**, and an `implementation_notes` row records what triggered the re-route. The user is told.
 
-The safeguard runs **twice** — once in the Tailor (at suggestion-write time) and once in the Coder (at brief-receipt time). Defense in depth: a Tailor bug should not be able to leak data through to committed code.
+The safeguard runs **twice** — once in the Tailor (at suggestion-write time) and once in the Supercoder (at brief-receipt time). Defense in depth: a Tailor bug should not be able to leak data through to committed code.
 
 ## The 4-file domain convention
 

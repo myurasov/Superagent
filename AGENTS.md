@@ -15,7 +15,7 @@
   - [Skills](#skills)
   - [Data ingestion contract](#data-ingestion-contract)
   - [Logging](#logging)
-  - [Domain-folder convention](#domain-folder-convention)
+  - [Domain / Project / Sources / Code folder convention](#domain--project--sources--code-folder-convention)
   - [Public artifact destination](#public-artifact-destination)
   - [Git commits](#git-commits)
   - [Local task references](#local-task-references)
@@ -57,7 +57,7 @@ If this repository also hosts other AI-assistant frameworks (work assistants, pr
 - **Role definitions** (Superagent + helper personas): read and follow [`superagent/superagent.agent.md`](superagent/superagent.agent.md).
 - **Operational behavior** (init, cadences, data-ingestion contract, capture / surfacing patterns, autonomy, memory): read and follow [`superagent/procedures.md`](superagent/procedures.md).
 - **Tailor (framework hygiene + improvement)**: read and follow [`superagent/tailor.agent.md`](superagent/tailor.agent.md).
-- **Coder (implementation)**: read and follow [`superagent/coder.agent.md`](superagent/coder.agent.md).
+- **Supercoder (implementation)**: read and follow [`superagent/supercoder.agent.md`](superagent/supercoder.agent.md). Two modes: **Mode 1** implements approved Tailor suggestions into `superagent/`; **Mode 2** builds standalone coding projects into `workspace/Code/<slug>/` with a path-scope safeguard (see `procedures.md` § 40).
 - **Custom overlay** (per-user extensions): see § "Custom overlay" below; full reference in [`superagent/docs/custom-overlay.md`](superagent/docs/custom-overlay.md).
 
 ---
@@ -87,7 +87,7 @@ Whenever the agent (or any skill) is about to create a new **skill**, **agent ro
 2. **If unambiguous**, announce the destination at the top of the response and proceed.
 3. **If ambiguous**, **ask the user** with the `AskQuestion` tool: choose `superagent`, `_custom`, or `cancel`.
 4. **Safeguard**: scan the artifact body for any name from `_memory/contacts.yaml`, `domains-index.yaml`, `assets-index.yaml`, `accounts-index.yaml`, address fragments, account numbers, license-plate patterns, or known personal identifiers. On any match, refuse the `superagent/` path and re-route to `workspace/_custom/`.
-5. **NEVER** silently write user-specific content under `superagent/` — even if explicitly requested. The Coder enforces this with a refusal on receipt.
+5. **NEVER** silently write user-specific content under `superagent/` — even if explicitly requested. The Supercoder enforces this with a refusal on receipt.
 
 This contract does **not** govern workspace **data** writes (domain files, contact entries, bill records, appointment rows) — those go to `workspace/` by their own conventions (see `procedures.md`).
 
@@ -182,9 +182,9 @@ Superagent's value scales with the breadth of authorized data sources. The contr
 
 ---
 
-## Domain / Project / Sources folder convention
+## Domain / Project / Sources / Code folder convention
 
-Three first-class folder kinds in `workspace/`:
+Four first-class folder kinds in `workspace/`:
 
 ### Domains/
 
@@ -238,6 +238,25 @@ Sources/
 
 Filenames inside Domain / Project folders are lowercase and hyphenated; sub-folders for events, trips, sub-efforts follow the same rule.
 
+### Code/
+
+**Code project** = a standalone coding project built by the Supercoder in Mode 2 (project build). Distinct from personal-life Projects; lives at `workspace/Code/<slug>/` with a hidden `.supercoder/` metadata folder:
+
+```
+Code/<slug>/
+  .supercoder/info.md       # charter (goal, scope, success criteria, language stack, target completion, tests)
+  .supercoder/status.md     # RAG + open / done tasks
+  .supercoder/history.md    # chronological log of decisions / milestones
+  .supercoder/decisions.yaml # append-only decisions log
+  README.md                 # human-facing project README
+  .gitignore                # language-aware default (Python by default; user may replace)
+  (project source — language-specific layout)
+```
+
+Each project is self-contained — the Supercoder MUST NOT write outside the active project's folder, except for four enumerated workspace-level writes (the index `_memory/code-projects-index.yaml`, the active-pointer `_memory/context.yaml.active_code_project`, append-only `_memory/interaction-log.yaml`, and optionally `_memory/decisions.yaml` when a project decision is logged). The path-scope safeguard is hard and cannot be disabled. See `procedures.md` § 40 for the full Code Projects Contract.
+
+Invocation is via the `supercoder` skill (`supercoder new / list / open / status / work / close / archive`). The active project is `_memory/context.yaml.active_code_project`. Each project may have its own `.git/` repo (independent of the parent Superagent repo).
+
 ---
 
 ## Public artifact destination
@@ -277,7 +296,7 @@ This policy applies whenever the agent commits framework code under `superagent/
 - references to model names (`gpt-…`, `claude-…`, `gemini-…`, `composer-…`)
 - any mention in the message body that the change was AI-assisted, agent-generated, or co-authored with a model
 
-This applies whether the commit is authored by a human, by the Superagent Coder, or by any other agent.
+This applies whether the commit is authored by a human, by the Supercoder, or by any other agent.
 
 ### Strip-after-commit (Cursor injection workaround)
 
@@ -430,7 +449,7 @@ Per `docs/perf-improvement-ideas.md` BB-2-b — practical guidance for Cursor / 
 The IDE controls how the prompt is structured and which prefixes are cached. The framework can still help by keeping AGENTS.md and procedures.md SHORT and STABLE — avoiding edits during a session that would invalidate the cache for downstream turns.
 
 - **Don't edit `AGENTS.md` / `procedures.md` mid-session.** Cursor's prompt cache rewards a stable prefix; mutating the docs that anchor the prefix forces a full re-cache, paying the long form back to the model on every subsequent turn.
-- **The Tailor / Coder loop's commit-then-restart cycle is well-suited to this.** After the Tailor proposes a doc change, approve it, let the Coder commit, then start a fresh chat session. The new session pays the full prompt cost ONCE; subsequent turns reap the cache savings.
+- **The Tailor / Supercoder loop's commit-then-restart cycle is well-suited to this.** After the Tailor proposes a doc change, approve it, let the Supercoder commit, then start a fresh chat session. The new session pays the full prompt cost ONCE; subsequent turns reap the cache savings.
 - **Don't open many framework files mid-session.** Each one bumps the prompt; fewer files = better cache reuse.
 - **For long-running ingestion or scenario sessions**, prefer running them via dedicated tool invocations (each is a stand-alone process) rather than long chat threads.
 

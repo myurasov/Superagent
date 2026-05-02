@@ -317,7 +317,7 @@ A wrapper that does this and tags each block with `cache_control: { type: "ephem
 
 Practical guidance for the user:
 - Don't edit AGENTS.md / procedures.md during an active conversation if you can help it; commit edits between sessions.
-- The Tailor / Coder loop's commit-then-restart cycle is well-suited to this.
+- The Tailor / Supercoder loop's commit-then-restart cycle is well-suited to this.
 
 ### BB-3. Pre-warmed cadence briefings (cron / launchd)
 

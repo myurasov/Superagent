@@ -88,6 +88,7 @@
   - [37. Inbox Triage Contract](#37-inbox-triage-contract)
   - [38. Local-first Read Order](#38-local-first-read-order)
   - [39. Skill-anti-pattern Catalogue](#39-skill-anti-pattern-catalogue)
+  - [40. Code Projects Contract](#40-code-projects-contract)
 
 ---
 
@@ -285,7 +286,7 @@ Cadences are aspirational defaults; the user can run any of them on demand at an
 
 **Trigger:** user runs `tailor-review` (suggested cadence: every 90 days; daily-update nudges when stale).
 
-The Tailor's hygiene + strategic-improvement passes per `tailor.agent.md`. Outputs ranked suggestions in `pm-suggestions.yaml`; each tagged `destination: superagent` (handed to Coder) or `destination: _custom` (Tailor implements directly). The hard safeguard against personal data leaking into framework-bound writes is enforced here AND on receipt by the Coder.
+The Tailor's hygiene + strategic-improvement passes per `tailor.agent.md`. Outputs ranked suggestions in `pm-suggestions.yaml`; each tagged `destination: superagent` (handed to Supercoder) or `destination: _custom` (Tailor implements directly). The hard safeguard against personal data leaking into framework-bound writes is enforced here AND on receipt by the Supercoder.
 
 ---
 
@@ -543,7 +544,7 @@ Whenever a skill is about to create a new **skill**, **agent role**, **rule**, *
 2. **If unambiguous**, announce the destination at the top of the response and proceed.
 3. **If ambiguous**, **ask the user** with the `AskQuestion` tool: choose `superagent`, `_custom`, or `cancel`.
 4. **Safeguard**: scan the artifact body for any name from `_memory/contacts.yaml`, `domains-index.yaml`, `assets-index.yaml`, `accounts-index.yaml`, address fragments, account numbers, license-plate patterns. On any match, refuse the `superagent/` path and re-route to `workspace/_custom/`.
-5. **NEVER** silently write user-specific content under `superagent/`. The Coder enforces this with a refusal on receipt.
+5. **NEVER** silently write user-specific content under `superagent/`. The Supercoder enforces this with a refusal on receipt.
 
 This contract does NOT govern workspace **data** writes (domain files, contact entries, bill records, appointment rows) — those go to `workspace/` by their own conventions.
 
@@ -580,7 +581,7 @@ The full pipeline (and which steps each outbound skill owns) is in `docs/outboun
 - The most sensitive files (`health-records.yaml`, `accounts-index.yaml`, anything under `Outbox/handoff/`) are surfaced explicitly in `docs/architecture.md` § "Sensitive subfiles" so the user knows which to symlink to encrypted storage if desired.
 - Skills that *produce* a sensitive artifact (e.g. `handoff` → "if I get hit by a bus" packet) write to a clearly-labelled subfolder (`Outbox/handoff/`) and surface the location in chat with a "store this somewhere safe" reminder.
 - Skills that *consume* sensitive data (medic prep brief, bookkeeper tax packet) include a "do not paste this into a chat assistant unless you trust it" banner at the top of the rendered output.
-- The Tailor / Coder safeguard scans every framework-bound write for names, addresses, account-number patterns, license-plate patterns. On any match, the destination is forcibly re-routed to `_custom/` regardless of the original tag.
+- The Tailor / Supercoder safeguard scans every framework-bound write for names, addresses, account-number patterns, license-plate patterns. On any match, the destination is forcibly re-routed to `_custom/` regardless of the original tag.
 
 ---
 
@@ -783,7 +784,7 @@ Active projects surface in cadence skills per these rules:
 For projects with `recurring` ≠ `none`, when the project completes:
 
 1. The current row stays in `_memory/projects-index.yaml` as historical record.
-2. The Coder-side helper (`_orchestrator`-equivalent) auto-creates the next-cycle row:
+2. The Supercoder-side helper (`_orchestrator`-equivalent) auto-creates the next-cycle row:
    - `id: <base>-<next-period>` (e.g. `tax-2025` → `tax-2026`).
    - Inherits `name` (with year-substitution if applicable), `scope`, `success_criteria`, `deliverables`, `stakeholders`, `related_domains`, `recurring`.
    - `start_date: target_date + 1 day` (or rule-based — annual taxes default to "Jan 1 of next year").
@@ -1262,3 +1263,105 @@ Implements perf-improvement-ideas.md § "Anti-patterns to flag in skills". Backe
 **Scanning**: `tools/anti_patterns.py` walks every skill markdown, applies the regex patterns, prints findings. The Tailor's strategic pass runs it; `doctor` runs it (when `config.preferences.anti_patterns.scan_skills: true`).
 
 **Strict mode** (`--strict`): exit non-zero when any `warning` hit found. Suitable for CI.
+
+---
+
+## 40. Code Projects Contract
+
+The contract that governs Supercoder's **Mode 2** (project build). Mode 1 (framework improvement) is governed by the existing artifact-creation contract (§ 12) plus the personal-data safeguard described in `supercoder.agent.md` § "Personal-data safeguard".
+
+**Distinguish from `Projects/`**: personal-life Projects (§ 16) live at `workspace/Projects/<slug>/` and are time-bounded efforts with personal-life shape (charter, RAG status, rolodex). **Code projects** live at `workspace/Code/<slug>/` and carry actual source code with agent metadata in a hidden `.supercoder/` subfolder. The two never mix; a tax-filing project is a personal-life Project, a Python RSS reader is a code project.
+
+### 40.1 Layout
+
+```
+workspace/Code/<slug>/
+├── .supercoder/                ← agent metadata
+│   ├── info.md                 ←   charter (purpose, scope, success criteria, language stack, target completion, tests)
+│   ├── status.md               ←   RAG + open / done tasks
+│   ├── history.md              ←   chronological log of decisions / milestones / status flips
+│   └── decisions.yaml          ←   append-only decisions log
+├── .gitignore                  ← language-aware default (Python by default; user may replace)
+├── README.md                   ← human-facing project README
+└── (project source — language-specific layout)
+```
+
+The single project-level index lives at **`workspace/_memory/code-projects-index.yaml`**.
+
+### 40.2 Self-containment (the hard rule)
+
+Each code project is **self-contained**. The Supercoder, while operating on project `X`, MUST NOT write outside `workspace/Code/X/` except for the explicitly enumerated workspace-level writes in § 40.4.
+
+The path-scope safeguard in `supercoder.agent.md` § "Path-scope safeguard" enforces this. A Mode 2 session that attempts to write into `superagent/`, `workspace/Domains/`, `workspace/Projects/`, `workspace/Sources/`, `workspace/Outbox/`, or another project's folder is REFUSED with a documented error message. The user cannot disable the safeguard.
+
+### 40.3 Lifecycle
+
+`planning → active → paused → completed → archived` (mirrors § 16).
+
+| State | Supercoder reads | Supercoder writes | User actions |
+|---|---|---|---|
+| **planning** | `info.md`, charter Q&A | `.supercoder/*` only | confirm charter; promote to `active` |
+| **active** | `info.md`, `status.md`, source | project folder + enumerated workspace writes | `supercoder work` |
+| **paused** | nothing | nothing | `supercoder open <slug>` to resume |
+| **completed** | read-only | nothing | re-open by `supercoder open` to add another change |
+| **archived** | read-only | nothing | folder moved to `workspace/Archive/code/<slug>/` |
+
+### 40.4 Allowed workspace-level writes (Mode 2)
+
+The path-scope safeguard refuses every write outside the active project folder, EXCEPT these four explicitly enumerated writes:
+
+1. **`workspace/_memory/code-projects-index.yaml`** — append a new row on `supercoder new`; update only the active project's `last_touched_at` / `status` / `summary` fields on `supercoder work` / `close` / `archive`. NEVER touch other projects' rows.
+2. **`workspace/_memory/context.yaml`** — write only `active_code_project: <slug>` (and the enclosing `last_updated`). Refuse any other field write in Mode 2.
+3. **`workspace/_memory/interaction-log.yaml`** — append-only summary row per `supercoder` invocation (kind: `code-project`, action: `new|work|close|archive`, target slug, files-touched count, test result).
+4. **`workspace/_memory/decisions.yaml`** — append a row only when the user explicitly says "log this decision" or equivalent during a `supercoder work` session. Decision row carries `scope: code-project:<slug>`.
+
+Any attempt to write to any other workspace path is refused.
+
+### 40.5 The `code-projects-index.yaml` row schema
+
+```yaml
+- slug: <kebab-case>             # e.g. "rss-reader"
+  name: <human-friendly>         # e.g. "RSS Reader"
+  language: <primary-stack>      # python | typescript | rust | go | mixed | docs
+  status: <state>                # planning | active | paused | completed | archived
+  created_at: <iso-datetime>
+  target_completion_at: <iso-date|null>
+  last_touched_at: <iso-datetime>
+  path: Code/<slug>              # relative to workspace root
+  repo: <kind-or-url>            # local | <remote-url> | none
+  test_command: <shell-string>   # e.g. "pytest" | "npm test" | "cargo test" | "(none)"
+  summary: <one-line>            # ≤ 120 chars; updated on close
+  tags: []                       # optional
+  visibility: private            # always private; code projects are never household / public
+  provenance:                    # standard provenance row
+    source: "supercoder"
+    at: <iso-datetime>
+```
+
+### 40.6 The `.supercoder/info.md` charter (template)
+
+The charter answers, in fixed order: **Goal** (one sentence), **Scope** (in / out, three bullets each), **Success criteria** (three checkable items), **Language stack** (one line), **Target completion** (date or "ongoing"), **Test command** (shell string or "(none)"), **License** (string or "tbd"), **Repo** (local / remote-url / none). Plus a free-text "Notes" section the user owns.
+
+The Supercoder collects answers via a 4-6 question dialogue at `supercoder new` and renders the template. After creation, edits to `info.md` are user-driven; the Supercoder does not silently rewrite the charter — only appends to "Notes" with explicit instruction.
+
+### 40.7 Switching projects
+
+The active code project is `workspace/_memory/context.yaml.active_code_project`. With no slug specified, the Supercoder uses the active. Switching projects is an explicit `supercoder open <slug>` step. After switching, the Supercoder re-reads the new project's `info.md` + `status.md` from disk; **nothing implicit carries over from the prior project's session** (no in-memory context, no copied snippets, no carryover task list).
+
+### 40.8 Per-project git
+
+Each code project may be its own git repo. The Supercoder does NOT auto-init git on `supercoder new`; the user runs `git init` inside the project folder when ready. If a `.git/` directory exists inside the project folder, the Supercoder commits per the standard policy after every `supercoder work` cycle. If no `.git/`, no commit is attempted (only the `history.md` log entry).
+
+The user is encouraged to install the AI-attribution-guard hook into each project repo:
+
+```bash
+mkdir -p workspace/Code/<slug>/.githooks
+cp .githooks/commit-msg workspace/Code/<slug>/.githooks/commit-msg
+git -C workspace/Code/<slug> config core.hooksPath .githooks
+```
+
+### 40.9 Surfacing in cadence skills
+
+`daily-update` and `whatsup` surface code projects with `status: active` whose `last_touched_at` was > 7 days ago, as a "stale code project" line. `monthly-review` lists every active code project with one-line summary. `doctor` flags projects with `status: completed` whose folder hasn't changed in > 90 days as archive candidates.
+
+The Tailor (Mode 1) reads `code-projects-index.yaml` to spot patterns ("user keeps starting and abandoning code projects → propose a `supercoder new --from-template` improvement") but never modifies any project folder.
