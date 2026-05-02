@@ -15,7 +15,7 @@
   - [Skills](#skills)
   - [Data ingestion contract](#data-ingestion-contract)
   - [Logging](#logging)
-  - [Domain / Project / Sources / Code folder convention](#domain--project--sources--code-folder-convention)
+  - [Domain / Project / Sources folder convention](#domain--project--sources-folder-convention)
   - [Public artifact destination](#public-artifact-destination)
   - [Git commits](#git-commits)
   - [Local task references](#local-task-references)
@@ -57,7 +57,7 @@ If this repository also hosts other AI-assistant frameworks (work assistants, pr
 - **Role definitions** (Superagent + helper personas): read and follow [`superagent/superagent.agent.md`](superagent/superagent.agent.md).
 - **Operational behavior** (init, cadences, data-ingestion contract, capture / surfacing patterns, autonomy, memory): read and follow [`superagent/procedures.md`](superagent/procedures.md).
 - **Tailor (framework hygiene + improvement)**: read and follow [`superagent/tailor.agent.md`](superagent/tailor.agent.md).
-- **Supercoder (implementation)**: read and follow [`superagent/supercoder.agent.md`](superagent/supercoder.agent.md). Two modes: **Mode 1** implements approved Tailor suggestions into `superagent/`; **Mode 2** builds standalone coding projects into `workspace/Code/<slug>/` with a path-scope safeguard (see `procedures.md` § 40).
+- **Supercoder (implementation)**: read and follow [`superagent/supercoder.agent.md`](superagent/supercoder.agent.md).
 - **Custom overlay** (per-user extensions): see § "Custom overlay" below; full reference in [`superagent/docs/custom-overlay.md`](superagent/docs/custom-overlay.md).
 
 ---
@@ -182,9 +182,9 @@ Superagent's value scales with the breadth of authorized data sources. The contr
 
 ---
 
-## Domain / Project / Sources / Code folder convention
+## Domain / Project / Sources folder convention
 
-Four first-class folder kinds in `workspace/`:
+Three first-class folder kinds in `workspace/`:
 
 ### Domains/
 
@@ -237,25 +237,6 @@ Sources/
 `.ref.md` template: `superagent/templates/sources/ref.md`. The `.ref` describes `kind` (mcp / cli / url / api / file / vault / manual) + `source` (the identifier) + `ttl_minutes`. The agent resolves a `.ref` by computing `sha256(kind + source)`, checking the cache, fetching only if necessary.
 
 Filenames inside Domain / Project folders are lowercase and hyphenated; sub-folders for events, trips, sub-efforts follow the same rule.
-
-### Code/
-
-**Code project** = a standalone coding project built by the Supercoder in Mode 2 (project build). Distinct from personal-life Projects; lives at `workspace/Code/<slug>/` with a hidden `.supercoder/` metadata folder:
-
-```
-Code/<slug>/
-  .supercoder/info.md       # charter (goal, scope, success criteria, language stack, target completion, tests)
-  .supercoder/status.md     # RAG + open / done tasks
-  .supercoder/history.md    # chronological log of decisions / milestones
-  .supercoder/decisions.yaml # append-only decisions log
-  README.md                 # human-facing project README
-  .gitignore                # language-aware default (Python by default; user may replace)
-  (project source — language-specific layout)
-```
-
-Each project is self-contained — the Supercoder MUST NOT write outside the active project's folder, except for four enumerated workspace-level writes (the index `_memory/code-projects-index.yaml`, the active-pointer `_memory/context.yaml.active_code_project`, append-only `_memory/interaction-log.yaml`, and optionally `_memory/decisions.yaml` when a project decision is logged). The path-scope safeguard is hard and cannot be disabled. See `procedures.md` § 40 for the full Code Projects Contract.
-
-Invocation is via the `supercoder` skill (`supercoder new / list / open / status / work / close / archive`). The active project is `_memory/context.yaml.active_code_project`. Each project may have its own `.git/` repo (independent of the parent Superagent repo).
 
 ---
 

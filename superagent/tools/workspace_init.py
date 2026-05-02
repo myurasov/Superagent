@@ -7,7 +7,6 @@ Creates `workspace/` (or the path configured via
   - `Domains/`  — the 10 default domains, each with the 4-file structure
   - `Inbox/`, `Outbox/`, `Archive/` — staging / output / archive folders
   - `Projects/`, `Sources/`         — personal-life folders
-  - `Code/`                         — Supercoder Mode 2 code projects
   - `_custom/`                      — empty per-user overlay scaffold
   - `todo.md`                       — workspace-level cross-cutting task view
 
@@ -230,7 +229,6 @@ def init_folders(workspace: Path, framework: Path, dry_run: bool, log: list[str]
         ("Archive", readmes / "Archive.md"),
         ("Projects", readmes / "Projects.md"),
         ("Sources", readmes / "Sources.md"),
-        ("Code", readmes / "Code.md"),
     ]
     touched = 0
     for name, readme_src in folders:

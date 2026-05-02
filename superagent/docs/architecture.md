@@ -58,7 +58,6 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 │   │   ├── memory/                 ← YAML templates copied to _memory/ on init
 │   │   ├── domains/                ← markdown templates per the 4-file convention
 │   │   ├── projects/               ← personal-life Project templates
-│   │   ├── code-projects/          ← code-project scaffold (.supercoder/ + README + .gitignore)
 │   │   ├── folder-readmes/         ← READMEs scaffolded into top-level workspace folders
 │   │   ├── workflows/, sources/, githooks/
 │   │   └── todo.md                 ← scoped task-view template
@@ -76,9 +75,6 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
     │       └── Resources/          ←     drafts / working files / agent artifacts (lazy)
     ├── Projects/                   ← personal-life projects (time-bounded efforts)
     │   └── <project-slug>/         ←   info.md / status.md / history.md / rolodex.md / sources.md
-    ├── Code/                       ← Supercoder Mode 2 code projects (NEW)
-    │   └── <slug>/                 ←   .supercoder/ (info / status / history / decisions)
-    │                               ←   + actual source code, optional .git/, README.md
     ├── Sources/                    ← reference library (IMMUTABLE except _cache/)
     │   ├── documents/              ←   actual local files; never deleted by skills
     │   ├── references/             ←   `.ref.md` pointers to external data
@@ -86,7 +82,6 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
     ├── Inbox/                      ← staging for incoming files
     ├── Outbox/                     ← shareable artifacts (drafts, summaries, handoff packet)
     ├── Archive/                    ← reversible archive (per `doctor` skill)
-    │   └── code/                   ←   archived code projects
     └── todo.md                     ← cross-cutting task view
 ```
 

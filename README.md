@@ -56,10 +56,9 @@ superagent/                  ← framework code (committed)
   procedures.md              ← contracts: ingestion, capture, surfacing, cadences
   tailor.agent.md            ← Tailor's role (observer + proposer)
   supercoder.agent.md             ← Supercoder's role (implementer)
-  skills/                    ← 48 skills, one .md per skill, plus _manifest.yaml
+  skills/                    ← 47 skills, one .md per skill, plus _manifest.yaml
   templates/
-    memory/                  ← 33 YAML templates copied to _memory/ on init
-    code-projects/           ← Supercoder Mode 2 scaffold (.supercoder/ + README + .gitignore)
+    memory/                  ← 32 YAML templates copied to _memory/ on init
     domains/                 ← 4-file domain template (info, status, history, rolodex, sources)
     projects/                ← 4-file project template
     folder-readmes/          ← READMEs scaffolded into top-level workspace folders
@@ -82,12 +81,12 @@ superagent/                  ← framework code (committed)
       _orchestrator.py       ← `ingest` skill's CLI
       apple_reminders.py     ← shipped reference ingestor
       csv.py                 ← shipped reference ingestor
-  tests/                     ← 106 tests covering templates + tools + ingestors + skills
+  tests/                     ← 96 tests covering templates + tools + ingestors + skills
   docs/                      ← architecture, data-sources, skills-reference,
                                 domain-guide, faq, quick-start, roadmap
 
 workspace/                   ← user data (gitignored, local-only, created by init)
-  _memory/                   ← 33 YAML indexes (the structured-state vault)
+  _memory/                   ← 32 YAML indexes (the structured-state vault)
   _custom/                   ← per-user overlay (additive; rules / skills / templates)
   _checkpoints/<date>/       ← daily memory snapshots (auto, 14-day retention)
   Domains/                   ← ongoing responsibilities (4-file structure each)
@@ -98,16 +97,13 @@ workspace/                   ← user data (gitignored, local-only, created by i
   Projects/                  ← personal-life projects (time-bounded efforts)
     <project-slug>/          ←   info.md (charter) / status.md / history.md / rolodex.md / sources.md
                              ←   + Resources/ + Sources/ (lazy)
-  Code/                      ← standalone coding projects built by Supercoder Mode 2
-    <slug>/                  ←   .supercoder/ (info / status / history / decisions)
-                             ←   + your source code, optional .git/, README.md
   Sources/                   ← reference library (IMMUTABLE)
     documents/<category>/    ←   actual local files; never auto-deleted
     references/<category>/   ←   .ref.md pointers to external data
     _cache/<source-hash>/    ←   fetched copies (TTL + LRU; only auto-managed sub-tree)
   Inbox/                     ← staging for incoming files
   Outbox/                    ← shareable artifacts (drafts, summaries, handoff packet)
-  Archive/                   ← reversible archive (per `doctor` skill); `code/` for archived code projects
+  Archive/                   ← reversible archive (per `doctor` skill)
   todo.md                    ← cross-cutting task view
 ```
 
@@ -145,7 +141,6 @@ Full architecture: [`superagent/docs/architecture.md`](superagent/docs/architect
 | `handoff` | Generate the "if hit by a bus" packet — accounts, documents, beneficiaries, vault refs. |
 | `doctor` | Workspace data hygiene — duplicates, stale domains, broken refs, expiring documents. |
 | `tailor-review` | Framework hygiene + strategic-improvement passes. The "framework that builds itself" loop. |
-| `supercoder` | Build standalone coding projects under `workspace/Code/<slug>/`. Subcommands: `new` / `list` / `open` / `status` / `work` / `close` / `archive`. Self-contained per `procedures.md` § 40. |
 
 Full catalogue: [`superagent/docs/skills-reference.md`](superagent/docs/skills-reference.md).
 
@@ -187,24 +182,16 @@ Organized by LOE tier (T-shirt sizes XS / S / M / L / XL) with rationale and "do
 
 ---
 
-## Self-improving + project-building
+## Self-improving
 
-Superagent ships with a **Tailor / Supercoder dual-agent loop**. The Supercoder operates in two distinct modes:
-
-**Mode 1 — Framework improvement** (the original loop):
+Superagent ships with a **Tailor / Supercoder dual-agent loop** that watches how you use it:
 
 - The **Tailor** observes (`interaction-log.yaml`, `user-queries.jsonl`, `personal-signals.yaml`, `action-signals.yaml`) and proposes ranked framework improvements.
 - Each suggestion is tagged `destination: superagent` (generic — handed to the Supercoder for committed implementation) or `destination: _custom` (user-specific — Tailor implements directly into your overlay).
 - A token-scan safeguard runs at proposal time AND at implementation time. Personal data CANNOT leak into committed framework code.
 - The **Supercoder** implements approved generic suggestions, runs `pytest`, and commits with a single-sentence imperative subject (no AI-attribution trailers, ever).
 
-**Mode 2 — Project build** (build coding projects for you):
-
-- Invoked via the `supercoder` skill. Builds standalone coding projects under `workspace/Code/<slug>/` — each one self-contained, with its own `.supercoder/` charter + status, optional git repo, and (per the user's choice) language scaffold.
-- A **path-scope safeguard** runs on every write: the Supercoder cannot touch the framework, personal-life data, or any other code project. Refusal is hard, not optional.
-- See `superagent/supercoder.agent.md` for the full role definition and `superagent/procedures.md` § 40 for the Code Projects Contract.
-
-Run `tailor-review` every 90 days for Mode 1 hygiene (the framework will nudge you). Mode 2 runs whenever you ask it to build something.
+Run `tailor-review` every 90 days (the framework will nudge you).
 
 ---
 
@@ -212,21 +199,21 @@ Run `tailor-review` every 90 days for Mode 1 hygiene (the framework will nudge y
 
 | Component | State |
 |---|---|
-| Memory schema | 33 YAML templates, all v1, all parsing, all schema-validated |
+| Memory schema | 32 YAML templates, all v1, all parsing, all schema-validated |
 | Domain templates | 4-file structure (info / status / history / rolodex) + per-domain `parent`, `visibility`, `provenance` |
 | Project templates | 4-file structure with charter; can be instantiated from a workflow |
 | Sources templates | `.ref.md` template + Sources/ folder convention with cache |
 | Workflow templates | 5 starter workflows (tax-filing, trip-planning, annual-health-tuneup, job-search, appliance-replacement) + `_schema.yaml` |
 | Playbooks | 5 starter playbooks (start-of-day, end-of-week, tax-prep-season, pre-trip-week, health-checkup-quarter) + `_schema.yaml` |
-| Skill manifest | `skills/_manifest.yaml` auto-generated; 48 rows |
+| Skill manifest | `skills/_manifest.yaml` auto-generated; 47 rows |
 | Step indices | Long skills (≥ 100 lines) carry an auto-generated `## Step index` block for `Read --offset --limit` targeting |
-| Skills | 48 skills documented; markdown instruction sets ready to invoke |
+| Skills | 47 skills documented; markdown instruction sets ready to invoke |
 | Tools | `workspace_init`, `validate`, `render_status`, `log_user_query`, `sources_cache`, `handles`, `build_skill_manifest`, `add_step_index`, `log_summarize`, `snapshot_diff`, `world`, `log_window`, `briefing_cache`, `session_scratch`, `audit`, `play`, `scenarios`, `inbox_triage`, `anti_patterns` — 19 shipped + tested |
 | Ingestor framework | `IngestorBase`, registry of 27 sources, orchestrator CLI, stub fall-back, 2 reference ingestors shipped (`apple_reminders`, `csv`) |
 | Sources cache | Local-first read pattern; TTL + LRU eviction; chunk + summary + TOC generation |
 | World graph | `_memory/world.yaml` derived state; `tools/world.py rebuild` reconstructs from entity files; `related <handle>` for "show me everything connected to X" |
 | Events stream | Quarterly-partitioned `_memory/events/<YYYY-Qn>.yaml`; cross-entity timeline queries via `tools/log_window.py read` |
-| Tests | 106 pytest tests; all passing |
+| Tests | 96 pytest tests; all passing |
 | Docs | architecture, data-sources, skills-reference, domain-guide, faq, quick-start, roadmap, ideas-better-structure (+ done log), perf-improvement-ideas (+ done log) |
 | AGENTS.md | canonical operating rules; not auto-injected (the agent reads on-demand) |
 

@@ -50,8 +50,6 @@ REQUIRED_MEMORY_TEMPLATES = [
     "events.yaml",
     "working-sets.yaml",
     "upstream-writes.yaml",
-    # Supercoder Mode 2 (project build) — see procedures.md § 40.
-    "code-projects-index.yaml",
 ]
 
 REQUIRED_DOMAIN_TEMPLATES = ["info.md", "status.md", "history.md", "rolodex.md", "sources.md"]
@@ -121,7 +119,6 @@ def test_folder_readmes_exist(framework_dir: Path) -> None:
     expected = [
         "Domains.md", "Projects.md", "Sources.md",
         "Inbox.md", "Outbox.md", "Resources.md", "Archive.md", "Tmp.md",
-        "Code.md",
     ]
     for fname in expected:
         assert (rd / fname).is_file(), f"missing folder README: {fname}"
@@ -254,100 +251,12 @@ def test_commit_msg_hook_exists_and_executable(framework_dir: Path) -> None:
     assert "Co-authored-by" in body, "commit-msg hook should block AI co-authors"
 
 
-# ---------- Code projects (Supercoder Mode 2) — procedures.md § 40 ----------
-
-
-def test_code_project_template_dir_exists(framework_dir: Path) -> None:
-    """The `code-projects/` template directory ships with the framework."""
-    cp_dir = framework_dir / "templates" / "code-projects"
-    assert cp_dir.is_dir(), f"missing {cp_dir}"
-
-
-def test_code_project_supercoder_metadata_files_present(framework_dir: Path) -> None:
-    """The .supercoder/ scaffold has all four expected files."""
-    sc_dir = framework_dir / "templates" / "code-projects" / ".supercoder"
-    assert sc_dir.is_dir(), f"missing {sc_dir}"
-    for fname in ("info.md", "status.md", "history.md", "decisions.yaml"):
-        assert (sc_dir / fname).is_file(), f"missing .supercoder/{fname}"
-
-
-def test_code_project_decisions_yaml_parses_with_schema_version(framework_dir: Path) -> None:
-    """The .supercoder/decisions.yaml template must parse + carry schema_version."""
-    p = framework_dir / "templates" / "code-projects" / ".supercoder" / "decisions.yaml"
-    with p.open() as fh:
-        data = yaml.safe_load(fh)
-    assert isinstance(data, dict)
-    assert data.get("schema_version") == 1
-    assert "decisions" in data
-
-
-def test_code_project_info_uses_canonical_placeholders(framework_dir: Path) -> None:
-    """The info.md charter template uses the documented placeholders."""
-    body = (framework_dir / "templates" / "code-projects" / ".supercoder" / "info.md").read_text()
-    for placeholder in (
-        "{{PROJECT_NAME}}",
-        "{{GOAL}}",
-        "{{LANGUAGE}}",
-        "{{TEST_COMMAND}}",
-        "{{REPO}}",
-        "{{CREATED_AT}}",
-        "{{TARGET_COMPLETION_AT}}",
-    ):
-        assert placeholder in body, f"info.md missing placeholder {placeholder}"
-
-
-def test_code_project_readme_template_present(framework_dir: Path) -> None:
-    """The user-facing README template ships at the project root."""
-    readme = framework_dir / "templates" / "code-projects" / "README.md"
-    assert readme.is_file()
-    body = readme.read_text()
-    assert "{{PROJECT_NAME}}" in body
-    assert "{{SLUG}}" in body
-    assert "supercoder open" in body, "README should reference the supercoder skill"
-
-
-def test_code_project_gitignore_present(framework_dir: Path) -> None:
-    """The default .gitignore ships and covers Python + Node basics."""
-    gi = framework_dir / "templates" / "code-projects" / ".gitignore"
-    assert gi.is_file()
-    body = gi.read_text()
-    for pattern in ("__pycache__/", "node_modules/", ".venv/", ".DS_Store"):
-        assert pattern in body, f".gitignore missing pattern {pattern!r}"
-
-
-def test_code_projects_index_template_parses(framework_dir: Path) -> None:
-    """The workspace-level code-projects-index.yaml template parses cleanly."""
-    p = framework_dir / "templates" / "memory" / "code-projects-index.yaml"
-    with p.open() as fh:
-        data = yaml.safe_load(fh)
-    assert isinstance(data, dict)
-    assert data.get("schema_version") == 1
-    assert "projects" in data
-    assert isinstance(data["projects"], list)
-
-
-def test_supercoder_skill_present(framework_dir: Path) -> None:
-    """The supercoder skill ships with the documented frontmatter triggers."""
-    sk = framework_dir / "skills" / "supercoder.md"
-    assert sk.is_file(), "missing supercoder.md skill"
-    body = sk.read_text()
-    assert "name: superagent-supercoder" in body
-    for trigger in ("supercoder new", "supercoder open", "supercoder work"):
-        assert trigger in body, f"supercoder.md missing trigger {trigger!r}"
-
-
-def test_supercoder_agent_md_documents_two_modes(framework_dir: Path) -> None:
-    """supercoder.agent.md must document both Mode 1 and Mode 2."""
+def test_supercoder_agent_md_is_single_purpose(framework_dir: Path) -> None:
+    """supercoder.agent.md describes a single-purpose framework-only role."""
     body = (framework_dir / "supercoder.agent.md").read_text()
-    assert "Mode 1: Framework improvement" in body
-    assert "Mode 2: Project build" in body
-    assert "Path-scope safeguard" in body
     assert "Personal-data safeguard" in body
-
-
-def test_procedures_documents_code_projects_contract(framework_dir: Path) -> None:
-    """procedures.md § 40 must describe the Code Projects Contract."""
-    body = (framework_dir / "procedures.md").read_text()
-    assert "## 40. Code Projects Contract" in body
-    assert "self-contained" in body.lower()
-    assert "code-projects-index.yaml" in body
+    assert "approved" in body.lower(), "must require an approved suggestion"
+    # No Mode 2 / project-build content.
+    assert "Mode 2" not in body
+    assert "project-build" not in body.lower()
+    assert "code-projects" not in body
