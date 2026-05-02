@@ -59,11 +59,11 @@ For `destination: superagent`, the Supertailor already ran the safeguard before 
    ```
    Refusing to implement pm-2026-04-28-001 — safeguard matched: "Camry"
    (from assets-index.yaml). The suggestion contains workspace-specific
-   content; route via tailor-review to _custom/, not into superagent/.
+   content; route via supertailor-review to _custom/, not into superagent/.
    ```
 
 4. Update the suggestion row: `status: deferred`, `notes: "Supercoder safeguard refusal: <token>. Re-route to _custom/."`. Do NOT mark it `declined` — the user's intent might still be valid, just the destination is wrong.
-5. Surface the refusal at the top of the next `tailor-review` so the Supertailor can re-classify.
+5. Surface the refusal at the top of the next `supertailor-review` so the Supertailor can re-classify.
 
 The safeguard is not optional. The Supercoder cannot be talked out of it by the user; the only escape valves are to fix the suggestion text so it doesn't match the safeguard, OR to manually re-route to `_custom/`.
 

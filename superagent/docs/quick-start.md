@@ -61,7 +61,7 @@ Full catalogue of supported sources: `superagent/docs/data-sources.md`.
 ## 5. When something feels off, run
 
 ```
-tailor-review
+supertailor-review
 ```
 
 The Supertailor reviews the framework itself — hygiene + strategic-improvement passes — and proposes ranked changes. Approved changes either land in your private overlay (`_custom/`) or, if generic and safe, in the committed framework code (with safeguards that prevent any of your personal data from leaking into a commit).

@@ -75,7 +75,7 @@ On **every Superagent turn**, before doing anything else:
 
 If `workspace/_custom/` does not exist, skip the overlay silently — no error, no warning. It is optional scaffolding.
 
-The Supertailor (`tailor-review` skill) auto-scaffolds the `_custom/` directory structure during its hygiene pass if it is missing.
+The Supertailor (`supertailor-review` skill) auto-scaffolds the `_custom/` directory structure during its hygiene pass if it is missing.
 
 ---
 
@@ -156,7 +156,7 @@ The full skill catalog and one-liners live in [`docs/skills-reference.md`](docs/
 | **ingest** | Run one or more configured ingestors (Gmail, Plaid, Apple Health, etc.). Front-end for `tools/ingest/`. |
 | **personal-signals** | Capture self-development feedback; surface growth themes on request. |
 | **doctor** | Workspace data hygiene — stale domains, duplicate contacts, near-duplicate todos, simplification candidates. |
-| **tailor-review** | Framework hygiene + strategic improvement; produces ranked suggestions in `supertailor-suggestions.yaml`. |
+| **supertailor-review** | Framework hygiene + strategic improvement; produces ranked suggestions in `supertailor-suggestions.yaml`. |
 | **handoff** | Generate the "if I get hit by a bus" packet — account list, document locations, executor instructions. |
 
 ---
@@ -326,7 +326,7 @@ Per `docs/perf-improvement-ideas.md` QW-3, every Superagent skill execution oper
 
 - **For any file longer than 200 lines, run `Grep` first** to locate the relevant section, then use `Read --offset --limit` to pull only that range. Whole-file reads are reserved for files known to be < 200 lines OR explicitly required (e.g. `_memory/config.yaml`).
 - **Skills that say "read X" implicitly mean "read the relevant section of X"** — agents should treat full reads as the exception.
-- **For long skills** (`init.md`, `daily-update.md`, `monthly-review.md`, `tailor-review.md`, `add-source.md`, …), read the YAML frontmatter + the `## Step index` block first; use `Read --offset --limit` against the listed step ranges.
+- **For long skills** (`init.md`, `daily-update.md`, `monthly-review.md`, `supertailor-review.md`, `add-source.md`, …), read the YAML frontmatter + the `## Step index` block first; use `Read --offset --limit` against the listed step ranges.
 - **Use the skill manifest**: read `superagent/skills/_manifest.yaml` (cheap, ~5-10 KB) to pick which skill applies, instead of grepping every skill markdown.
 - **Use briefing-cache before regenerating**: if `_memory/_artifacts/<skill>/<key>.md` is fresh, read it instead of running the skill again. The `tools/briefing_cache.py get` helper checks for you.
 - **Use the events stream + log summaries** instead of full-loading append-only YAML logs: `_memory/<file>.summary.yaml` (the QW-4 summary sibling) tells you whether you need the full log at all; `tools/log_window.py read` pulls just a date range.

@@ -17,7 +17,7 @@ inserts a "Step index" block right after the YAML frontmatter:
 The agent reads the frontmatter + step index (~40 lines), uses
 `Read --offset --limit` to pull only the relevant step, and never loads the
 full body. Long skills like `init.md`, `daily-update.md`, `monthly-review.md`,
-`tailor-review.md`, `add-source.md` benefit most.
+`supertailor-review.md`, `add-source.md` benefit most.
 
 Step boundaries are derived from H2 headings (`## N. <name>`).
 

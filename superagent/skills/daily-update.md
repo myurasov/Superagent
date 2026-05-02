@@ -214,7 +214,7 @@ Per `procedures.md` § 7.2:
 - S = count of `target: superagent` AND `status: captured`.
 - Include up to two one-liners under "Priority Items" (suppress if 0 or if the drain mechanism ran in last 24h):
 
-  > **T unprocessed Supertailor signals** — run `tailor-review` to digest.
+  > **T unprocessed Supertailor signals** — run `supertailor-review` to digest.
   > **S pending Superagent workspace actions** — say "show pending workspace actions" to drain.
 
 ## 13. Compose the briefing
@@ -282,4 +282,4 @@ Skip empty sections silently. Target ≤ 80 lines.
 
 If `_memory/context.yaml.last_runs.tailor_review` is null OR > 90 days ago, append at the very end of the briefing:
 
-> **Supertailor review pending** — Superagent's framework hasn't been audited in 90+ days. When you have a quiet 15 minutes, run `tailor-review`.
+> **Supertailor review pending** — Superagent's framework hasn't been audited in 90+ days. When you have a quiet 15 minutes, run `supertailor-review`.

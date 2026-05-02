@@ -3,7 +3,7 @@ name: superagent-doctor
 description: >-
   Workspace data hygiene — stale domains, duplicate contacts, near-duplicate
   todos, simplification candidates, broken cross-references, expired
-  documents not yet renewed. Distinct from `tailor-review` (which checks
+  documents not yet renewed. Distinct from `supertailor-review` (which checks
   the framework). Asks per pass which findings to action.
 triggers:
   - doctor
@@ -113,7 +113,7 @@ Find `documents-index.yaml` rows with `expires_at < today` AND `status: active`.
 
 ## 9. Action signal drains
 
-Find `_memory/action-signals.yaml` rows with `status: captured` older than 60 days. Surface; offer `process now` (delegates to `tailor-review` for `target: tailor`, or to ad-hoc workspace action for `target: superagent`) or `decline` (with a reason).
+Find `_memory/action-signals.yaml` rows with `status: captured` older than 60 days. Surface; offer `process now` (delegates to `supertailor-review` for `target: tailor`, or to ad-hoc workspace action for `target: superagent`) or `decline` (with a reason).
 
 ## 10. Personal-signal review
 

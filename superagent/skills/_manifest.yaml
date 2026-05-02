@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-01T17:50:24-07:00'
+generated_at: '2026-05-01T17:50:55-07:00'
 skill_count: 47
 skills:
 - name: superagent-add-account
@@ -340,7 +340,7 @@ skills:
   lines: 285
   h2_steps: 25
   h3_subsections: 0
-  typical_token_cost: 2741
+  typical_token_cost: 2744
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/context.yaml
@@ -378,8 +378,7 @@ skills:
   stem: doctor
   path: superagent/skills/doctor.md
   one_line: Workspace data hygiene — stale domains, duplicate contacts, near-duplicate todos, simplification
-    candidates, broken cross-references, expired documents not yet renewed. Distinct from `tailor-review`
-    (
+    candidates, broken cross-references, expired documents not yet renewed. Distinct from `supertailor-revi
   triggers:
   - doctor
   - workspace hygiene
@@ -392,7 +391,7 @@ skills:
   lines: 146
   h2_steps: 14
   h3_subsections: 0
-  typical_token_cost: 1337
+  typical_token_cost: 1339
   typical_files_read:
   - _memory/domains-index.yaml
   - Sources/documents/`
@@ -667,7 +666,7 @@ skills:
   lines: 288
   h2_steps: 12
   h3_subsections: 1
-  typical_token_cost: 4085
+  typical_token_cost: 4087
   typical_files_read:
   - workspace/_memory/config.yaml
   - _memory/insights.yaml
@@ -944,6 +943,33 @@ skills:
   typical_token_cost: 476
   typical_files_read: []
   origin: framework
+- name: superagent-supertailor-review
+  stem: supertailor-review
+  path: superagent/skills/supertailor-review.md
+  one_line: Run the Supertailor's two-pass review (hygiene + strategic). Hygiene applies mechanical reversible
+    repairs to the workspace. Strategic surfaces ranked framework-improvement suggestions and writes them
+  triggers:
+  - tailor review
+  - run the tailor
+  - what should I improve in superagent
+  - audit the framework
+  - is anything broken in superagent
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 148
+  h2_steps: 8
+  h3_subsections: 5
+  typical_token_cost: 2343
+  typical_files_read:
+  - _memory/supertailor-suggestions.yaml
+  - _memory/contacts.yaml
+  - _memory/domains-index.yaml
+  - _memory/assets-index.yaml
+  - _memory/accounts-index.yaml
+  - _memory/context.yaml
+  origin: framework
 - name: superagent-tags
   stem: tags
   path: superagent/skills/tags.md
@@ -966,33 +992,6 @@ skills:
   typical_token_cost: 842
   typical_files_read:
   - _memory/tags.yaml
-  origin: framework
-- name: superagent-tailor-review
-  stem: tailor-review
-  path: superagent/skills/tailor-review.md
-  one_line: Run the Supertailor's two-pass review (hygiene + strategic). Hygiene applies mechanical reversible
-    repairs to the workspace. Strategic surfaces ranked framework-improvement suggestions and writes them
-  triggers:
-  - tailor review
-  - run the tailor
-  - what should I improve in superagent
-  - audit the framework
-  - is anything broken in superagent
-  mcp_required: []
-  mcp_optional: []
-  cli_required: []
-  cli_optional: []
-  lines: 148
-  h2_steps: 8
-  h3_subsections: 5
-  typical_token_cost: 2340
-  typical_files_read:
-  - _memory/supertailor-suggestions.yaml
-  - _memory/contacts.yaml
-  - _memory/domains-index.yaml
-  - _memory/assets-index.yaml
-  - _memory/accounts-index.yaml
-  - _memory/context.yaml
   origin: framework
 - name: superagent-todo
   stem: todo
@@ -1115,7 +1114,7 @@ skills:
   lines: 147
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 1284
+  typical_token_cost: 1286
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml

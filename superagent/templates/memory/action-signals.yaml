@@ -7,7 +7,7 @@
 #   target: tailor        — change to Superagent ITSELF (framework code under
 #                            superagent/ or per-user overlay under
 #                            workspace/_custom/). Digested by
-#                            tailor-review §  → entries in supertailor-suggestions.yaml.
+#                            supertailor-review §  → entries in supertailor-suggestions.yaml.
 #                            Examples: "make that a skill", "Superagent should
 #                            always remind me about X", "I think I need to add
 #                            a feature for tracking gift ideas year-round".

@@ -140,7 +140,7 @@ Full architecture: [`superagent/docs/architecture.md`](superagent/docs/architect
 | `triage-overdue` | Force a decision on every overdue task. |
 | `handoff` | Generate the "if hit by a bus" packet — accounts, documents, beneficiaries, vault refs. |
 | `doctor` | Workspace data hygiene — duplicates, stale domains, broken refs, expiring documents. |
-| `tailor-review` | Framework hygiene + strategic-improvement passes. The "framework that builds itself" loop. |
+| `supertailor-review` | Framework hygiene + strategic-improvement passes. The "framework that builds itself" loop. |
 
 Full catalogue: [`superagent/docs/skills-reference.md`](superagent/docs/skills-reference.md).
 
@@ -191,7 +191,7 @@ Superagent ships with a **Supertailor / Supercoder dual-agent loop** that watche
 - A token-scan safeguard runs at proposal time AND at implementation time. Personal data CANNOT leak into committed framework code.
 - The **Supercoder** implements approved generic suggestions, runs `pytest`, and commits with a single-sentence imperative subject (no AI-attribution trailers, ever).
 
-Run `tailor-review` every 90 days (the framework will nudge you).
+Run `supertailor-review` every 90 days (the framework will nudge you).
 
 ---
 

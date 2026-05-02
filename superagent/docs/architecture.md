@@ -146,7 +146,7 @@ This separation means **skills are language**, **tools are code**, and **ingesto
 
 ## The dual-agent loop (Supertailor + Supercoder)
 
-Superagent ships with built-in introspection. The full role definitions are in `supertailor.agent.md` and `supercoder.agent.md`; the user-facing skill is `tailor-review`. The high-level loop:
+Superagent ships with built-in introspection. The full role definitions are in `supertailor.agent.md` and `supercoder.agent.md`; the user-facing skill is `supertailor-review`. The high-level loop:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -161,7 +161,7 @@ Superagent ships with built-in introspection. The full role definitions are in `
                          │  (every 90 days, or when nudged)
                          ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│  Supertailor (tailor-review skill)                                           │
+│  Supertailor (supertailor-review skill)                                           │
 │    1. HYGIENE PASS  — template compliance, orphans, staleness, schemas  │
 │    2. STRATEGIC PASS — friction patterns, capability gaps, novel needs  │
 │    Each suggestion: tagged destination = superagent | _custom         │

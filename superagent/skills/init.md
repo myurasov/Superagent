@@ -232,7 +232,7 @@ Walk through the chosen skill **interactively**: ask the user to provide the one
 | Tax season | `add-project tax-<year>`, `add-source` (returns), `monthly-review` | Recurring project + source archive |
 | Hobbies / fitness | `add-domain`, `personal-signals`, `weekly-review` | Goal capture, growth tracking |
 | Major life event (move, renovation, baby, job change) | `add-project`, `projects` | Time-bounded coordination across domains |
-| Overwhelmed | `whatsup`, `daily-update`, `tailor-review` | Single dashboard view |
+| Overwhelmed | `whatsup`, `daily-update`, `supertailor-review` | Single dashboard view |
 
 ## 9. Summary and next steps
 

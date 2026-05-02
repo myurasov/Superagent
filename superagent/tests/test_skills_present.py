@@ -25,7 +25,7 @@ EXPECTED_SKILLS = {
     "expenses",
     "draft-email", "summarize-thread", "follow-up", "research",
     "ingest",
-    "personal-signals", "tailor-review", "doctor", "triage-overdue", "handoff",
+    "personal-signals", "supertailor-review", "doctor", "triage-overdue", "handoff",
     # Added by the second-pass implementation:
     "inbox-triage", "tags", "decisions", "play", "scenarios",
     "world", "events", "audit",

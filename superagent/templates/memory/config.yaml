@@ -221,7 +221,7 @@ preferences:
 
   # Anti-pattern scanner (perf-improvement-ideas.md § "Anti-patterns").
   anti_patterns:
-    # When true, doctor / tailor-review run the anti-pattern scanner over
+    # When true, doctor / supertailor-review run the anti-pattern scanner over
     # skills/*.md and surface findings.
     scan_skills: true
 

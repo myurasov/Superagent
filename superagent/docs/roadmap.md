@@ -30,7 +30,7 @@ This roadmap is structured by **LOE tier (T-shirt size)**, not by quarter. Each 
 - **Done when** — observable success criterion.
 - **Depends on** — explicit dependencies on other items, where they exist.
 
-The roadmap is **continuously re-prioritized** by the Supertailor's strategic pass (`tailor-review` skill, which writes to `_memory/supertailor-suggestions.yaml`). Items here are starting points; the actual sequence is set by what the user keeps tripping over.
+The roadmap is **continuously re-prioritized** by the Supertailor's strategic pass (`supertailor-review` skill, which writes to `_memory/supertailor-suggestions.yaml`). Items here are starting points; the actual sequence is set by what the user keeps tripping over.
 
 ## LOE legend
 

@@ -40,13 +40,13 @@ To invoke a skill, just say what you want in plain English. The agent matches yo
 | **triage-overdue** | action | Force a decision on every overdue task. Done / reschedule / drop priority / cancel / delegate / skip. |
 | **handoff** | action (sensitive) | Generate the "if hit by a bus" packet — accounts, documents, beneficiaries, emergency contacts, household routines, vault references. Written to `Outbox/handoff/` with prominent storage warnings. |
 | **doctor** | hygiene | Workspace data hygiene — stale domains, duplicate contacts, near-duplicate todos, simplification candidates, broken cross-references, expired documents. Asks per pass which findings to action. |
-| **tailor-review** | hygiene + meta | Two-pass framework review (hygiene + strategic). Hygiene applies mechanical reversible repairs. Strategic surfaces ranked framework-improvement suggestions, tagged `superagent` (handed to Supercoder) or `_custom` (Supertailor implements). |
+| **supertailor-review** | hygiene + meta | Two-pass framework review (hygiene + strategic). Hygiene applies mechanical reversible repairs. Strategic surfaces ranked framework-improvement suggestions, tagged `superagent` (handed to Supercoder) or `_custom` (Supertailor implements). |
 
 ## Skill discovery
 
 The agent uses three layers to find the right skill for what you said:
 
-1. **Exact name match** — "run init" / "do `tailor-review`" → that skill.
+1. **Exact name match** — "run init" / "do `supertailor-review`" → that skill.
 2. **Trigger-phrase match** — your text contains a phrase from any skill's `triggers:` frontmatter list.
 3. **Domain hint** — your text mentions a domain (Health, Finance, …) → biases toward skills that operate on that domain (`health-log`, `expenses`, …).
 4. **Verb hint** — "add", "log", "list", "draft", "research", "what's", "summarize" → maps to the skill family with that verb.

@@ -113,7 +113,7 @@ Read `_memory/action-signals.yaml`:
 - T = count of `target: tailor` AND `status: captured`.
 - S = count of `target: superagent` AND `status: captured`.
 
-If T > 0 AND last `tailor-review` > 30 days ago: surface `Consider: tailor-review — N unprocessed framework signals.`
+If T > 0 AND last `supertailor-review` > 30 days ago: surface `Consider: supertailor-review — N unprocessed framework signals.`
 
 If S > 0: surface `Consider: drain pending workspace actions — N captured. Say "show pending workspace actions".`
 

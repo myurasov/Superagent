@@ -5,7 +5,7 @@ Implements perf-improvement-ideas.md § "Anti-patterns to flag in skills".
 
 Scans every skill under `superagent/skills/*.md` (and optionally
 `workspace/_custom/skills/*.md`) for the documented patterns
-and prints a report. Used by `tailor-review` and `doctor` to surface
+and prints a report. Used by `supertailor-review` and `doctor` to surface
 candidates for refactor.
 
 Patterns detected (regex-based; conservative to avoid false positives):

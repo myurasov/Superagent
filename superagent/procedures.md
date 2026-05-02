@@ -19,7 +19,7 @@
     - [4.1 Daily update](#41-daily-update)
     - [4.2 Weekly review](#42-weekly-review)
     - [4.3 Monthly review](#43-monthly-review)
-    - [4.4 Quarterly Supertailor review](#44-quarterly-tailor-review)
+    - [4.4 Quarterly Supertailor review](#44-quarterly-supertailor-review)
   - [5. Task Management (todo skill)](#5-task-management-todo-skill)
     - [5.1 Sync to status.md files](#51-sync-to-statusmd-files)
   - [6. Domain & Asset Management](#6-domain--asset-management)
@@ -283,7 +283,7 @@ Cadences are aspirational defaults; the user can run any of them on demand at an
 
 ### 4.4 Quarterly Supertailor review
 
-**Trigger:** user runs `tailor-review` (suggested cadence: every 90 days; daily-update nudges when stale).
+**Trigger:** user runs `supertailor-review` (suggested cadence: every 90 days; daily-update nudges when stale).
 
 The Supertailor's hygiene + strategic-improvement passes per `supertailor.agent.md`. Outputs ranked suggestions in `supertailor-suggestions.yaml`; each tagged `destination: superagent` (Supercoder writes into `superagent/`) or `destination: _custom` (Supercoder writes into `workspace/_custom/`). The Supertailor never writes implementation code itself; both destinations route through the Supercoder. The hard safeguard against personal data leaking into framework-bound writes is enforced at proposal time by the Supertailor AND at implementation time by the Supercoder (defense in depth).
 
@@ -432,7 +432,7 @@ Two distinct kinds of "this should change" signals, both stored in `_memory/acti
 
 Ambient signals are captured silently with a one-line tag at the end of the reply (`_Captured signal sig-<id> (target: tailor|superagent)._`) and processed later in batch.
 
-Update skills (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`) and `tailor-review` surface **split unprocessed counts** ("N Supertailor signals + M Superagent workspace actions pending").
+Update skills (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`) and `supertailor-review` surface **split unprocessed counts** ("N Supertailor signals + M Superagent workspace actions pending").
 
 ### 7.3 Auto-capture from ingested data
 
@@ -950,7 +950,7 @@ Implements ideas-better-structure.md item #11. Backed by `_memory/tags.yaml` and
 
 **Cross-cutting**: any entity may carry `tags: [..]`. The `tags` skill walks every entity-shape file to surface "show me everything tagged X".
 
-**Recount maintenance**: the `tags` skill's `recount` sub-action walks all entities and updates `uses_count` per tag; `tailor-review` runs it during the hygiene pass.
+**Recount maintenance**: the `tags` skill's `recount` sub-action walks all entities and updates `uses_count` per tag; `supertailor-review` runs it during the hygiene pass.
 
 ---
 
@@ -970,7 +970,7 @@ Implements ideas-better-structure.md item #3 + perf-improvement-ideas.md BB-4. B
 
 **Query**: `tools/world.py related <handle> [--depth N]` returns all neighbors. The `world` skill is the user-facing front-end.
 
-**Validation**: `tools/world.py validate` walks edges and warns about references to missing nodes. `tailor-review` includes it in its hygiene pass.
+**Validation**: `tools/world.py validate` walks edges and warns about references to missing nodes. `supertailor-review` includes it in its hygiene pass.
 
 ---
 

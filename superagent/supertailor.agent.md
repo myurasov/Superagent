@@ -36,7 +36,7 @@ The Supertailor:
 
 ## The two passes
 
-A `tailor-review` run does two complementary passes in one sitting.
+A `supertailor-review` run does two complementary passes in one sitting.
 
 ### Hygiene pass
 
@@ -106,7 +106,7 @@ This is the single most important safety guarantee: **personal data cannot leak 
 
 ## Suggestion lifecycle
 
-1. **Proposed** — Supertailor adds the row to `supertailor-suggestions.yaml` with `status: proposed`. The next `tailor-review` summary surfaces it.
+1. **Proposed** — Supertailor adds the row to `supertailor-suggestions.yaml` with `status: proposed`. The next `supertailor-review` summary surfaces it.
 2. **Approved** — user picks "approve" in the Supertailor's report. `status: approved`, `resolved_at: <now>`. The brief is handed to the Supercoder regardless of destination (`superagent` or `_custom`); the Supertailor never implements.
 3. **Declined** — user picks "decline". `status: declined`, `resolved_at: <now>`. The reason goes into `notes`. The Supertailor never re-proposes a declined suggestion (matched by `problem` text similarity) without a clear new piece of evidence.
 4. **Implemented** — once the Supercoder writes the change, the row's `status` flips to `implemented` and `implementation_notes` records what was created / modified plus the commit SHA. The Supertailor only flips this status; it does not perform the write.
@@ -160,7 +160,7 @@ Each row in `supertailor-suggestions.yaml`:
 
 ## Report format
 
-After a `tailor-review` run, the Supertailor prints a structured report:
+After a `supertailor-review` run, the Supertailor prints a structured report:
 
 ```
 # Supertailor review — 2026-04-28
@@ -213,9 +213,9 @@ The Supertailor wakes up when the user says any of:
 - "audit the framework"
 - "is anything broken in superagent"
 
-The daily-update / weekly-review skills nudge a `tailor-review` run when:
+The daily-update / weekly-review skills nudge a `supertailor-review` run when:
 
-- It has been > 90 days since the last `tailor-review` AND `_memory/action-signals.yaml` has unprocessed `target: tailor` rows.
+- It has been > 90 days since the last `supertailor-review` AND `_memory/action-signals.yaml` has unprocessed `target: tailor` rows.
 - A `supertailor-suggestions.yaml` deferred row's defer-window has expired.
 - The hygiene pass would produce > 5 mechanical repairs (signals drift).
 
@@ -225,7 +225,7 @@ The daily-update / weekly-review skills nudge a `tailor-review` run when:
 
 The Supertailor and Supercoder are the two halves of the same loop. Workflow (uniform across both destinations):
 
-1. Supertailor runs `tailor-review`, produces suggestions.
+1. Supertailor runs `supertailor-review`, produces suggestions.
 2. User approves a suggestion (any destination).
 3. Supertailor packages the suggestion as a brief and hands it to the Supercoder (in chat: "Supercoder, implement pm-2026-04-28-001 per the brief").
 4. Supercoder reads the brief, re-runs the safeguard scan as defense in depth, implements the change in the destination tree (`superagent/` or `workspace/_custom/`), writes / updates tests, runs `pytest`, commits with a single-sentence imperative subject (the project's own repo when the destination is `superagent/`; `_custom` writes are not committed since `workspace/` is gitignored).

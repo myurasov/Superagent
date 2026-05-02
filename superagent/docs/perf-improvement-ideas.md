@@ -107,7 +107,7 @@ Add a tiny step index right after the YAML frontmatter on every skill > 100 line
 | ... | ... | ... |
 ```
 
-The agent reads the frontmatter + step index (≈ 40 lines), uses `Read --offset --limit` to pull only the relevant step, and never loads the full body. Long skills like `init.md`, `daily-update.md`, `monthly-review.md`, `tailor-review.md`, `add-source.md` benefit most.
+The agent reads the frontmatter + step index (≈ 40 lines), uses `Read --offset --limit` to pull only the relevant step, and never loads the full body. Long skills like `init.md`, `daily-update.md`, `monthly-review.md`, `supertailor-review.md`, `add-source.md` benefit most.
 
 A new `superagent/tools/add_step_index.py` can auto-generate step indexes from H2/H3 headings + line numbers.
 
@@ -259,7 +259,7 @@ Already in `ideas-better-structure.md` § #7. Beyond the search-latency win, the
 - **LOE**: S.
 - **Saves**: the toolchain to make QW-2 sustainable across many skills.
 
-A new `superagent/tools/add_step_index.py` walks every skill markdown, generates a TOC from H2/H3 headings, and emits per-step line ranges (the QW-2 step index). Re-run as part of the `doctor` / `tailor-review` hygiene pass to keep step indexes in sync as skill files are edited.
+A new `superagent/tools/add_step_index.py` walks every skill markdown, generates a TOC from H2/H3 headings, and emits per-step line ranges (the QW-2 step index). Re-run as part of the `doctor` / `supertailor-review` hygiene pass to keep step indexes in sync as skill files are edited.
 
 ### MI-5. Skill-output write-back caching
 
