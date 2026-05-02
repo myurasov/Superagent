@@ -5,7 +5,7 @@ description: >-
   mechanical reversible repairs to the workspace. Strategic surfaces
   ranked framework-improvement suggestions and writes them to
   `supertailor-suggestions.yaml`, tagged `superagent` (handed to Supercoder) or
-  `_custom` (Supertailor implements directly).
+  `_custom` (also handed to Supercoder, who writes into `workspace/_custom/`).
 triggers:
   - tailor review
   - run the tailor
@@ -137,7 +137,7 @@ Per `supertailor.agent.md` § "Report format". The report includes:
 ## 5. Hand-off
 
 For approved suggestions:
-- `destination: _custom` → Supertailor implements directly into `workspace/_custom/`. Sets `status: implemented`, `implementation_notes: "<file path + summary>"`.
+- `destination: _custom` → Supertailor packages a brief and hands to the Supercoder ("Supercoder, implement pm-NNN per the brief — destination `_custom`"). The Supercoder writes into `workspace/_custom/`, runs any overlay tests, reports back. Supertailor flips status to `implemented` with `implementation_notes: "<file path + summary>"` (no commit SHA — `workspace/` is gitignored).
 - `destination: superagent` → Supertailor packages a brief and hands to the Supercoder ("Supercoder, implement pm-NNN per the brief"). The Supercoder re-runs the safeguard, implements into `superagent/`, runs `pytest`, commits, reports back. Supertailor flips status to `implemented` with the commit SHA.
 
 ## 6. Update memory

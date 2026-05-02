@@ -285,7 +285,7 @@ Cadences are aspirational defaults; the user can run any of them on demand at an
 
 **Trigger:** user runs `tailor-review` (suggested cadence: every 90 days; daily-update nudges when stale).
 
-The Supertailor's hygiene + strategic-improvement passes per `supertailor.agent.md`. Outputs ranked suggestions in `supertailor-suggestions.yaml`; each tagged `destination: superagent` (handed to Supercoder) or `destination: _custom` (Supertailor implements directly). The hard safeguard against personal data leaking into framework-bound writes is enforced here AND on receipt by the Supercoder.
+The Supertailor's hygiene + strategic-improvement passes per `supertailor.agent.md`. Outputs ranked suggestions in `supertailor-suggestions.yaml`; each tagged `destination: superagent` (Supercoder writes into `superagent/`) or `destination: _custom` (Supercoder writes into `workspace/_custom/`). The Supertailor never writes implementation code itself; both destinations route through the Supercoder. The hard safeguard against personal data leaking into framework-bound writes is enforced at proposal time by the Supertailor AND at implementation time by the Supercoder (defense in depth).
 
 ---
 

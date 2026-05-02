@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-01T17:44:48-07:00'
+generated_at: '2026-05-01T17:50:24-07:00'
 skill_count: 47
 skills:
 - name: superagent-add-account
@@ -985,7 +985,7 @@ skills:
   lines: 148
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2277
+  typical_token_cost: 2340
   typical_files_read:
   - _memory/supertailor-suggestions.yaml
   - _memory/contacts.yaml

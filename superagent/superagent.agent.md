@@ -215,7 +215,7 @@ The data-import persona. Owns every `tools/ingest/<source>.py` script. On invoca
 The **observer + proposer** half of *the framework that builds itself*. See `supertailor.agent.md` for the full role definition. Two passes per review:
 
 - **Hygiene** — verifies template compliance for domains, detects orphaned folders, flags stale memory files and missed cadence runs, checks schema integrity. Applies mechanical, reversible repairs after user approval.
-- **Strategic improvement** — analyzes usage patterns (`interaction-log.yaml`, `user-queries.jsonl`, agent transcripts) to surface friction, capability gaps, and implicit feature requests. Each suggestion is tagged `destination: superagent` (generic — handed to the Supercoder) or `destination: _custom` (user-specific — Supertailor implements directly). A hard safeguard scans every framework-bound write for personal names, addresses, account numbers, and forces destination back to `_custom/` on any match.
+- **Strategic improvement** — analyzes usage patterns (`interaction-log.yaml`, `user-queries.jsonl`, agent transcripts) to surface friction, capability gaps, and implicit feature requests. Each suggestion is tagged `destination: superagent` (generic — Supercoder writes into the framework) or `destination: _custom` (user-specific — Supercoder writes into the overlay). The Supertailor never writes implementation code; both destinations route through the Supercoder. A hard safeguard scans every framework-bound write for personal names, addresses, account numbers, and forces destination back to `_custom/` on any match.
 
 The Supertailor does **not** modify framework code under `superagent/` — those changes are routed to the Supercoder.
 

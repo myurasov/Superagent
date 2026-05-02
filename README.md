@@ -187,7 +187,7 @@ Organized by LOE tier (T-shirt sizes XS / S / M / L / XL) with rationale and "do
 Superagent ships with a **Supertailor / Supercoder dual-agent loop** that watches how you use it:
 
 - The **Supertailor** observes (`interaction-log.yaml`, `user-queries.jsonl`, `personal-signals.yaml`, `action-signals.yaml`) and proposes ranked framework improvements.
-- Each suggestion is tagged `destination: superagent` (generic — handed to the Supercoder for committed implementation) or `destination: _custom` (user-specific — Supertailor implements directly into your overlay).
+- Each suggestion is tagged `destination: superagent` (Supercoder writes into the committed framework) or `destination: _custom` (Supercoder writes into your overlay). The Supertailor never writes implementation code itself; both destinations route through the Supercoder.
 - A token-scan safeguard runs at proposal time AND at implementation time. Personal data CANNOT leak into committed framework code.
 - The **Supercoder** implements approved generic suggestions, runs `pytest`, and commits with a single-sentence imperative subject (no AI-attribution trailers, ever).
 

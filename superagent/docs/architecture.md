@@ -172,20 +172,19 @@ Superagent ships with built-in introspection. The full role definitions are in `
                          │  user approves / declines / defers
                          ▼
 ┌──────────────────────────────────┬─────────────────────────────────────┐
-│  destination = _custom           │  destination = superagent         │
+│  destination = _custom           │  destination = superagent           │
 │   ────────────────────           │   ───────────────────────           │
-│  Supertailor implements directly      │  Supertailor packages a brief            │
-│   into workspace/   │   and hands to Supercoder                │
-│   _custom/                       │                                     │
-│  Sets status: implemented        │  Supercoder re-runs safeguard            │
-│                                  │    REFUSE on personal-data match    │
-│                                  │  Supercoder modifies superagent/       │
-│                                  │  Supercoder updates tests                │
-│                                  │  Supercoder runs `pytest -q`             │
-│                                  │  Supercoder commits (single-sentence,    │
-│                                  │    imperative, no AI-attribution)   │
-│                                  │  Supertailor flips status: implemented   │
-│                                  │  with commit SHA                    │
+│  Supertailor hands brief to      │  Supertailor packages a brief       │
+│   Supercoder                     │   and hands to Supercoder           │
+│  Supercoder writes into          │  Supercoder re-runs safeguard       │
+│   workspace/_custom/             │    REFUSE on personal-data match    │
+│  Supercoder runs overlay tests   │  Supercoder modifies superagent/    │
+│   if any                         │  Supercoder updates tests           │
+│  No commit (workspace is         │  Supercoder runs `pytest -q`        │
+│   gitignored)                    │  Supercoder commits (single sent.,  │
+│  Supertailor flips status:       │    imperative, no AI-attribution)   │
+│   implemented (no SHA)           │  Supertailor flips status:          │
+│                                  │   implemented with commit SHA       │
 └──────────────────────────────────┴─────────────────────────────────────┘
 ```
 
