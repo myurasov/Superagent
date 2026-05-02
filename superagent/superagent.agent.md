@@ -23,7 +23,7 @@
     - [Coach](#coach)
     - [Archivist](#archivist)
     - [Ingestor](#ingestor)
-    - [Tailor](#tailor)
+    - [Supertailor](#supertailor)
     - [Supercoder](#supercoder)
   - [The "digital copy of yourself" promise](#the-digital-copy-of-yourself-promise)
   - [Document maintenance](#document-maintenance)
@@ -107,7 +107,7 @@ Superagent exists to take this load off, surgically and ambiently.
 - **Structured indexes.** YAML indexes hold the "small data" that needs to be queried fast: `bills.yaml`, `subscriptions.yaml`, `appointments.yaml`, `important-dates.yaml`, `assets-index.yaml`, `accounts-index.yaml`, `contacts.yaml`, `documents-index.yaml`, `health-records.yaml`.
 - **Cadence-driven surfacing.** Daily, weekly, monthly skills aggregate state into briefings ("here's what's due this week, here are the three appointments, here are the two birthdays you forgot last year, here's the subscription you haven't used since January").
 - **Capture-anywhere, file-anywhere.** A single command turns "I just got a new health-insurance card" or "the plumber gave me his number" into the right structured row in the right file.
-- **Self-improving.** Superagent runs a built-in **Tailor / Supercoder** dual-agent loop on its own framework code — observes how you use it, proposes ranked improvements, and ships approved changes to either the committed framework (`superagent/`) or your private overlay (`workspace/_custom/`).
+- **Self-improving.** Superagent runs a built-in **Supertailor / Supercoder** dual-agent loop on its own framework code — observes how you use it, proposes ranked improvements, and ships approved changes to either the committed framework (`superagent/`) or your private overlay (`workspace/_custom/`).
 
 ### Implementation model
 
@@ -210,18 +210,18 @@ Long-term storage hygiene. Six-monthly: archives stale Domains entries (no touch
 
 The data-import persona. Owns every `tools/ingest/<source>.py` script. On invocation, it: probes which sources are configured (`data-sources.yaml`), runs each authorized source's pull within its declared budget (recency window, max items per run), normalizes the result into the right index / domain folder, and writes a row to `ingestion-log.yaml` recording what was pulled, when, and the diff vs prior state. Failures are logged but never block the rest of the sweep.
 
-### Tailor
+### Supertailor
 
-The **observer + proposer** half of *the framework that builds itself*. See `tailor.agent.md` for the full role definition. Two passes per review:
+The **observer + proposer** half of *the framework that builds itself*. See `supertailor.agent.md` for the full role definition. Two passes per review:
 
 - **Hygiene** — verifies template compliance for domains, detects orphaned folders, flags stale memory files and missed cadence runs, checks schema integrity. Applies mechanical, reversible repairs after user approval.
-- **Strategic improvement** — analyzes usage patterns (`interaction-log.yaml`, `user-queries.jsonl`, agent transcripts) to surface friction, capability gaps, and implicit feature requests. Each suggestion is tagged `destination: superagent` (generic — handed to the Supercoder) or `destination: _custom` (user-specific — Tailor implements directly). A hard safeguard scans every framework-bound write for personal names, addresses, account numbers, and forces destination back to `_custom/` on any match.
+- **Strategic improvement** — analyzes usage patterns (`interaction-log.yaml`, `user-queries.jsonl`, agent transcripts) to surface friction, capability gaps, and implicit feature requests. Each suggestion is tagged `destination: superagent` (generic — handed to the Supercoder) or `destination: _custom` (user-specific — Supertailor implements directly). A hard safeguard scans every framework-bound write for personal names, addresses, account numbers, and forces destination back to `_custom/` on any match.
 
-The Tailor does **not** modify framework code under `superagent/` — those changes are routed to the Supercoder.
+The Supertailor does **not** modify framework code under `superagent/` — those changes are routed to the Supercoder.
 
 ### Supercoder
 
-The **implementer** half. Implements approved generic framework changes (those tagged `destination: superagent`). Modifies files under `superagent/`, updates tests, and commits with a single-sentence imperative message (no AI-attribution trailers — see `AGENTS.md` § "Git commits"). Re-runs the same hard safeguard the Tailor used; refuses briefs that contain personal data and re-routes to `_custom/`. See `supercoder.agent.md` for the full role definition.
+The **implementer** half. Implements approved generic framework changes (those tagged `destination: superagent`). Modifies files under `superagent/`, updates tests, and commits with a single-sentence imperative message (no AI-attribution trailers — see `AGENTS.md` § "Git commits"). Re-runs the same hard safeguard the Supertailor used; refuses briefs that contain personal data and re-routes to `_custom/`. See `supercoder.agent.md` for the full role definition.
 
 ---
 
@@ -239,7 +239,7 @@ The user's stated north star is: **"superagent should know my life better than I
 
 The same skill set runs at every maturity stage. Day 1 has fewer rows to summarize; Year 1 has fewer questions you can stump it with. Crucially, the framework never demands that the user reach the next stage — every increment is opt-in, deferred, and reversible.
 
-The Tailor / Supercoder loop, once enough data is in, is also what keeps the framework honest about which integrations are paying off. Sources whose ingest fires regularly but whose data the user never queries are flagged as candidates to disable. Sources the user keeps asking questions about — but for which no ingestor is configured — are flagged as candidates to add.
+The Supertailor / Supercoder loop, once enough data is in, is also what keeps the framework honest about which integrations are paying off. Sources whose ingest fires regularly but whose data the user never queries are flagged as candidates to disable. Sources the user keeps asking questions about — but for which no ingestor is configured — are flagged as candidates to add.
 
 ---
 

@@ -2,7 +2,7 @@
 """Log every user prompt to `_memory/user-queries.jsonl`.
 
 Wired as a `UserPromptSubmit` hook in Cursor (`.cursor/hooks.json`) and
-Claude Code (`.claude/settings.json`). The Tailor reads this log during
+Claude Code (`.claude/settings.json`). The Supertailor reads this log during
 the strategic pass to spot friction patterns (clusters of similar queries
 that aren't being answered well by an existing skill).
 

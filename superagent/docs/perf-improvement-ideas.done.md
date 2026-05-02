@@ -18,7 +18,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Tool: `tools/build_skill_manifest.py` (--framework / --workspace / --output).
 - Generation walks both `superagent/skills/*.md` and `workspace/_custom/skills/*.md`; merges with `origin: framework | custom`.
 - Tests: `tests/test_skill_manifest.py` (2 tests).
-- Re-run trigger: every Tailor hygiene pass; every skill add / change.
+- Re-run trigger: every Supertailor hygiene pass; every skill add / change.
 
 ### QW-2 — Per-skill step index ✓
 
@@ -92,13 +92,13 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Tool: `tools/add_step_index.py` (--check / --min-lines / --skill flags).
 - Walks every skill markdown, generates a TOC from H2/H3 headings + line numbers, emits the step-index block.
 - Idempotent: replaces existing block on re-run.
-- Run as part of the Tailor / `doctor` hygiene pass to keep step indexes in sync as skills are edited.
+- Run as part of the Supertailor / `doctor` hygiene pass to keep step indexes in sync as skills are edited.
 
 ### MI-5 — Skill-output write-back caching ✓
 
 - Implemented via the same `tools/briefing_cache.py` (QW-5).
 - Convention: every skill whose output is a candidate for re-read writes to `_memory/_artifacts/<skill>/<key>.md` with sibling `<key>.meta.yaml` (skill, key, generated_at, ttl_minutes, inputs_hash, size_bytes).
-- The Tailor's strategic pass surfaces skills that NEVER cache-hit (candidates for shorter TTL or different cache key).
+- The Supertailor's strategic pass surfaces skills that NEVER cache-hit (candidates for shorter TTL or different cache key).
 
 ---
 
@@ -110,7 +110,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 
 - AGENTS.md: § "Prompt-cache discipline" — explicit guidance:
   - Don't edit AGENTS.md / procedures.md mid-session.
-  - The Tailor / Supercoder commit-then-restart cycle aligns naturally.
+  - The Supertailor / Supercoder commit-then-restart cycle aligns naturally.
   - Don't open many framework files mid-session.
   - Long ingestion / scenario sessions: prefer dedicated tool invocations.
 - The forward-looking BB-2-a path is documented in the same section for when a CLI wrapper ships.
@@ -133,7 +133,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Tool: `tools/anti_patterns.py` (scan_file / scan_dir / render_text + 9 patterns + mitigation hints).
 - Catalogue: 9 patterns with severity + mitigation.
 - Codified in `procedures.md` § 39 "Skill-anti-pattern Catalogue".
-- Config: `config.preferences.anti_patterns.scan_skills: true` (default) — runs in Tailor / `doctor` hygiene pass.
+- Config: `config.preferences.anti_patterns.scan_skills: true` (default) — runs in Supertailor / `doctor` hygiene pass.
 - `--strict` flag exits non-zero on any `warning` hit (suitable for CI).
 - Tests: `tests/test_inbox_and_anti_patterns.py::test_anti_patterns_*` (2 tests).
 - The shipped framework's own skills pass with ≤ 2 warning hits (verified in test).

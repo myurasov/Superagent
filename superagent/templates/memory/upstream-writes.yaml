@@ -9,7 +9,7 @@
 # When an ingestor or skill is configured to write upstream (e.g. create
 # a Google Calendar event, modify a Notion page, post to a Slack channel),
 # every such write MUST log a row here AND request user confirmation per
-# call. Read by the user (manually) and by the Tailor's strategic pass
+# call. Read by the user (manually) and by the Supertailor's strategic pass
 # (looking for unusual patterns).
 
 schema_version: 1

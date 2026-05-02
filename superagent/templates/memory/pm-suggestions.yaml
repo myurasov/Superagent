@@ -1,5 +1,5 @@
 # [Do not change manually — managed by Superagent]
-# Superagent memory: Tailor improvement suggestions tracked through their lifecycle.
+# Superagent memory: Supertailor improvement suggestions tracked through their lifecycle.
 # New suggestions are appended; status is updated in place.
 
 schema_version: 1
@@ -12,13 +12,13 @@ suggestions:
   #   category              — new-skill | skill-improvement | memory-schema |
   #                            template | workflow | hygiene | config |
   #                            new-ingestor | auto-capture-rule | surfacing-rule
-  #   destination           — superagent | _custom (see tailor.agent.md
+  #   destination           — superagent | _custom (see supertailor.agent.md
   #                            § Destination Classification).
   #                            superagent → generic; implemented by Supercoder
   #                            into the committed framework tree.
   #                            _custom      → user-specific; implemented by
-  #                            Tailor directly into workspace/_custom/.
-  #                            Tailor defaults to _custom for anything referencing
+  #                            Supertailor directly into workspace/_custom/.
+  #                            Supertailor defaults to _custom for anything referencing
   #                            specific personal names, addresses, accounts, assets.
   #                            Supercoder REFUSES briefs whose destination is superagent
   #                            but whose body contains workspace-specific content.
@@ -33,7 +33,7 @@ suggestions:
   #   risk                  — Migration concerns or breakage potential.
   #   status                — proposed | approved | declined | implemented | deferred
   #   resolved_at           — ISO 8601 when resolved, or null.
-  #   implementation_notes  — Notes after implementation (who: Tailor-direct for
+  #   implementation_notes  — Notes after implementation (who: Supertailor-direct for
   #                            _custom, Supercoder for superagent; files created or
   #                            modified; safeguard re-routes; commit SHA),
   #                            or null.

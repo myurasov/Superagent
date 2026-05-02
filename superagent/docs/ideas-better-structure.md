@@ -153,7 +153,7 @@ Plus an `Inbox/_processed.yaml` log that records every triage decision so the ag
 - Status flips on existing entities.
 - Renders a "what changed in your workspace this week" report.
 
-This is the data view of the Tailor's strategic-pass insights — but for the user, not the framework.
+This is the data view of the Supertailor's strategic-pass insights — but for the user, not the framework.
 
 **Trade-off**: snapshots already exist; this is just adding a diff tool. Low cost, high value.
 
@@ -185,7 +185,7 @@ Beyond keyword search, the agent should be able to answer "find that thing I wro
 
 Store with a small format like `numpy .npz` per file or one consolidated `vectors.parquet`. Use a small local embedder (e.g. `bge-small`) so this runs without external API calls.
 
-**Trade-off**: requires an embedding model + vector library. Roadmap M-08 ("Tailor's strategic pass — better friction-clustering using embeddings") would set the precedent.
+**Trade-off**: requires an embedding model + vector library. Roadmap M-08 ("Supertailor's strategic pass — better friction-clustering using embeddings") would set the precedent.
 
 **When to do**: when "find that thing I wrote about" is a frequent failure of grep-based search.
 
@@ -274,7 +274,7 @@ Today the workspace is single-user. The roadmap (L-01, L-02) tracks proper multi
 
 **Option B** (single-tenant-with-ACL): one workspace; every entity has `owner` and `visible_to: []`. Skills filter by current-user perspective. Cleaner unified queries; harder to implement; trickier on backup / extract.
 
-The MVP recommends Option A; the roadmap notes the trade-off. The Tailor's strategic pass would surface evidence that points to Option B if multi-user use becomes real.
+The MVP recommends Option A; the roadmap notes the trade-off. The Supertailor's strategic pass would surface evidence that points to Option B if multi-user use becomes real.
 
 **When to do**: if / when a household member asks to be onboarded.
 
@@ -332,7 +332,7 @@ Today, every ingestor is `writes_upstream: false` in MVP — read-only. Calendar
 
 - The skill that wants to write surfaces the user-facing prompt: "Want me to also create this in Google Calendar?".
 - Each write is logged to `_memory/upstream-writes.yaml` (its own append-only log) so the user can audit.
-- The Tailor surfaces unusual write patterns as candidates for review.
+- The Supertailor surfaces unusual write patterns as candidates for review.
 
 **Trade-off**: write capability is a major safety boundary. Don't enable casually. Per-source opt-in + per-call confirmation is the right shape.
 
@@ -479,15 +479,15 @@ Skills query by time range; reader knows which partitions to load.
 
 Right now the agent's "what am I working on this turn" is implicit — pulled from chat context. There's no record afterward of what files were loaded, what was retrieved.
 
-**Idea**: each skill invocation records its `working_set` — the full list of files / cache entries / live MCP calls it consumed — to `_memory/working-sets.jsonl`. Used by the Tailor to spot:
+**Idea**: each skill invocation records its `working_set` — the full list of files / cache entries / live MCP calls it consumed — to `_memory/working-sets.jsonl`. Used by the Supertailor to spot:
 
 - Skills that consistently over-read (loading 50 files when 5 would do).
 - Skills that miss obvious sources (asking about a topic but not reading the relevant Sources entry).
 - Patterns where ingest-then-discard occurs (fetched data never read).
 
-**Trade-off**: minor write overhead. Major insight gain for the Tailor.
+**Trade-off**: minor write overhead. Major insight gain for the Supertailor.
 
-**When to do**: when the Tailor's strategic pass starts producing weak suggestions because it can't see what the agent did.
+**When to do**: when the Supertailor's strategic pass starts producing weak suggestions because it can't see what the agent did.
 
 ---
 
@@ -546,7 +546,7 @@ The cadence skills consume this, generate the surfacing block. User edits the po
 
 **Trade-off**: tiny rule engine. Mitigates the "every preference change is a skill edit" friction.
 
-**When to do**: when the Tailor's strategic pass surfaces 5+ preference-change requests for surfacing thresholds.
+**When to do**: when the Supertailor's strategic pass surfaces 5+ preference-change requests for surfacing thresholds.
 
 ---
 
@@ -566,4 +566,4 @@ If you can do **3 more** in the quarter after, do these:
 
 The remaining ideas are valuable but situational — pursue when the specific pain emerges.
 
-The **Tailor's strategic pass** is the right mechanism for prioritizing these. It watches usage; it surfaces friction; it proposes the matching idea. You confirm; the Supercoder ships. That loop will pull the right ideas forward in the right order, without requiring you to predict the future from this document.
+The **Supertailor's strategic pass** is the right mechanism for prioritizing these. It watches usage; it surfaces friction; it proposes the matching idea. You confirm; the Supercoder ships. That loop will pull the right ideas forward in the right order, without requiring you to predict the future from this document.

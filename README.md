@@ -6,7 +6,7 @@ A personal-life AI assistant that knows your life better than you do.
 
 Superagent shadows you across **bills, health, home, family, vehicles, pets, finances, hobbies, important dates** — every workstream of running an adult life. It captures from your own data sources (email, calendar, banks, health, smart home, notes), organizes everything into a queryable local vault, and surfaces what needs your attention before you have to ask.
 
-It is **local-first**, **markdown-based**, **privacy-by-construction**, **AI-assistant-agnostic** (Cursor, Claude Code, anything that reads files), and **self-improving** — a built-in Tailor / Supercoder loop watches how you use it and ships approved framework changes, with safeguards that prevent any of your personal data from leaking into committed code.
+It is **local-first**, **markdown-based**, **privacy-by-construction**, **AI-assistant-agnostic** (Cursor, Claude Code, anything that reads files), and **self-improving** — a built-in Supertailor / Supercoder loop watches how you use it and ships approved framework changes, with safeguards that prevent any of your personal data from leaking into committed code.
 
 The **quick-start works in 5 minutes with zero data-source setup**. Heavy ingestion (years of email, banks, health, smart home) is opt-in, deferred, and reversible.
 
@@ -54,7 +54,7 @@ Full quick-start: [`superagent/docs/quick-start.md`](superagent/docs/quick-start
 superagent/                  ← framework code (committed)
   superagent.agent.md        ← role definitions (Superagent + 9 helpers)
   procedures.md              ← contracts: ingestion, capture, surfacing, cadences
-  tailor.agent.md            ← Tailor's role (observer + proposer)
+  supertailor.agent.md            ← Supertailor's role (observer + proposer)
   supercoder.agent.md             ← Supercoder's role (implementer)
   skills/                    ← 47 skills, one .md per skill, plus _manifest.yaml
   templates/
@@ -69,7 +69,7 @@ superagent/                  ← framework code (committed)
     workspace_init.py        ← idempotent scaffold
     validate.py              ← schema-check the workspace
     render_status.py         ← regenerate scoped status.md / todo.md
-    log_user_query.py        ← UserPromptSubmit hook for the Tailor's friction analysis
+    log_user_query.py        ← UserPromptSubmit hook for the Supertailor's friction analysis
     build_skill_manifest.py  ← regenerate skills/_manifest.yaml
     + 14 more (handles, world, audit, briefing_cache, log_window, log_summarize,
        snapshot_diff, scenarios, play, sources_cache, session_scratch,
@@ -167,7 +167,7 @@ Per-source install / probe / writes destinations / caveats: [`superagent/docs/da
 - Everything under `workspace/` is **gitignored** and **local-only**. No telemetry. No phone-home. No cloud sync.
 - The agent's framework code under `superagent/` is committable; the workspace is not.
 - Sensitive subfiles (`health-records.yaml`, `accounts-index.yaml`, `Outbox/handoff/`) are explicitly called out — see `architecture.md` § "Sensitive subfiles" for encryption guidance.
-- The Tailor / Supercoder loop has a **hard safeguard** that prevents personal data from leaking into committed framework code, even when the user explicitly tries.
+- The Supertailor / Supercoder loop has a **hard safeguard** that prevents personal data from leaking into committed framework code, even when the user explicitly tries.
 - Credentials are NEVER stored in the workspace. Each account row carries a `vault_ref` pointing at your password manager.
 
 Read [`superagent/docs/faq.md`](superagent/docs/faq.md) for the long version.
@@ -176,7 +176,7 @@ Read [`superagent/docs/faq.md`](superagent/docs/faq.md) for the long version.
 
 ## Roadmap
 
-Organized by LOE tier (T-shirt sizes XS / S / M / L / XL) with rationale and "done when" criteria for each item. The Tailor's strategic pass continuously re-prioritizes based on actual usage friction.
+Organized by LOE tier (T-shirt sizes XS / S / M / L / XL) with rationale and "done when" criteria for each item. The Supertailor's strategic pass continuously re-prioritizes based on actual usage friction.
 
 [`superagent/docs/roadmap.md`](superagent/docs/roadmap.md).
 
@@ -184,10 +184,10 @@ Organized by LOE tier (T-shirt sizes XS / S / M / L / XL) with rationale and "do
 
 ## Self-improving
 
-Superagent ships with a **Tailor / Supercoder dual-agent loop** that watches how you use it:
+Superagent ships with a **Supertailor / Supercoder dual-agent loop** that watches how you use it:
 
-- The **Tailor** observes (`interaction-log.yaml`, `user-queries.jsonl`, `personal-signals.yaml`, `action-signals.yaml`) and proposes ranked framework improvements.
-- Each suggestion is tagged `destination: superagent` (generic — handed to the Supercoder for committed implementation) or `destination: _custom` (user-specific — Tailor implements directly into your overlay).
+- The **Supertailor** observes (`interaction-log.yaml`, `user-queries.jsonl`, `personal-signals.yaml`, `action-signals.yaml`) and proposes ranked framework improvements.
+- Each suggestion is tagged `destination: superagent` (generic — handed to the Supercoder for committed implementation) or `destination: _custom` (user-specific — Supertailor implements directly into your overlay).
 - A token-scan safeguard runs at proposal time AND at implementation time. Personal data CANNOT leak into committed framework code.
 - The **Supercoder** implements approved generic suggestions, runs `pytest`, and commits with a single-sentence imperative subject (no AI-attribution trailers, ever).
 
@@ -221,7 +221,7 @@ Run `tailor-review` every 90 days (the framework will nudge you).
 
 ## Contributing
 
-If you're using this and find friction, the best way to help is the same way the framework is designed to learn: tell the agent. Action signals get captured into `_memory/action-signals.yaml`, the Tailor digests them, and approved fixes ship as code.
+If you're using this and find friction, the best way to help is the same way the framework is designed to learn: tell the agent. Action signals get captured into `_memory/action-signals.yaml`, the Supertailor digests them, and approved fixes ship as code.
 
 If you want to write code: `superagent/supercoder.agent.md` documents the conventions. Add a new ingestor by dropping a file in `superagent/tools/ingest/<source>.py` that subclasses `IngestorBase`. Add a row to `_registry.py`. Add a smoke test. That's the loop.
 

@@ -19,7 +19,7 @@
     - [4.1 Daily update](#41-daily-update)
     - [4.2 Weekly review](#42-weekly-review)
     - [4.3 Monthly review](#43-monthly-review)
-    - [4.4 Quarterly Tailor review](#44-quarterly-tailor-review)
+    - [4.4 Quarterly Supertailor review](#44-quarterly-tailor-review)
   - [5. Task Management (todo skill)](#5-task-management-todo-skill)
     - [5.1 Sync to status.md files](#51-sync-to-statusmd-files)
   - [6. Domain & Asset Management](#6-domain--asset-management)
@@ -281,11 +281,11 @@ Cadences are aspirational defaults; the user can run any of them on demand at an
 6. **Domain hygiene** — any domain with no `history.md` entry in the last 60 days surfaces for "is this still active?".
 7. Append entries to `interaction-log.yaml` and to `Domains/Self/history.md`.
 
-### 4.4 Quarterly Tailor review
+### 4.4 Quarterly Supertailor review
 
 **Trigger:** user runs `tailor-review` (suggested cadence: every 90 days; daily-update nudges when stale).
 
-The Tailor's hygiene + strategic-improvement passes per `tailor.agent.md`. Outputs ranked suggestions in `pm-suggestions.yaml`; each tagged `destination: superagent` (handed to Supercoder) or `destination: _custom` (Tailor implements directly). The hard safeguard against personal data leaking into framework-bound writes is enforced here AND on receipt by the Supercoder.
+The Supertailor's hygiene + strategic-improvement passes per `supertailor.agent.md`. Outputs ranked suggestions in `pm-suggestions.yaml`; each tagged `destination: superagent` (handed to Supercoder) or `destination: _custom` (Supertailor implements directly). The hard safeguard against personal data leaking into framework-bound writes is enforced here AND on receipt by the Supercoder.
 
 ---
 
@@ -432,7 +432,7 @@ Two distinct kinds of "this should change" signals, both stored in `_memory/acti
 
 Ambient signals are captured silently with a one-line tag at the end of the reply (`_Captured signal sig-<id> (target: tailor|superagent)._`) and processed later in batch.
 
-Update skills (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`) and `tailor-review` surface **split unprocessed counts** ("N Tailor signals + M Superagent workspace actions pending").
+Update skills (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`) and `tailor-review` surface **split unprocessed counts** ("N Supertailor signals + M Superagent workspace actions pending").
 
 ### 7.3 Auto-capture from ingested data
 
@@ -580,7 +580,7 @@ The full pipeline (and which steps each outbound skill owns) is in `docs/outboun
 - The most sensitive files (`health-records.yaml`, `accounts-index.yaml`, anything under `Outbox/handoff/`) are surfaced explicitly in `docs/architecture.md` § "Sensitive subfiles" so the user knows which to symlink to encrypted storage if desired.
 - Skills that *produce* a sensitive artifact (e.g. `handoff` → "if I get hit by a bus" packet) write to a clearly-labelled subfolder (`Outbox/handoff/`) and surface the location in chat with a "store this somewhere safe" reminder.
 - Skills that *consume* sensitive data (medic prep brief, bookkeeper tax packet) include a "do not paste this into a chat assistant unless you trust it" banner at the top of the rendered output.
-- The Tailor / Supercoder safeguard scans every framework-bound write for names, addresses, account-number patterns, license-plate patterns. On any match, the destination is forcibly re-routed to `_custom/` regardless of the original tag.
+- The Supertailor / Supercoder safeguard scans every framework-bound write for names, addresses, account-number patterns, license-plate patterns. On any match, the destination is forcibly re-routed to `_custom/` regardless of the original tag.
 
 ---
 
@@ -670,7 +670,7 @@ Every skill that needs source data MUST follow this read order:
 6. **If stale or missing**: invoke the appropriate ingestor / shell / fetch (per `kind` + `source` in the `.ref.md`). Write the result to `_cache/<hash>/`. Then jump back to step 5.
 7. Update `_meta.yaml.last_used: now`; increment `_memory/sources-index.yaml.<row>.read_count`.
 
-Skills that violate this — e.g. that go straight to a live MCP without checking the cache — are flagged by the Tailor's strategic pass as candidates for refactor.
+Skills that violate this — e.g. that go straight to a live MCP without checking the cache — are flagged by the Supertailor's strategic pass as candidates for refactor.
 
 ### 15.6 Index sync
 
@@ -818,7 +818,7 @@ Reversible: `mv Archive/<YYYY-MM>/Projects/<slug>/ Projects/<slug>/` and update 
 
 ## 17. Memory Taxonomy (entity / time / state shape)
 
-Implements ideas-better-structure.md item #9. Codifies the three shapes of YAML files under `_memory/`. Tools enforce; the Tailor's hygiene pass flags violations.
+Implements ideas-better-structure.md item #9. Codifies the three shapes of YAML files under `_memory/`. Tools enforce; the Supertailor's hygiene pass flags violations.
 
 | Shape | Files | Mutation rule | Read pattern |
 |---|---|---|---|
@@ -944,7 +944,7 @@ Implements ideas-better-structure.md item #11. Backed by `_memory/tags.yaml` and
 
 **Auto-register** (`config.preferences.tags.auto_register: true` default): when any skill writes a tag NOT in `tags.yaml`, the new canonical row is appended automatically with `created_by: <skill>`. The user curates description + category later.
 
-**Strict canonical** (`config.preferences.tags.strict_canonical: false` default): when true, skills MUST refuse to write a tag not in `tags.yaml`. Promoted by the Tailor when the tags taxonomy stabilizes.
+**Strict canonical** (`config.preferences.tags.strict_canonical: false` default): when true, skills MUST refuse to write a tag not in `tags.yaml`. Promoted by the Supertailor when the tags taxonomy stabilizes.
 
 **Aliases**: every tag row carries an `aliases: []` list. Skills that read tags SHOULD canonicalize via `tags.yaml` lookup before treating "tax-deductible" and "deductible" as different.
 
@@ -1163,7 +1163,7 @@ Implements ideas-better-structure.md item #23 + perf-improvement-ideas.md (measu
 
 **Every skill invocation records** (when `config.preferences.telemetry.record_working_sets: true`): files read, MCP / CLI calls, outputs produced, total bytes in/out, est. tokens, latency.
 
-**Used by Tailor's strategic pass** to spot:
+**Used by Supertailor's strategic pass** to spot:
 - Skills that consistently over-read (loading 50 files when 5 would do).
 - Skills that miss obvious local sources (asking about a topic but not reading the relevant Sources entry).
 - Patterns where ingest-then-discard occurs (fetched data never read).
@@ -1259,6 +1259,6 @@ Implements perf-improvement-ideas.md § "Anti-patterns to flag in skills". Backe
 | AP-8 | warning | Manifest-bypass: "read every skill markdown". | Read `skills/_manifest.yaml` first. |
 | AP-9 | info | Load-then-extract: large file loaded, single fact extracted. | Use Grep / FTS5 first. |
 
-**Scanning**: `tools/anti_patterns.py` walks every skill markdown, applies the regex patterns, prints findings. The Tailor's strategic pass runs it; `doctor` runs it (when `config.preferences.anti_patterns.scan_skills: true`).
+**Scanning**: `tools/anti_patterns.py` walks every skill markdown, applies the regex patterns, prints findings. The Supertailor's strategic pass runs it; `doctor` runs it (when `config.preferences.anti_patterns.scan_skills: true`).
 
 **Strict mode** (`--strict`): exit non-zero when any `warning` hit found. Suitable for CI.

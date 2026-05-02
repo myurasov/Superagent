@@ -30,7 +30,7 @@ This roadmap is structured by **LOE tier (T-shirt size)**, not by quarter. Each 
 - **Done when** — observable success criterion.
 - **Depends on** — explicit dependencies on other items, where they exist.
 
-The roadmap is **continuously re-prioritized** by the Tailor's strategic pass (`tailor-review` skill, which writes to `_memory/pm-suggestions.yaml`). Items here are starting points; the actual sequence is set by what the user keeps tripping over.
+The roadmap is **continuously re-prioritized** by the Supertailor's strategic pass (`tailor-review` skill, which writes to `_memory/pm-suggestions.yaml`). Items here are starting points; the actual sequence is set by what the user keeps tripping over.
 
 ## LOE legend
 
@@ -118,7 +118,7 @@ The "implement one ingestor" tier — the bulk of where Superagent grows.
 | S-29 | Add `tools/export.py` (one-shot full workspace JSON export). | For backup, for moving machines, for "I want to inspect everything". | One-file export; round-trip test. |
 | S-30 | Add `tools/import.py` (round-trip with export). | For restore, for moving machines. | One-file import; round-trip test passes. |
 | S-31 | Implement `_memory/expense-categories.yaml` user-rules support (manual override of ingestor categorization). | Plaid's auto-category is rarely 100% right for a person's mental model. | Rules file + apply at read time + persist user corrections. |
-| S-32 | Polish `daily-update` based on actual usage (per Tailor's first strategic pass after a month of use). | Most user-facing surface; gets the most refinement. | Tailor surface improvements implemented. |
+| S-32 | Polish `daily-update` based on actual usage (per Supertailor's first strategic pass after a month of use). | Most user-facing surface; gets the most refinement. | Supertailor surface improvements implemented. |
 
 ## LOE-M — a few days each
 
@@ -131,7 +131,7 @@ The "implement one ingestor" tier — the bulk of where Superagent grows.
 | M-05 | **Email-driven capture flows** — when the gmail ingestor sees a "your dentist appointment is confirmed" email, it doesn't just add the appointment, it also pulls the prep_notes from the message body. Same for "your prescription is ready", "your package shipped", etc. | Each new flow is small but they compound — the workspace fills itself. | Flow registry in `tools/ingest/_flows.yaml` + extension to gmail ingestor + per-flow tests. |
 | M-06 | **Receipt OCR** for files dropped into Inbox/. | Scan a receipt, the agent extracts payee + amount + date + line items, routes through `add-source --to-domain <inferred>` so the file lands in `Sources/documents/<category>/<asset-slug>/` with a pointer in the relevant `sources.md`. Optionally creates a bill / subscription / one-shot expense. | New `tools/ocr.py` + Inbox-watcher integration; uses local Tesseract + a small classifier. |
 | M-07 | **`tools/ingest/_orchestrator.py` — parallel runs**. | Today the orchestrator runs sources serially. With 10+ enabled sources, parallelism saves several minutes per cadence. | Async orchestrator with a per-source serialization-policy file (some sources can't run in parallel — e.g. two Plaid endpoints sharing a token). |
-| M-08 | **Tailor's strategic pass — better friction-clustering** using embeddings of `user-queries.jsonl`. | Today's clustering is heuristic. Embeddings would surface true friction. | Switch to embedding-based clustering; falls back to heuristic if no embedder. |
+| M-08 | **Supertailor's strategic pass — better friction-clustering** using embeddings of `user-queries.jsonl`. | Today's clustering is heuristic. Embeddings would surface true friction. | Switch to embedding-based clustering; falls back to heuristic if no embedder. |
 | M-09 | **Handoff packet generator — quarterly auto-render** + diff against previous packet. | Captures the truth of "what changed since the last time I made this packet" for an executor reading it. | `monthly-review` triggers `handoff` every 3 months; diff against last `Outbox/handoff/handoff-<YYYY-MM-DD>.md`. |
 | M-10 | **Custom-overlay starter kits** — example overlays the user can copy into `_custom/` (carpool-pickup-email, kids-allowance-tracker, parents-care-cadence, freelance-invoicing). | Concrete examples lower the barrier to writing your own overlays. | `templates/_custom-starters/` directory + docs. |
 
@@ -167,7 +167,7 @@ The 5-year picture, recorded so the framework has a shape to grow toward:
 - **Predictive surfacing.** Today's daily-update reacts to what's in the indexes. The vision is to predict — "you usually book the dentist around this time of year; want me to reach out?", "this bill amount is unusual based on the last 12 months; want to question it?", "the dishwasher is making a noise per Home Assistant; based on similar patterns, it's likely the rinse aid pump; here are three contractors who've fixed this".
 - **Conversational depth.** The user can ask anything about their own life and get a sourced answer. "Where did I leave that umbrella?" "What was Mom's reaction when we got her the watch in 2024?" "How much have I spent on coffee this year?" "Is my heart-rate trend healthy compared to a year ago?"
 - **Outbound automation, opt-in.** With explicit per-task approval, Superagent can send the email / file the doc / book the appointment — using the user's voice, their preferences, their accounts. The trust is built from a thousand correct surface-and-ask interactions before any automate-and-tell move.
-- **The Tailor / Supercoder loop runs hot.** The framework that builds itself becomes self-sustaining; the user maintains it by saying "this should be different" rather than by writing code.
+- **The Supertailor / Supercoder loop runs hot.** The framework that builds itself becomes self-sustaining; the user maintains it by saying "this should be different" rather than by writing code.
 
 ## Explicitly out of scope
 
@@ -175,13 +175,13 @@ What Superagent will NOT do, by design:
 
 - **Replace human professionals.** The medic-prep brief makes you better-prepared for the doctor; it never tells you what to take. The bookkeeper finds the deductibles; it never files the return. The handoff packet helps the executor; it never executes the will.
 - **Cloud-by-default.** Local-first is a hard requirement; any cloud feature is opt-in, encrypted, and clearly labelled.
-- **Telemetry of any kind.** No "anonymous usage data". Ever. The Tailor's friction analysis runs on the user's own machine over their own queries.
+- **Telemetry of any kind.** No "anonymous usage data". Ever. The Supertailor's friction analysis runs on the user's own machine over their own queries.
 - **Push notifications without user setup.** Superagent doesn't get to surprise you. Surfacing happens when you run a cadence skill OR when you've opted into a notification mechanism (which you set up; Superagent doesn't ship with one).
 - **Multi-tenant / SaaS.** The hosted variant in LOE-XL is single-tenant — your encrypted vault, your keys.
 
 ## How items get prioritized
 
-The Tailor reads `_memory/user-queries.jsonl` to spot which roadmap items would address recurring questions you couldn't get answered. Approved promotions move from this file into `_memory/pm-suggestions.yaml` with `status: approved` and the right destination tag.
+The Supertailor reads `_memory/user-queries.jsonl` to spot which roadmap items would address recurring questions you couldn't get answered. Approved promotions move from this file into `_memory/pm-suggestions.yaml` with `status: approved` and the right destination tag.
 
 You can also pin priority manually:
 
@@ -189,7 +189,7 @@ You can also pin priority manually:
 edit superagent/docs/roadmap.md
 ```
 
-Add `**[PINNED]**` next to any row. The Tailor respects pins for one quarter, then asks again.
+Add `**[PINNED]**` next to any row. The Supertailor respects pins for one quarter, then asks again.
 
 The default sequence the maintainers (initially: just you) work through is roughly:
 

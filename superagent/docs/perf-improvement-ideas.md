@@ -2,7 +2,7 @@
 
 A working catalogue of ways to reduce tokens-per-skill-invocation and shorten response latency in Superagent. The patterns address how the agent reads files, when MCP / CLI tool calls are made, what gets cached, and how prompt-cache mechanics reward stable prefixes.
 
-This doc is **diagnostic + catalogue**, not a roadmap. The Superagent Tailor's strategic pass picks items off the shelf when matching friction shows up.
+This doc is **diagnostic + catalogue**, not a roadmap. The Supertailor's strategic pass picks items off the shelf when matching friction shows up.
 
 ---
 
@@ -86,7 +86,7 @@ skills:
 
 The agent reads this ONE small file (~5 KB total) to pick a skill instead of grepping through 35+ skill markdowns. After picking the skill, the agent reads only that one skill file in detail.
 
-Generate via `tools/build_skill_manifest.py` — walks `superagent/skills/*.md` plus any `workspace/_custom/skills/*.md`, parses YAML frontmatter, emits the manifest. Re-run after any skill add / change. The Tailor's hygiene pass should re-render it as part of its existing checks.
+Generate via `tools/build_skill_manifest.py` — walks `superagent/skills/*.md` plus any `workspace/_custom/skills/*.md`, parses YAML frontmatter, emits the manifest. Re-run after any skill add / change. The Supertailor's hygiene pass should re-render it as part of its existing checks.
 
 ### QW-2. Per-skill step index
 
@@ -277,7 +277,7 @@ ttl_minutes: 720
 size_bytes: 2_312
 ```
 
-Skills check the cache before regenerating. The Tailor's strategic pass surfaces skills that NEVER cache-hit (candidates for shorter TTL or different cache key).
+Skills check the cache before regenerating. The Supertailor's strategic pass surfaces skills that NEVER cache-hit (candidates for shorter TTL or different cache key).
 
 ---
 
@@ -317,7 +317,7 @@ A wrapper that does this and tags each block with `cache_control: { type: "ephem
 
 Practical guidance for the user:
 - Don't edit AGENTS.md / procedures.md during an active conversation if you can help it; commit edits between sessions.
-- The Tailor / Supercoder loop's commit-then-restart cycle is well-suited to this.
+- The Supertailor / Supercoder loop's commit-then-restart cycle is well-suited to this.
 
 ### BB-3. Pre-warmed cadence briefings (cron / launchd)
 
@@ -368,7 +368,7 @@ When reviewing existing skills (or writing new ones), watch for these patterns t
 
 9. **"Loaded large file, then tool-called the LLM to extract one fact"** — should have grep'd or used FTS5 first.
 
-The Tailor's strategic pass should grow a check that flags these patterns from `_memory/working-sets.jsonl` (T3-F idea) — once that's wired, anti-pattern detection becomes automatic.
+The Supertailor's strategic pass should grow a check that flags these patterns from `_memory/working-sets.jsonl` (T3-F idea) — once that's wired, anti-pattern detection becomes automatic.
 
 ---
 
@@ -382,7 +382,7 @@ Token + latency optimizations are easy to claim, hard to prove. Recommended meas
 
 3. **A/B at the skill level**: ship one optimization at a time. Compare the per-skill mean token-cost and mean latency between the baseline week and the post-change week.
 
-4. **Surface the deltas in `monthly-review`**: a "framework efficiency" section showing the trailing 30 days vs the prior 30. The Tailor uses this signal to suggest which optimizations to keep iterating on.
+4. **Surface the deltas in `monthly-review`**: a "framework efficiency" section showing the trailing 30 days vs the prior 30. The Supertailor uses this signal to suggest which optimizations to keep iterating on.
 
 5. **Anti-metric: quality regression**. Token reduction is worthless if the answers get worse. Track agent-correction frequency from `model-context.yaml.corrections` as a proxy — if it climbs after a change, suspect that change.
 
@@ -424,4 +424,4 @@ The instrumentation itself is small (one new tool, ~50 LOC), but it transforms t
 16. **BB-2** — Anthropic prompt-cache alignment (only when running via API directly).
 17. **BB-4** — world-model entity graph.
 
-The Tailor's strategic pass should be the actual prioritizer — these tiers are a starting point, but the order changes based on which friction signals trip first in the wild.
+The Supertailor's strategic pass should be the actual prioritizer — these tiers are a starting point, but the order changes based on which friction signals trip first in the wild.

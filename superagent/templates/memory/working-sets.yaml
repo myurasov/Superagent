@@ -16,7 +16,7 @@
 #   - Total estimated tokens consumed (heuristic: total bytes / 4)
 #   - Total wall-clock latency in milliseconds
 #
-# The Tailor's strategic pass reads this log to spot:
+# The Supertailor's strategic pass reads this log to spot:
 #   - Skills that consistently over-read.
 #   - Skills that re-read the same file multiple times in one invocation.
 #   - Skills that skip obvious local sources and go straight to MCPs.

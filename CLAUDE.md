@@ -9,5 +9,5 @@ This file is the **Claude Code-specific shim** for the Superagent framework. The
 ## Claude Code-specific notes
 
 - **MCP servers**: copy [`.mcp.json.example`](.mcp.json.example) to `.mcp.json` and fill in any servers you want. None are required for the quick-start.
-- **Hooks**: the Tailor's user-query log (`workspace/_memory/user-queries.jsonl`) is populated by `.claude/settings.json` on every `UserPromptSubmit`. The same script (`superagent/tools/log_user_query.py`) is invoked from `.cursor/hooks.json` for Cursor users.
+- **Hooks**: the Supertailor's user-query log (`workspace/_memory/user-queries.jsonl`) is populated by `.claude/settings.json` on every `UserPromptSubmit`. The same script (`superagent/tools/log_user_query.py`) is invoked from `.cursor/hooks.json` for Cursor users.
 - **Workspace**: `workspace/` is created on first `init` and is gitignored. Everything personal lives there; the framework code under `superagent/` never touches it except through the Skills + Tools surface.

@@ -402,4 +402,4 @@ The full procedure is documented in `superagent/supercoder.agent.md` and `supera
 5. Add a smoke test in `superagent/tests/test_ingest_registry.py`.
 6. Document the source in this catalogue.
 
-The Tailor's strategic pass watches for "user keeps asking about X but has no ingestor for it" patterns and proposes new ingestors as `pm-suggestions.yaml` rows tagged `category: new-ingestor, destination: superagent` — handing off to the Supercoder for implementation.
+The Supertailor's strategic pass watches for "user keeps asking about X but has no ingestor for it" patterns and proposes new ingestors as `pm-suggestions.yaml` rows tagged `category: new-ingestor, destination: superagent` — handing off to the Supercoder for implementation.

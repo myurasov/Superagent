@@ -1,7 +1,7 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: append-only log of every ingestion run.
 # Provides per-run forensics (what was pulled, what changed, what failed).
-# Long-term, also useful for the Tailor's strategic pass: which sources are
+# Long-term, also useful for the Supertailor's strategic pass: which sources are
 # heavily used, which never produce signal, which fail intermittently.
 
 schema_version: 1

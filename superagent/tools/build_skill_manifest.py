@@ -12,7 +12,7 @@ The agent reads the manifest ONCE to decide which skill applies. Then it
 reads ONLY the chosen skill's full markdown for execution. Saves 2-5k
 tokens on every "which skill should I run?" turn.
 
-Re-run after any skill add / change. The Tailor's hygiene pass should
+Re-run after any skill add / change. The Supertailor's hygiene pass should
 re-render it as part of its existing checks.
 
 Also includes (when present) any user-overlay skills under

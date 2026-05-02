@@ -79,7 +79,7 @@ Each data source you enable is an upgrade — Superagent now knows things you'd 
 
 Each ingestor's failures are isolated. If `gmail` breaks, `apple_health` keeps working. After 3 consecutive failures of the same source, Superagent auto-flips it to `capture_mode: manual` and surfaces it in the next daily-update under "Sources needing attention" with the failure cause. You fix it (re-auth, re-install, …) and re-enable.
 
-The Tailor's strategic pass watches for sources that fail repeatedly and proposes either reauth automation or removing the source from the catalogue if the upstream service has shut down.
+The Supertailor's strategic pass watches for sources that fail repeatedly and proposes either reauth automation or removing the source from the catalogue if the upstream service has shut down.
 
 ## How does it compare to Notion / Obsidian / a spreadsheet?
 
@@ -93,7 +93,7 @@ The 2025-2026 wave of AI life-management apps mostly land on a similar promise: 
 
 - **Local first, your data, your machine.** No cloud account required.
 - **Open source, customizable, self-hostable.** Your skills, your overlays, your ingestors.
-- **Self-improving (Tailor / Supercoder loop).** Most commercial apps have a fixed feature set; Superagent learns from your usage and ships framework improvements you approve.
+- **Self-improving (Supertailor / Supercoder loop).** Most commercial apps have a fixed feature set; Superagent learns from your usage and ships framework improvements you approve.
 - **Heavy-import depth.** The data-source catalogue is broader than any commercial app's integration list, by design — you can plug in everything from your fitness ring to your smart home to your bank.
 - **No subscription.** You pay for the AI assistant (Cursor / Claude Code) and that's it.
 
@@ -116,7 +116,7 @@ Two ways:
 1. **iCloud Drive / Dropbox sync** — put `workspace/` in a synced folder. View any file on your phone via the Files app or Drafts / Working Copy / iA Writer. Read-only is enough for "show me today's appointments while I'm out of the house".
 2. **Shortcuts / quick-add tools** — capture-only flows (add a contact, log a symptom, mark a bill paid) via iOS Shortcuts that append to the right YAML / markdown. The roadmap entry "iOS Shortcut pack" tracks this.
 
-A native mobile app is not on the MVP. The Tailor will tell you if your usage patterns suggest you really need one.
+A native mobile app is not on the MVP. The Supertailor will tell you if your usage patterns suggest you really need one.
 
 ## Is it secure?
 
@@ -138,7 +138,7 @@ Multiple safety nets:
 - **Append-only logs.** `interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml` never lose information; they only grow.
 - **Reversible archives.** Anything `doctor` moves to `Archive/` is one `mv` away from coming back.
 - **Diff-and-merge, not clobber.** Skills that update markdown files diff against your hand-edits and merge; they don't overwrite blindly.
-- **The hard safeguard.** The Tailor / Supercoder loop has a token-scan that prevents personal data from accidentally leaking into committed framework code, regardless of what the AI thinks.
+- **The hard safeguard.** The Supertailor / Supercoder loop has a token-scan that prevents personal data from accidentally leaking into committed framework code, regardless of what the AI thinks.
 - **Plain-text data.** Worst case, you open the file in any editor and fix it manually. There's nothing the agent does that you can't undo.
 
 ## Why are some skills not implemented yet?
@@ -153,7 +153,7 @@ Implementing a stub means: add a real `<source>.py` that subclasses `IngestorBas
 
 Yes — drop a markdown file into `workspace/_custom/skills/<your-skill>.md` with the standard frontmatter (`name`, `description`, `triggers`, `mcp_required`, `mcp_optional`). The agent finds it the next turn and treats it as first-class.
 
-If your skill turns out to be useful for everyone, the Tailor's strategic pass may surface it as a `pm-suggestions.yaml` candidate to promote into the committed framework. The Supercoder will only take it if it's generic (the safeguard refuses anything with personal-data tokens).
+If your skill turns out to be useful for everyone, the Supertailor's strategic pass may surface it as a `pm-suggestions.yaml` candidate to promote into the committed framework. The Supercoder will only take it if it's generic (the safeguard refuses anything with personal-data tokens).
 
 ## What's the long-term plan?
 
@@ -164,4 +164,4 @@ If your skill turns out to be useful for everyone, the Tailor's strategic pass m
 - **L (next year)**: multi-user vault with proper conflict resolution. Voice-first capture (audio in, transcribe, route to the right skill). Family-mode (shared Domains, per-user private Domains). A polished read-only mobile UI.
 - **XL (vision)**: a full evolution into "the personal-life equivalent of an AI engineering co-pilot — proactive, calibrated, ambient, indispensable".
 
-Roadmap items get re-prioritized by the Tailor's strategic pass based on actual usage friction. The framework that builds itself.
+Roadmap items get re-prioritized by the Supertailor's strategic pass based on actual usage friction. The framework that builds itself.

@@ -23,7 +23,7 @@ alerts: []
 # Each entry: { domain: "<slug>", note: "<one-line>", as_of: "<iso>" }
 domain_snapshots: []
 
-# Last time each cadence skill ran successfully (helps the Tailor staleness pass).
+# Last time each cadence skill ran successfully (helps the Supertailor staleness pass).
 last_runs:
   daily_update: null
   whatsup: null

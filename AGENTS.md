@@ -56,7 +56,7 @@ If this repository also hosts other AI-assistant frameworks (work assistants, pr
 
 - **Role definitions** (Superagent + helper personas): read and follow [`superagent/superagent.agent.md`](superagent/superagent.agent.md).
 - **Operational behavior** (init, cadences, data-ingestion contract, capture / surfacing patterns, autonomy, memory): read and follow [`superagent/procedures.md`](superagent/procedures.md).
-- **Tailor (framework hygiene + improvement)**: read and follow [`superagent/tailor.agent.md`](superagent/tailor.agent.md).
+- **Supertailor (framework hygiene + improvement)**: read and follow [`superagent/supertailor.agent.md`](superagent/supertailor.agent.md).
 - **Supercoder (implementation)**: read and follow [`superagent/supercoder.agent.md`](superagent/supercoder.agent.md).
 - **Custom overlay** (per-user extensions): see § "Custom overlay" below; full reference in [`superagent/docs/custom-overlay.md`](superagent/docs/custom-overlay.md).
 
@@ -75,7 +75,7 @@ On **every Superagent turn**, before doing anything else:
 
 If `workspace/_custom/` does not exist, skip the overlay silently — no error, no warning. It is optional scaffolding.
 
-The Superagent Tailor (`tailor-review` skill) auto-scaffolds the `_custom/` directory structure during its hygiene pass if it is missing.
+The Supertailor (`tailor-review` skill) auto-scaffolds the `_custom/` directory structure during its hygiene pass if it is missing.
 
 ---
 
@@ -332,7 +332,7 @@ Per `docs/perf-improvement-ideas.md` QW-3, every Superagent skill execution oper
 - **Use the events stream + log summaries** instead of full-loading append-only YAML logs: `_memory/<file>.summary.yaml` (the QW-4 summary sibling) tells you whether you need the full log at all; `tools/log_window.py read` pulls just a date range.
 - **BATCH parallel reads / MCP calls** in a single tool-call message rather than chaining them sequentially. Sequential chains are reserved for the cases where step N's output feeds step N+1.
 
-The `tools/anti_patterns.py` scanner flags skills that violate these patterns. The Tailor's strategic pass surfaces persistent violations.
+The `tools/anti_patterns.py` scanner flags skills that violate these patterns. The Supertailor's strategic pass surfaces persistent violations.
 
 ## Local-first read order
 
@@ -418,7 +418,7 @@ Optional IDE wiring (only relevant if Superagent is the primary framework in the
 
 - **Cursor**: create `.cursor/rules/superagent.mdc` with `description: "Superagent personal-life assistant — read when user invokes a Superagent skill or works under workspace/"` and `alwaysApply: false`. Body: `Read and follow AGENTS.md.` Cursor's "agent-requestable rules" mechanism makes the rule discoverable without forcing it on every turn.
 - **Claude Code**: add `@AGENTS.md` to a `CLAUDE.md` (or per-project settings). Skip if you prefer manual invocation.
-- **User-prompt logging** (used by the Tailor for friction analysis): wire a `UserPromptSubmit` hook (Cursor: `.cursor/hooks.json`; Claude Code: `.claude/settings.json`) that runs `python3 superagent/tools/log_user_query.py`. The script appends one line per prompt to `workspace/_memory/user-queries.jsonl`. This is opt-in and can be disabled via `_memory/config.yaml.preferences.privacy.log_user_queries: false`.
+- **User-prompt logging** (used by the Supertailor for friction analysis): wire a `UserPromptSubmit` hook (Cursor: `.cursor/hooks.json`; Claude Code: `.claude/settings.json`) that runs `python3 superagent/tools/log_user_query.py`. The script appends one line per prompt to `workspace/_memory/user-queries.jsonl`. This is opt-in and can be disabled via `_memory/config.yaml.preferences.privacy.log_user_queries: false`.
 - **Commit-message hook**: install a `commit-msg` hook at `.githooks/commit-msg` (and `git config core.hooksPath .githooks`) that blocks AI-attribution patterns at commit time. The reference implementation lives at `superagent/templates/githooks/commit-msg`.
 
 If the repo also hosts other assistant frameworks, **do not** add Superagent to `alwaysApply: true` — the two would fight each other. Keep Superagent on the agent-requestable / opt-in track.
@@ -430,7 +430,7 @@ Per `docs/perf-improvement-ideas.md` BB-2-b — practical guidance for Cursor / 
 The IDE controls how the prompt is structured and which prefixes are cached. The framework can still help by keeping AGENTS.md and procedures.md SHORT and STABLE — avoiding edits during a session that would invalidate the cache for downstream turns.
 
 - **Don't edit `AGENTS.md` / `procedures.md` mid-session.** Cursor's prompt cache rewards a stable prefix; mutating the docs that anchor the prefix forces a full re-cache, paying the long form back to the model on every subsequent turn.
-- **The Tailor / Supercoder loop's commit-then-restart cycle is well-suited to this.** After the Tailor proposes a doc change, approve it, let the Supercoder commit, then start a fresh chat session. The new session pays the full prompt cost ONCE; subsequent turns reap the cache savings.
+- **The Supertailor / Supercoder loop's commit-then-restart cycle is well-suited to this.** After the Supertailor proposes a doc change, approve it, let the Supercoder commit, then start a fresh chat session. The new session pays the full prompt cost ONCE; subsequent turns reap the cache savings.
 - **Don't open many framework files mid-session.** Each one bumps the prompt; fewer files = better cache reuse.
 - **For long-running ingestion or scenario sessions**, prefer running them via dedicated tool invocations (each is a stand-alone process) rather than long chat threads.
 

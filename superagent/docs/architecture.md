@@ -9,7 +9,7 @@
   - [Two halves of the repo](#two-halves-of-the-repo)
   - [Memory: structured + narrative](#memory-structured--narrative)
   - [Skills, tools, ingestors](#skills-tools-ingestors)
-  - [The dual-agent loop (Tailor + Supercoder)](#the-dual-agent-loop-tailor--supercoder)
+  - [The dual-agent loop (Supertailor + Supercoder)](#the-dual-agent-loop-supertailor--supercoder)
   - [The hard safeguard](#the-hard-safeguard)
   - [The 4-file domain convention](#the-4-file-domain-convention)
   - [The PARA / GTD / CODE lineage](#the-para--gtd--code-lineage)
@@ -29,7 +29,7 @@ Superagent is a **personal-life operating system** built on five layers:
 4. **A reference library — Sources** (`workspace/Sources/`) — immutable documents the user owns (`documents/`) plus pointers to external data (`references/<*>.ref.md`), with an evictable cache (`_cache/`) so the agent reads local first.
 5. **An agent skin** (`superagent/skills/*.md` + `superagent/tools/`) — invocable behaviours that read all four layers, write to layers 1-3, and speak the user's language.
 
-All layers are designed for **graceful degradation**. Structured vault works without narrative. Narrative works without structured. Sources work without ingestion. Agent skin works at the most basic level by reading and writing markdown — every advanced feature (ingestion, caching, surfacing, audit, the Tailor / Supercoder loop) layers on top.
+All layers are designed for **graceful degradation**. Structured vault works without narrative. Narrative works without structured. Sources work without ingestion. Agent skin works at the most basic level by reading and writing markdown — every advanced feature (ingestion, caching, surfacing, audit, the Supertailor / Supercoder loop) layers on top.
 
 The split between Domains and Projects is the PARA distinction made explicit:
 
@@ -51,7 +51,7 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 ├── superagent/                     ← framework code (committed; this is the product)
 │   ├── superagent.agent.md         ← role definitions (Superagent + helpers)
 │   ├── procedures.md               ← contracts: ingestion, capture, surfacing, cadences
-│   ├── tailor.agent.md             ← Tailor's role (observer + proposer)
+│   ├── supertailor.agent.md             ← Supertailor's role (observer + proposer)
 │   ├── supercoder.agent.md         ← Supercoder's role (Mode 1 framework + Mode 2 project build)
 │   ├── skills/                     ← every skill, one .md per skill (incl. `supercoder.md`)
 │   ├── templates/
@@ -99,7 +99,7 @@ The two layers serve different access patterns:
 | `context.yaml` | rolling state (last_check, current_focus, alerts) | `whatsup`, `daily-update`, `weekly-review`, `monthly-review` |
 | `model-context.yaml` | model's accumulated learning across sessions | every skill (read at session start) |
 | `interaction-log.yaml` | append-only log of touchpoints (every interaction the agent records) | `follow-up`, `summarize-thread`, all cadence skills |
-| `ingestion-log.yaml` | append-only per-run summaries of every ingestor invocation | `ingest`, Tailor |
+| `ingestion-log.yaml` | append-only per-run summaries of every ingestor invocation | `ingest`, Supertailor |
 | `todo.yaml` | task list (P0-P3) | `todo`, `triage-overdue`, all cadence skills |
 | `domains-index.yaml` | metadata about each domain folder | every skill |
 | `projects-index.yaml` | metadata about each project (charter, lifecycle, target_date) | `add-project`, `projects`, all cadence skills |
@@ -114,9 +114,9 @@ The two layers serve different access patterns:
 | `documents-index.yaml` | important documents (with expiration tracking) | `add-document`, `monthly-review`, `handoff` |
 | `health-records.yaml` | medical events, meds, vitals, conditions | `health-log`, `appointments` (medical), monthly-review |
 | `data-sources.yaml` | per-source ingestion config and state | every ingestor, `ingest` skill |
-| `personal-signals.yaml` | self-development feedback (capture + surface) | `personal-signals`, `weekly-review`, Tailor |
-| `action-signals.yaml` | "this should change" signals (target: tailor / superagent) | every skill (capture); Tailor (drain) |
-| `pm-suggestions.yaml` | Tailor's framework-improvement backlog | Tailor, Supercoder |
+| `personal-signals.yaml` | self-development feedback (capture + surface) | `personal-signals`, `weekly-review`, Supertailor |
+| `action-signals.yaml` | "this should change" signals (target: tailor / superagent) | every skill (capture); Supertailor (drain) |
+| `pm-suggestions.yaml` | Supertailor's framework-improvement backlog | Supertailor, Supercoder |
 | `procedures.yaml` | personal playbooks | `research`, ad-hoc retrieval |
 | `insights.yaml` | distilled learnings | `research`, ad-hoc retrieval |
 
@@ -144,9 +144,9 @@ The three are deliberately separated:
 
 This separation means **skills are language**, **tools are code**, and **ingestors are pluggable**. A user can write a custom skill (in `_custom/skills/`) without touching code; a developer can add a new tool without changing any skill; a community contributor can add a new ingestor for a new data source by dropping a file in `tools/ingest/` and adding a row to `_registry.py`.
 
-## The dual-agent loop (Tailor + Supercoder)
+## The dual-agent loop (Supertailor + Supercoder)
 
-Superagent ships with built-in introspection. The full role definitions are in `tailor.agent.md` and `supercoder.agent.md`; the user-facing skill is `tailor-review`. The high-level loop:
+Superagent ships with built-in introspection. The full role definitions are in `supertailor.agent.md` and `supercoder.agent.md`; the user-facing skill is `tailor-review`. The high-level loop:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -161,7 +161,7 @@ Superagent ships with built-in introspection. The full role definitions are in `
                          │  (every 90 days, or when nudged)
                          ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│  Tailor (tailor-review skill)                                           │
+│  Supertailor (tailor-review skill)                                           │
 │    1. HYGIENE PASS  — template compliance, orphans, staleness, schemas  │
 │    2. STRATEGIC PASS — friction patterns, capability gaps, novel needs  │
 │    Each suggestion: tagged destination = superagent | _custom         │
@@ -174,7 +174,7 @@ Superagent ships with built-in introspection. The full role definitions are in `
 ┌──────────────────────────────────┬─────────────────────────────────────┐
 │  destination = _custom           │  destination = superagent         │
 │   ────────────────────           │   ───────────────────────           │
-│  Tailor implements directly      │  Tailor packages a brief            │
+│  Supertailor implements directly      │  Supertailor packages a brief            │
 │   into workspace/   │   and hands to Supercoder                │
 │   _custom/                       │                                     │
 │  Sets status: implemented        │  Supercoder re-runs safeguard            │
@@ -184,7 +184,7 @@ Superagent ships with built-in introspection. The full role definitions are in `
 │                                  │  Supercoder runs `pytest -q`             │
 │                                  │  Supercoder commits (single-sentence,    │
 │                                  │    imperative, no AI-attribution)   │
-│                                  │  Tailor flips status: implemented   │
+│                                  │  Supertailor flips status: implemented   │
 │                                  │  with commit SHA                    │
 └──────────────────────────────────┴─────────────────────────────────────┘
 ```
@@ -193,7 +193,7 @@ This is "the framework that builds itself." It works because the safeguards and 
 
 ## The hard safeguard
 
-Both Tailor and Supercoder run a token scan before writing anything to `superagent/`:
+Both Supertailor and Supercoder run a token scan before writing anything to `superagent/`:
 
 - Every name from `_memory/contacts.yaml.contacts[].name` and `.aliases[]`.
 - Every domain id from `_memory/domains-index.yaml`.
@@ -203,7 +203,7 @@ Both Tailor and Supercoder run a token scan before writing anything to `superage
 
 On any match, the destination is **forcibly re-routed to `_custom/`**, and an `implementation_notes` row records what triggered the re-route. The user is told.
 
-The safeguard runs **twice** — once in the Tailor (at suggestion-write time) and once in the Supercoder (at brief-receipt time). Defense in depth: a Tailor bug should not be able to leak data through to committed code.
+The safeguard runs **twice** — once in the Supertailor (at suggestion-write time) and once in the Supercoder (at brief-receipt time). Defense in depth: a Supertailor bug should not be able to leak data through to committed code.
 
 ## The 4-file domain convention
 

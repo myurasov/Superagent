@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-01T17:41:16-07:00'
+generated_at: '2026-05-01T17:43:43-07:00'
 skill_count: 47
 skills:
 - name: superagent-add-account
@@ -340,7 +340,7 @@ skills:
   lines: 285
   h2_steps: 25
   h3_subsections: 0
-  typical_token_cost: 2736
+  typical_token_cost: 2741
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/context.yaml
@@ -970,9 +970,8 @@ skills:
 - name: superagent-tailor-review
   stem: tailor-review
   path: superagent/skills/tailor-review.md
-  one_line: Run the Tailor's two-pass review (hygiene + strategic). Hygiene applies mechanical reversible
+  one_line: Run the Supertailor's two-pass review (hygiene + strategic). Hygiene applies mechanical reversible
     repairs to the workspace. Strategic surfaces ranked framework-improvement suggestions and writes them
-    to `
   triggers:
   - tailor review
   - run the tailor
@@ -986,7 +985,7 @@ skills:
   lines: 148
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2248
+  typical_token_cost: 2266
   typical_files_read:
   - _memory/pm-suggestions.yaml
   - _memory/contacts.yaml
@@ -1116,7 +1115,7 @@ skills:
   lines: 147
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 1281
+  typical_token_cost: 1284
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml

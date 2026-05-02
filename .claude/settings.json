@@ -1,5 +1,5 @@
 {
-  "_comment": "UserPromptSubmit hook feeds Superagent's Tailor friction analysis. Disable by setting workspace/_memory/config.yaml.preferences.privacy.log_user_queries: false.",
+  "_comment": "UserPromptSubmit hook feeds Superagent's Supertailor friction analysis. Disable by setting workspace/_memory/config.yaml.preferences.privacy.log_user_queries: false.",
   "hooks": {
     "UserPromptSubmit": [
       {

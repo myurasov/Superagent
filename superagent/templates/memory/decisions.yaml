@@ -10,7 +10,7 @@
 #
 # Surfaced in `weekly-review` ("decisions made this week") and
 # `monthly-review` ("decisions whose outcome can now be measured").
-# The Tailor's strategic pass watches for decision-correction patterns
+# The Supertailor's strategic pass watches for decision-correction patterns
 # (decisions revisited or reversed).
 
 schema_version: 1

@@ -82,7 +82,7 @@ preferences:
 
   # Privacy posture.
   privacy:
-    log_user_queries: true           # populate _memory/user-queries.jsonl (used by Tailor)
+    log_user_queries: true           # populate _memory/user-queries.jsonl (used by Supertailor)
     snapshot_memory_daily: true      # _memory/_checkpoints/<date>/
     snapshot_retention_days: 14
     redact_outbound: true            # outbound surfaces go through scrub pipeline
