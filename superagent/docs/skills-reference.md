@@ -40,7 +40,8 @@ To invoke a skill, just say what you want in plain English. The agent matches yo
 | **triage-overdue** | action | Force a decision on every overdue task. Done / reschedule / drop priority / cancel / delegate / skip. |
 | **handoff** | action (sensitive) | Generate the "if hit by a bus" packet — accounts, documents, beneficiaries, emergency contacts, household routines, vault references. Written to `Outbox/handoff/` with prominent storage warnings. |
 | **doctor** | hygiene | Workspace data hygiene — stale domains, duplicate contacts, near-duplicate todos, simplification candidates, broken cross-references, expired documents. Asks per pass which findings to action. |
-| **supertailor-review** | hygiene + meta | Two-pass framework review (hygiene + strategic). Hygiene applies mechanical reversible repairs. Strategic surfaces ranked framework-improvement suggestions, tagged `superagent` (handed to Supercoder) or `_custom` (Supertailor implements). |
+| **supertailor-review** | hygiene + meta | Two-pass framework review (hygiene + strategic). Hygiene applies mechanical reversible repairs (Supercoder writes them); strategic surfaces ranked framework-improvement suggestions, tagged `superagent` or `_custom` (both routed through the Supercoder for implementation). |
+| **pm-review** | project review | Project-manager-angle review of every personal-life Project under `workspace/Projects/` — RAG status, stall detection, deadline pressure, scope drift, cross-project resource / date conflicts, dropped balls, charter hygiene, top 3 next moves. Distinct from `weekly-review` / `monthly-review` (time-based) and from `supertailor-review` (framework-meta). |
 
 ## Skill discovery
 

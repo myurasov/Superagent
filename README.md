@@ -56,7 +56,7 @@ superagent/                  ← framework code (committed)
   procedures.md              ← contracts: ingestion, capture, surfacing, cadences
   supertailor.agent.md            ← Supertailor's role (observer + proposer)
   supercoder.agent.md             ← Supercoder's role (implementer)
-  skills/                    ← 47 skills, one .md per skill, plus _manifest.yaml
+  skills/                    ← 48 skills, one .md per skill, plus _manifest.yaml
   templates/
     memory/                  ← 32 YAML templates copied to _memory/ on init
     domains/                 ← 4-file domain template (info, status, history, rolodex, sources)
@@ -141,6 +141,7 @@ Full architecture: [`superagent/docs/architecture.md`](superagent/docs/architect
 | `handoff` | Generate the "if hit by a bus" packet — accounts, documents, beneficiaries, vault refs. |
 | `doctor` | Workspace data hygiene — duplicates, stale domains, broken refs, expiring documents. |
 | `supertailor-review` | Framework hygiene + strategic-improvement passes. The "framework that builds itself" loop. |
+| `pm-review` | Project-manager-angle review of every personal-life Project under `workspace/Projects/` — RAG, stalls, deadline pressure, dropped balls, top 3 next moves. |
 
 Full catalogue: [`superagent/docs/skills-reference.md`](superagent/docs/skills-reference.md).
 
@@ -205,9 +206,9 @@ Run `supertailor-review` every 90 days (the framework will nudge you).
 | Sources templates | `.ref.md` template + Sources/ folder convention with cache |
 | Workflow templates | 5 starter workflows (tax-filing, trip-planning, annual-health-tuneup, job-search, appliance-replacement) + `_schema.yaml` |
 | Playbooks | 5 starter playbooks (start-of-day, end-of-week, tax-prep-season, pre-trip-week, health-checkup-quarter) + `_schema.yaml` |
-| Skill manifest | `skills/_manifest.yaml` auto-generated; 47 rows |
+| Skill manifest | `skills/_manifest.yaml` auto-generated; 48 rows |
 | Step indices | Long skills (≥ 100 lines) carry an auto-generated `## Step index` block for `Read --offset --limit` targeting |
-| Skills | 47 skills documented; markdown instruction sets ready to invoke |
+| Skills | 48 skills documented; markdown instruction sets ready to invoke |
 | Tools | `workspace_init`, `validate`, `render_status`, `log_user_query`, `sources_cache`, `handles`, `build_skill_manifest`, `add_step_index`, `log_summarize`, `snapshot_diff`, `world`, `log_window`, `briefing_cache`, `session_scratch`, `audit`, `play`, `scenarios`, `inbox_triage`, `anti_patterns` — 19 shipped + tested |
 | Ingestor framework | `IngestorBase`, registry of 27 sources, orchestrator CLI, stub fall-back, 2 reference ingestors shipped (`apple_reminders`, `csv`) |
 | Sources cache | Local-first read pattern; TTL + LRU eviction; chunk + summary + TOC generation |

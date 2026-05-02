@@ -114,6 +114,10 @@ preferences:
     archive_after_days: 90
     # Auto-create the next-cycle project when a recurring project completes.
     auto_create_next_cycle: true
+    # Suggested cadence for pm-review (project-manager-angle review). Daily-update
+    # surfaces a nudge when the last pm-review run is older than this. Set to
+    # null to disable the nudge.
+    pm_review_cadence_days: 14
 
   # Events stream (see procedures.md § "Events Stream Contract" / item #16).
   events:

@@ -1,0 +1,177 @@
+---
+name: superagent-pm-review
+description: >-
+  Project-manager-angle review of every personal-life Project under
+  workspace/Projects/. Surfaces RAG status, stalls, deadline pressure,
+  cross-project conflicts, dropped balls, and a ranked next-best-actions
+  list. Distinct from weekly-review / monthly-review (time-based) — this
+  one is project-based.
+triggers:
+  - pm review
+  - pm-review
+  - project review
+  - project manager review
+  - what projects need attention
+  - which projects are slipping
+  - what should I focus on across projects
+  - project status check
+mcp_required: []
+mcp_optional: []
+cli_required: []
+cli_optional: []
+---
+
+# Superagent pm-review skill
+
+A project-manager-angle review of the user's personal-life **Projects**. The full Projects contract is in `procedures.md` § 16. This skill is **read-mostly**; it produces a report but does not move tasks, change statuses, or rewrite charters without explicit user approval per finding.
+
+**What this is NOT**: this is not the framework-improvement review (that's `supertailor-review`, which observes how Superagent itself is being used). This skill cares about **the user's Projects under `workspace/Projects/`** — taxes, kitchen renovation, trip planning, job search, etc.
+
+## 1. Read state
+
+Read in this order, fail fast on missing files (just skip that part):
+
+1. `workspace/_memory/projects-index.yaml` — the canonical project list.
+2. For each project that is `active` or `planning` or `paused`: read its `Projects/<slug>/info.md` (charter; only the §s "Goal", "Scope", "Success criteria", "Dates"; skip Notes), `status.md` (RAG + Open / Done), and the **last 5 entries** of `history.md`.
+3. `workspace/_memory/todo.yaml` — filter for tasks where `related_project` matches one of the active projects.
+4. `workspace/_memory/important-dates.yaml` — filter for entries linked to a project.
+5. `workspace/_memory/decisions.yaml` — filter for decisions whose `scope` references a project.
+6. `workspace/_memory/context.yaml` — for `last_check` and current focus.
+
+## 2. Compute findings
+
+Build the following per-project metrics. Skip projects with `status: completed` or `status: archived` — they are not under review.
+
+### 2.1 RAG status
+
+Read straight from `Projects/<slug>/status.md` (the RAG header). If the file is malformed or missing the header, treat as `unknown` and surface as a hygiene issue.
+
+### 2.2 Stall detection
+
+A project is **stalled** when ALL of:
+- `status: active` or `status: paused`.
+- No entry in `history.md` in the last **30 days**.
+- No completed task (in `todo.yaml`) linked to it via `related_project` in the last 30 days.
+
+### 2.3 Deadline pressure
+
+A project is **deadline-pressured** when:
+- `target_date` is within `config.preferences.projects.deadline_lookahead_days` (default 14 days).
+- Open task count is > 0 AND open P0/P1 task count grew or stayed flat in the last 7 days (per the audit history of `todo.yaml` if available).
+
+### 2.4 Scope drift
+
+A project is **scope-drifting** when:
+- Open task count is > 1.5× its task count at `created_at` (or > 10 absolute, whichever is lower).
+- Surface as "scope appears to have grown N → M tasks since charter".
+
+### 2.5 Cross-project conflicts
+
+Two-pass check:
+- **Resource conflict**: same person in two projects' `rolodex.md` AND both projects are `active` AND both have a P0/P1 task assigned to that person within a 14-day window. Surface as "Person X is on the critical path for Project A and Project B in the next 14 days."
+- **Date conflict**: two projects' `target_date` fall within 7 days of each other AND both are RAG yellow/red. Surface as "Projects A and B both target weeks of <date>, both currently <RAG>."
+
+### 2.6 Dropped balls
+
+A **dropped ball** is:
+- A task in `todo.yaml` with `due_date` in the past, `status: open`, `priority: P0|P1`, `related_project: <slug>`.
+- An appointment in `appointments.yaml` linked to a project where `prep_status: pending` and the appointment is < 3 days out.
+- A decision in `decisions.yaml` with `review_at` in the past and no follow-up entry.
+
+### 2.7 Charter health
+
+For each project, check if its `info.md` charter:
+- Has a non-trivial `Goal` (not the placeholder).
+- Has at least one Success Criterion that's checkable.
+- Has a `target_date` set (or explicit "ongoing" — projects shouldn't be `active` without one of those).
+
+## 3. Render the report
+
+Print a structured report. Keep it scannable; the user's eye should land on the projects that need attention first.
+
+```
+# pm-review — <today>
+
+## Active projects (N)
+
+### <slug>  [<RAG>]  <name>
+  Goal: <one-line>
+  Target: <date>  (<N days away>)
+  Open: <P0> P0 / <P1> P1 / <P2+> later
+  Stall: <"none" | "stalled — last activity <N> days ago">
+  Drift: <"on charter" | "open tasks grew <X>→<Y> since charter">
+  Last touched: <date>
+  Last 1 history entry: <one-line>
+
+  ↳ Next best action: <one specific suggestion>
+
+(repeat for each project, sorted by RAG: red first, then yellow, then green)
+
+## Cross-project flags
+
+### Resource conflicts
+- <Person>: P0 in <project A> AND <project B> within 14 days
+
+### Date conflicts
+- <project A> targets <date>; <project B> targets <date> (both <RAG>)
+
+(skip the section entirely if empty)
+
+## Dropped balls (overdue, P0/P1, project-linked)
+
+- [P0] <task> — due <date>, <project>: <suggested action>
+- [P1] <task> — due <date>, <project>: <suggested action>
+
+(skip if empty)
+
+## Charter hygiene
+
+- <project>: missing target_date; status: active. Should we set one?
+- <project>: success criteria not measurable. Want to refine?
+
+(skip if empty)
+
+## Suggested top 3 moves this week
+
+1. <project>: <action>  (because: <one-phrase reason>)
+2. <project>: <action>  (because: <one-phrase reason>)
+3. <project>: <action>  (because: <one-phrase reason>)
+```
+
+The "Suggested top 3" is the only normative output. Pick from: dropped balls (highest priority), deadline-pressured projects (next), stalled projects (next), charter hygiene (last).
+
+## 4. Per-finding actions
+
+For each finding, the user can:
+
+- **Resolve now** (e.g. complete the dropped task, update the charter) → invoke the relevant skill (`todo`, `add-project --update`, `decisions`, etc.) inline.
+- **Defer** with a reason → log to `decisions.yaml` with `scope: project:<slug>`, `chosen: defer`, `notes: <user reason>`. Re-surface in 14 days.
+- **Skip** → no action; the finding will re-surface in the next pm-review.
+
+Apply approved actions one at a time. Refuse silently to mass-apply more than 3 in one turn — surface the next 3 and ask again. (Prevents runaway sweeps.)
+
+## 5. Logging
+
+Append one row to `workspace/_memory/interaction-log.yaml`:
+
+```yaml
+- at: <iso-datetime>
+  kind: pm-review
+  active_project_count: N
+  red_count: N
+  yellow_count: N
+  stalled_count: N
+  dropped_balls: N
+  actions_applied: N
+  outcome: "completed | partial | aborted"
+```
+
+Update `context.yaml.last_pm_review = <iso-datetime>` so cadence skills can nudge based on staleness (suggested cadence: weekly during high-project seasons, monthly otherwise — config-driven via `config.preferences.projects.pm_review_cadence_days`, default 14).
+
+## 6. What this skill does NOT do
+
+- Does **not** review framework health — that's `supertailor-review`.
+- Does **not** rewrite project charters silently — every `info.md` change is per-project, user-confirmed.
+- Does **not** mass-close tasks; one task at a time, per user approval.
+- Does **not** read personal medical / financial detail beyond what's already linked from a project's `sources.md`.
+- Does **not** propose framework changes; if a friction theme suggests Superagent itself is missing a capability ("I keep having to manually cross-link projects to important-dates"), that's an `action-signals.yaml` row with `target: tailor` for the next `supertailor-review`.

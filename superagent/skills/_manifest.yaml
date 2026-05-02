@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-05-01T17:50:55-07:00'
-skill_count: 47
+generated_at: '2026-05-01T17:54:27-07:00'
+skill_count: 48
 skills:
 - name: superagent-add-account
   stem: add-account
@@ -793,6 +793,36 @@ skills:
   h3_subsections: 0
   typical_token_cost: 628
   typical_files_read: []
+  origin: framework
+- name: superagent-pm-review
+  stem: pm-review
+  path: superagent/skills/pm-review.md
+  one_line: Project-manager-angle review of every personal-life Project under workspace/Projects/. Surfaces
+    RAG status, stalls, deadline pressure, cross-project conflicts, dropped balls, and a ranked next-best-ac
+  triggers:
+  - pm review
+  - pm-review
+  - project review
+  - project manager review
+  - what projects need attention
+  - which projects are slipping
+  - what should I focus on across projects
+  - project status check
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 177
+  h2_steps: 11
+  h3_subsections: 10
+  typical_token_cost: 1942
+  typical_files_read:
+  - workspace/_memory/projects-index.yaml
+  - workspace/_memory/todo.yaml
+  - workspace/_memory/important-dates.yaml
+  - workspace/_memory/decisions.yaml
+  - workspace/_memory/context.yaml
+  - workspace/_memory/interaction-log.yaml
   origin: framework
 - name: superagent-projects
   stem: projects

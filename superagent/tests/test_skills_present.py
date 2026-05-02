@@ -29,6 +29,8 @@ EXPECTED_SKILLS = {
     # Added by the second-pass implementation:
     "inbox-triage", "tags", "decisions", "play", "scenarios",
     "world", "events", "audit",
+    # Project-manager-angle review of personal-life Projects.
+    "pm-review",
 }
 
 
