@@ -119,7 +119,7 @@ This is the single most important safety guarantee: **personal data cannot leak 
 Each row in `supertailor-suggestions.yaml`:
 
 ```yaml
-- id: "pm-2026-04-28-001"
+- id: "st-2026-04-28-001"
   proposed_at: "2026-04-28T10:15:00-07:00"
   category: "new-skill"          # new-skill | skill-improvement | memory-schema |
                                   # template | workflow | hygiene | config | new-ingestor |
@@ -178,14 +178,14 @@ After a `supertailor-review` run, the Supertailor prints a structured report:
 
 ## Strategic pass
 - 4 new suggestions added to supertailor-suggestions.yaml (1 high, 2 medium, 1 low):
-  1. [pm-2026-04-28-001] Auto-extract package tracking from emails (medium)
-  2. [pm-2026-04-28-002] Add per-pet feeding-schedule surfacing (low)
-  3. [pm-2026-04-28-003] Improve weekly-review spending-anomaly detection (high)
-  4. [pm-2026-04-28-004] Add CalDAV writeback to gcal ingestor (medium, requires `writes_upstream`)
+  1. [st-2026-04-28-001] Auto-extract package tracking from emails (medium)
+  2. [st-2026-04-28-002] Add per-pet feeding-schedule surfacing (low)
+  3. [st-2026-04-28-003] Improve weekly-review spending-anomaly detection (high)
+  4. [st-2026-04-28-004] Add CalDAV writeback to gcal ingestor (medium, requires `writes_upstream`)
 - 2 existing suggestions still pending:
-  - [pm-2026-04-12-001] (deferred, re-surfaces 2026-04-26)
-  - [pm-2026-04-15-002] (proposed, awaiting your call)
-- 1 declined suggestion noted (will not re-surface): [pm-2026-04-09-003] notes: "I don't want auto-meal-planning"
+  - [st-2026-04-12-001] (deferred, re-surfaces 2026-04-26)
+  - [st-2026-04-15-002] (proposed, awaiting your call)
+- 1 declined suggestion noted (will not re-surface): [st-2026-04-09-003] notes: "I don't want auto-meal-planning"
 - Routing: 3 → superagent, 1 → _custom (a name from contacts.yaml matched the safeguard; route changed automatically)
 
 ## Quick action
@@ -227,9 +227,9 @@ The Supertailor and Supercoder are the two halves of the same loop. Workflow (un
 
 1. Supertailor runs `supertailor-review`, produces suggestions.
 2. User approves a suggestion (any destination).
-3. Supertailor packages the suggestion as a brief and hands it to the Supercoder (in chat: "Supercoder, implement pm-2026-04-28-001 per the brief").
+3. Supertailor packages the suggestion as a brief and hands it to the Supercoder (in chat: "Supercoder, implement st-2026-04-28-001 per the brief").
 4. Supercoder reads the brief, re-runs the safeguard scan as defense in depth, implements the change in the destination tree (`superagent/` or `workspace/_custom/`), writes / updates tests, runs `pytest`, commits with a single-sentence imperative subject (the project's own repo when the destination is `superagent/`; `_custom` writes are not committed since `workspace/` is gitignored).
-5. Supercoder reports back: "Implemented pm-2026-04-28-001. Destination: <superagent|_custom>. Modified files: …. Tests pass. Committed as <short-sha or '(workspace, not committed)'>."
+5. Supercoder reports back: "Implemented st-2026-04-28-001. Destination: <superagent|_custom>. Modified files: …. Tests pass. Committed as <short-sha or '(workspace, not committed)'>."
 6. Supertailor flips the suggestion's `status` to `implemented`, records the commit SHA (or `(workspace)`) in `implementation_notes`.
 
 The Supercoder REFUSES briefs that fail its own safeguard scan, regardless of the Supertailor's tag. The defense-in-depth here is intentional: a Supertailor classification bug should not be able to leak personal data into committed code.

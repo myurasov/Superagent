@@ -408,7 +408,7 @@ Today, everything is implicitly `private`. Adding the field opens the door to mu
 
 **Tag**: Schema (cleanup).
 
-Today, ids are inconsistent: `contact-dr-smith-dentist`, `task-20260428-001`, `tax-2026`, `psig-2026-04-28-001`, `pm-2026-04-28-001`. Each works, but they don't compose.
+Today, ids are inconsistent: `contact-dr-smith-dentist`, `task-20260428-001`, `tax-2026`, `psig-2026-04-28-001`, `st-2026-04-28-001`. Each works, but they don't compose.
 
 **Idea**: standardize on `<kind>:<slug>` (with a colon). Every reference in any field uses this canonical form: `contact:dr-smith-dentist`, `task:20260428-001`, `project:tax-2026`. The agent's parser splits on `:` to find the kind.
 

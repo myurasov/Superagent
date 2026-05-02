@@ -7,7 +7,7 @@ last_updated: null
 
 suggestions:
   # Each suggestion:
-  #   id                    — Unique ID: "pm-YYYY-MM-DD-NNN"
+  #   id                    — Unique ID: "st-YYYY-MM-DD-NNN"
   #   proposed_at           — ISO 8601 when suggested.
   #   category              — new-skill | skill-improvement | memory-schema |
   #                            template | workflow | hygiene | config |

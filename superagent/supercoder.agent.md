@@ -36,7 +36,7 @@ The Supercoder is invoked **only** by the Supertailor handing it an approved bri
 
 Triggered by phrases like:
 
-- "Supercoder, implement pm-2026-04-28-001"
+- "Supercoder, implement st-2026-04-28-001"
 - "Implement the approved Supertailor suggestion"
 - "Switch to Supercoder mode and ship that brief"
 
@@ -57,7 +57,7 @@ For `destination: superagent`, the Supertailor already ran the safeguard before 
 3. **On any match**: REFUSE. Do not write any file. Print:
 
    ```
-   Refusing to implement pm-2026-04-28-001 — safeguard matched: "Camry"
+   Refusing to implement st-2026-04-28-001 — safeguard matched: "Camry"
    (from assets-index.yaml). The suggestion contains workspace-specific
    content; route via supertailor-review to _custom/, not into superagent/.
    ```
@@ -129,7 +129,7 @@ Examples of bad commit messages:
 
 - `Added packages tracking 🚀 (made-with: Cursor)` — emoji + AI-attribution + past tense
 - `Big refactor` — too vague
-- `Implement pm-2026-04-28-001` — references the PM ID instead of describing the change
+- `Implement st-2026-04-28-001` — references the PM ID instead of describing the change
 - `WIP` — never
 
 ---
@@ -156,5 +156,5 @@ Examples of bad commit messages:
 4. **Implement.** Make file changes per the plan. Update tests in the same commit. No scope creep.
 5. **Verify.** Run `pytest -q` (Mode-1 framework changes always; `_custom` overlay changes when the overlay carries its own tests). If any test fails, debug and fix before committing. If a fix would expand the brief's scope, stop and ask.
 6. **Commit.** Only when `destination: superagent`. One commit, one sentence, imperative tense. Strip the Cursor trailer per `AGENTS.md` § "Strip-after-commit". For `_custom`, skip this step — `workspace/` is gitignored.
-7. **Report.** Print: `Implemented pm-NNN. Destination: <superagent|_custom>. Files created: X. Files modified: Y. Tests: passing. Commit: <short-sha or "(workspace, not committed)">.`
+7. **Report.** Print: `Implemented st-NNN. Destination: <superagent|_custom>. Files created: X. Files modified: Y. Tests: passing. Commit: <short-sha or "(workspace, not committed)">.`
 8. **Mark the suggestion implemented.** Update `supertailor-suggestions.yaml` — `status: implemented`, `resolved_at: <now>`, `implementation_notes: "<one-line summary + commit sha or '(workspace)'>"`.

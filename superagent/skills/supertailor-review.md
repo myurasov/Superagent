@@ -137,8 +137,8 @@ Per `supertailor.agent.md` § "Report format". The report includes:
 ## 5. Hand-off
 
 For approved suggestions:
-- `destination: _custom` → Supertailor packages a brief and hands to the Supercoder ("Supercoder, implement pm-NNN per the brief — destination `_custom`"). The Supercoder writes into `workspace/_custom/`, runs any overlay tests, reports back. Supertailor flips status to `implemented` with `implementation_notes: "<file path + summary>"` (no commit SHA — `workspace/` is gitignored).
-- `destination: superagent` → Supertailor packages a brief and hands to the Supercoder ("Supercoder, implement pm-NNN per the brief"). The Supercoder re-runs the safeguard, implements into `superagent/`, runs `pytest`, commits, reports back. Supertailor flips status to `implemented` with the commit SHA.
+- `destination: _custom` → Supertailor packages a brief and hands to the Supercoder ("Supercoder, implement st-NNN per the brief — destination `_custom`"). The Supercoder writes into `workspace/_custom/`, runs any overlay tests, reports back. Supertailor flips status to `implemented` with `implementation_notes: "<file path + summary>"` (no commit SHA — `workspace/` is gitignored).
+- `destination: superagent` → Supertailor packages a brief and hands to the Supercoder ("Supercoder, implement st-NNN per the brief"). The Supercoder re-runs the safeguard, implements into `superagent/`, runs `pytest`, commits, reports back. Supertailor flips status to `implemented` with the commit SHA.
 
 ## 6. Update memory
 
