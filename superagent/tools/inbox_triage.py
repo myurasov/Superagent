@@ -5,7 +5,8 @@ Implements superagent/docs/_internal/ideas-better-structure.md item #5.
 
 Walks files in `workspace/Inbox/`, classifies them by
 extension + filename heuristics, and proposes a destination under
-`Sources/documents/<category>/`. Records every triage decision in
+`Sources/<category>/` (the user can override; layout is user-defined per
+contracts/sources.md \u00a7 15.1). Records every triage decision in
 `Inbox/_processed.yaml` so the agent learns the user's filing patterns.
 
 This module does the *classification* part. Actual file moves and
@@ -111,7 +112,7 @@ def classify(path: Path) -> dict[str, Any]:
     else:
         category = "uncategorized"
         confidence = "low"
-    suggested_path = f"Sources/documents/{category}/{path.name}"
+    suggested_path = f"Sources/{category}/{path.name}"
     return {
         "filename": path.name,
         "size_bytes": path.stat().st_size if path.exists() else 0,

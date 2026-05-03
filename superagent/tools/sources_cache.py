@@ -80,11 +80,15 @@ def save_yaml(path: Path, data: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
+DEFAULT_CACHE_REL = "Sources/_cache"
+
+
 def load_config(workspace: Path) -> dict[str, Any]:
     """Load `_memory/config.yaml.preferences.sources`."""
     cfg = load_yaml(workspace / "_memory" / "config.yaml")
     prefs = (cfg.get("preferences") or {}).get("sources") or {}
     return {
+        "cache_path": str(prefs.get("cache_path", DEFAULT_CACHE_REL)),
         "cache_max_mb": int(prefs.get("cache_max_mb", DEFAULT_CACHE_MAX_MB)),
         "default_ttl_minutes": int(prefs.get("default_ttl_minutes", DEFAULT_TTL_MINUTES)),
         "chunk_threshold_kb": int(prefs.get("chunk_threshold_kb", DEFAULT_CHUNK_THRESHOLD_KB)),
@@ -93,19 +97,51 @@ def load_config(workspace: Path) -> dict[str, Any]:
     }
 
 
+def cache_root(workspace: Path, config: dict[str, Any] | None = None) -> Path:
+    """Return the configured cache root (default `Sources/_cache/`)."""
+    cfg = config or load_config(workspace)
+    cache_path = cfg["cache_path"]
+    p = Path(cache_path)
+    return p if p.is_absolute() else workspace / p
+
+
 def parse_ref_md(path: Path) -> dict[str, Any]:
-    """Parse a `.ref.md` file into a dict {frontmatter + 'body': str}."""
+    """Parse a ref file (`.ref.md` or `.ref.txt`) into a dict + 'body' string.
+
+    Canonical form (YAML frontmatter) is the fast path. Non-canonical files
+    are passed to `sources_normalize.propose` which lifts the canonical
+    fields liberally; the cache uses those fields READ-ONLY (does NOT rewrite
+    the file — that's the user's call via the normalize prompt).
+
+    Raises ValueError if required fields (`kind`, `source`) cannot be
+    resolved either way.
+    """
     if not path.exists():
         raise FileNotFoundError(f"ref file not found: {path}")
     body = path.read_text()
     match = re.match(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", body, re.DOTALL)
-    if not match:
-        raise ValueError(f"{path}: missing YAML frontmatter")
-    fm = yaml.safe_load(match.group(1)) or {}
-    if not isinstance(fm, dict):
-        raise ValueError(f"{path}: frontmatter is not a mapping")
-    fm["body"] = match.group(2).strip()
-    return fm
+    if match:
+        fm = yaml.safe_load(match.group(1)) or {}
+        if isinstance(fm, dict) and fm.get("kind") and fm.get("source"):
+            fm["body"] = match.group(2).strip()
+            return fm
+    # Liberal fallback for hand-authored `.ref.txt` / loose `.ref.md`.
+    try:
+        from superagent.tools.sources_normalize import propose
+    except ImportError:
+        raise ValueError(
+            f"{path}: missing canonical YAML frontmatter and "
+            f"sources_normalize unavailable"
+        )
+    proposal = propose(path)
+    fields = dict(proposal["fields"])
+    if not (fields.get("kind") and fields.get("source")):
+        raise ValueError(
+            f"{path}: cannot resolve required fields (kind, source). "
+            f"Run sources_normalize apply --mode ask <path> to fix."
+        )
+    fields["body"] = fields.pop("_notes", "")
+    return fields
 
 
 def source_hash(kind: str, source: str) -> str:
@@ -114,9 +150,10 @@ def source_hash(kind: str, source: str) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
 
 
-def cache_dir(workspace: Path, kind: str, source: str) -> Path:
+def cache_dir(workspace: Path, kind: str, source: str,
+              config: dict[str, Any] | None = None) -> Path:
     """Path to the cache folder for one source."""
-    return workspace / "Sources" / "_cache" / source_hash(kind, source)
+    return cache_root(workspace, config) / source_hash(kind, source)
 
 
 def is_cache_fresh(meta: dict[str, Any], ttl_minutes: int) -> bool:
@@ -130,13 +167,13 @@ def is_cache_fresh(meta: dict[str, Any], ttl_minutes: int) -> bool:
     return age.total_seconds() / 60.0 < ttl_minutes
 
 
-def total_cache_size(workspace: Path) -> int:
-    """Compute the total size of `Sources/_cache/` in bytes."""
-    cache_root = workspace / "Sources" / "_cache"
-    if not cache_root.exists():
+def total_cache_size(workspace: Path, config: dict[str, Any] | None = None) -> int:
+    """Compute the total size of the cache root in bytes."""
+    root = cache_root(workspace, config)
+    if not root.exists():
         return 0
     total = 0
-    for p in cache_root.rglob("*"):
+    for p in root.rglob("*"):
         if p.is_file():
             try:
                 total += p.stat().st_size
@@ -145,16 +182,17 @@ def total_cache_size(workspace: Path) -> int:
     return total
 
 
-def evict_lru(workspace: Path, target_bytes: int) -> int:
+def evict_lru(workspace: Path, target_bytes: int,
+              config: dict[str, Any] | None = None) -> int:
     """Evict cache entries (oldest last_used first) until under target_bytes.
 
     Returns the count of entries evicted.
     """
-    cache_root = workspace / "Sources" / "_cache"
-    if not cache_root.exists():
+    root = cache_root(workspace, config)
+    if not root.exists():
         return 0
     entries = []
-    for sub in cache_root.iterdir():
+    for sub in root.iterdir():
         if not sub.is_dir():
             continue
         meta_path = sub / "_meta.yaml"
@@ -169,7 +207,7 @@ def evict_lru(workspace: Path, target_bytes: int) -> int:
                         sub, size))
     entries.sort(key=lambda x: x[0])
     evicted = 0
-    current = total_cache_size(workspace)
+    current = total_cache_size(workspace, config)
     for _last_used, sub, size in entries:
         if current <= target_bytes:
             break
@@ -372,7 +410,7 @@ def fetch_to_cache(workspace: Path, kind: str, source: str,
     else:
         raw, ext = FETCH_HANDLERS[kind](source)
 
-    cache = cache_dir(workspace, kind, source)
+    cache = cache_dir(workspace, kind, source, config)
     cache.mkdir(parents=True, exist_ok=True)
     raw_path = cache / f"raw.{ext}"
     if isinstance(raw, str):
@@ -404,15 +442,15 @@ def fetch_to_cache(workspace: Path, kind: str, source: str,
     save_yaml(cache / "_meta.yaml", meta)
 
     cap_bytes = config["cache_max_mb"] * 1024 * 1024
-    if total_cache_size(workspace) > cap_bytes:
-        evict_lru(workspace, cap_bytes)
+    if total_cache_size(workspace, config) > cap_bytes:
+        evict_lru(workspace, cap_bytes, config)
 
     return meta
 
 
 def get_cache(workspace: Path, ref_path: Path,
               refresh: bool = False) -> dict[str, Any]:
-    """Local-first read of a `.ref.md`. Returns the meta dict."""
+    """Local-first read of a ref file. Returns the meta dict."""
     config = load_config(workspace)
     fm = parse_ref_md(ref_path)
     kind = fm.get("kind", "")
@@ -422,7 +460,7 @@ def get_cache(workspace: Path, ref_path: Path,
     ttl = int(fm.get("ttl_minutes") if fm.get("ttl_minutes") is not None else config["default_ttl_minutes"])
     sensitive = bool(fm.get("sensitive", False))
     params = fm.get("params") or {}
-    cache = cache_dir(workspace, kind, source)
+    cache = cache_dir(workspace, kind, source, config)
     meta_path = cache / "_meta.yaml"
     if not refresh and meta_path.exists():
         meta = load_yaml(meta_path)
@@ -433,13 +471,14 @@ def get_cache(workspace: Path, ref_path: Path,
     return fetch_to_cache(workspace, kind, source, ttl, sensitive, params, config)
 
 
-def list_cache(workspace: Path) -> list[dict[str, Any]]:
+def list_cache(workspace: Path, config: dict[str, Any] | None = None,
+               ) -> list[dict[str, Any]]:
     """Return a list of cache entries summarizing each."""
-    cache_root = workspace / "Sources" / "_cache"
-    if not cache_root.exists():
+    root = cache_root(workspace, config)
+    if not root.exists():
         return []
     entries = []
-    for sub in sorted(cache_root.iterdir()):
+    for sub in sorted(root.iterdir()):
         if not sub.is_dir():
             continue
         meta = load_yaml(sub / "_meta.yaml")
@@ -514,11 +553,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "evict":
         config = load_config(workspace)
         cap = config["cache_max_mb"] * 1024 * 1024
+        root = cache_root(workspace, config)
         if args.all_stale:
-            cache_root = workspace / "Sources" / "_cache"
             removed = 0
-            if cache_root.exists():
-                for sub in cache_root.iterdir():
+            if root.exists():
+                for sub in root.iterdir():
                     if not sub.is_dir():
                         continue
                     meta = load_yaml(sub / "_meta.yaml")
@@ -530,11 +569,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Evicted {removed} stale entries.")
             return 0
         if args.over_cap:
-            n = evict_lru(workspace, cap)
+            n = evict_lru(workspace, cap, config)
             print(f"Evicted {n} entries to bring cache under cap.")
             return 0
         if args.hash:
-            target = workspace / "Sources" / "_cache" / args.hash
+            target = root / args.hash
             if target.exists():
                 shutil.rmtree(target)
                 print(f"Evicted {args.hash}")

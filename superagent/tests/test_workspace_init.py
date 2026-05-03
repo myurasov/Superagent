@@ -79,11 +79,19 @@ def test_init_creates_top_level_folders(initialized_workspace: Path) -> None:
     assert domains_readme.is_file(), "missing Domains/README.md"
 
 
-def test_init_creates_sources_subfolders(initialized_workspace: Path) -> None:
-    """Sources/ ships with documents/, references/, _cache/ subfolders."""
+def test_init_does_not_force_sources_subfolders(initialized_workspace: Path) -> None:
+    """Sources/ ships with ONLY README.md; layout is user-defined.
+
+    The agent reserves only `Sources/_cache/` (created lazily on first fetch)
+    and `Sources/README.md`. Documents and references live wherever the user
+    puts them. See contracts/sources.md \u00a7 15.1.
+    """
     sources = initialized_workspace / "Sources"
-    for sub in ["documents", "references", "_cache"]:
-        assert (sources / sub).is_dir(), f"missing Sources/{sub}/"
+    assert sources.is_dir()
+    assert (sources / "README.md").is_file()
+    assert not (sources / "documents").exists(), "Sources/documents/ no longer auto-created"
+    assert not (sources / "references").exists(), "Sources/references/ no longer auto-created"
+    assert not (sources / "_cache").exists(), "Sources/_cache/ should be lazy-created on first fetch"
 
 
 def test_init_creates_outbox_lifecycle_subfolders(initialized_workspace: Path) -> None:

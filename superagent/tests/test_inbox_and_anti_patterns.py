@@ -14,7 +14,7 @@ def test_classify_tax_pdf(initialized_workspace: Path) -> None:
     result = classify(f)
     assert result["category_suggested"] == "taxes"
     assert result["confidence"] in ("medium", "high")
-    assert result["suggested_path"].startswith("Sources/documents/taxes/")
+    assert result["suggested_path"].startswith("Sources/taxes/")
 
 
 def test_classify_unknown_falls_back(initialized_workspace: Path) -> None:
@@ -36,7 +36,7 @@ def test_record_decision_writes_log(initialized_workspace: Path) -> None:
     record_decision(initialized_workspace, {
         "file": "test.pdf",
         "action": "filed",
-        "destination": "Sources/documents/taxes/test.pdf",
+        "destination": "Sources/taxes/test.pdf",
         "note": "first triage",
     })
     log = initialized_workspace / "Inbox" / "_processed.yaml"

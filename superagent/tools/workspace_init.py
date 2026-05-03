@@ -241,9 +241,6 @@ def init_folders(workspace: Path, framework: Path, dry_run: bool, log: list[str]
     if domains_readme.exists():
         safe_copy(domains_readme, workspace / "Domains" / "README.md",
                   dry_run=dry_run, log=log)
-    sources_root = workspace / "Sources"
-    for sub in ("documents", "references", "_cache"):
-        safe_mkdir(sources_root / sub, dry_run=dry_run, log=log)
     # Outbox lifecycle sub-folders (item #13).
     outbox_root = workspace / "Outbox"
     for sub in ("drafts", "staging", "sent", "sealed"):
