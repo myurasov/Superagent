@@ -42,11 +42,10 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 
 ```
 <repo-root>/
-├── AGENTS.md                       ← canonical IDE-agnostic rules (read on demand)
+├── AGENTS.md                       ← canonical operating rules (read on demand)
 ├── README.md                       ← repo intro
-├── CLAUDE.md                       ← Claude Code shim that imports AGENTS.md
 ├── pyproject.toml                  ← Python project config
-├── .gitignore, .githooks/, .mcp.json.example, .cursor/, .claude/
+├── .gitignore, .githooks/, .mcp.json.example, .cursor/
 │
 ├── superagent/                     ← framework code (committed; this is the product)
 │   ├── superagent.agent.md         ← role definitions (Superagent + helpers)
@@ -283,19 +282,7 @@ __pycache__/
 .DS_Store
 EOF
 
-# Optional: add IDE-specific shims so the framework is auto-recognized.
-mkdir -p .cursor/rules
-cat > .cursor/rules/superagent.mdc <<'EOF'
----
-description: Superagent personal-life assistant — read when invoked or when working under workspace/
-alwaysApply: false
-globs:
-  - "**/*"
----
-Read and follow AGENTS.md.
-EOF
-
-# At this point AGENTS.md is at the repo root; everything works.
+# Cursor reads AGENTS.md at the repo root natively; no rule-shim needed.
 git add .
 git commit -m "Initialize Superagent framework"
 ```

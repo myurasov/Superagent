@@ -4,9 +4,9 @@ Goal: have something useful in **5 minutes**, with no data-source setup required
 
 ---
 
-## 1. Open this directory in Cursor or Claude Code
+## 1. Open this directory in Cursor
 
-Both work. Anything else that can read files and follow markdown instructions also works.
+Superagent currently targets Cursor as the host IDE.
 
 ## 2. Tell the agent
 

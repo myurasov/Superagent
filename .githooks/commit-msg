@@ -9,10 +9,10 @@
 #
 # Reference: AGENTS.md § "Git commits".
 #
-# Why a hook? Cursor auto-injects `Made-with: Cursor` on every commit it runs;
-# Claude Code does not currently inject anything. The post-commit strip in
-# AGENTS.md handles `Made-with` specifically; this hook is a wider catch-net
-# for the broader catalogue of forbidden patterns.
+# Why a hook? Cursor auto-injects `Made-with: Cursor` on every commit it runs.
+# The post-commit strip in AGENTS.md handles `Made-with` specifically; this
+# hook is a wider catch-net for the broader catalogue of forbidden patterns
+# (Co-authored-by lines, "generated with X" attributions, model-name strings).
 
 set -euo pipefail
 
@@ -37,8 +37,8 @@ for pattern in "${forbidden_patterns[@]}"; do
     echo "" >&2
     echo "Per AGENTS.md § 'Git commits', commit messages must not" >&2
     echo "include AI-attribution lines (Made-with, Co-Authored-By with an AI" >&2
-    echo "vendor, 'generated with X', 'via Cursor / Claude Code', model names" >&2
-    echo "like claude-x.y / gpt-x). Edit the message and try again." >&2
+    echo "vendor, 'generated with X', 'via Cursor', model names like" >&2
+    echo "claude-x.y / gpt-x / composer-x). Edit the message and try again." >&2
     echo "" >&2
     exit 1
   fi

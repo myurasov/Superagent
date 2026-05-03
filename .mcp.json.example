@@ -1,7 +1,7 @@
 {
   "_comment": [
     "Template for MCP server configuration.",
-    "Copy this file to .mcp.json (which is gitignored) and add any servers you want available to Superagent.",
+    "Copy this file to .cursor/mcp.json",
     "",
     "Superagent itself requires no MCP servers for the quick-start. Each ingestor declares its own MCP / CLI requirements; see superagent/docs/data-sources.md.",
     "",

@@ -224,7 +224,7 @@ mcp_calls:
 
 Before any read, the agent checks the scratchpad. If the file's mtime hasn't changed since the recorded `at` (or the hash matches), the agent reuses what it already saw THIS SESSION and skips the read.
 
-Implementation note: this is partially what Cursor / Claude Code already do at the IDE layer (recent files are in the context window). MI-1 makes it explicit + persistent so a follow-up turn an hour later still benefits.
+Implementation note: this is partially what Cursor already does at the IDE layer (recent files are in the context window). MI-1 makes it explicit + persistent so a follow-up turn an hour later still benefits.
 
 ### MI-2. Time-partitioned interaction log + events stream
 
@@ -301,7 +301,7 @@ Anthropic's Claude prompt cache rewards a **stable prefix** with cache breakpoin
 
 What this means structurally:
 
-(a) **Move AGENTS.md + procedures.md content into the SYSTEM prompt** when running via the API directly. Cursor / Claude Code don't expose this knob today, but if you ever build a CLI wrapper or run via the API directly, structure the system prompt as:
+(a) **Move AGENTS.md + procedures.md content into the SYSTEM prompt** when running via the API directly. Cursor doesn't expose this knob today, but if you ever build a CLI wrapper or run via the API directly, structure the system prompt as:
 
 ```
 [stable: AGENTS.md + procedures.md + role files]    ← cached
@@ -313,7 +313,7 @@ What this means structurally:
 
 A wrapper that does this and tags each block with `cache_control: { type: "ephemeral" }` would yield the headline speedup. Worth it for power users running via API.
 
-(b) **For Cursor / Claude Code today**: the IDE controls the prompt structure. The framework can still help by keeping AGENTS.md and procedures.md SHORT and STABLE — avoiding edits during a session that would invalidate the cache for downstream turns. The current docs are well-shaped for this; the real risk is when the user opens 5 different framework files mid-session and each one bumps the prefix.
+(b) **For Cursor today**: the IDE controls the prompt structure. The framework can still help by keeping AGENTS.md and procedures.md SHORT and STABLE — avoiding edits during a session that would invalidate the cache for downstream turns. The current docs are well-shaped for this; the real risk is when the user opens 5 different framework files mid-session and each one bumps the prefix.
 
 Practical guidance for the user:
 - Don't edit AGENTS.md / procedures.md during an active conversation if you can help it; commit edits between sessions.

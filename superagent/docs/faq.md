@@ -32,14 +32,14 @@ The folders it lives in (`superagent/` for the framework, `workspace/` for your 
 
 ## Is this an app I run, or a folder I clone?
 
-A folder. There's no daemon, no server, no app to install. The framework is markdown files (instructions to the AI) + Python helpers (idempotent transforms over your data) + YAML / markdown templates. Your AI coding assistant of choice (Cursor, Claude Code, …) reads the folder and acts on the workspace.
+A folder. There's no daemon, no server, no app to install. The framework is markdown files (instructions to the AI) + Python helpers (idempotent transforms over your data) + YAML / markdown templates. Cursor reads the folder and acts on the workspace.
 
 This is intentional. It means:
 
 - Zero infrastructure to maintain.
 - Zero vendor lock-in (your data is plain text — open it in any editor anytime).
 - Zero "the company shut down" risk.
-- The AI you use can be swapped out — Superagent doesn't depend on any specific model.
+- The model behind Cursor can be swapped out — Superagent doesn't depend on any specific one.
 
 ## Why markdown + YAML instead of a database?
 
@@ -61,7 +61,7 @@ The agent does NOT phone home. There is no telemetry. No "anonymous usage data".
 
 The framework itself: nothing. It's a folder.
 
-The AI: whatever your assistant costs (Cursor / Claude Code subscription, or pay-per-use API).
+The AI: whatever your Cursor subscription costs.
 
 The data sources: most are free for personal use. A handful charge:
 - Plaid Production (real bank links): free up to a small request budget; paid tier for heavy use.
@@ -95,7 +95,7 @@ The 2025-2026 wave of AI life-management apps mostly land on a similar promise: 
 - **Open source, customizable, self-hostable.** Your skills, your overlays, your ingestors.
 - **Self-improving (Supertailor / Supercoder loop).** Most commercial apps have a fixed feature set; Superagent learns from your usage and ships framework improvements you approve.
 - **Heavy-import depth.** The data-source catalogue is broader than any commercial app's integration list, by design — you can plug in everything from your fitness ring to your smart home to your bank.
-- **No subscription.** You pay for the AI assistant (Cursor / Claude Code) and that's it.
+- **No subscription.** You pay for Cursor and that's it.
 
 The trade-off: commercial apps have a polished mobile UI; Superagent works in your laptop's chat window. If you want a phone-only personal assistant today, eeva / Kora / Okto are better. If you want depth, customization, and ownership, Superagent is the play.
 

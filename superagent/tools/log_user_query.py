@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Log every user prompt to `_memory/user-queries.jsonl`.
 
-Wired as a `UserPromptSubmit` hook in Cursor (`.cursor/hooks.json`) and
-Claude Code (`.claude/settings.json`). The Supertailor reads this log during
-the strategic pass to spot friction patterns (clusters of similar queries
-that aren't being answered well by an existing skill).
+Wired as a `UserPromptSubmit` hook in Cursor (`.cursor/hooks.json`). The
+Supertailor reads this log during the strategic pass to spot friction
+patterns (clusters of similar queries that aren't being answered well by
+an existing skill).
 
-Reads the prompt from stdin (the way both IDEs invoke hooks).
+Reads the prompt from stdin (the way Cursor invokes hooks).
 Append-only; one JSON object per line; never blocks the prompt.
 
 Privacy: the log is gitignored (lives under `workspace/`).
@@ -62,8 +62,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--source",
         type=str,
-        default="unknown",
-        help="Which IDE invoked this hook (e.g. 'cursor', 'claude-code').",
+        default="cursor",
+        help="Which IDE invoked this hook (default: 'cursor').",
     )
     return parser.parse_args(argv)
 
@@ -71,9 +71,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def read_prompt() -> dict[str, Any]:
     """Read the prompt payload from stdin.
 
-    Both Cursor and Claude Code pipe a JSON object on stdin describing the
-    UserPromptSubmit event. Format may evolve; we capture the raw text and
-    any structured fields we can.
+    Cursor pipes a JSON object on stdin describing the UserPromptSubmit
+    event. Format may evolve; we capture the raw text and any structured
+    fields we can.
     """
     raw = sys.stdin.read()
     if not raw.strip():

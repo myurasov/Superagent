@@ -35,18 +35,10 @@ Thumbs.db
 .vscode/*
 !.vscode/settings.json
 
-# Cursor — keep rules and hooks tracked
+# Cursor — keep hooks tracked
 !.cursor/
 .cursor/*
-!.cursor/rules/
-!.cursor/rules/**
 !.cursor/hooks.json
-
-# Claude Code — keep project settings tracked, ignore per-user local overrides
-!.claude/
-.claude/*
-!.claude/settings.json
-.claude/settings.local.json
 
 # MCP project config — .mcp.json carries auth tokens and is never committed.
 # .mcp.json.example is the redacted template that ships with the repo.

@@ -104,7 +104,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 
 ## Big bets (BB) — partially implemented
 
-### BB-2 (b) — Practical guidance for Cursor / Claude Code today ✓
+### BB-2 (b) — Practical guidance for Cursor today ✓
 
 (BB-2-a — Anthropic prompt-cache alignment in an API wrapper — NOT implemented; would require a CLI wrapper.)
 

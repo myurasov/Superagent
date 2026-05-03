@@ -6,7 +6,7 @@ A personal-life AI assistant that knows your life better than you do.
 
 Superagent shadows you across **bills, health, home, family, vehicles, pets, finances, hobbies, important dates** — every workstream of running an adult life. It captures from your own data sources (email, calendar, banks, health, smart home, notes), organizes everything into a queryable local vault, and surfaces what needs your attention before you have to ask.
 
-It is **local-first**, **markdown-based**, **privacy-by-construction**, **AI-assistant-agnostic** (Cursor, Claude Code, anything that reads files), and **self-improving** — a built-in Supertailor / Supercoder loop watches how you use it and ships approved framework changes, with safeguards that prevent any of your personal data from leaking into committed code.
+It is **local-first**, **markdown-based**, **privacy-by-construction**, **Cursor-native**, and **self-improving** — a built-in Supertailor / Supercoder loop watches how you use it and ships approved framework changes, with safeguards that prevent any of your personal data from leaking into committed code.
 
 The **quick-start works in 5 minutes with zero data-source setup**. Heavy ingestion (years of email, banks, health, smart home) is opt-in, deferred, and reversible.
 
@@ -44,11 +44,11 @@ Full quick-start: [`superagent/docs/quick-start.md`](superagent/docs/quick-start
 
 ```
 <repo-root>/
-  AGENTS.md                  ← canonical IDE-agnostic operating rules (read on demand)
+  AGENTS.md                  ← canonical operating rules (read on demand)
   README.md                  ← this file
-  CLAUDE.md                  ← Claude Code shim that imports AGENTS.md
   pyproject.toml             ← Python project config
   .githooks/commit-msg       ← installed AI-attribution guard
+  .cursor/hooks.json         ← UserPromptSubmit hook for the Supertailor's friction analysis
   .mcp.json.example          ← MCP server template (copy to .mcp.json + fill in)
 
 superagent/                  ← framework code (committed)
@@ -240,6 +240,6 @@ The product is **Superagent**. The repository layout is:
 
 - `superagent/` — framework code (committed; the product).
 - `workspace/` — user data (gitignored; created by `init`; never committed).
-- Root-level config (`AGENTS.md`, `README.md`, `CLAUDE.md`, `pyproject.toml`, `.githooks/`, `.mcp.json.example`) — git-tracked entry points.
+- Root-level config (`AGENTS.md`, `README.md`, `pyproject.toml`, `.githooks/`, `.cursor/`, `.mcp.json.example`) — git-tracked entry points.
 
 Throughout the docs and skills, "Superagent" is the proper-noun reference to the product / agent / framework. `superagent/` is the path reference to where the code lives. If you extract Superagent into its own repo (per `superagent/docs/architecture.md` § "Extracting to a standalone repo"), you can rename the folder to anything you like; the framework doesn't care, as long as you update the references.

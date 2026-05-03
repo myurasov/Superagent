@@ -112,7 +112,7 @@ For `destination: superagent`, full git policy is in `AGENTS.md` § "Git commits
 - **One sentence, imperative / future tense.** ≤ 72 characters when possible.
 - **No body, no bullet list, no extra paragraphs.** PR description / code comments carry the longer prose.
 - **No non-ASCII characters** in commit messages.
-- **No AI-attribution lines** — never `Made-with: Cursor`, `Co-authored-by: Claude` / `Co-authored-by: Cursor <cursoragent@cursor.com>`, `Generated with [Claude Code]`, robot / sparkles emoji, "via Cursor / Claude Code", or model-name references.
+- **No AI-attribution lines** — never `Made-with: Cursor`, `Co-authored-by: Cursor <cursoragent@cursor.com>` (or any other AI vendor), `Generated with [Cursor]`, robot / sparkles emoji, "via Cursor", or model-name references.
 - **Strip-after-commit** for the Cursor auto-injection — full `git filter-branch` recipe in `AGENTS.md` § "Strip-after-commit". A local `commit-msg` hook (`templates/githooks/commit-msg`) blocks the broader catalogue at commit time as a second line of defense.
 - **Atomic commits** — unrelated changes go in different commits. One brief = one commit. If a brief is large enough to warrant several logical units, split it into several `supertailor-suggestions.yaml` rows up front, not at commit time.
 - **Only framework files** under `superagent/` are committed — **never** `workspace/` data.
