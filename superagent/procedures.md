@@ -1243,9 +1243,13 @@ When the live call happens, capture-through MUST run (per § 2 ingestion contrac
 
 ## 39. Skill-anti-pattern Catalogue
 
-Implements perf-improvement-ideas.md § "Anti-patterns to flag in skills". Backed by `tools/anti_patterns.py`.
+Implements perf-improvement-ideas.md § "Anti-patterns to flag in skills".
 
-**The catalogue** (see also the scanner; PATTERNS list):
+**Source of truth**: `superagent/rules/anti-patterns.yaml` (the regex catalogue, severities, mitigations). The `superagent/rules/` directory holds machine-readable rule files; this section is the human-readable summary that points at them.
+
+**Backed by**: `tools/anti_patterns.py` (loads the YAML at import time and exposes `scan_file` / `scan_dir` / `load_rules` to skills, the Supertailor, and `doctor`).
+
+**Catalogue summary** (see the YAML for full regex sources + flags):
 
 | ID | Severity | Description | Mitigation |
 |---|---|---|---|
@@ -1258,6 +1262,10 @@ Implements perf-improvement-ideas.md § "Anti-patterns to flag in skills". Backe
 | AP-7 | warning | Unbounded read of long doc (procedures.md / AGENTS.md). | Use Grep + `Read --offset --limit` against documented ranges. |
 | AP-8 | warning | Manifest-bypass: "read every skill markdown". | Read `skills/_manifest.yaml` first. |
 | AP-9 | info | Load-then-extract: large file loaded, single fact extracted. | Use Grep / FTS5 first. |
+
+**Adding a pattern**: append a row to `rules/anti-patterns.yaml` with the next AP-N id (never renumber existing rows), then add a row to the table above. Bump `last_updated` in the YAML.
+
+**User overlay**: `workspace/_custom/rules/anti-patterns.yaml` (same schema). The scanner concatenates framework + user rules, in that order. Use this to add personal anti-patterns without touching framework code.
 
 **Scanning**: `tools/anti_patterns.py` walks every skill markdown, applies the regex patterns, prints findings. The Supertailor's strategic pass runs it; `doctor` runs it (when `config.preferences.anti_patterns.scan_skills: true`).
 

@@ -4,21 +4,23 @@
 Implements perf-improvement-ideas.md § "Anti-patterns to flag in skills".
 
 Scans every skill under `superagent/skills/*.md` (and optionally
-`workspace/_custom/skills/*.md`) for the documented patterns
-and prints a report. Used by `supertailor-review` and `doctor` to surface
-candidates for refactor.
+`workspace/_custom/skills/*.md`) for the documented patterns and prints a
+report. Used by `supertailor-review` and `doctor` to surface candidates for
+refactor.
 
-Patterns detected (regex-based; conservative to avoid false positives):
+The pattern catalogue lives in `superagent/rules/anti-patterns.yaml` (one row
+per pattern: id, severity, description, regex source, flags, mitigation).
+Users may extend the catalogue by writing a same-shape file at
+`workspace/_custom/rules/anti-patterns.yaml`; the loader concatenates the
+framework list followed by the user list.
 
-  AP-1  "read the X's info, status, history, rolodex" — 4-file blanket reads.
-  AP-2  "all open tasks" without a domain/project/asset filter.
-  AP-3  "search across the whole workspace" / "grep across" without scope.
-  AP-4  Sequential "run X, then Y, then Z" that should be parallel-batched.
-  AP-5  "pull the full email thread" without consulting interaction-log first.
-  AP-6  "re-render the daily-update" / "regenerate the briefing" without cache check.
-  AP-7  "read the whole procedures.md" / unbounded full-file Read.
-  AP-8  "read every skill markdown" — manifest-bypass.
-  AP-9  Loaded large file then LLM-extracted one fact (no Grep/FTS first).
+Pattern shape (each row in the YAML):
+    id:          str   (stable id, e.g. "AP-1")
+    severity:    "warning" | "info"
+    description: str
+    pattern:     str   (Python re.compile source)
+    flags:       list  (subset of: IGNORECASE, DOTALL, MULTILINE)
+    mitigation:  str
 """
 from __future__ import annotations
 
@@ -29,110 +31,100 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
-# Each pattern: (id, severity, description, regex). Case-insensitive.
-PATTERNS: list[tuple[str, str, str, re.Pattern[str]]] = [
-    (
-        "AP-1", "warning",
-        "Blanket 4-file read (info + status + history + rolodex).",
-        re.compile(
-            r"\b(?:read|load|open)\b[^.]*\binfo(?:\.md)?\b[^.]*\bstatus(?:\.md)?\b"
-            r"[^.]*\bhistory(?:\.md)?\b[^.]*\brolodex(?:\.md)?\b",
-            re.IGNORECASE | re.DOTALL,
-        ),
-    ),
-    (
-        "AP-2", "warning",
-        "Unfiltered 'all open tasks' read.",
-        re.compile(
-            r"\ball (?:open|active) tasks\b(?![^.]*(?:related_domain|related_project|"
-            r"related_asset|--domain|--project|--asset|filter|scope))",
-            re.IGNORECASE | re.DOTALL,
-        ),
-    ),
-    (
-        "AP-3", "info",
-        "Whole-workspace grep without scope.",
-        re.compile(
-            r"\b(?:grep|search)\b[^.]*\b(?:across the (?:whole |entire )?workspace|every file)\b",
-            re.IGNORECASE,
-        ),
-    ),
-    (
-        "AP-4", "info",
-        "Sequential run-X-then-Y-then-Z that may be parallelizable.",
-        re.compile(
-            r"\b(?:run|invoke|call)\b\s+\S+\s*[,;]\s*then\s+\S+\s*[,;]\s*then\s+\S+",
-            re.IGNORECASE,
-        ),
-    ),
-    (
-        "AP-5", "info",
-        "Full email-thread pull without checking interaction-log first.",
-        re.compile(
-            r"\b(?:pull|fetch|load|get)\b[^.]*\bfull (?:email )?thread\b"
-            r"(?![^.]*(?:interaction-log|local mirror|cache))",
-            re.IGNORECASE | re.DOTALL,
-        ),
-    ),
-    (
-        "AP-6", "info",
-        "Briefing regen without cache check.",
-        re.compile(
-            r"\b(?:re-?render|regenerate)\b[^.]*\b(?:daily[- ]update|briefing|"
-            r"weekly[- ]review|monthly[- ]review)\b"
-            r"(?![^.]*(?:briefing[_ -]cache|_artifacts|cache hit))",
-            re.IGNORECASE | re.DOTALL,
-        ),
-    ),
-    (
-        "AP-7", "warning",
-        "Unbounded read of a long doc (procedures.md / AGENTS.md).",
-        re.compile(
-            r"\b(?:read|load)\b[^.]*\b(?:whole|entire|all of|full)\b[^.]*"
-            r"\b(?:procedures\.md|AGENTS\.md)\b",
-            re.IGNORECASE | re.DOTALL,
-        ),
-    ),
-    (
-        "AP-8", "warning",
-        "Manifest-bypass: 'read every skill markdown' to discover a skill.",
-        re.compile(
-            r"\bread (?:every|all) skill (?:markdown|file|md)\b",
-            re.IGNORECASE,
-        ),
-    ),
-    (
-        "AP-9", "info",
-        "Load-then-extract: large file loaded, single fact extracted.",
-        re.compile(
-            r"\b(?:load|read|open)\b[^.]*\b(?:full file|entire file|whole file)\b"
-            r"[^.]*\b(?:extract|find|locate|get)\s+(?:one|a single|the)\s+\w+\b",
-            re.IGNORECASE | re.DOTALL,
-        ),
-    ),
-]
+import yaml
 
 
-# Mitigations a skill author can use to avoid each pattern.
-MITIGATIONS: dict[str, str] = {
-    "AP-1": "Specify which sections to read: 'read info.md § Profile + status.md § Current Status; pull history.md only if needed'.",
-    "AP-2": "Always include the filter: 'tasks where related_domain == X' or '--project Y'.",
-    "AP-3": "Scope the grep to a specific Domain / Project folder.",
-    "AP-4": "Use a single tool-call message with all tool calls so they parallelize.",
-    "AP-5": "Consult the local interaction-log mirror or Sources cache first; only fetch the thread if the local copy is stale.",
-    "AP-6": "Call `tools/briefing_cache.py get` (or read `_memory/_artifacts/<skill>/<key>.md`) before regenerating.",
-    "AP-7": "Use Grep first, then `Read --offset --limit` against the matching range. Or read the file's table of contents only.",
-    "AP-8": "Read `skills/_manifest.yaml` first; load only the chosen skill's markdown.",
-    "AP-9": "Use `Grep` (or, when available, the FTS5 search index) to extract just the matching lines.",
+_FRAMEWORK_ROOT = Path(__file__).resolve().parent.parent
+_RULES_FILE = _FRAMEWORK_ROOT / "rules" / "anti-patterns.yaml"
+
+_FLAG_MAP = {
+    "IGNORECASE": re.IGNORECASE,
+    "I": re.IGNORECASE,
+    "DOTALL": re.DOTALL,
+    "S": re.DOTALL,
+    "MULTILINE": re.MULTILINE,
+    "M": re.MULTILINE,
 }
 
 
-def scan_file(path: Path) -> list[dict[str, Any]]:
-    """Return a list of pattern hits in `path`."""
+def _resolve_flags(names: list[str] | None) -> int:
+    """Translate a list of flag names to an integer bitmask."""
+    if not names:
+        return 0
+    flags = 0
+    for name in names:
+        key = str(name).upper()
+        if key not in _FLAG_MAP:
+            raise ValueError(f"Unknown regex flag: {name!r}")
+        flags |= _FLAG_MAP[key]
+    return flags
+
+
+def _load_yaml_rules(path: Path) -> list[dict[str, Any]]:
+    """Read a rule YAML file. Returns the `rules` list (empty if missing)."""
+    if not path.exists():
+        return []
+    with path.open() as fh:
+        doc = yaml.safe_load(fh) or {}
+    rules = doc.get("rules") or []
+    if not isinstance(rules, list):
+        raise ValueError(f"{path}: top-level `rules` must be a list")
+    return rules
+
+
+def _compile_rules(
+    raw_rules: list[dict[str, Any]],
+) -> list[tuple[str, str, str, re.Pattern[str]]]:
+    """Compile raw YAML rule rows into the (id, severity, description, regex) tuples."""
+    compiled: list[tuple[str, str, str, re.Pattern[str]]] = []
+    for row in raw_rules:
+        rid = str(row["id"])
+        severity = str(row.get("severity", "info"))
+        description = str(row.get("description", ""))
+        pattern_src = row["pattern"]
+        flags = _resolve_flags(row.get("flags"))
+        compiled.append((rid, severity, description, re.compile(pattern_src, flags)))
+    return compiled
+
+
+def load_rules(
+    framework_rules_file: Path = _RULES_FILE,
+    user_rules_file: Path | None = None,
+) -> tuple[list[tuple[str, str, str, re.Pattern[str]]], dict[str, str]]:
+    """Load + compile framework rules, then optionally append user rules.
+
+    Returns (compiled_patterns, mitigations_by_id).
+    """
+    raw = _load_yaml_rules(framework_rules_file)
+    if user_rules_file is not None:
+        raw = raw + _load_yaml_rules(user_rules_file)
+    patterns = _compile_rules(raw)
+    mitigations = {
+        str(row["id"]): str(row.get("mitigation", "")) for row in raw
+    }
+    return patterns, mitigations
+
+
+# Default catalogue compiled at import time from the framework YAML.
+PATTERNS, MITIGATIONS = load_rules()
+
+
+def scan_file(
+    path: Path,
+    patterns: list[tuple[str, str, str, re.Pattern[str]]] | None = None,
+    mitigations: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Return a list of pattern hits in `path`.
+
+    `patterns` and `mitigations` default to the module-level catalogue (loaded
+    from `superagent/rules/anti-patterns.yaml`). Callers can pass an extended
+    catalogue (e.g. framework + user-overlay) via `load_rules(...)`.
+    """
+    use_patterns = patterns if patterns is not None else PATTERNS
+    use_mitigations = mitigations if mitigations is not None else MITIGATIONS
     body = path.read_text()
     hits: list[dict[str, Any]] = []
-    for pid, severity, description, pattern in PATTERNS:
+    for pid, severity, description, pattern in use_patterns:
         for match in pattern.finditer(body):
             line_no = body[:match.start()].count("\n") + 1
             snippet = body[max(0, match.start() - 30):match.end() + 30]
@@ -141,21 +133,26 @@ def scan_file(path: Path) -> list[dict[str, Any]]:
                 "pattern": pid,
                 "severity": severity,
                 "description": description,
-                "mitigation": MITIGATIONS.get(pid, ""),
+                "mitigation": use_mitigations.get(pid, ""),
                 "line": line_no,
                 "snippet": snippet,
             })
     return hits
 
 
-def scan_dir(directory: Path) -> dict[str, list[dict[str, Any]]]:
+def scan_dir(
+    directory: Path,
+    patterns: list[tuple[str, str, str, re.Pattern[str]]] | None = None,
+    mitigations: dict[str, str] | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    """Scan every non-underscore *.md file in `directory`."""
     if not directory.exists():
         return {}
     out: dict[str, list[dict[str, Any]]] = {}
     for path in sorted(directory.glob("*.md")):
         if path.name.startswith("_"):
             continue
-        hits = scan_file(path)
+        hits = scan_file(path, patterns=patterns, mitigations=mitigations)
         if hits:
             out[path.name] = hits
     return out
@@ -193,11 +190,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv if argv is not None else sys.argv[1:])
+    framework_rules = args.framework / "rules" / "anti-patterns.yaml"
+    user_rules = (
+        args.workspace / "_custom" / "rules" / "anti-patterns.yaml"
+        if args.workspace else None
+    )
+    patterns, mitigations = load_rules(framework_rules, user_rules)
     framework_skills = args.framework / "skills"
-    by_file = scan_dir(framework_skills)
+    by_file = scan_dir(framework_skills, patterns=patterns, mitigations=mitigations)
     if args.workspace:
         custom_skills = args.workspace / "_custom" / "skills"
-        custom_hits = scan_dir(custom_skills)
+        custom_hits = scan_dir(
+            custom_skills, patterns=patterns, mitigations=mitigations,
+        )
         for k, v in custom_hits.items():
             by_file[f"_custom/{k}"] = v
     if args.json:

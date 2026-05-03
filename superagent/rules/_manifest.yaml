@@ -1,0 +1,21 @@
+# [Do not change manually — managed by Superagent]
+#
+# Index of framework-shipped rule files under `superagent/rules/`.
+#
+# Each rule file is a YAML document carrying a list of named, machine-readable
+# rules that one or more tools / skills enforce. Rules differ from contracts
+# (which live in `procedures.md`): a rule is a single behavior the agent
+# should follow or avoid; a contract is a multi-actor protocol that several
+# components implement.
+#
+# Users may extend the rule set at `workspace/_custom/rules/<file>.yaml` using
+# the same schema; loaders concatenate framework + user lists.
+schema_version: 1
+files:
+  - path: anti-patterns.yaml
+    purpose: "Skill-markdown anti-patterns that waste tokens or hide intent."
+    consumed_by:
+      - tools/anti_patterns.py
+      - skills/supertailor-review.md
+      - skills/doctor.md
+    user_overlay: workspace/_custom/rules/anti-patterns.yaml

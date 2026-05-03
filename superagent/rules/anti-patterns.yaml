@@ -1,0 +1,90 @@
+# [Do not change manually — managed by Superagent]
+#
+# Skill anti-pattern catalogue. The scanner (`tools/anti_patterns.py`) reads
+# this file at import time. Each row is a regex-based heuristic that flags a
+# specific waste pattern in skill markdown files.
+#
+# Schema:
+#   schema_version: int
+#   last_updated:   iso datetime | null
+#   rules:
+#     - id:          str   ("AP-N" — stable; never reused)
+#       severity:    "warning" | "info"
+#       description: str   (human-readable; what the pattern catches)
+#       pattern:     str   (Python re.compile source — single-quoted in YAML)
+#       flags:       list  (subset of: IGNORECASE, DOTALL, MULTILINE)
+#       mitigation:  str   (what the skill author should do instead)
+#
+# Adding a new pattern:
+#   1. Append a row with the next AP-N id (do not renumber existing rows).
+#   2. Test the regex against representative skill markdown.
+#   3. Add a row to procedures.md §39 catalogue table referencing this file.
+#   4. Bump `last_updated`.
+#
+# Users may add their own anti-patterns at workspace/_custom/rules/anti-patterns.yaml
+# (same schema). The scanner concatenates framework + user lists, in that order.
+schema_version: 1
+last_updated: "2026-05-02"
+rules:
+  - id: AP-1
+    severity: warning
+    description: "Blanket 4-file read (info + status + history + rolodex)."
+    pattern: '\b(?:read|load|open)\b[^.]*\binfo(?:\.md)?\b[^.]*\bstatus(?:\.md)?\b[^.]*\bhistory(?:\.md)?\b[^.]*\brolodex(?:\.md)?\b'
+    flags: [IGNORECASE, DOTALL]
+    mitigation: "Specify which sections to read: 'read info.md § Profile + status.md § Current Status; pull history.md only if needed'."
+
+  - id: AP-2
+    severity: warning
+    description: "Unfiltered 'all open tasks' read."
+    pattern: '\ball (?:open|active) tasks\b(?![^.]*(?:related_domain|related_project|related_asset|--domain|--project|--asset|filter|scope))'
+    flags: [IGNORECASE, DOTALL]
+    mitigation: "Always include the filter: 'tasks where related_domain == X' or '--project Y'."
+
+  - id: AP-3
+    severity: info
+    description: "Whole-workspace grep without scope."
+    pattern: '\b(?:grep|search)\b[^.]*\b(?:across the (?:whole |entire )?workspace|every file)\b'
+    flags: [IGNORECASE]
+    mitigation: "Scope the grep to a specific Domain / Project folder."
+
+  - id: AP-4
+    severity: info
+    description: "Sequential run-X-then-Y-then-Z that may be parallelizable."
+    pattern: '\b(?:run|invoke|call)\b\s+\S+\s*[,;]\s*then\s+\S+\s*[,;]\s*then\s+\S+'
+    flags: [IGNORECASE]
+    mitigation: "Use a single tool-call message with all tool calls so they parallelize."
+
+  - id: AP-5
+    severity: info
+    description: "Full email-thread pull without checking interaction-log first."
+    pattern: '\b(?:pull|fetch|load|get)\b[^.]*\bfull (?:email )?thread\b(?![^.]*(?:interaction-log|local mirror|cache))'
+    flags: [IGNORECASE, DOTALL]
+    mitigation: "Consult the local interaction-log mirror or Sources cache first; only fetch the thread if the local copy is stale."
+
+  - id: AP-6
+    severity: info
+    description: "Briefing regen without cache check."
+    pattern: '\b(?:re-?render|regenerate)\b[^.]*\b(?:daily[- ]update|briefing|weekly[- ]review|monthly[- ]review)\b(?![^.]*(?:briefing[_ -]cache|_artifacts|cache hit))'
+    flags: [IGNORECASE, DOTALL]
+    mitigation: "Call `tools/briefing_cache.py get` (or read `_memory/_artifacts/<skill>/<key>.md`) before regenerating."
+
+  - id: AP-7
+    severity: warning
+    description: "Unbounded read of a long doc (procedures.md / AGENTS.md)."
+    pattern: '\b(?:read|load)\b[^.]*\b(?:whole|entire|all of|full)\b[^.]*\b(?:procedures\.md|AGENTS\.md)\b'
+    flags: [IGNORECASE, DOTALL]
+    mitigation: "Use Grep first, then `Read --offset --limit` against the matching range. Or read the file's table of contents only."
+
+  - id: AP-8
+    severity: warning
+    description: "Manifest-bypass: 'read every skill markdown' to discover a skill."
+    pattern: '\bread (?:every|all) skill (?:markdown|file|md)\b'
+    flags: [IGNORECASE]
+    mitigation: "Read `skills/_manifest.yaml` first; load only the chosen skill's markdown."
+
+  - id: AP-9
+    severity: info
+    description: "Load-then-extract: large file loaded, single fact extracted."
+    pattern: '\b(?:load|read|open)\b[^.]*\b(?:full file|entire file|whole file)\b[^.]*\b(?:extract|find|locate|get)\s+(?:one|a single|the)\s+\w+\b'
+    flags: [IGNORECASE, DOTALL]
+    mitigation: "Use `Grep` (or, when available, the FTS5 search index) to extract just the matching lines."
