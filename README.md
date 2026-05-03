@@ -126,4 +126,4 @@ If you want to write code: [`superagent/supercoder.agent.md`](superagent/superco
 
 ## License
 
-To be determined. The framework code is intended to be open-source-friendly; the workspace data is yours.
+[Apache License 2.0](LICENSE) — copyright 2026 Mikhail Yurasov. The framework code is open-source under Apache 2.0; **your `workspace/` data is yours alone** (gitignored, never published, never licensed by this project).

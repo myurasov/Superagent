@@ -3,6 +3,8 @@ name = "superagent"
 version = "0.1.0"
 description = "Superagent — life AI assistant. Local-first. Self-improving."
 requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Mikhail Yurasov", email = "me@yurasov.me" }]
 dependencies = [
     "pyyaml",
 ]
