@@ -89,22 +89,35 @@ preferences:
 
   # Sources / cache configuration (see contracts/sources.md).
   sources:
-    # Hard cap on _cache/ size in MB. When exceeded, LRU eviction runs.
+    # Where the fetched-content cache lives. Default is `Sources/_cache/`
+    # (relative to workspace). Override to e.g. an external volume:
+    #   cache_path: "/Volumes/SuperagentVault/sources-cache"
+    cache_path: "Sources/_cache"
+    # Hard cap on cache size in MB. When exceeded, LRU eviction runs.
     cache_max_mb: 500
-    # Default TTL for cached fetches (overridable per-`.ref.md`).
+    # Default TTL for cached fetches (overridable per-ref).
     default_ttl_minutes: 1440
     # When a cached fetch's raw size exceeds this threshold, the cache is
-    # split into chunks (under `_cache/<hash>/chunks/`) for cheaper retrieval.
+    # split into chunks (under `<cache_path>/<hash>/chunks/`) for cheaper retrieval.
     chunk_threshold_kb: 100
     # Target chunk size when splitting (rough; respects natural boundaries).
     chunk_target_kb: 8
     # Always read _summary.md + _toc.yaml first; only pull raw / chunks
     # when the agent decides the content is needed.
     summary_first: true
-    # When true, agent must re-confirm before touching `Sources/documents/`
-    # or `Sources/references/` (immutable by default; only `_cache/` is
-    # auto-managed). The `doctor` skill never touches Sources/ in either case.
-    immutable_strict: true
+    # When true, agent treats user-curated content under Sources/ as
+    # read-only (only `_cache/` is auto-managed). The `doctor` skill
+    # never touches Sources/ in either case.
+    user_files_read_only: true
+    # Auto-refresh the index on read (mtime-based; cheap when nothing changed).
+    auto_refresh_index: true
+    # What to do when the agent encounters a non-canonical .ref file:
+    #   ask     — interactive prompt (rewrite / sibling / keep / skip) [default]
+    #   keep    — never silently rewrite; use parsed values for this read only
+    #   rewrite — silently rewrite in place, with .original backup
+    normalize_policy: "ask"
+    # Same, but for non-interactive batch tools (e.g. a refresh sweep).
+    normalize_policy_batch: "keep"
 
   # Project surfacing (see contracts/projects.md).
   projects:

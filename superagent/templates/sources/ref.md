@@ -1,7 +1,14 @@
 ---
-# `.ref.md` template — points at where a piece of data actually lives.
-# Place under `Sources/references/<category>/<name>.ref.md`.
-# Skills resolve this file to fetch the underlying data via the matching ingestor.
+# Reference file — points at where a piece of data actually lives.
+#
+# Place ANYWHERE under `Sources/` (the layout is yours). The file extension
+# can be `.ref.md` (this template, with YAML frontmatter) OR `.ref.txt`
+# (any plaintext "Key: value" or bare-URL form — the agent normalizes it
+# to this canonical shape on first use, with your permission).
+#
+# Skills resolve this file to fetch the underlying data via the matching
+# ingestor; the result is cached at `Sources/_cache/<hash>/` (or wherever
+# `config.preferences.sources.cache_path` points).
 
 ref_version: 1
 
@@ -9,7 +16,7 @@ ref_version: 1
 title: "<short title>"
 description: "<one-line description of what this contains>"
 
-# --- Where to get it (REQUIRED) ---
+# --- Where to get it (kind + source are REQUIRED) ---
 kind: ""
   # one of:
   #   mcp     — fetched via a configured MCP tool call
@@ -46,7 +53,7 @@ params: {}
   # Additional source-specific parameters (key/value).
 
 # --- Caching policy ---
-ttl_minutes: 1440         # how long the cached fetch stays fresh (default 24h)
+ttl_minutes: 1440         # how long the cached fetch stays fresh (default 24h; 0 = never cache)
 sensitive: false          # if true, cache is encrypted (when sensitive-store is enabled)
 chunk_for_large: true     # split fetched data into chunks if > config.sources.chunk_threshold_kb
 
@@ -59,9 +66,10 @@ related_account: ""       # account id from accounts-index.yaml
 # --- Provenance ---
 added_by: "user"          # user | <skill-name> | <ingestor-name>
 added_at: null            # ISO 8601 datetime
+normalized_at: null       # ISO 8601 datetime (set by the normalizer when this file
+                          # was rewritten from a freeform .ref.txt / loose form)
 
 # --- Tagging ---
-category: ""              # vehicles | taxes | medical | warranties | legal | …
 tags: []
 ---
 

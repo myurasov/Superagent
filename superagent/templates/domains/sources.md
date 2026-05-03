@@ -6,10 +6,11 @@
   The curated catalogue of `Sources/` entries relevant to this domain.
 
   Foundational rule (contracts/sources.md): source documents are NEVER stored
-  inside Domains/<domain>/. They live in `Sources/documents/<category>/`
-  (immutable, indexed, cached). This file is the human-readable, domain-scoped
-  POINTER LIST so when you open the domain you can see "what does Superagent
-  know about this domain?" at a glance.
+  inside Domains/<domain>/. They live under `Sources/<your-folders>/` (the
+  layout under Sources/ is user-defined; the agent reserves only `_cache/`
+  and `README.md`). This file is the human-readable, domain-scoped POINTER
+  LIST so when you open the domain you can see "what does Superagent know
+  about this domain?" at a glance.
 
   Sync contract: every `add-source --to-domain <id>` invocation appends a row
   here AND updates `_memory/sources-index.yaml.<row>.related_domain`.
@@ -46,7 +47,7 @@ _Last updated: {{LAST_UPDATED}}_
 
 ## Documents
 
-<!-- Files in `Sources/documents/<category>/...` that belong to this domain.
+<!-- Files under `Sources/...` that belong to this domain.
      Format: one row per source. The Path is workspace-relative.
      Sensitive items get a 🔒 marker (rendered as the literal "[sensitive]"
      here so we keep the no-emoji rule for committed framework files). -->
@@ -61,7 +62,7 @@ _Last updated: {{LAST_UPDATED}}_
 
 ## References (external pointers)
 
-<!-- `.ref.md` files under `Sources/references/<category>/` that point at
+<!-- `.ref.md` / `.ref.txt` files anywhere under `Sources/` that point at
      external data (MCP / CLI / URL / API / vault / manual). Resolved to
      fresh content via the local-first cache (contracts/sources.md § 15.5). -->
 

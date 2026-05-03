@@ -8,10 +8,11 @@
 
   Foundational rule (contracts/sources.md + § 16): source documents for a
   project live in EITHER:
-    - workspace `Sources/documents/<category>/` (cross-cutting; would
-      survive the project being archived), OR
-    - project-scoped `Projects/{{PROJECT_NAME}}/Sources/documents/` (only
-      relevant to this project; goes with the project to Archive/).
+    - workspace `Sources/<your-folders>/` (cross-cutting; would survive the
+      project being archived), OR
+    - project-scoped `Projects/{{PROJECT_NAME}}/Sources/<your-folders>/`
+      (only relevant to this project; goes with the project to Archive/).
+  Layout under either Sources/ root is user-defined.
 
   This file lists both, distinguished by the Path column.
 
@@ -45,8 +46,8 @@ _Last updated: {{LAST_UPDATED}}_
 
 ## Workspace-level documents (relevant to this project)
 
-<!-- Files under workspace `Sources/documents/<category>/` that you tagged
-     to this project. They survive the project being archived. -->
+<!-- Files under workspace `Sources/...` that you tagged to this project.
+     They survive the project being archived. -->
 
 | Title | Path | Category | Added | Notes |
 |-------|------|----------|-------|-------|
@@ -58,9 +59,9 @@ _Last updated: {{LAST_UPDATED}}_
 
 ## Project-scoped documents
 
-<!-- Files under `Projects/{{PROJECT_NAME}}/Sources/documents/` — bound to
-     this project. When the project archives, these files move to Archive
-     with it. Use for things that only make sense in the project's context
+<!-- Files under `Projects/{{PROJECT_NAME}}/Sources/` — bound to this
+     project. When the project archives, these files move to Archive with
+     it. Use for things that only make sense in the project's context
      (vendor quotes for a renovation; trip-specific itineraries; etc.). -->
 
 | Title | Path | Category | Added | Notes |

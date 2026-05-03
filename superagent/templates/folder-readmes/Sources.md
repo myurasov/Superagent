@@ -1,71 +1,100 @@
-# `Sources/` — your reference library (the canonical document store)
+# `Sources/` — your reference library
 
-The workspace's vault of truth for documents and pointers to external data. Three foundational rules:
+The workspace's vault for documents and pointers to external data. Three things to know:
 
-1. **THE single canonical place for finished documents.** Nothing under `Domains/<X>/` or `Projects/<X>/` ever holds a source document directly — those folders carry only working files (`Resources/`) and a curated catalogue (`sources.md`) pointing at entries here. The 5-year test: *"would I want this file in five years even if its domain / project went away?"* If yes, it lives here.
-2. **Immutable.** Skills MUST NOT delete or overwrite anything in `Sources/documents/` or `Sources/references/`. The `doctor` skill is forbidden from touching this subtree. Only `Sources/_cache/` is auto-managed (TTL + LRU eviction).
-3. **Local-first.** The agent reads from the cache before touching live MCPs / APIs. `_summary.md` first; `_toc.yaml` second; specific chunks of `raw.<ext>` only when needed.
+1. **Layout is yours.** Drop files in any folder structure that makes sense to you. The agent doesn't enforce `documents/` / `references/` / `<category>/` subdirs anymore. You can use them if you like — or invent your own — or have a flat folder.
+2. **Index is derived.** The structured catalogue lives at `_memory/sources-index.yaml` and is rebuilt automatically when you (or the agent) read it. Drop a file by hand from a shell, and on the next agent read it shows up in the index.
+3. **Local-first.** When the agent needs the contents of a `.ref`-pointed source, it reads `_cache/` first; only goes to live MCP / API when the cache is stale or missing. `_summary.md` first, then `_toc.yaml`, then specific chunks. **Never** load the whole raw file into context unless it's small.
 
-## Layout
+## Reserved names
 
-```
-Sources/
-  README.md                            ← this file
-  documents/                           ← actual local files (PDFs, scans, exports, manuals)
-    <category>/                        ← grouped by category (vehicles / taxes / medical / warranties / …)
-      <doc>.<ext>
-      <doc>.ref.md                     ← optional sidecar metadata
-  references/                          ← `.ref.md` files pointing at external data
-    <category>/
-      <name>.ref.md                    ← describes WHERE to fetch (mcp / cli / url / api / file / vault / manual)
-  _cache/                              ← agent-managed cache of fetched references
-    <source-hash>/
-      _meta.yaml _summary.md _toc.yaml raw.<ext> chunks/
-```
+The agent only owns two names under `Sources/`:
 
-Per-Project copies of this structure may exist at `Projects/<slug>/Sources/` for project-scoped material that should follow the project to Archive when it completes.
-
-## How a document gets here
-
-The canonical capture flow is **`add-source`** (or natural language: "add my insurance card to Health"):
-
-1. Place the file under `Sources/documents/<category>/<…>`.
-2. Append a row to `_memory/sources-index.yaml` with cross-references (`related_domain`, `related_project`, `related_asset`, etc).
-3. Append a row to the relevant `Domains/<X>/sources.md` (and / or `Projects/<X>/sources.md`) so the domain / project has a human-readable catalogue entry.
-
-You should almost never write directly into `Sources/documents/` from a shell. Always go through `add-source` so the indexes stay consistent.
-
-## How a `.ref.md` works
-
-A `.ref.md` is a markdown file with YAML frontmatter that tells the agent how to fetch a piece of external data. Template: `superagent/templates/sources/ref.md`. Required fields:
-
-- `kind`: `mcp` | `cli` | `url` | `api` | `file` | `vault` | `manual`
-- `source`: the source identifier (URL / shell command / MCP call / etc.)
-- `ttl_minutes`: how long the cached fetch stays fresh
-
-The agent's read flow when it needs a `.ref`-pointed source:
-
-1. Reads the `.ref.md` (cheap; fits in any context).
-2. Computes `source_hash = sha256(kind + source)` and checks `_cache/<hash>/_meta.yaml`.
-3. If the cache is fresh (within `ttl_minutes`), reads `_summary.md` first; then `_toc.yaml` to find relevant sections; then only the necessary chunks. **Never the whole raw file unless it's small.**
-4. If the cache is stale or missing, runs the appropriate ingestor / shell / fetch, writes the result to `_cache/<hash>/`, and only then reads.
-5. Updates `_meta.yaml.last_used` and increments `read_count` in `_memory/sources-index.yaml`.
-
-## Where things go from here
-
-When you receive a new piece of paper / PDF / scan, capture it via `add-source --to-domain <id>` (the agent files it correctly):
-
-| Item | Auto-routed to |
+| Name | Purpose |
 |---|---|
-| Vehicle title, registration, insurance card | `documents/vehicles/<vehicle-slug>/` (+ row in `Domains/Vehicles/sources.md`) |
-| Tax return (filed) | `documents/taxes/<year>/` (+ row in `Domains/Finance/sources.md`, plus the active `Projects/tax-<year>/sources.md` if present) |
-| Medical record / lab result / imaging | `documents/medical/<member-slug>/` (+ row in `Domains/Health/sources.md`) |
-| Appliance manual / warranty / receipt | `documents/warranties/<asset-slug>/` (+ row in `Domains/Home/sources.md`) |
-| Will / trust / POA / advance directive | `documents/legal/` (+ rows in `Domains/Family/sources.md` AND `Domains/Finance/sources.md`) |
-| Insurance policy (home / auto / life / umbrella) | `documents/insurance/<policy-slug>/` (+ row in `Domains/Finance/sources.md`) |
-| Mortgage / lease / deed | `documents/property/` (+ row in `Domains/Home/sources.md`) |
-| School records / diploma / certification | `documents/education/<member-slug>/` (+ rows in `Domains/Family/sources.md` AND/OR `Domains/Career/sources.md`) |
-| Pet vaccination / vet records | `documents/pets/<pet-slug>/` (+ row in `Domains/Pets/sources.md`) |
+| `README.md` | This file. |
+| `_cache/` | Agent-managed fetch cache. TTL + LRU bounded. Don't put your own files here — they'll be evicted. |
+
+Everything else is yours.
+
+## Documents vs references
+
+| What you have | What to call the file | What the agent does |
+|---|---|---|
+| A PDF / scan / spreadsheet you own | Whatever you want — `camry-title.pdf`, `2024-tax-return.pdf`, `Resources/medical/labs.pdf` | Indexes the path; opens it directly when read. |
+| A pointer to data that lives elsewhere | `<name>.ref.md` (canonical) or `<name>.ref.txt` (free-form) | Resolves the pointer through the local-first cache. |
+| Both: a file + extra metadata | `<name>.<ext>` + sibling `<name>.ref.md` | Indexes the file; uses the ref for metadata + cross-references. |
+
+## Authoring `.ref` files by hand
+
+The canonical form is YAML frontmatter + free-text notes (template: `superagent/templates/sources/ref.md`):
+
+```markdown
+---
+ref_version: 1
+title: "Fidelity 401k portal"
+description: "Account balances and contribution history."
+kind: url
+source: "https://401k.fidelity.com/dashboard"
+ttl_minutes: 1440
+sensitive: true
+related_account: "acct-fidelity-401k"
+tags: [retirement, login-required]
+---
+
+# Notes
+
+Login flow: SSO via work email; YubiKey for the 2FA prompt.
+Balance is on the dashboard top bar; contribution history is under
+"Sources of money".
+```
+
+But you don't have to write that by hand. Author whatever's easiest:
+
+```text
+URL: https://401k.fidelity.com/dashboard
+Title: Fidelity 401k portal
+Type: url
+Sensitive: yes
+Notes:
+  Login flow: SSO via work email; YubiKey for the 2FA prompt.
+```
+
+Or just paste a URL on the first line:
+
+```
+https://401k.fidelity.com/dashboard
+```
+
+On the **first** time the agent reads a non-canonical ref, it asks whether to normalize it (default policy is `ask`, configurable in `config.preferences.sources.normalize_policy`):
+
+```
+Normalize Sources/finance/fidelity.ref.txt?
+  [r] Rewrite in place + keep .ref.txt.original backup  [recommended]
+  [n] Rewrite in place, no backup
+  [s] Write sibling .normalized.md, leave my file alone
+  [k] Use parsed values for this read only; don't write
+```
+
+`.ref.txt` and `.ref.md` are equivalent — pick whichever extension you prefer for hand-authored files.
+
+## How `add-source` fits
+
+`add-source` is a convenience — it copies the file into a sensible subfolder (you confirm or override the path), writes a row to the index, and cross-links it to the relevant Domain / Project / Asset. You can skip it and just drop files in by hand; the auto-refresh will pick them up.
+
+| Source kind | Suggested location | Auto-routed cross-refs |
+|---|---|---|
+| Vehicle title / registration / insurance card | `Sources/vehicles/<vehicle-slug>/` (suggested; you can override) | `Domains/Vehicles/sources.md` |
+| Tax return | `Sources/taxes/<year>/` | `Domains/Finance/sources.md` (+ `Projects/tax-<year>/sources.md` if active) |
+| Medical record / lab / imaging | `Sources/medical/<member>/` | `Domains/Health/sources.md` |
+| Appliance manual / warranty | `Sources/warranties/<asset>/` | `Domains/Home/sources.md` |
+| Will / trust / POA / advance directive | `Sources/legal/` | `Domains/Family/sources.md` AND `Domains/Finance/sources.md` |
+| Insurance policy | `Sources/insurance/<policy>/` | `Domains/Finance/sources.md` |
+| Mortgage / lease / deed | `Sources/property/` | `Domains/Home/sources.md` |
+| School records / diplomas | `Sources/education/<member>/` | `Domains/Family/sources.md` AND/OR `Domains/Career/sources.md` |
+| Pet vaccination / vet records | `Sources/pets/<pet>/` | `Domains/Pets/sources.md` |
+
+These are suggestions, not rules. If you want all medical stuff under `Sources/health-stuff/`, the index handles it the same way.
 
 ## What `Sources/` is NOT for
 
@@ -77,7 +106,7 @@ The crisp boundaries:
 
 | Lives in | Lifetime | Mutability |
 |---|---|---|
-| `Sources/documents/` | indefinite (until you manually delete) | immutable to skills |
+| `Sources/<your-paths>/` | indefinite (until you manually delete) | read-only to the agent |
 | `Sources/_cache/` | TTL-limited (1440min default) + LRU-bounded | auto-evicted |
 | `Domains/<X>/Resources/` or `Projects/<X>/Resources/` | as long as the entity is active; archived with it | hand-managed |
 | `Outbox/` | until you mark sent OR send manually | append + mark; rarely deleted |
@@ -86,14 +115,15 @@ The crisp boundaries:
 ## Caching policy
 
 - **Default TTL**: 1440 minutes (24 hours) per fetch.
-- **Per-source TTL**: set in the `.ref.md` frontmatter (`ttl_minutes`).
-- **Eviction**: `_cache/` is bounded by `_memory/config.yaml.preferences.sources.cache_max_mb` (default 500 MB). When the cap is exceeded, LRU rows are evicted until under the cap. The `_cache/<hash>/_meta.yaml.last_used` field drives LRU.
+- **Per-source TTL**: set in the `.ref` file frontmatter (`ttl_minutes`).
+- **Eviction**: `_cache/` is bounded by `_memory/config.yaml.preferences.sources.cache_max_mb` (default 500 MB). When the cap is exceeded, LRU rows are evicted.
+- **Cache location**: defaults to `Sources/_cache/`; override via `config.preferences.sources.cache_path` to point at an external/encrypted volume.
 - **Force refresh**: pass `--refresh` to any skill that reads sources, or run `sources refresh <ref-id>` directly.
-- **Force never-cache**: set `ttl_minutes: 0` in the `.ref.md`. Useful for rapidly-changing data (current bank balance, current sleep score).
+- **Force never-cache**: set `ttl_minutes: 0` in the ref file.
 
 ## Sensitive sources
 
-Set `sensitive: true` in the `.ref.md` frontmatter (or in `_memory/sources-index.yaml.<row>.sensitive`) for things like medical records, account statements, legal documents. The cached content lives in `_cache/<hash>/` like everything else, but:
+Set `sensitive: true` in the ref's frontmatter (or in the index row) for medical records, account statements, legal documents. The cached content lives in `_cache/` like everything else, but:
 
 - Outbound surfaces (`draft-email`, `summarize-thread`, anything that lands in `Outbox/`) redact the content.
 - When the sensitive-store option is enabled (roadmap M-01), the cache is encrypted-at-rest.
@@ -101,4 +131,4 @@ Set `sensitive: true` in the `.ref.md` frontmatter (or in `_memory/sources-index
 
 ## Privacy
 
-`Sources/` is gitignored along with the rest of `workspace/`. It stays local to your machine. Superagent never publishes anything on its own — that is always an explicit user action.
+`Sources/` is gitignored along with the rest of `workspace/`. It stays local. Superagent never publishes anything on its own — that is always an explicit user action.

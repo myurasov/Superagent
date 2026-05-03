@@ -1,42 +1,54 @@
 # [Do not change manually — managed by Superagent]
-# Superagent memory: index of every entry in `Sources/`.
+# Superagent memory: derived index of every entry under `Sources/`.
 #
-# Sources/ is the workspace's reference library. It holds:
-#   - documents/  — actual local files (PDFs, scans, exports) — the "vault" of
-#                    truth for things the user owns and wants preserved.
-#   - references/ — `.ref.md` files describing where to fetch external data
-#                    (via MCP, CLI, URL, vault, API, file path).
-#   - _cache/     — fetched copies of `.ref`-pointed sources, with TTL/LRU
-#                    eviction. The ONLY part of Sources/ that skills may
-#                    delete (per the immutability contract in contracts/sources.md
-#                    § "Sources Contract").
+# This file is REBUILT FROM THE FILESYSTEM by `tools/sources_index.py refresh`
+# whenever the agent reads it and the filesystem has changed. The filesystem
+# under `Sources/` (and per-project `Projects/<slug>/Sources/`) is the source
+# of truth; this index is a derived view.
 #
-# This index keeps a row per document and per .ref so skills can query the
-# library without walking the filesystem every time.
+# What persists across refreshes (preserved by id):
+#   - notes, tags, sensitive
+#   - related_domain, related_project, related_asset, related_account
+#   - last_accessed, read_count
+#   - any other user-set fields
+#
+# What gets recomputed:
+#   - path, kind, category (heuristic from path), title (from filename if
+#     not set in a sibling .ref.md), present
+#
+# `Sources/_cache/` is excluded from this index (it's agent territory, not a
+# user-facing source). The cache contract lives in `contracts/sources.md` § 15.4.
 
 schema_version: 1
+last_filesystem_scan: null    # ISO 8601 of the last `sources_index refresh` walk
 
 sources:
   # Each source:
-  #   id              — Stable slug (e.g. "doc-camry-title-2018",
-  #                      "ref-medicare-eob-portal").
+  #   id              — Stable slug. Default form `src-<sha1(workspace-relative-path)[:10]>`;
+  #                      preserved across content moves when the new file carries the same id
+  #                      in a sibling `.ref.md` or by content-hash + filename match.
   #   kind            — document | reference
-  #                      document  → file lives at `path` under
-  #                                  Sources/documents/.
-  #                      reference → `path` is a `.ref.md` file under
-  #                                  Sources/references/.
-  #   title           — Display title.
+  #                      document  → file at `path` is the source.
+  #                      reference → `path` is a `.ref.md` / `.ref.txt` file describing
+  #                                   where to fetch external data.
+  #   title           — Display title (filename stem if not set in ref frontmatter).
   #   path            — Workspace-relative path under Sources/.
-  #   category        — Free-text category (e.g. "vehicles", "taxes",
-  #                      "medical", "warranties", "legal"). Drives the
-  #                      sub-folder under documents/ or references/.
+  #   category        — Free-text tag (auto-derived from the first sub-folder under
+  #                      Sources/; user-overridable). Drives nothing structural.
   #   related_domain  — Domain id from domains-index.yaml (optional).
   #   related_project — Project id from projects-index.yaml (optional).
   #   related_asset   — Asset id from assets-index.yaml (optional).
+  #   related_account — Account id from accounts-index.yaml (optional).
   #   sensitive       — bool. If true, redacted from outbound surfaces.
-  #   added           — ISO 8601 date when added.
+  #   added           — ISO 8601 date when first indexed (preserved across refreshes).
   #   last_accessed   — ISO 8601 of last read by a skill or by the user.
   #   read_count      — How many times this source has been pulled into context.
+  #   present         — bool. False means the file disappeared on last refresh; the
+  #                      row is kept for one cycle in case the user wants to recover
+  #                      its notes/cross-refs. Permanently dropped on next refresh
+  #                      if still missing.
+  #   normalized      — bool. Only meaningful for kind: reference. True once the file
+  #                      is in canonical YAML-frontmatter form.
   #   tags            — Short labels.
   #   notes           — Free-form (where the physical original lives, why we keep it).
   - id: ""
@@ -47,9 +59,12 @@ sources:
     related_domain: null
     related_project: null
     related_asset: null
+    related_account: null
     sensitive: false
     added: null
     last_accessed: null
     read_count: 0
+    present: true
+    normalized: false
     tags: []
     notes: ""

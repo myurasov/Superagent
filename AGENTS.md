@@ -221,20 +221,24 @@ A Project links UP to one or more Domains via `related_domains: [..]`. Tasks in 
 
 ### Sources/
 
-**Sources** = the workspace's reference library: documents the user owns + pointers (`.ref.md`) to external data. Two foundational rules (per `contracts/sources.md`):
+**Sources** = the workspace's reference library: documents the user owns + pointers (`.ref.md` / `.ref.txt`) to external data. Three foundational rules (per `contracts/sources.md`):
 
-1. **Immutable.** Skills MUST NOT delete or overwrite anything in `Sources/documents/` or `Sources/references/`. Only `Sources/_cache/` is auto-managed (TTL + LRU eviction).
-2. **Local-first.** Every skill that needs source data reads the cache first; only goes to live MCP / API when the cache is stale or missing. Reads `_summary.md` + `_toc.yaml` first; only pulls relevant chunks of `raw.<ext>` when needed.
+1. **Layout is user-defined.** The agent reserves only `Sources/README.md` and `Sources/_cache/`; everything else is the user's territory. Drop files anywhere; organize folders any way.
+2. **Index is derived.** `_memory/sources-index.yaml` is rebuilt from the filesystem on demand by `tools/sources_index.py refresh` (mtime-lazy — near-no-op when nothing changed). Hand-curated fields (notes, tags, sensitive, related_*, last_accessed, read_count) are preserved across refreshes.
+3. **Local-first.** Every skill that needs source data reads the cache first; only goes to live MCP / API when the cache is stale or missing. Reads `_summary.md` + `_toc.yaml` first; only pulls relevant chunks of `raw.<ext>` when needed.
 
 ```
 Sources/
-  documents/<category>/<doc>.<ext>          # actual local files; immutable
-  references/<category>/<name>.ref.md       # pointers to external data; immutable
-  _cache/<source-hash>/                     # agent-managed cache
+  README.md                                 # user-facing docs (template)
+  _cache/<source-hash>/                     # agent-managed (TTL + LRU)
     _meta.yaml _summary.md _toc.yaml raw.<ext> chunks/
+  <whatever-folders-you-want>/<files>       # user-curated; any layout
+    <doc>.<ext>                             # documents
+    <doc>.<ext>.ref.md                      # optional sidecar metadata
+    <name>.ref.md  /  <name>.ref.txt        # standalone references
 ```
 
-`.ref.md` template: `superagent/templates/sources/ref.md`. The `.ref` describes `kind` (mcp / cli / url / api / file / vault / manual) + `source` (the identifier) + `ttl_minutes`. The agent resolves a `.ref` by computing `sha256(kind + source)`, checking the cache, fetching only if necessary.
+Reference files (`.ref.md` / `.ref.txt`) describe `kind` (mcp / cli / url / api / file / vault / manual) + `source` (the identifier) + `ttl_minutes`. The canonical form is YAML frontmatter (`superagent/templates/sources/ref.md`); hand-authored loose `Key: value` or bare-URL forms are accepted and **normalized on first use** with the user's permission (`tools/sources_normalize.py`; default policy `ask`). The agent resolves a ref by computing `sha256(kind + source)`, checking the cache (default `Sources/_cache/<hash>/`, override via `config.preferences.sources.cache_path`), fetching only if necessary.
 
 Filenames inside Domain / Project folders are lowercase and hyphenated; sub-folders for events, trips, sub-efforts follow the same rule.
 
@@ -246,7 +250,7 @@ Filenames inside Domain / Project folders are lowercase and hyphenated; sub-fold
 - **What does *not* go in Outbox** — destination-specific artifacts that already have a canonical home:
   - **Domain notes** → `workspace/Domains/<domain>/`.
   - **Memory / state files** → `workspace/_memory/`.
-  - **Source documents** (receipts, scans, vital records, signed PDFs) → `workspace/Sources/documents/<category>/`. Cross-linked from `Domains/<domain>/sources.md`. Source documents NEVER live directly under `Domains/` or `Projects/`.
+  - **Source documents** (receipts, scans, vital records, signed PDFs) → `workspace/Sources/<your-folders>/` (user-defined layout per `contracts/sources.md` § 15.1). Cross-linked from `Domains/<domain>/sources.md`. Source documents NEVER live directly under `Domains/` or `Projects/`.
   - **Drafts, working files, agent-generated artifacts (not for sending)** → `workspace/Domains/<domain>/Resources/` or `workspace/Projects/<project>/Resources/`.
   - **The "if hit by a bus" packet** → handled by `handoff` skill into a configured destination (default: `workspace/Outbox/handoff/`).
 - **`Outbox/` is gitignored along with the rest of `workspace/`.** Contents stay local; the framework never publishes anything on its own — that is always an explicit user action.
@@ -339,7 +343,7 @@ The `tools/anti_patterns.py` scanner flags skills that violate these patterns. T
 Per `contracts/local-first-read-order.md` (codifies QW-7), every skill that needs data MUST consult the local copy first and fall through to a live MCP / API only when the local copy is genuinely insufficient:
 
 1. **Local index** (`_memory/<index>.yaml`) for structured rows — bills, subscriptions, appointments, important dates, contacts, accounts, assets, documents, health records.
-2. **Local Sources cache** (`Sources/_cache/<hash>/`) for cached external content — read `_summary.md` first, then `_toc.yaml`, then only the relevant chunk(s) from `raw.<ext>` or `chunks/`.
+2. **Local Sources cache** (`<cache_path>/<hash>/`, default `Sources/_cache/`) for cached external content — read `_summary.md` first, then `_toc.yaml`, then only the relevant chunk(s) from `raw.<ext>` or `chunks/`. Refresh the derived index first via `tools/sources_index.py refresh`.
 3. **Domain / Project history.md** for narrative recall.
 4. **Events stream** (`_memory/events/<YYYY-Qn>.yaml` via `tools/log_window.py`) for cross-entity timeline queries.
 5. **Live MCP / CLI source** ONLY when **all** are true: (a) the local read returned no candidates that match the question; AND (b) the time window the question is asking about extends past the source's `last_ingest`; AND (c) freshness genuinely matters for the question.
