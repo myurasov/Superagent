@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Sources cache manager for Superagent.
 
-Implements the local-first read pattern documented in `procedures.md` § 15.4
+Implements the local-first read pattern documented in `contracts/sources.md` § 15.4
 + § 15.5. The agent and skills route every fetch of a `.ref.md`-pointed
 source through this module so caching, eviction, and chunking are uniform.
 

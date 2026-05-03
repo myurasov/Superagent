@@ -87,7 +87,7 @@ preferences:
     snapshot_retention_days: 14
     redact_outbound: true            # outbound surfaces go through scrub pipeline
 
-  # Sources / cache configuration (see procedures.md § "Sources Contract").
+  # Sources / cache configuration (see contracts/sources.md).
   sources:
     # Hard cap on _cache/ size in MB. When exceeded, LRU eviction runs.
     cache_max_mb: 500
@@ -106,7 +106,7 @@ preferences:
     # auto-managed). The `doctor` skill never touches Sources/ in either case.
     immutable_strict: true
 
-  # Project surfacing (see procedures.md § "Projects Contract").
+  # Project surfacing (see contracts/projects.md).
   projects:
     # Lookahead window for project deadlines in daily-update.
     deadline_lookahead_days: 14
@@ -119,7 +119,7 @@ preferences:
     # null to disable the nudge.
     pm_review_cadence_days: 14
 
-  # Events stream (see procedures.md § "Events Stream Contract" / item #16).
+  # Events stream (see contracts/events-stream.md / item #16).
   events:
     # Time partitioning. Quarterly default; monthly for high-volume workspaces.
     partition: "quarterly"   # quarterly | monthly | yearly
@@ -130,7 +130,7 @@ preferences:
     # Per-skill event-emission opt-out (rare).
     skip_kinds: []
 
-  # Audit trail (see procedures.md § "Audit Trail Contract" / item #17).
+  # Audit trail (see contracts/audit-trail.md / item #17).
   audit:
     # Master switch. When false, no <file>.history.jsonl is written.
     enabled: true
@@ -139,7 +139,7 @@ preferences:
     # Yearly rotate the .history.jsonl files into Archive/.
     rotate_yearly: true
 
-  # Tags (see procedures.md § "Tags Contract" / item #11).
+  # Tags (see contracts/tags.md / item #11).
   tags:
     # When the user (or a skill) introduces a new tag, automatically add a
     # row to tags.yaml with placeholder description.
@@ -148,14 +148,14 @@ preferences:
     # Default false (lenient); flip true once tags.yaml is curated.
     strict_canonical: false
 
-  # Decisions (see procedures.md § "Decisions Log Contract" / item #24).
+  # Decisions (see contracts/decisions.md / item #24).
   decisions:
     # Surface decisions made this week in weekly-review.
     surface_in_weekly_review: true
     # Surface decisions whose review_at <= now in monthly-review.
     surface_in_monthly_review: true
 
-  # Briefing cache (see procedures.md § "Briefing Cache Contract" / QW-5 + MI-5).
+  # Briefing cache (see contracts/briefing-cache.md / QW-5 + MI-5).
   briefing_cache:
     # Master switch.
     enabled: true
@@ -164,7 +164,7 @@ preferences:
     # Auto-invalidate when any source file mtime > briefing.created_at.
     invalidate_on_source_mtime: true
 
-  # Per-session scratchpad (see procedures.md § "Per-session Scratchpad" / MI-1).
+  # Per-session scratchpad (see contracts/session-scratchpad.md / MI-1).
   session:
     # Master switch.
     enabled: true
@@ -182,7 +182,7 @@ preferences:
     # Surface efficiency deltas in monthly-review.
     surface_in_monthly_review: true
 
-  # Sensitive tier (see procedures.md § "Sensitive Tier" / item #18).
+  # Sensitive tier (see contracts/sensitive-tier.md / item #18).
   sensitive:
     # Master switch.
     enabled: true
@@ -195,28 +195,28 @@ preferences:
       - "health-records.yaml"
       - "accounts-index.yaml"
 
-  # Visibility (see procedures.md § "Visibility Contract" / item #19).
+  # Visibility (see contracts/visibility.md / item #19).
   visibility:
     # Default visibility for newly-created entities.
     default: "private"      # private | household | public
     # When the workspace is shared (household mode), this is the household name.
     household_name: ""
 
-  # Operational handles (see procedures.md § "Operational Handles" / item #20).
+  # Operational handles (see contracts/operational-handles.md / item #20).
   handles:
     # Master switch — when true, every new entity gets a `handle` field
     # populated as `<kind>:<id>`. Existing entities are backfilled by
     # `tools/world.py rebuild`.
     enabled: true
 
-  # Outbox lifecycle (see procedures.md § "Outbox Lifecycle" / item #13).
+  # Outbox lifecycle (see contracts/outbox-lifecycle.md / item #13).
   outbox:
     # Sub-folders to scaffold and auto-route artifacts through.
     lifecycle_stages: ["drafts", "staging", "sent", "sealed"]
     # Max age (days) before stage:drafts artifacts are surfaced as stale.
     drafts_stale_days: 14
 
-  # Inbox triage (see procedures.md § "Inbox Triage" / item #5).
+  # Inbox triage (see contracts/inbox-triage.md / item #5).
   inbox_triage:
     # Days before files in Inbox/ surface as stale to triage.
     stale_days: 14

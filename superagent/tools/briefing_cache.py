@@ -9,7 +9,7 @@ status drafts) writes to `_memory/_artifacts/<skill>/<key>.md` with a
 sibling `<key>.meta.yaml`. Subsequent skills (whatsup, conversational
 follow-ups about today) check the cache before regenerating.
 
-Invalidation rules per `procedures.md` § "Briefing Cache Contract":
+Invalidation rules per `contracts/briefing-cache.md`:
   - Day flip / week flip / month flip (key changes).
   - Source-file mtime > artifact.created_at.
   - TTL expiry from per-skill default in config.

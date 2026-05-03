@@ -98,7 +98,7 @@ The "implement one ingestor" tier — the bulk of where Superagent grows.
 | S-19 | Implement **tesla** ingestor. | Mileage threshold → auto next-service task; charging anomaly alerts. | Probe + run + tests. | tesla-mcp. |
 | S-20 | Implement **ynab** ingestor. | For YNAB users. | Probe + run + tests. | YNAB token. |
 
-### Auto-capture and surfacing rules (per `procedures.md` § 7.3 and § 8)
+### Auto-capture and surfacing rules (per `contracts/capture.md` § 7.3 and § 8)
 
 | ID | What | Why | Done when |
 |---|---|---|---|

@@ -18,7 +18,7 @@
 # Adding a new pattern:
 #   1. Append a row with the next AP-N id (do not renumber existing rows).
 #   2. Test the regex against representative skill markdown.
-#   3. Add a row to procedures.md §39 catalogue table referencing this file.
+#   3. Add a row to contracts/anti-patterns.md catalogue table referencing this file.
 #   4. Bump `last_updated`.
 #
 # Users may add their own anti-patterns at workspace/_custom/rules/anti-patterns.yaml
@@ -70,10 +70,10 @@ rules:
 
   - id: AP-7
     severity: warning
-    description: "Unbounded read of a long doc (procedures.md / AGENTS.md)."
-    pattern: '\b(?:read|load)\b[^.]*\b(?:whole|entire|all of|full)\b[^.]*\b(?:procedures\.md|AGENTS\.md)\b'
+    description: "Unbounded read of a long doc (AGENTS.md or any contracts/* file)."
+    pattern: '\b(?:read|load)\b[^.]*\b(?:whole|entire|all of|full)\b[^.]*\b(?:AGENTS\.md|contracts/[a-z0-9-]+\.md)\b'
     flags: [IGNORECASE, DOTALL]
-    mitigation: "Use Grep first, then `Read --offset --limit` against the matching range. Or read the file's table of contents only."
+    mitigation: "Use Grep first, then `Read --offset --limit` against the matching range. For AGENTS.md, read the file's table of contents only. For contracts/, each file is small enough that a full read is usually fine — but if you only need one section, target it with --offset / --limit."
 
   - id: AP-8
     severity: warning

@@ -53,7 +53,7 @@ Full quick-start: [`superagent/docs/quick-start.md`](superagent/docs/quick-start
 
 superagent/                  ← framework code (committed)
   superagent.agent.md        ← role definitions (Superagent + 9 helpers)
-  procedures.md              ← contracts: ingestion, capture, surfacing, cadences
+  contracts/                 ← 39 multi-actor contracts (one .md per contract) + _manifest.yaml
   supertailor.agent.md            ← Supertailor's role (observer + proposer)
   supercoder.agent.md             ← Supercoder's role (implementer)
   skills/                    ← 48 skills, one .md per skill, plus _manifest.yaml

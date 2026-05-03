@@ -41,7 +41,7 @@ A diagnostic of the burn pattern in Superagent as of MVP:
 
 | Source of waste | Why it happens | Fix layer |
 |---|---|---|
-| Whole-file reads of long skills (`init.md` ≈ 460 lines, `procedures.md` ≈ 1500 lines) when only one section is needed | Agent reads top-to-bottom; no per-section index | Skill / doc shape |
+| Whole-file reads of long skills (`init.md` ≈ 460 lines, `contracts/` ≈ 1500 lines) when only one section is needed | Agent reads top-to-bottom; no per-section index | Skill / doc shape |
 | Whole-YAML reads of `interaction-log.yaml`, `ingestion-log.yaml`, `supertailor-suggestions.yaml` — append-only files that grow unbounded | No partitioning; no summary; no offset-aware reader | Memory schema |
 | Re-reading the same file multiple times in one conversation | Agent has no "I already loaded this" memory | Session cache |
 | MCP / API calls when the local mirror would do | Already mostly solved (email + slack archive contracts; Sources/_cache); the discipline is per-skill, not enforced | Read-side contract wording |
@@ -195,7 +195,7 @@ The cost is 200-500 tokens per fetch; the savings are 2-10k tokens per subsequen
 - **LOE**: XS.
 - **Saves**: prevents agents from going to live MCPs / APIs when the cache or local mirror would do.
 
-The Sources / `_cache/` contract (per `procedures.md` § 15.5) already specifies the local-first read order. The same discipline needs to apply to ingestor-fetched data once the email / calendar / messaging / health ingestors land. Codify in `procedures.md`:
+The Sources / `_cache/` contract (per `contracts/sources.md` § 15.5) already specifies the local-first read order. The same discipline needs to apply to ingestor-fetched data once the email / calendar / messaging / health ingestors land. Codify in `contracts/`:
 
 > The agent **SHALL** consult the relevant local index (`_memory/<index>.yaml` for structured rows, `Sources/_cache/<hash>/` for cached external content, `Domains/<X>/history.md` for narrative) first. The agent SHALL fall through to a live ingestor / MCP **only when ALL of these are true**: (a) the local read returned no candidates that match the question; AND (b) the time window the question is asking about extends past the source's `last_ingest`; AND (c) freshness genuinely matters for the question. Otherwise, return what the local read found and stop.
 
@@ -266,7 +266,7 @@ A new `superagent/tools/add_step_index.py` walks every skill markdown, generates
 - **LOE**: S.
 - **Saves**: closes the loop on QW-5 by formalizing "every skill that produces a structured artifact writes it to a known cache location with an invalidation rule."
 
-A new convention in `procedures.md`: every skill whose output is a candidate for re-read within the same day (briefings, summaries, dashboard renders, top-5-things drafts) writes to `_memory/_artifacts/<skill>/<key>.md` with a sibling `_meta.yaml`:
+A new convention in `contracts/`: every skill whose output is a candidate for re-read within the same day (briefings, summaries, dashboard renders, top-5-things drafts) writes to `_memory/_artifacts/<skill>/<key>.md` with a sibling `_meta.yaml`:
 
 ```yaml
 generated_at: "2026-04-28T08:30:00-07:00"
@@ -301,22 +301,22 @@ Anthropic's Claude prompt cache rewards a **stable prefix** with cache breakpoin
 
 What this means structurally:
 
-(a) **Move AGENTS.md + procedures.md content into the SYSTEM prompt** when running via the API directly. Cursor doesn't expose this knob today, but if you ever build a CLI wrapper or run via the API directly, structure the system prompt as:
+(a) **Move AGENTS.md + role files into the SYSTEM prompt** when running via the API directly. Cursor doesn't expose this knob today, but if you ever build a CLI wrapper or run via the API directly, structure the system prompt as:
 
 ```
-[stable: AGENTS.md + procedures.md + role files]    ← cached
+[stable: AGENTS.md + role files]                                  ← cached
 [cache_breakpoint]
-[per-skill: the active skill markdown]              ← cached if same skill twice in a row
+[per-skill: the active skill + the contracts/<slug>.md it cites]  ← cached if same skill twice in a row
 [cache_breakpoint]
-[per-turn: this turn's user message + tool results] ← never cached
+[per-turn: this turn's user message + tool results]               ← never cached
 ```
 
 A wrapper that does this and tags each block with `cache_control: { type: "ephemeral" }` would yield the headline speedup. Worth it for power users running via API.
 
-(b) **For Cursor today**: the IDE controls the prompt structure. The framework can still help by keeping AGENTS.md and procedures.md SHORT and STABLE — avoiding edits during a session that would invalidate the cache for downstream turns. The current docs are well-shaped for this; the real risk is when the user opens 5 different framework files mid-session and each one bumps the prefix.
+(b) **For Cursor today**: the IDE controls the prompt structure. The framework can still help by keeping AGENTS.md SHORT and STABLE, and by keeping each `contracts/<slug>.md` self-contained — avoiding edits during a session that would invalidate the cache for downstream turns. The current docs are well-shaped for this; the real risk is when the user opens 5 different framework files mid-session and each one bumps the prefix.
 
 Practical guidance for the user:
-- Don't edit AGENTS.md / procedures.md during an active conversation if you can help it; commit edits between sessions.
+- Don't edit AGENTS.md during an active conversation if you can help it; commit edits between sessions. (Editing a single `contracts/<slug>.md` mid-session is much cheaper, since it's only loaded by the skills that cite it.)
 - The Supertailor / Supercoder loop's commit-then-restart cycle is well-suited to this.
 
 ### BB-3. Pre-warmed cadence briefings (cron / launchd)
@@ -362,7 +362,7 @@ When reviewing existing skills (or writing new ones), watch for these patterns t
 
 6. **"Re-render the daily-update"** when the briefing-cache (QW-5) would have it.
 
-7. **"Read the whole `procedures.md`"** to remind the agent of one section. Use `Read --offset --limit` against the documented line range, OR read `procedures.md` Table of Contents first.
+7. **"Read the whole `contracts/`"** to remind the agent of one section. Use `Read --offset --limit` against the documented line range, OR read `contracts/` Table of Contents first.
 
 8. **"Read every skill markdown to figure out which applies"** — replaced by QW-1 manifest.
 

@@ -24,7 +24,7 @@ undone with a single command.
 
 ## Files
 
-* Never delete anything from `Sources/` (immutable per `procedures.md` § 15.2).
+* Never delete anything from `Sources/` (immutable per `contracts/sources.md` § 15.2).
 * Never overwrite hand-edited content in `Domains/<X>/info.md` or
   `Domains/<X>/rolodex.md` without diffing first.
 * Never push to git remote without me saying "push".

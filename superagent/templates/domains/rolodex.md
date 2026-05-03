@@ -9,7 +9,7 @@
   a person in this domain (log-event, health-log, vehicle-log, pet-care,
   appointments, draft-email, summarize-thread, ingestors, etc.) MUST add or
   update a row here when it sees a new person or a new touchpoint with an
-  existing person. See procedures.md "Rolodex sync contract".
+  existing person. See contracts/domains-and-assets.md (rolodex sync).
 
   Authoritative contact records live in `_memory/contacts.yaml`. This file
   is a domain-scoped projection — same person can appear in multiple

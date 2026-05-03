@@ -2,7 +2,7 @@
 
 Complements the AGENTS.md "Framework Artifact Creation Contract" safeguard
 (which prevents personal-data tokens from landing in committed framework
-code) and the Visibility Contract (`procedures.md` § 20).
+code) and the Visibility Contract (`contracts/visibility.md`).
 
 These rules govern what the agent writes into ARTIFACTS the user might share
 (`workspace/Outbox/`, draft emails, printed lists, contractor packets). The

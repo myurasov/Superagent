@@ -4,7 +4,7 @@
 #
 # Each rule file is a YAML document carrying a list of named, machine-readable
 # rules that one or more tools / skills enforce. Rules differ from contracts
-# (which live in `procedures.md`): a rule is a single behavior the agent
+# (which live in `contracts/`): a rule is a single behavior the agent
 # should follow or avoid; a contract is a multi-actor protocol that several
 # components implement.
 #

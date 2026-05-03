@@ -8,7 +8,7 @@
 #                    (via MCP, CLI, URL, vault, API, file path).
 #   - _cache/     — fetched copies of `.ref`-pointed sources, with TTL/LRU
 #                    eviction. The ONLY part of Sources/ that skills may
-#                    delete (per the immutability contract in procedures.md
+#                    delete (per the immutability contract in contracts/sources.md
 #                    § "Sources Contract").
 #
 # This index keeps a row per document and per .ref so skills can query the

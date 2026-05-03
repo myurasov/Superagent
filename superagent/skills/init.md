@@ -113,7 +113,7 @@ Run `python3 superagent/tools/workspace_init.py`. The script:
 2. Creates `workspace/_memory/` and copies every YAML template from `superagent/templates/memory/` into it (only if the destination file doesn't exist; never overwrite user data).
 3. Creates `workspace/Domains/` plus the 10 default domain folders, each with the four template files (`info.md`, `status.md`, `history.md`, `rolodex.md`) populated with `{{DOMAIN_NAME}}` substitutions.
 4. Creates `workspace/Projects/` (empty; populated as the user adds projects via `add-project`).
-5. Creates `workspace/Sources/` with `documents/`, `references/`, `_cache/` subdirectories (per the immutability + caching contract in `procedures.md` § 15).
+5. Creates `workspace/Sources/` with `documents/`, `references/`, `_cache/` subdirectories (per the immutability + caching contract in `contracts/sources.md`).
 6. Creates `workspace/Inbox/`, `workspace/Outbox/`, `workspace/Archive/`, and drops the explanatory README from `superagent/templates/folder-readmes/` into each.
 7. Creates `workspace/_custom/` with empty `rules/`, `skills/`, `agents/`, `templates/`, `tools/` subdirectories (per the custom-overlay contract).
 8. Creates the workspace-level `workspace/todo.md` from `superagent/templates/todo.md` (with no rows yet).

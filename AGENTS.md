@@ -55,7 +55,7 @@ If this repository also hosts other AI-assistant frameworks (work assistants, pr
 ## Canonical references
 
 - **Role definitions** (Superagent + helper personas): read and follow [`superagent/superagent.agent.md`](superagent/superagent.agent.md).
-- **Operational behavior** (init, cadences, data-ingestion contract, capture / surfacing patterns, autonomy, memory): read and follow [`superagent/procedures.md`](superagent/procedures.md).
+- **Operational contracts** (init, cadences, data-ingestion, capture / surfacing patterns, autonomy, memory taxonomy, ...): browse [`superagent/contracts/`](superagent/contracts/) — one markdown file per contract, indexed by `superagent/contracts/_manifest.yaml`. Skills cite a specific contract as `contracts/<slug>.md`.
 - **Supertailor (framework hygiene + improvement)**: read and follow [`superagent/supertailor.agent.md`](superagent/supertailor.agent.md).
 - **Supercoder (implementation)**: read and follow [`superagent/supercoder.agent.md`](superagent/supercoder.agent.md).
 - **Custom overlay** (per-user extensions): see § "Custom overlay" below; full reference in [`superagent/docs/custom-overlay.md`](superagent/docs/custom-overlay.md).
@@ -81,7 +81,7 @@ The Supertailor (`supertailor-review` skill) auto-scaffolds the `_custom/` direc
 
 ## Framework Artifact Creation Contract
 
-Whenever the agent (or any skill) is about to create a new **skill**, **agent role**, **rule**, **template**, **tool**, or **doc page**, follow the contract in `procedures.md` § "Framework Artifact Creation Contract":
+Whenever the agent (or any skill) is about to create a new **skill**, **agent role**, **rule**, **template**, **tool**, or **doc page**, follow the contract in `contracts/framework-artifacts.md`:
 
 1. **Auto-classify destination** — `superagent` (generic, committed) or `_custom` (user-specific, gitignored). **Default to `_custom` when ambiguous.**
 2. **If unambiguous**, announce the destination at the top of the response and proceed.
@@ -89,7 +89,7 @@ Whenever the agent (or any skill) is about to create a new **skill**, **agent ro
 4. **Safeguard**: scan the artifact body for any name from `_memory/contacts.yaml`, `domains-index.yaml`, `assets-index.yaml`, `accounts-index.yaml`, address fragments, account numbers, license-plate patterns, or known personal identifiers. On any match, refuse the `superagent/` path and re-route to `workspace/_custom/`.
 5. **NEVER** silently write user-specific content under `superagent/` — even if explicitly requested. The Supercoder enforces this with a refusal on receipt.
 
-This contract does **not** govern workspace **data** writes (domain files, contact entries, bill records, appointment rows) — those go to `workspace/` by their own conventions (see `procedures.md`).
+This contract does **not** govern workspace **data** writes (domain files, contact entries, bill records, appointment rows) — those go to `workspace/` by their own conventions (see `contracts/`).
 
 ---
 
@@ -163,7 +163,7 @@ The full skill catalog and one-liners live in [`docs/skills-reference.md`](docs/
 
 ## Data ingestion contract
 
-Superagent's value scales with the breadth of authorized data sources. The contract that governs all ingestion is in `procedures.md` § "Data Ingestion Contract"; the one-paragraph summary:
+Superagent's value scales with the breadth of authorized data sources. The contract that governs all ingestion is in `contracts/ingestion.md`; the one-paragraph summary:
 
 - **Every ingestor** lives in `superagent/tools/ingest/<source>.py`. One file per source.
 - **Every ingestor** reads its config from `workspace/_memory/data-sources.yaml` (which holds `enabled`, `last_ingest`, `recency_window_days`, `max_items_per_run`, source-specific auth pointer).
@@ -217,11 +217,11 @@ Projects/<project-slug>/
   Sources/      # optional project-scoped reference library (per § Sources below)
 ```
 
-A Project links UP to one or more Domains via `related_domains: [..]`. Tasks in `_memory/todo.yaml` link DOWN to a Project via `related_project: <slug>`. The `add-project` skill collects a 5-question charter (name, goal, scope, target date, related domains) BEFORE creating the folder. Lifecycle: `planning → active → paused → completed → archived` (per `procedures.md` § 16).
+A Project links UP to one or more Domains via `related_domains: [..]`. Tasks in `_memory/todo.yaml` link DOWN to a Project via `related_project: <slug>`. The `add-project` skill collects a 5-question charter (name, goal, scope, target date, related domains) BEFORE creating the folder. Lifecycle: `planning → active → paused → completed → archived` (per `contracts/projects.md`).
 
 ### Sources/
 
-**Sources** = the workspace's reference library: documents the user owns + pointers (`.ref.md`) to external data. Two foundational rules (per `procedures.md` § 15):
+**Sources** = the workspace's reference library: documents the user owns + pointers (`.ref.md`) to external data. Two foundational rules (per `contracts/sources.md`):
 
 1. **Immutable.** Skills MUST NOT delete or overwrite anything in `Sources/documents/` or `Sources/references/`. Only `Sources/_cache/` is auto-managed (TTL + LRU eviction).
 2. **Local-first.** Every skill that needs source data reads the cache first; only goes to live MCP / API when the cache is stale or missing. Reads `_summary.md` + `_toc.yaml` first; only pulls relevant chunks of `raw.<ext>` when needed.
@@ -336,7 +336,7 @@ The `tools/anti_patterns.py` scanner flags skills that violate these patterns. T
 
 ## Local-first read order
 
-Per `procedures.md` § "Local-first Read Order" (codifies QW-7), every skill that needs data MUST consult the local copy first and fall through to a live MCP / API only when the local copy is genuinely insufficient:
+Per `contracts/local-first-read-order.md` (codifies QW-7), every skill that needs data MUST consult the local copy first and fall through to a live MCP / API only when the local copy is genuinely insufficient:
 
 1. **Local index** (`_memory/<index>.yaml`) for structured rows — bills, subscriptions, appointments, important dates, contacts, accounts, assets, documents, health records.
 2. **Local Sources cache** (`Sources/_cache/<hash>/`) for cached external content — read `_summary.md` first, then `_toc.yaml`, then only the relevant chunk(s) from `raw.<ext>` or `chunks/`.
@@ -344,11 +344,11 @@ Per `procedures.md` § "Local-first Read Order" (codifies QW-7), every skill tha
 4. **Events stream** (`_memory/events/<YYYY-Qn>.yaml` via `tools/log_window.py`) for cross-entity timeline queries.
 5. **Live MCP / CLI source** ONLY when **all** are true: (a) the local read returned no candidates that match the question; AND (b) the time window the question is asking about extends past the source's `last_ingest`; AND (c) freshness genuinely matters for the question.
 
-When the live call happens, capture-through MUST run (per the ingestion contract in `procedures.md` § 2) so the next read is local.
+When the live call happens, capture-through MUST run (per the ingestion contract in `contracts/ingestion.md`) so the next read is local.
 
 ## Operational handles
 
-Per `procedures.md` § "Operational Handles Contract" (item #20), every entity in the workspace has a canonical operational handle in `<kind>:<slug>` form:
+Per `contracts/operational-handles.md` (item #20), every entity in the workspace has a canonical operational handle in `<kind>:<slug>` form:
 
 - `contact:dr-smith-dentist`
 - `bill:pge-electric`
@@ -365,7 +365,7 @@ The world graph (`_memory/world.yaml`) is keyed by handle. Skills that want to a
 
 ## Visibility and sensitive tier
 
-Per `procedures.md` § "Visibility Contract" (item #19) + § "Sensitive Tier" (item #18):
+Per `contracts/visibility.md` (item #19) + § "Sensitive Tier" (item #18):
 
 - Every entity carries an optional `visibility: private | household | public` field. Default `private`. Outbound-scrub uses this to decide what redacts in shareable artifacts.
 - Files routed to `_memory/sensitive/` (per `config.preferences.sensitive.auto_route_files` — defaults: `health-records.yaml`, `accounts-index.yaml`) are first-class flagged for stricter handling. The user can symlink the entire `_memory/sensitive/` directory to an encrypted disk image; skills work transparently against either layout.
@@ -373,7 +373,7 @@ Per `procedures.md` § "Visibility Contract" (item #19) + § "Sensitive Tier" (i
 
 ## Provenance
 
-Per `procedures.md` § "Provenance Contract" (item #4):
+Per `contracts/provenance.md` (item #4):
 
 - Every newly-created entity row carries a `provenance` field documenting where the row (or its key facts) came from. Schema:
   ```yaml
@@ -388,7 +388,7 @@ Per `procedures.md` § "Provenance Contract" (item #4):
 
 ## Time-shape vs entity-shape vs event-shape
 
-Per `procedures.md` § "Memory Taxonomy" (item #9), every YAML file in `_memory/` belongs to one of three shapes:
+Per `contracts/memory-taxonomy.md` (item #9), every YAML file in `_memory/` belongs to one of three shapes:
 
 - **Entity-shape** — long-lived rows; mutate-in-place; cross-referenced by id.
   Files: `contacts.yaml`, `accounts-index.yaml`, `assets-index.yaml`, `domains-index.yaml`, `projects-index.yaml`, `documents-index.yaml`, `subscriptions.yaml`, `bills.yaml`, `appointments.yaml`, `important-dates.yaml`, `sources-index.yaml`, `tags.yaml`, `world.yaml`, `notification-policy.yaml`.
@@ -425,11 +425,11 @@ If the repo also hosts other assistant frameworks, route each turn to the right 
 
 Per `docs/perf-improvement-ideas.md` BB-2-b — practical guidance for Cursor today:
 
-The IDE controls how the prompt is structured and which prefixes are cached. The framework can still help by keeping AGENTS.md and procedures.md SHORT and STABLE — avoiding edits during a session that would invalidate the cache for downstream turns.
+The IDE controls how the prompt is structured and which prefixes are cached. The framework can still help by keeping AGENTS.md SHORT and STABLE, and by keeping each `contracts/<name>.md` self-contained — avoiding edits during a session that would invalidate the cache for downstream turns.
 
-- **Don't edit `AGENTS.md` / `procedures.md` mid-session.** Cursor's prompt cache rewards a stable prefix; mutating the docs that anchor the prefix forces a full re-cache, paying the long form back to the model on every subsequent turn.
+- **Don't edit `AGENTS.md` / `contracts/` mid-session.** Cursor's prompt cache rewards a stable prefix; mutating the docs that anchor the prefix forces a full re-cache, paying the long form back to the model on every subsequent turn.
 - **The Supertailor / Supercoder loop's commit-then-restart cycle is well-suited to this.** After the Supertailor proposes a doc change, approve it, let the Supercoder commit, then start a fresh chat session. The new session pays the full prompt cost ONCE; subsequent turns reap the cache savings.
 - **Don't open many framework files mid-session.** Each one bumps the prompt; fewer files = better cache reuse.
 - **For long-running ingestion or scenario sessions**, prefer running them via dedicated tool invocations (each is a stand-alone process) rather than long chat threads.
 
-If a future Superagent CLI wraps the Anthropic API directly, structure the prompt as: `[stable: AGENTS.md + procedures.md + role files] → [cache_breakpoint] → [per-skill: the active skill] → [cache_breakpoint] → [per-turn: user message + tool results]`. That's the BB-2-a path; it requires API-level control that the IDEs don't expose today.
+If a future Superagent CLI wraps the Anthropic API directly, structure the prompt as: `[stable: AGENTS.md + role files] → [cache_breakpoint] → [per-skill: the active skill + the contracts it cites] → [cache_breakpoint] → [per-turn: user message + tool results]`. That's the BB-2-a path; it requires API-level control that the IDEs don't expose today.

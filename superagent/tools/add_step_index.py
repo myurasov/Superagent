@@ -9,11 +9,11 @@ Operates in two modes:
     the YAML frontmatter.
 
   --file PATH (single-doc MODE)
-    Process one arbitrary markdown file (e.g. `superagent/procedures.md`).
-    Inserts the step index right after the H1 title; YAML frontmatter is
-    optional. Combine with `--numbered-only` to index only H2 headings
-    that begin with a numeric prefix (`## 1. ...`), ignoring scaffolding
-    H2s like `## Table of Contents`.
+    Process one arbitrary markdown file (e.g. a long doc under
+    `superagent/docs/`). Inserts the step index right after the H1 title;
+    YAML frontmatter is optional. Combine with `--numbered-only` to index
+    only H2 headings that begin with a numeric prefix (`## 1. ...`),
+    ignoring scaffolding H2s like `## Table of Contents`.
 
 The block looks like:
 
@@ -30,7 +30,7 @@ The block looks like:
 The agent reads the top of the file (~40 lines for skills, ~50 for docs),
 uses `Read --offset --limit` to pull only the relevant step, and never
 loads the full body. Long skills (`init.md`, `daily-update.md`, ...) and
-long docs (`procedures.md`, `architecture.md`) benefit most.
+long docs (`contracts/`, `architecture.md`) benefit most.
 
 Step boundaries are derived from H2 headings (`## N. <name>`).
 
@@ -177,7 +177,7 @@ def process_one(
 
     The "intro" — the prefix the step-index is inserted AFTER — is:
       * the YAML frontmatter, when present (skill-style files); else
-      * the H1 title line, when present (doc-style files like procedures.md);
+      * the H1 title line, when present (doc-style files);
       * else position 0.
 
     `require_frontmatter` (default True for back-compat with the skill-walker
@@ -227,7 +227,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         help="Process only the skill with this stem.")
     parser.add_argument("--file", type=Path, default=None,
                         help="Process a single arbitrary markdown file "
-                             "(e.g. procedures.md). YAML frontmatter is optional "
+                             "(e.g. a long doc). YAML frontmatter is optional "
                              "in this mode.")
     parser.add_argument("--numbered-only", action="store_true",
                         help="Skip H2 headings without a numeric prefix "

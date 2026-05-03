@@ -49,7 +49,7 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 │
 ├── superagent/                     ← framework code (committed; this is the product)
 │   ├── superagent.agent.md         ← role definitions (Superagent + helpers)
-│   ├── procedures.md               ← contracts: ingestion, capture, surfacing, cadences
+│   ├── contracts/                  ← 39 multi-actor contracts, one .md per contract + _manifest.yaml
 │   ├── supertailor.agent.md             ← Supertailor's role (observer + proposer)
 │   ├── supercoder.agent.md         ← Supercoder's role (Mode 1 framework + Mode 2 project build)
 │   ├── skills/                     ← every skill, one .md per skill (incl. `supercoder.md`)

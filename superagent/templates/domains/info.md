@@ -30,7 +30,7 @@
     ## Open Questions   — things you mean to figure out / decide.
 
   Skills auto-update specific named sections only (the maintenance sync
-  contract is in procedures.md). Hand-edits are respected — skills MUST
+  contract is in contracts/domains-and-assets.md). Hand-edits are respected — skills MUST
   diff and merge, not blindly clobber.
 -->
 

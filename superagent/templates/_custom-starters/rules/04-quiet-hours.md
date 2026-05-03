@@ -3,7 +3,7 @@
 Tells the cadence and surfacing skills (`whatsup`, `daily-update`,
 `weekly-review`, ad-hoc nudges) when to hold back.
 
-Complements `_memory/notification-policy.yaml` (per `procedures.md` § 31)
+Complements `_memory/notification-policy.yaml` (per `contracts/notification-policy.md`)
 which is the structured, machine-checkable version of the same idea.
 
 ## Hard quiet window

@@ -3,7 +3,7 @@ name: superagent-personal-signals
 description: >-
   Capture personal signals (self-reflection, family feedback, patterns
   Superagent noticed) silently as the user works; surface growth themes
-  on request. Per the Personal Signal Capture Contract in procedures.md.
+  on request. Per the Personal Signal Capture Contract in contracts/capture.md.
 triggers:
   - personal signals
   - growth areas

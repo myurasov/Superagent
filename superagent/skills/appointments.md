@@ -96,4 +96,4 @@ After any operation:
 
 ## 3. Sources
 
-Calendar ingestors push items into `appointments.yaml` automatically when their detection heuristic fires (per `procedures.md` § 2 ingestor obligations). Skill prefers local data; calls live calendar only for the strictly-newer slice on `--refresh`.
+Calendar ingestors push items into `appointments.yaml` automatically when their detection heuristic fires (per `contracts/ingestion.md` ingestor obligations). Skill prefers local data; calls live calendar only for the strictly-newer slice on `--refresh`.

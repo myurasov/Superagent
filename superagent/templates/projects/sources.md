@@ -6,7 +6,7 @@
   Curated catalogue of `Sources/` entries relevant to this project.
   Same shape as Domains/<domain>/sources.md.
 
-  Foundational rule (procedures.md § 15 + § 16): source documents for a
+  Foundational rule (contracts/sources.md + § 16): source documents for a
   project live in EITHER:
     - workspace `Sources/documents/<category>/` (cross-cutting; would
       survive the project being archived), OR

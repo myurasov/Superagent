@@ -85,7 +85,7 @@ The safeguard is not optional. The Supercoder cannot be talked out of it by the 
 
 ### Markdown skill files
 
-Skills live in `superagent/skills/<name>.md` with frontmatter (`name`, `description`, `triggers`, `mcp_required`, `mcp_optional`, `cli_required`, `cli_optional`) and a body of `## Step 1`, `## Step 2`, … sections. The Supercoder never adds frontmatter fields the framework doesn't already use without a corresponding `procedures.md` update.
+Skills live in `superagent/skills/<name>.md` with frontmatter (`name`, `description`, `triggers`, `mcp_required`, `mcp_optional`, `cli_required`, `cli_optional`) and a body of `## Step 1`, `## Step 2`, … sections. The Supercoder never adds frontmatter fields the framework doesn't already use without a corresponding `contracts/` update.
 
 ### Memory templates
 

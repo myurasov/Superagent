@@ -64,7 +64,7 @@ created: <now>
 
 ## 4. Run the outbound scrub pipeline
 
-Per `procedures.md` § 13:
+Per `contracts/outbound-surface.md`:
 
 1. Redact internal IDs / `_memory` references.
 2. Verify voice is the user's, not "Superagent thinks…".

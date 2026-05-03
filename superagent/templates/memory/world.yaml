@@ -9,7 +9,7 @@
 # `python3 -m superagent.tools.world rebuild`.
 #
 # Every entity-mutating skill SHOULD update the graph in the same
-# transaction (per `procedures.md` § "World Graph Contract").
+# transaction (per `contracts/world-graph.md`).
 # If the graph drifts, `tools/world.py rebuild` regenerates it from scratch.
 # `tools/validate.py` checks that every node has a corresponding entity row.
 #
@@ -28,8 +28,8 @@ nodes:
   # Each node:
   #   id        — Operational handle in `<kind>:<slug>` form
   #                (e.g. "contact:dr-smith-dentist", "bill:pge-electric").
-  #                Per the operational-handles convention (procedures.md §
-  #                "Operational Handles Contract"). For back-compat, the
+  #                Per the operational-handles convention
+  #                (contracts/operational-handles.md). For back-compat, the
   #                bare slug is accepted; the world rebuilder normalizes.
   #   kind      — entity kind: contact | account | asset | bill | subscription
   #                | appointment | important_date | document | domain | project

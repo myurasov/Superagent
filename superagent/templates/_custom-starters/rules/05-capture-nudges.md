@@ -4,7 +4,7 @@ Tells the agent to NOTICE certain phrases in conversation and propose
 captures, without doing them silently. Output stays the same; an extra
 trailing line proposes the capture.
 
-Per `procedures.md` § 7 (Capture Contracts), captures default to ambient
+Per `contracts/capture.md` (Capture Contracts), captures default to ambient
 + on-request surface. These nudges add specific propose-then-confirm
 triggers on top.
 
@@ -39,7 +39,7 @@ triggers on top.
 ## Decisions
 
 * When I say "we / I decided" or "we agreed" or "going with X", propose
-  appending a row to `_memory/decisions.yaml` (per `procedures.md` § 28).
+  appending a row to `_memory/decisions.yaml` (per `contracts/decisions.md`).
 
 ## Health events
 

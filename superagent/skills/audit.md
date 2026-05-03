@@ -3,7 +3,7 @@ name: superagent-audit
 description: >-
   Read the per-row audit history of any entity. Backed by sibling
   `<file>.history.jsonl` append-only logs maintained by the audit-trail
-  contract (procedures.md item #17).
+  contract (contracts/memory-taxonomy.md).
 triggers:
   - audit
   - audit history
@@ -53,7 +53,7 @@ Outputs each `<file>.history.jsonl` with row count.
 
 ## 2. Audit-trail contract
 
-Per `procedures.md` § "Audit Trail Contract", every entity-mutating skill SHOULD call:
+Per `contracts/audit-trail.md`, every entity-mutating skill SHOULD call:
 
 ```python
 from superagent.tools.audit import record_change

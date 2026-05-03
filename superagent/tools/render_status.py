@@ -3,7 +3,7 @@
 
 For each domain referenced by an open task in todo.yaml, regenerate
 `Domains/<domain>/status.md` with a priority-grouped task table per the
-sync contract documented in `superagent/procedures.md` § 5.1.
+sync contract documented in `superagent/contracts/task-management.md` § 5.1.
 
 Also regenerates the workspace-level `<workspace>/todo.md` cross-cutting view.
 

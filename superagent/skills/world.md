@@ -73,7 +73,7 @@ This walks every entity-shape file and reconstructs nodes + edges from scratch. 
 
 ## 2. Maintenance contract
 
-Per `procedures.md` § "World Graph Contract", every entity-mutating skill SHOULD:
+Per `contracts/world-graph.md`, every entity-mutating skill SHOULD:
 
 1. Call `tools/world.py.ensure_node(workspace, handle, kind, path, label, tags)` after creating an entity row.
 2. Call `tools/world.py.ensure_edge(workspace, from, to, kind, evidence)` after creating each cross-reference.

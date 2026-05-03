@@ -5,7 +5,7 @@
 <!--
   The curated catalogue of `Sources/` entries relevant to this domain.
 
-  Foundational rule (procedures.md § 15): source documents are NEVER stored
+  Foundational rule (contracts/sources.md): source documents are NEVER stored
   inside Domains/<domain>/. They live in `Sources/documents/<category>/`
   (immutable, indexed, cached). This file is the human-readable, domain-scoped
   POINTER LIST so when you open the domain you can see "what does Superagent
@@ -63,7 +63,7 @@ _Last updated: {{LAST_UPDATED}}_
 
 <!-- `.ref.md` files under `Sources/references/<category>/` that point at
      external data (MCP / CLI / URL / API / vault / manual). Resolved to
-     fresh content via the local-first cache (procedures.md § 15.5). -->
+     fresh content via the local-first cache (contracts/sources.md § 15.5). -->
 
 | Title | Ref path | Kind | Source | Notes |
 |-------|----------|------|--------|-------|

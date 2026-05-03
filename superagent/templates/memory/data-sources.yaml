@@ -5,7 +5,7 @@
 # max_items_per_run, capture_mode, failure_streak, last_run summary.
 #
 # Every ingestor under superagent/tools/ingest/ reads its row from this file
-# before running and writes its row back at the end. See procedures.md
+# before running and writes its row back at the end. See contracts/ingestion.md
 # § "Data Ingestion Contract".
 
 schema_version: 1

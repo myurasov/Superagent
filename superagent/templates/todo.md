@@ -6,7 +6,7 @@
   Cross-cutting / domain-scoped task view. Renders the relevant subset of
   `_memory/todo.yaml` as priority-grouped markdown tables. Skills regenerate
   this file on every add / complete / update operation per the sync contract
-  in procedures.md § 5.1.
+  in contracts/task-management.md § 5.1.
 
   Workspace-wide todo lives at `workspace/todo.md`
   (SCOPE = "workspace"). Per-domain todos live at

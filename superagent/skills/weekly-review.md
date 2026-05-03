@@ -146,7 +146,7 @@ Capture both answers as a single H4 entry in `Domains/Self/history.md`:
 ---
 ```
 
-If either answer hints at a personal signal (heuristic: contains words like "should", "need to", "want to be", "next time"), capture as a `personal-signals.yaml` row (per `procedures.md` § 7.1) and tag it inline.
+If either answer hints at a personal signal (heuristic: contains words like "should", "need to", "want to be", "next time"), capture as a `personal-signals.yaml` row (per `contracts/capture.md` § 7.1) and tag it inline.
 
 ## 8. Compose the review
 

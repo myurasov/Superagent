@@ -1,0 +1,168 @@
+# [Do not change manually — managed by Superagent]
+#
+# Index of contract files under `superagent/contracts/`.
+#
+# Each contract is a multi-actor protocol that several skills, tools, or
+# agent roles must follow so they can interoperate. Contracts live one-
+# per-file so a skill that needs `contracts/ingestion.md` reads only that
+# file, not a 1300-line monolith.
+#
+# Citation form in skills, tools, and docs: `contracts/<slug>.md`.
+schema_version: 1
+contracts:
+  - id: C-01
+    slug: mcp-preflight
+    title: "MCP / CLI-tool Preflight Protocol"
+    path: contracts/mcp-preflight.md
+  - id: C-02
+    slug: ingestion
+    title: "Data Ingestion Contract"
+    path: contracts/ingestion.md
+  - id: C-03
+    slug: init-flow
+    title: "Init flow"
+    path: contracts/init-flow.md
+  - id: C-04
+    slug: update-cadences
+    title: "Update Cadences"
+    path: contracts/update-cadences.md
+  - id: C-05
+    slug: task-management
+    title: "Task Management (todo skill)"
+    path: contracts/task-management.md
+  - id: C-06
+    slug: domains-and-assets
+    title: "Domain & Asset Management"
+    path: contracts/domains-and-assets.md
+  - id: C-07
+    slug: capture
+    title: "Capture Contracts"
+    path: contracts/capture.md
+  - id: C-08
+    slug: surfacing
+    title: "Surfacing Contracts"
+    path: contracts/surfacing.md
+  - id: C-09
+    slug: memory-persistence
+    title: "Memory Persistence Model"
+    path: contracts/memory-persistence.md
+  - id: C-10
+    slug: workspace-path
+    title: "Workspace Path Configuration"
+    path: contracts/workspace-path.md
+  - id: C-11
+    slug: custom-overlay
+    title: "Custom Overlay Discovery"
+    path: contracts/custom-overlay.md
+  - id: C-12
+    slug: framework-artifacts
+    title: "Framework Artifact Creation Contract"
+    path: contracts/framework-artifacts.md
+  - id: C-13
+    slug: outbound-surface
+    title: "Outbound Surface Contract"
+    path: contracts/outbound-surface.md
+  - id: C-14
+    slug: privacy
+    title: "Privacy and Sensitive Data"
+    path: contracts/privacy.md
+  - id: C-15
+    slug: sources
+    title: "Sources Contract (immutable reference library + cache)"
+    path: contracts/sources.md
+  - id: C-16
+    slug: projects
+    title: "Projects Contract (time-bounded efforts)"
+    path: contracts/projects.md
+  - id: C-17
+    slug: memory-taxonomy
+    title: "Memory Taxonomy (entity / time / state shape)"
+    path: contracts/memory-taxonomy.md
+  - id: C-18
+    slug: operational-handles
+    title: "Operational Handles Contract"
+    path: contracts/operational-handles.md
+  - id: C-19
+    slug: provenance
+    title: "Provenance Contract"
+    path: contracts/provenance.md
+  - id: C-20
+    slug: visibility
+    title: "Visibility Contract"
+    path: contracts/visibility.md
+  - id: C-21
+    slug: sensitive-tier
+    title: "Sensitive Tier Contract"
+    path: contracts/sensitive-tier.md
+  - id: C-22
+    slug: hierarchies
+    title: "Hierarchies Contract (sub-domains / sub-projects)"
+    path: contracts/hierarchies.md
+  - id: C-23
+    slug: tags
+    title: "Tags Contract"
+    path: contracts/tags.md
+  - id: C-24
+    slug: world-graph
+    title: "World Graph Contract"
+    path: contracts/world-graph.md
+  - id: C-25
+    slug: workflows
+    title: "Workflows Contract"
+    path: contracts/workflows.md
+  - id: C-26
+    slug: playbooks
+    title: "Playbooks Contract"
+    path: contracts/playbooks.md
+  - id: C-27
+    slug: scenarios
+    title: "Scenarios Contract"
+    path: contracts/scenarios.md
+  - id: C-28
+    slug: decisions
+    title: "Decisions Log Contract"
+    path: contracts/decisions.md
+  - id: C-29
+    slug: events-stream
+    title: "Events Stream Contract"
+    path: contracts/events-stream.md
+  - id: C-30
+    slug: audit-trail
+    title: "Audit Trail Contract"
+    path: contracts/audit-trail.md
+  - id: C-31
+    slug: notification-policy
+    title: "Notification Policy Contract"
+    path: contracts/notification-policy.md
+  - id: C-32
+    slug: briefing-cache
+    title: "Briefing Cache Contract"
+    path: contracts/briefing-cache.md
+  - id: C-33
+    slug: session-scratchpad
+    title: "Per-session Scratchpad Contract"
+    path: contracts/session-scratchpad.md
+  - id: C-34
+    slug: working-set
+    title: "Working-set Contract"
+    path: contracts/working-set.md
+  - id: C-35
+    slug: snapshot-diff
+    title: "Snapshot Diff Contract"
+    path: contracts/snapshot-diff.md
+  - id: C-36
+    slug: outbox-lifecycle
+    title: "Outbox Lifecycle Contract"
+    path: contracts/outbox-lifecycle.md
+  - id: C-37
+    slug: inbox-triage
+    title: "Inbox Triage Contract"
+    path: contracts/inbox-triage.md
+  - id: C-38
+    slug: local-first-read-order
+    title: "Local-first Read Order"
+    path: contracts/local-first-read-order.md
+  - id: C-39
+    slug: anti-patterns
+    title: "Skill-anti-pattern Catalogue"
+    path: contracts/anti-patterns.md

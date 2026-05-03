@@ -1,6 +1,6 @@
 """Base interface every Superagent ingestor must implement.
 
-The contract is the runtime expression of `superagent/procedures.md`
+The contract is the runtime expression of `superagent/contracts/ingestion.md`
 § "Data Ingestion Contract":
 
   * `probe()` — lightweight presence check. Returns ProbeResult.

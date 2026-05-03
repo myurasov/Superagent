@@ -43,7 +43,7 @@ You don't have to use every sub-folder. The agent creates them lazily.
 
 ## Outbound is scrubbed
 
-Every artifact written here goes through the **outbound scrub pipeline** (per `procedures.md` § 13):
+Every artifact written here goes through the **outbound scrub pipeline** (per `contracts/outbound-surface.md`):
 
 1. Internal IDs and `_memory` references redacted.
 2. Voice rendered as the user, not as Superagent ("the agent thinks…" gets rewritten to first-person).

@@ -59,7 +59,7 @@ For each step:
 
 ## 4. Custom overlays
 
-Per the custom-overlay contract (procedures.md § "Custom Overlay Discovery"), if `workspace/_custom/playbooks/<name>.yaml` exists, it OVERRIDES the framework playbook of the same name. Surface the override in chat:
+Per the custom-overlay contract (contracts/custom-overlay.md), if `workspace/_custom/playbooks/<name>.yaml` exists, it OVERRIDES the framework playbook of the same name. Surface the override in chat:
 
 > "Using `_custom/playbooks/<name>.yaml` (overrides framework playbook)."
 

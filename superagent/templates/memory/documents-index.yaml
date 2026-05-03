@@ -3,7 +3,7 @@
 # Each row points to a file under Sources/documents/<category>/ AND records
 # the structured metadata (kind, expiration, holder) that drives surfacing.
 # Source documents are NEVER stored under Domains/<X>/ directly; Domains carry
-# pointers via Domains/<X>/sources.md. See procedures.md § 15 (Sources Contract).
+# pointers via Domains/<X>/sources.md. See contracts/sources.md (Sources Contract).
 #
 # This is the "where is X?" answer for everything from passports to warranties.
 

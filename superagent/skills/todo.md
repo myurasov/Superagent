@@ -113,7 +113,7 @@ When invoked without a clear add/list/complete/update action:
 
 ## 5. Sync `status.md` / `todo.md` files
 
-After any add / complete / update operation, update the relevant scoped views per the sync contract (`procedures.md` § 5.1):
+After any add / complete / update operation, update the relevant scoped views per the sync contract (`contracts/task-management.md` § 5.1):
 
 1. For each task touched, resolve `related_project` then `related_domain`:
    - `related_project` set → rewrite `workspace/Projects/<slug>/status.md` (priority/due-date sort; per-project burn-down updated).

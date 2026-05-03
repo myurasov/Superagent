@@ -8,7 +8,7 @@ import yaml
 
 
 def test_anti_patterns_yaml_loads_into_module_globals(framework_dir: Path) -> None:
-    """The catalogue YAML is loaded at import time and matches procedures.md §39."""
+    """The catalogue YAML is loaded at import time and matches contracts/anti-patterns.md."""
     from superagent.tools.anti_patterns import PATTERNS, MITIGATIONS
 
     rules_path = framework_dir / "rules" / "anti-patterns.yaml"
