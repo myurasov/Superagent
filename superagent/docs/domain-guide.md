@@ -6,6 +6,22 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 
 ---
 
+## Table of Contents
+
+- [Health](#health)
+- [Finance](#finance)
+- [Home](#home)
+- [Vehicles](#vehicles)
+- [Pets](#pets)
+- [Family](#family)
+- [Travel](#travel)
+- [Career](#career)
+- [Hobbies](#hobbies)
+- [Self](#self)
+- [Custom domains you might add](#custom-domains-you-might-add)
+
+---
+
 ## Health
 
 **Scope**: medical, dental, vision, mental health, prescriptions, vaccines, vitals, family medical history, conditions, allergies, surgeries.

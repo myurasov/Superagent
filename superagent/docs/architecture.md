@@ -8,13 +8,14 @@
   - [The mental model](#the-mental-model)
   - [Two halves of the repo](#two-halves-of-the-repo)
   - [Memory: structured + narrative](#memory-structured--narrative)
-  - [Skills, tools, ingestors](#skills-tools-ingestors)
+  - [Skills, tools, ingestors, contracts, rules](#skills-tools-ingestors-contracts-rules)
   - [The dual-agent loop (Supertailor + Supercoder)](#the-dual-agent-loop-supertailor--supercoder)
   - [The hard safeguard](#the-hard-safeguard)
   - [The 4-file domain convention](#the-4-file-domain-convention)
   - [The PARA / GTD / CODE lineage](#the-para--gtd--code-lineage)
   - [Sensitive subfiles](#sensitive-subfiles)
   - [Multi-user options](#multi-user-options)
+  - [Current build status](#current-build-status)
   - [Extracting to a standalone repo](#extracting-to-a-standalone-repo)
 
 ---
@@ -259,6 +260,27 @@ If the user wants their partner / household to share Superagent state:
 3. **Single-user with handoff** — one person runs Superagent; the partner gets the `handoff` packet annually for "if hit by a bus" continuity, and on demand for tax-prep / annual-review style snapshots.
 
 Built-in multi-user / sync is on the roadmap (LOE-L: "Multi-user vault with last-write-wins + per-domain ACL").
+
+## Current build status
+
+| Component | State |
+|---|---|
+| Memory schema | 32 YAML templates, all v1, all schema-validated |
+| Domain templates | 5-file (info / status / history / rolodex / sources) + per-domain `parent`, `visibility`, `provenance` |
+| Project templates | 5-file with charter; can be instantiated from a workflow |
+| Sources templates | `.ref.md` template + `Sources/` folder convention with cache |
+| Workflow templates | 5 starter workflows + `_schema.yaml` |
+| Playbooks | 5 starter playbooks + `_schema.yaml` |
+| Skills | ~50 skills documented + indexed in `skills/_manifest.yaml`; long ones carry an auto-generated step index |
+| Contracts | 39 multi-actor contracts under `contracts/`, indexed by `contracts/_manifest.yaml` |
+| Rules | machine-readable rule catalogues (anti-patterns shipped) + `workspace/_custom/rules/` user overlay |
+| Tools | 19 shipped + tested (workspace_init, validate, render_status, world, sources_cache, briefing_cache, log_window, audit, play, scenarios, inbox_triage, anti_patterns, ...) |
+| Ingestor framework | `IngestorBase`, registry of 27 sources, orchestrator CLI, stub fall-back, 2 reference ingestors shipped (`apple_reminders`, `csv`) |
+| World graph | `_memory/world.yaml` derived state; `tools/world.py related <handle>` |
+| Events stream | quarterly-partitioned `_memory/events/<YYYY-Qn>.yaml`; cross-entity timeline queries |
+| Tests | ~100 pytest tests; all passing |
+
+---
 
 ## Extracting to a standalone repo
 
