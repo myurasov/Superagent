@@ -49,7 +49,11 @@ RESERVED_NAMES = {"README.md"}
 DEFAULT_CACHE_REL = "Sources/_cache"
 
 # Field names that the user may hand-curate; refresh MUST preserve them.
+# `title` is derived from the filename by default (`title_from_filename`) but
+# is preserved when the user has hand-edited it — the deriver collapses
+# meaningful punctuation (e.g. "W-2" -> "W 2"), so the override is essential.
 PRESERVED_FIELDS = (
+    "title",
     "notes", "tags", "sensitive",
     "related_domain", "related_project", "related_asset", "related_account",
     "last_accessed", "read_count", "added",
@@ -433,7 +437,7 @@ def merge_existing(new_row: dict[str, Any], existing_row: dict[str, Any]) -> dic
             merged[field] = existing_val
         elif field == "tags" and isinstance(existing_val, list) and existing_val:
             merged[field] = existing_val
-        elif field in ("notes",) and isinstance(existing_val, str) and existing_val:
+        elif field in ("notes", "title") and isinstance(existing_val, str) and existing_val:
             merged[field] = existing_val
         elif field in ("sensitive",) and isinstance(existing_val, bool):
             merged[field] = existing_val
