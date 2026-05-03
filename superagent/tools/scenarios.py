@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Scenario / what-if engine.
 
-Implements ideas-better-structure.md item #14.
+Implements superagent/docs/_internal/ideas-better-structure.md item #14.
 
 Five canned scenarios (no generic engine yet — that's the L-tier roadmap
 item). Each reads workspace state and answers a specific what-if question.

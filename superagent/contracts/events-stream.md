@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 29`. Citation form: `contracts/events-stream.md`. -->
 
-Implements ideas-better-structure.md item #16 + perf-improvement-ideas.md MI-2. Backed by `_memory/events/<YYYY-Qn>.yaml` (partitioned) + `_memory/events.yaml` (partition index) + `tools/log_window.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #16 + superagent/docs/_internal/perf-improvement-ideas.md MI-2. Backed by `_memory/events/<YYYY-Qn>.yaml` (partitioned) + `_memory/events.yaml` (partition index) + `tools/log_window.py`.
 
 **The events stream is the unified canonical timeline.** Per-entity history.md files remain as denormalized projections.
 

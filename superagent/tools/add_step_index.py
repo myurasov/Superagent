@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Insert / refresh step indexes (perf-improvement-ideas.md QW-2 + MI-4).
+"""Insert / refresh step indexes (superagent/docs/_internal/perf-improvement-ideas.md QW-2 + MI-4).
 
 Operates in two modes:
 

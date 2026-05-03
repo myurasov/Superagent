@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 35`. Citation form: `contracts/snapshot-diff.md`. -->
 
-Implements ideas-better-structure.md item #6. Backed by `tools/snapshot_diff.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #6. Backed by `tools/snapshot_diff.py`.
 
 **Daily snapshots** (per `config.preferences.privacy.snapshot_memory_daily: true`): `_memory/_checkpoints/<YYYY-MM-DD>/` carries a copy of `_memory/` at the start of the first agent action of the day. Retention: `snapshot_retention_days: 14`.
 

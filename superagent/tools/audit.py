@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Per-row audit trail — write + read.
 
-Implements ideas-better-structure.md item #17.
+Implements superagent/docs/_internal/ideas-better-structure.md item #17.
 
 For every entity-shape file in `_memory/`, maintain a sibling
 `<file>.history.jsonl` (append-only) capturing every mutation:

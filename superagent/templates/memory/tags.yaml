@@ -1,7 +1,7 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: tag taxonomy + canonical aliases.
 #
-# Implements: ideas-better-structure.md item #11.
+# Implements: superagent/docs/_internal/ideas-better-structure.md item #11.
 #
 # Today, every YAML row may carry `tags: [...]` as free-form strings.
 # This file gives those tags structure: canonical names, aliases the agent

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Inbox triage helper.
 
-Implements ideas-better-structure.md item #5.
+Implements superagent/docs/_internal/ideas-better-structure.md item #5.
 
 Walks files in `workspace/Inbox/`, classifies them by
 extension + filename heuristics, and proposes a destination under

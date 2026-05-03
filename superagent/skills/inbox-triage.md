@@ -19,7 +19,7 @@ cli_optional: []
 
 # Superagent inbox-triage skill
 
-Implements ideas-better-structure.md item #5. Classification engine: `tools/inbox_triage.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #5. Classification engine: `tools/inbox_triage.py`.
 
 ## 1. Survey
 

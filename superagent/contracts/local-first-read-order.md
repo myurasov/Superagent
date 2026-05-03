@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 38`. Citation form: `contracts/local-first-read-order.md`. -->
 
-Implements perf-improvement-ideas.md QW-7. Codifies the read-order discipline.
+Implements superagent/docs/_internal/perf-improvement-ideas.md QW-7. Codifies the read-order discipline.
 
 **Every skill that needs data MUST consult local first**:
 

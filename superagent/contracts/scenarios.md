@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 27`. Citation form: `contracts/scenarios.md`. -->
 
-Implements ideas-better-structure.md item #14. Backed by `tools/scenarios.py` and the `scenarios` skill.
+Implements superagent/docs/_internal/ideas-better-structure.md item #14. Backed by `tools/scenarios.py` and the `scenarios` skill.
 
 **Five canned scenarios** (no generic engine in MVP):
 

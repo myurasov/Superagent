@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 34`. Citation form: `contracts/working-set.md`. -->
 
-Implements ideas-better-structure.md item #23 + perf-improvement-ideas.md (measurement section). Backed by `_memory/working-sets.jsonl` (append-only) + `tools/session_scratch.py` for the read-side.
+Implements superagent/docs/_internal/ideas-better-structure.md item #23 + superagent/docs/_internal/perf-improvement-ideas.md (measurement section). Backed by `_memory/working-sets.jsonl` (append-only) + `tools/session_scratch.py` for the read-side.
 
 **Every skill invocation records** (when `config.preferences.telemetry.record_working_sets: true`): files read, MCP / CLI calls, outputs produced, total bytes in/out, est. tokens, latency.
 

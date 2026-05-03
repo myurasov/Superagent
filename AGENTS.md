@@ -126,7 +126,7 @@ This file is the model's own memory — distinct from `context.yaml` (operationa
 
 For **any** user question or task, consider whether a **Superagent skill** in `superagent/skills/` **or** `workspace/_custom/skills/` applies; if so, follow that skill's steps and cite it. Custom skills are first-class — invoke them like any framework skill. On same-name collision between framework and custom, run the framework skill first and then apply the custom file as an appendix of additional steps.
 
-The full skill catalog and one-liners live in [`docs/skills-reference.md`](docs/skills-reference.md). Highlights:
+The full skill catalog (machine-readable, with one-liners + triggers) lives in [`superagent/skills/_manifest.yaml`](superagent/skills/_manifest.yaml). Highlights:
 
 | Skill | One-line description |
 |---|---|
@@ -322,7 +322,7 @@ When discussing items from the local task tracker (e.g. `task-2026-04-28-001`, `
 
 ## Read budget (token efficiency)
 
-Per `docs/perf-improvement-ideas.md` QW-3, every Superagent skill execution operates under this discipline:
+Per `docs/superagent/docs/_internal/perf-improvement-ideas.md` QW-3, every Superagent skill execution operates under this discipline:
 
 - **For any file longer than 200 lines, run `Grep` first** to locate the relevant section, then use `Read --offset --limit` to pull only that range. Whole-file reads are reserved for files known to be < 200 lines OR explicitly required (e.g. `_memory/config.yaml`).
 - **Skills that say "read X" implicitly mean "read the relevant section of X"** — agents should treat full reads as the exception.
@@ -423,7 +423,7 @@ If the repo also hosts other assistant frameworks, route each turn to the right 
 
 ## Prompt-cache discipline
 
-Per `docs/perf-improvement-ideas.md` BB-2-b — practical guidance for Cursor today:
+Per `docs/superagent/docs/_internal/perf-improvement-ideas.md` BB-2-b — practical guidance for Cursor today:
 
 The IDE controls how the prompt is structured and which prefixes are cached. The framework can still help by keeping AGENTS.md SHORT and STABLE, and by keeping each `contracts/<name>.md` self-contained — avoiding edits during a session that would invalidate the cache for downstream turns.
 

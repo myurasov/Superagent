@@ -56,7 +56,7 @@ Per `supertailor.agent.md` § "Hygiene pass":
 5. **Schema integrity**: validate every `_memory/*.yaml` against its `schema_version` (delegate to `tools/validate.py`).
 6. **Ingestion-source health**: every `data-sources.yaml.<source>.failure_streak > 0` surfaced with the failure cause and one-line "what to fix".
 7. **Custom-overlay scaffold**: ensure `_custom/{rules,skills,agents,templates,tools}/` exist; create empty if missing.
-8. **Improvement-ideas catalogues exist**: verify `superagent/docs/ideas-better-structure.md` (expected tier headings: § 1 through § 25 + Selection guide) and `superagent/docs/perf-improvement-ideas.md` (expected tier headings: Quick wins / Medium investments / Big bets) are present and parseable. They are mandatory inputs to step 2.5 below; missing files silently degrade Supertailor output. Surface as `needs-attention` (not auto-fixable — both are hand-curated).
+8. **Improvement-ideas catalogues exist**: verify `superagent/docs/_internal/ideas-better-structure.md` (expected tier headings: § 1 through § 25 + Selection guide) and `superagent/docs/_internal/perf-improvement-ideas.md` (expected tier headings: Quick wins / Medium investments / Big bets) are present and parseable. They are mandatory inputs to step 2.5 below; missing files silently degrade Supertailor output. Surface as `needs-attention` (not auto-fixable — both are hand-curated).
 
 For each finding, list it; ask `approve all / approve some / decline all`. Apply approved repairs; back up modified files into `_memory/_checkpoints/<date>/`.
 
@@ -81,8 +81,8 @@ Before drafting any new suggestion, the Supertailor MUST check whether the frict
 
 ### 2½a. Read the catalogues
 
-1. **`superagent/docs/ideas-better-structure.md`** — 25 structural-improvement options, each tagged Mechanical / Schema / Conceptual / Operational, with LOE / trade-off / "when to do" guidance.
-2. **`superagent/docs/perf-improvement-ideas.md`** — token-efficiency / cache-hit / latency improvements, tiered Quick wins (QW-1 to QW-7) → Medium investments (MI-1 to MI-5) → Big bets (BB-1 to BB-4).
+1. **`superagent/docs/_internal/ideas-better-structure.md`** — 25 structural-improvement options, each tagged Mechanical / Schema / Conceptual / Operational, with LOE / trade-off / "when to do" guidance.
+2. **`superagent/docs/_internal/perf-improvement-ideas.md`** — token-efficiency / cache-hit / latency improvements, tiered Quick wins (QW-1 to QW-7) → Medium investments (MI-1 to MI-5) → Big bets (BB-1 to BB-4).
 
 Use a TOC-first read pattern: read the section index, then jump only to the relevant tier sections. Do not load whole catalogues into context.
 
@@ -92,15 +92,15 @@ For each friction theme from step 2, check whether a catalogue entry addresses i
 
 | Friction signal | Likely catalogue match |
 |---|---|
-| User keeps running 3 skills in sequence ("morning routine") | `ideas-better-structure.md` § #21 (Skill bundles / playbooks) |
-| User asks "what changed since I last looked" | `ideas-better-structure.md` § #6 (Differential snapshots) |
-| User says "find that note about X" repeatedly | `ideas-better-structure.md` § #7 / § #8 (FTS5 / embeddings) |
-| User wants cross-cutting view by tag | `ideas-better-structure.md` § #11 (Tagging as first-class) |
-| User asks "where did this fact come from?" | `ideas-better-structure.md` § #4 (Provenance + facts-with-sources) |
-| Agent feels slow / token costs are high | `perf-improvement-ideas.md` § Quick wins |
-| Same skill re-reads same files multiple times in a session | `perf-improvement-ideas.md` § MI-1 (per-session scratchpad) |
-| Daily-update is regenerated for every "remind me what's today" follow-up | `perf-improvement-ideas.md` § QW-5 (briefing cache) |
-| Sources cache hit rate is low | `perf-improvement-ideas.md` § QW-6 (real LLM `_summary.md`) |
+| User keeps running 3 skills in sequence ("morning routine") | `superagent/docs/_internal/ideas-better-structure.md` § #21 (Skill bundles / playbooks) |
+| User asks "what changed since I last looked" | `superagent/docs/_internal/ideas-better-structure.md` § #6 (Differential snapshots) |
+| User says "find that note about X" repeatedly | `superagent/docs/_internal/ideas-better-structure.md` § #7 / § #8 (FTS5 / embeddings) |
+| User wants cross-cutting view by tag | `superagent/docs/_internal/ideas-better-structure.md` § #11 (Tagging as first-class) |
+| User asks "where did this fact come from?" | `superagent/docs/_internal/ideas-better-structure.md` § #4 (Provenance + facts-with-sources) |
+| Agent feels slow / token costs are high | `superagent/docs/_internal/perf-improvement-ideas.md` § Quick wins |
+| Same skill re-reads same files multiple times in a session | `superagent/docs/_internal/perf-improvement-ideas.md` § MI-1 (per-session scratchpad) |
+| Daily-update is regenerated for every "remind me what's today" follow-up | `superagent/docs/_internal/perf-improvement-ideas.md` § QW-5 (briefing cache) |
+| Sources cache hit rate is low | `superagent/docs/_internal/perf-improvement-ideas.md` § QW-6 (real LLM `_summary.md`) |
 
 ### 2½c. Cite the match in the suggestion
 

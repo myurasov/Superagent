@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 22`. Citation form: `contracts/hierarchies.md`. -->
 
-Implements ideas-better-structure.md item #10. Strictly opt-in; flat is the default.
+Implements superagent/docs/_internal/ideas-better-structure.md item #10. Strictly opt-in; flat is the default.
 
 **Schema addition** (`domains-index.yaml`, `projects-index.yaml`):
 

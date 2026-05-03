@@ -18,7 +18,7 @@ cli_optional: []
 
 # Superagent audit skill
 
-Implements ideas-better-structure.md item #17. Engine: `tools/audit.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #17. Engine: `tools/audit.py`.
 
 ## 1. Branch on intent
 

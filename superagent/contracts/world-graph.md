@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 24`. Citation form: `contracts/world-graph.md`. -->
 
-Implements ideas-better-structure.md item #3 + perf-improvement-ideas.md BB-4. Backed by `_memory/world.yaml` and `tools/world.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #3 + superagent/docs/_internal/perf-improvement-ideas.md BB-4. Backed by `_memory/world.yaml` and `tools/world.py`.
 
 **The graph is DERIVED state**. It can be fully rebuilt from entity files at any time via `tools/world.py rebuild`. Skills SHOULD update it incrementally; if they don't, the next rebuild fixes drift.
 

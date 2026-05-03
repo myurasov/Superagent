@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Playbook runner — chains skills with conditions.
 
-Implements ideas-better-structure.md item #21.
+Implements superagent/docs/_internal/ideas-better-structure.md item #21.
 
 A playbook is a small YAML file under `superagent/playbooks/<name>.yaml`
 that names a sequence of skills with optional `if:` conditions and

@@ -182,7 +182,7 @@ def evict_lru(workspace: Path, target_bytes: int) -> int:
 def write_summary(cache: Path, raw: bytes | str, kind: str) -> None:
     """Write a summary file.
 
-    QW-6 (perf-improvement-ideas.md): the summary surfaces (a) what the
+    QW-6 (superagent/docs/_internal/perf-improvement-ideas.md): the summary surfaces (a) what the
     document is, (b) what's in it (per-section bullets when markdown), and
     (c) where to look for specific topics (heading list with line numbers).
     The first three sections are cheap to extract heuristically; the agent

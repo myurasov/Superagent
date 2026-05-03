@@ -49,21 +49,25 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 │
 ├── superagent/                     ← framework code (committed; this is the product)
 │   ├── superagent.agent.md         ← role definitions (Superagent + helpers)
-│   ├── contracts/                  ← 39 multi-actor contracts, one .md per contract + _manifest.yaml
-│   ├── supertailor.agent.md             ← Supertailor's role (observer + proposer)
-│   ├── supercoder.agent.md         ← Supercoder's role (Mode 1 framework + Mode 2 project build)
-│   ├── skills/                     ← every skill, one .md per skill (incl. `supercoder.md`)
+│   ├── supertailor.agent.md        ← Supertailor's role (observer + proposer)
+│   ├── supercoder.agent.md         ← Supercoder's role (sole implementer)
+│   ├── skills/                     ← ~50 skills, one .md per skill + _manifest.yaml
+│   ├── contracts/                  ← 39 multi-actor contracts + _manifest.yaml
+│   ├── rules/                      ← machine-readable rule catalogues + _manifest.yaml
 │   ├── templates/
 │   │   ├── memory/                 ← YAML templates copied to _memory/ on init
-│   │   ├── domains/                ← markdown templates per the 4-file convention
+│   │   ├── domains/                ← markdown templates per the 5-file convention
 │   │   ├── projects/               ← personal-life Project templates
 │   │   ├── folder-readmes/         ← READMEs scaffolded into top-level workspace folders
 │   │   ├── workflows/, sources/, githooks/
+│   │   ├── _custom-starters/       ← starter content the user can copy into _custom/
 │   │   └── todo.md                 ← scoped task-view template
-│   ├── tools/                      ← workspace_init, validate, render_status, log_user_query, …
+│   ├── tools/                      ← workspace_init, validate, render_status, world, audit, …
 │   │   └── ingest/                 ← _base, _registry, _orchestrator, _stubs, per-source ingestors
+│   ├── playbooks/                  ← starter playbooks (sequences of skills with conditions)
 │   ├── tests/                      ← pytest; runs against templates + tools + skills
-│   └── docs/                       ← this file and friends
+│   └── docs/                       ← this file + faq, data-sources, domain-guide, roadmap
+│       └── _internal/              ← Supertailor-only planning + history
 │
 └── workspace/                      ← user data (gitignored; created by init)
     ├── _memory/                    ← YAML indexes (the structured-state vault)
@@ -133,15 +137,17 @@ Domains/<domain>/
 
 Skills know how to traverse both layers — query the YAML for "what", read the markdown for "why".
 
-## Skills, tools, ingestors
+## Skills, tools, ingestors, contracts, rules
 
-The three are deliberately separated:
+Five complementary surfaces, each with one job:
 
 - **Skills** (`skills/*.md`) are **instructions for the agent** in human-readable markdown with YAML frontmatter. The agent reads the file when invoked and follows the steps. Skills do not contain executable code; they contain procedures the agent runs.
 - **Tools** (`tools/*.py`) are **executable Python** for repeatable transforms (scaffold, validate, render, hook). Tools are invoked from skills via the agent's shell tool (`python3 superagent/tools/<tool>.py`).
 - **Ingestors** (`tools/ingest/<source>.py`) are a **specialized class of tools** — one per data source — that implement the `IngestorBase` contract. They probe, reauth, and run. The `ingest` skill is the user-facing front-end; the `_orchestrator.py` is its CLI implementation; per-source modules contain the actual scraping logic.
+- **Contracts** (`contracts/*.md`) are **multi-actor protocols** that several skills, tools, or agent roles must implement so they can interoperate. *Every ingestor MUST do X* / *every memory file is one of three shapes* / *every entity has a `<kind>:<slug>` handle*. Each contract is one .md file; skills cite the specific one they need (`contracts/<slug>.md`) and read only that file. Indexed by `contracts/_manifest.yaml`.
+- **Rules** (`rules/*.yaml`) are **machine-readable rule catalogues** the framework's tools enforce — currently the skill anti-pattern catalogue used by `tools/anti_patterns.py`. Users can extend them at `workspace/_custom/rules/<file>.yaml`.
 
-This separation means **skills are language**, **tools are code**, and **ingestors are pluggable**. A user can write a custom skill (in `_custom/skills/`) without touching code; a developer can add a new tool without changing any skill; a community contributor can add a new ingestor for a new data source by dropping a file in `tools/ingest/` and adding a row to `_registry.py`.
+The shape: **skills are language**, **tools are code**, **ingestors are pluggable**, **contracts are protocol**, **rules are policy**. A user can write a custom skill (in `_custom/skills/`) without touching code; a developer can add a new tool without changing any skill; a community contributor can add a new ingestor for a new data source by dropping a file in `tools/ingest/` and adding a row to `_registry.py`. A new cross-cutting protocol gets a new file in `contracts/`; a new policy gets a new row in `rules/<file>.yaml`.
 
 ## The dual-agent loop (Supertailor + Supercoder)
 

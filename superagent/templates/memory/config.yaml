@@ -223,7 +223,7 @@ preferences:
     # Pre-classify by extension before asking the user.
     auto_classify: true
 
-  # Anti-pattern scanner (perf-improvement-ideas.md § "Anti-patterns").
+  # Anti-pattern scanner (superagent/docs/_internal/perf-improvement-ideas.md § "Anti-patterns").
   anti_patterns:
     # When true, doctor / supertailor-review run the anti-pattern scanner over
     # skills/*.md and surface findings.

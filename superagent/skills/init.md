@@ -289,5 +289,5 @@ Append an entry to `_memory/interaction-log.yaml`:
 | `superagent/tools/workspace-init.py` | Idempotent scaffold script |
 | `superagent/tools/ingest/*.py` | One ingestor per supported data source |
 | `superagent/docs/data-sources.md` | Catalogue of every supported MCP / CLI tool with setup notes |
-| `superagent/docs/skills-reference.md` | Full skill catalogue with one-liners |
-| `superagent/docs/quick-start.md` | What to do after init |
+| `superagent/skills/_manifest.yaml` | Full skill catalogue with one-liners + triggers (machine-readable) |
+| `README.md` | What to do after init |

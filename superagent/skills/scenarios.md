@@ -19,7 +19,7 @@ cli_optional: []
 
 # Superagent scenarios skill
 
-Implements ideas-better-structure.md item #14. Engine: `tools/scenarios.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #14. Engine: `tools/scenarios.py`.
 
 ## 1. Disambiguate
 

@@ -26,9 +26,9 @@
 
 ## Why "Superagent"?
 
-The product is **Superagent**. The framework is designed to do for personal life what a personal-admin staff does for someone wealthy enough to have one — only the staff is one AI assistant, working from your laptop, with no salary and no human-trust trade-off.
+The product is **Superagent**. It's designed to do for personal life what a personal-admin staff does for someone wealthy enough to have one — only the staff is one AI assistant, working from your laptop, with no salary and no human-trust trade-off.
 
-The folders it lives in (`superagent/` for the framework, `workspace/` for your data) carry a leading double-underscore prefix on purpose: it sorts the folders to the top of any directory listing and signals "this is namespaced framework storage, not a brand". The product name is **Superagent**; the folder names are an implementation detail of the host repo, easily renamed if you extract Superagent into its own repo (see `docs/architecture.md` § "Extracting to a standalone repo").
+The folders it lives in (`superagent/` for the framework code, `workspace/` for your data) are an implementation detail of this host repo. If you extract Superagent into its own repo (see `architecture.md` § "Extracting to a standalone repo"), you can rename them to anything you like.
 
 ## Is this an app I run, or a folder I clone?
 
@@ -141,13 +141,13 @@ Multiple safety nets:
 - **The hard safeguard.** The Supertailor / Supercoder loop has a token-scan that prevents personal data from accidentally leaking into committed framework code, regardless of what the AI thinks.
 - **Plain-text data.** Worst case, you open the file in any editor and fix it manually. There's nothing the agent does that you can't undo.
 
-## Why are some skills not implemented yet?
+## Why are some skills / ingestors not implemented yet?
 
-The framework ships with 35 skills documented as markdown instruction sets. The Python tools that support them — workspace_init, validate, render_status, log_user_query, the ingest base + orchestrator + two real ingestors (apple_reminders, csv) — are implemented and tested.
+The framework ships with ~50 skills documented as markdown instruction sets, ~20 Python tools (workspace_init, validate, render_status, log_user_query, world, sources_cache, briefing_cache, log_window, audit, play, scenarios, inbox_triage, anti_patterns, …), and the ingest base + orchestrator + 2 reference ingestors (`apple_reminders`, `csv`).
 
-Most of the per-source ingestors are stubs that return NEEDS_SETUP from `probe()`. The roadmap (`docs/roadmap.md`) prioritizes which to implement first based on user value: gmail, google_calendar, apple_health, plaid are the top of LOE-S.
+Most of the **per-source ingestors are stubs** that return NEEDS_SETUP from `probe()`. The roadmap (`roadmap.md`) prioritizes which to implement first based on user value: gmail, google_calendar, apple_health, plaid are the top of LOE-S.
 
-Implementing a stub means: add a real `<source>.py` that subclasses `IngestorBase`, implement `probe()` and `run()`, add a smoke test. The csv and apple_reminders ingestors are reference implementations — small, contained, tested.
+Implementing a stub means: add a real `<source>.py` that subclasses `IngestorBase`, implement `probe()` and `run()`, add a smoke test. The shipped `csv` and `apple_reminders` ingestors are reference implementations — small, contained, tested.
 
 ## Can I add my own skill?
 

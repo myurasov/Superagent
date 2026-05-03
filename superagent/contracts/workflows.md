@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 25`. Citation form: `contracts/workflows.md`. -->
 
-Implements ideas-better-structure.md item #2. Backed by `superagent/templates/workflows/<id>.yaml` (framework) and `workspace/_custom/templates/workflows/` (user overlay).
+Implements superagent/docs/_internal/ideas-better-structure.md item #2. Backed by `superagent/templates/workflows/<id>.yaml` (framework) and `workspace/_custom/templates/workflows/` (user overlay).
 
 **A workflow is a versioned, parameterized recipe** for instantiating a Project. The `add-project --workflow <id>` flow:
 

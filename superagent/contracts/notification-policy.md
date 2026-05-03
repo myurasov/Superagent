@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 31`. Citation form: `contracts/notification-policy.md`. -->
 
-Implements ideas-better-structure.md item #25. Backed by `_memory/notification-policy.yaml`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #25. Backed by `_memory/notification-policy.yaml`.
 
 **Cadence skills consume rules** to decide what to surface where:
 

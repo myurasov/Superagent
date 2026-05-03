@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate `superagent/skills/_manifest.yaml` — the skill-discovery manifest.
 
-Implements perf-improvement-ideas.md QW-1.
+Implements superagent/docs/_internal/perf-improvement-ideas.md QW-1.
 
 The manifest is a small (~5-10 KB) summary of every skill: name, one-line,
 triggers, mcp_required, mcp_optional, cli_required, cli_optional, plus a

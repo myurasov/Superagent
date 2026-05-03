@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 23`. Citation form: `contracts/tags.md`. -->
 
-Implements ideas-better-structure.md item #11. Backed by `_memory/tags.yaml` and the `tags` skill.
+Implements superagent/docs/_internal/ideas-better-structure.md item #11. Backed by `_memory/tags.yaml` and the `tags` skill.
 
 **Auto-register** (`config.preferences.tags.auto_register: true` default): when any skill writes a tag NOT in `tags.yaml`, the new canonical row is appended automatically with `created_by: <skill>`. The user curates description + category later.
 

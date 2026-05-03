@@ -1,7 +1,7 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: outbox lifecycle log.
 #
-# Implements: ideas-better-structure.md item #13 (Outbox lifecycle).
+# Implements: superagent/docs/_internal/ideas-better-structure.md item #13 (Outbox lifecycle).
 #
 # Tracks every artifact written to Outbox/ across its lifecycle
 # (drafts → staging → sent → sealed). Append-only; mutate only the row

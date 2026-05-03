@@ -1,5 +1,5 @@
 # [Do not change manually — managed by Superagent]
-# Playbook schema (ideas-better-structure.md item #21).
+# Playbook schema (superagent/docs/_internal/ideas-better-structure.md item #21).
 #
 # A playbook is a small YAML file naming a sequence of skills to run, with
 # optional `if:` conditions and `then:`/`else:` branches. The `play` skill

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Maintain `<file>.summary.yaml` siblings for unbounded YAML logs.
 
-Implements perf-improvement-ideas.md QW-4.
+Implements superagent/docs/_internal/perf-improvement-ideas.md QW-4.
 
 For files that grow without bound (`interaction-log.yaml`,
 `ingestion-log.yaml`, `supertailor-suggestions.yaml`), maintain a small sibling

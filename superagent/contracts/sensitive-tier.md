@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 21`. Citation form: `contracts/sensitive-tier.md`. -->
 
-Implements ideas-better-structure.md item #18.
+Implements superagent/docs/_internal/ideas-better-structure.md item #18.
 
 **Tiered storage**: a `_memory/sensitive/` sub-folder. Files routed there get stricter handling. The `config.preferences.sensitive.path` setting can override the location (e.g. point at an encrypted disk-image mount):
 

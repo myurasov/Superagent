@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 37`. Citation form: `contracts/inbox-triage.md`. -->
 
-Implements ideas-better-structure.md item #5. Backed by `tools/inbox_triage.py` + the `inbox-triage` skill + `Inbox/_processed.yaml` decision log.
+Implements superagent/docs/_internal/ideas-better-structure.md item #5. Backed by `tools/inbox_triage.py` + the `inbox-triage` skill + `Inbox/_processed.yaml` decision log.
 
 **Walk + ask**: every file in `Inbox/` (not starting with `.` or `_`) is classified by extension + filename keyword heuristic, then surfaced for: file / discard / leave / defer.
 

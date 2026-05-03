@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 18`. Citation form: `contracts/operational-handles.md`. -->
 
-Implements ideas-better-structure.md item #20. Canonical: `<kind>:<slug>` (colon separator).
+Implements superagent/docs/_internal/ideas-better-structure.md item #20. Canonical: `<kind>:<slug>` (colon separator).
 
 **Kinds** (lowercase singular; see `tools/handles.py.KINDS`):
 

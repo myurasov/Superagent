@@ -1,11 +1,11 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: unified events stream.
 #
-# Implements: ideas-better-structure.md item #16 + perf-improvement-ideas.md MI-2.
+# Implements: superagent/docs/_internal/ideas-better-structure.md item #16 + superagent/docs/_internal/perf-improvement-ideas.md MI-2.
 #
 # This file is the SCHEMA reference for the events stream. The actual events
 # are stored in `_memory/events/<YYYY-Qn>.yaml` (quarterly partitions, per
-# the time-windowed-views contract — perf-improvement-ideas.md MI-2). The
+# the time-windowed-views contract — superagent/docs/_internal/perf-improvement-ideas.md MI-2). The
 # CURRENT quarter's file is the live writer; older quarters are read-only.
 #
 # Every cross-entity event (interaction, ingest run, status flip, decision,

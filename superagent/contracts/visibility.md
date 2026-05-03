@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 20`. Citation form: `contracts/visibility.md`. -->
 
-Implements ideas-better-structure.md item #19. Every entity carries an optional `visibility` field.
+Implements superagent/docs/_internal/ideas-better-structure.md item #19. Every entity carries an optional `visibility` field.
 
 **Values**:
 - `private` (default) — owner only; never appears in shared / multi-user views.

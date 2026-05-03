@@ -2,7 +2,7 @@
 # Superagent memory: append-only log of meaningful decisions made by the user
 # (or, with explicit consent, by the agent on the user's behalf).
 #
-# Implements: ideas-better-structure.md item #24.
+# Implements: superagent/docs/_internal/ideas-better-structure.md item #24.
 #
 # Shape: time-shape (event-shape, append-only). Every row is a decision-event.
 # Mutate only `outcome_measured_at`, `outcome`, `revisited` on existing rows

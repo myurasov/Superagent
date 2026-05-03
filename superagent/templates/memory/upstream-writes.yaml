@@ -2,7 +2,7 @@
 # Superagent memory: append-only audit log of writes that went UPSTREAM
 # (to a third-party service, not to local files).
 #
-# Implements: ideas-better-structure.md item #15 (skeleton) + the
+# Implements: superagent/docs/_internal/ideas-better-structure.md item #15 (skeleton) + the
 # Sensitive-Tier safety contract.
 #
 # Background: every ingestor in MVP is `writes_upstream: false` — read-only.

@@ -1,7 +1,7 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: per-skill working-set telemetry (schema reference).
 #
-# Implements: ideas-better-structure.md item #23 + perf-improvement-ideas.md
+# Implements: superagent/docs/_internal/ideas-better-structure.md item #23 + superagent/docs/_internal/perf-improvement-ideas.md
 # (anti-patterns + measurement).
 #
 # The actual telemetry is stored in `_memory/working-sets.jsonl` (one JSON

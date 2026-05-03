@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Scanner for anti-patterns in skill markdown files.
 
-Implements perf-improvement-ideas.md § "Anti-patterns to flag in skills".
+Implements superagent/docs/_internal/perf-improvement-ideas.md § "Anti-patterns to flag in skills".
 
 Scans every skill under `superagent/skills/*.md` (and optionally
 `workspace/_custom/skills/*.md`) for the documented patterns and prints a

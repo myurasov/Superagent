@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 32`. Citation form: `contracts/briefing-cache.md`. -->
 
-Implements perf-improvement-ideas.md QW-5 + MI-5. Backed by `_memory/_artifacts/<skill>/<key>.{md,meta.yaml}` + `tools/briefing_cache.py`.
+Implements superagent/docs/_internal/perf-improvement-ideas.md QW-5 + MI-5. Backed by `_memory/_artifacts/<skill>/<key>.{md,meta.yaml}` + `tools/briefing_cache.py`.
 
 **Pattern**: any skill whose output is a candidate for re-read within the same day (briefings, summaries, dashboard renders) writes through the cache.
 

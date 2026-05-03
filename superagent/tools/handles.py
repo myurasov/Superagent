@@ -1,6 +1,6 @@
 """Operational-handle parsing and formatting.
 
-Implements ideas-better-structure.md item #20 — every entity gets a
+Implements superagent/docs/_internal/ideas-better-structure.md item #20 — every entity gets a
 canonical `<kind>:<slug>` operational handle. This module is the single
 canonical parser / formatter so every skill and tool agrees on the shape.
 

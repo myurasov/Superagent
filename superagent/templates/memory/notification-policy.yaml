@@ -1,7 +1,7 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: declarative notification / surfacing policy.
 #
-# Implements: ideas-better-structure.md item #25.
+# Implements: superagent/docs/_internal/ideas-better-structure.md item #25.
 #
 # Cadence skills (daily-update, whatsup, weekly-review, monthly-review)
 # consume these rules to decide WHAT to surface WHERE and HOW LOUDLY.

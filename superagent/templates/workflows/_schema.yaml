@@ -1,5 +1,5 @@
 # [Do not change manually — managed by Superagent]
-# Workflow template schema (ideas-better-structure.md item #2).
+# Workflow template schema (superagent/docs/_internal/ideas-better-structure.md item #2).
 #
 # A workflow template is a versioned, parameterized recipe that
 # `add-project` can instantiate to produce a fully-charterd Project plus

@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 19`. Citation form: `contracts/provenance.md`. -->
 
-Implements ideas-better-structure.md item #4. Every fact carries a source pointer.
+Implements superagent/docs/_internal/ideas-better-structure.md item #4. Every fact carries a source pointer.
 
 **Schema** (additive optional field on every entity row):
 

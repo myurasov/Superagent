@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 17`. Citation form: `contracts/memory-taxonomy.md`. -->
 
-Implements ideas-better-structure.md item #9. Codifies the three shapes of YAML files under `_memory/`. Tools enforce; the Supertailor's hygiene pass flags violations.
+Implements superagent/docs/_internal/ideas-better-structure.md item #9. Codifies the three shapes of YAML files under `_memory/`. Tools enforce; the Supertailor's hygiene pass flags violations.
 
 | Shape | Files | Mutation rule | Read pattern |
 |---|---|---|---|

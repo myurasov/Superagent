@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Pre-rendered briefing cache + skill-output write-back caching.
 
-Implements perf-improvement-ideas.md QW-5 + MI-5.
+Implements superagent/docs/_internal/perf-improvement-ideas.md QW-5 + MI-5.
 
 Pattern: any skill that produces a structured artifact within the same day
 (daily-update, weekly-review, monthly-review, draft-email summaries, top-5

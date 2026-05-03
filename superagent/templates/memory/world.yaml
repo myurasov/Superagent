@@ -17,7 +17,7 @@
 # (from -> to + kind). Both are append-mostly; deletes happen only on
 # entity removal (rare; entities normally archive, not delete).
 #
-# Implements: ideas-better-structure.md item #3 + perf-improvement-ideas.md BB-4.
+# Implements: superagent/docs/_internal/ideas-better-structure.md item #3 + superagent/docs/_internal/perf-improvement-ideas.md BB-4.
 
 schema_version: 1
 last_updated: null

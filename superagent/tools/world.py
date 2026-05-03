@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """World-model entity graph — query and rebuild.
 
-Implements ideas-better-structure.md item #3 + perf-improvement-ideas.md BB-4.
+Implements superagent/docs/_internal/ideas-better-structure.md item #3 + superagent/docs/_internal/perf-improvement-ideas.md BB-4.
 
 The graph is stored at `_memory/world.yaml` (per the template). Rebuild
 scans every entity-shape file and reconstructs nodes + edges from scratch.

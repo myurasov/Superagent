@@ -19,7 +19,7 @@ cli_optional: []
 
 # Superagent world skill
 
-Implements ideas-better-structure.md item #3 + perf-improvement-ideas.md BB-4. Engine: `tools/world.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #3 + superagent/docs/_internal/perf-improvement-ideas.md BB-4. Engine: `tools/world.py`.
 
 ## 1. Branch on intent
 

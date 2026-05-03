@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 28`. Citation form: `contracts/decisions.md`. -->
 
-Implements ideas-better-structure.md item #24. Backed by `_memory/decisions.yaml` and the `decisions` skill.
+Implements superagent/docs/_internal/ideas-better-structure.md item #24. Backed by `_memory/decisions.yaml` and the `decisions` skill.
 
 **Append-only** (event-shape). Mutate only `outcome_measured_at`, `outcome`, `outcome_notes`, `revisited` on existing rows.
 

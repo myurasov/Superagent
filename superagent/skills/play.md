@@ -21,7 +21,7 @@ cli_optional: []
 
 # Superagent play skill
 
-Implements ideas-better-structure.md item #21. Resolver: `tools/play.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #21. Resolver: `tools/play.py`.
 
 ## 1. Resolve
 

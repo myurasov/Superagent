@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compute diffs between two `_memory/_checkpoints/<date>/` snapshots.
 
-Implements ideas-better-structure.md item #6 + perf-improvement-ideas.md QW-5
+Implements superagent/docs/_internal/ideas-better-structure.md item #6 + superagent/docs/_internal/perf-improvement-ideas.md QW-5
 (provides the "what changed since" query that makes pre-rendered briefings
 intelligible).
 

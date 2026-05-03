@@ -19,7 +19,7 @@ cli_optional: []
 
 # Superagent events skill
 
-Implements ideas-better-structure.md item #16 + perf-improvement-ideas.md MI-2. Engine: `tools/log_window.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #16 + superagent/docs/_internal/perf-improvement-ideas.md MI-2. Engine: `tools/log_window.py`.
 
 ## 1. Branch on intent
 

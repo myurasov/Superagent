@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 36`. Citation form: `contracts/outbox-lifecycle.md`. -->
 
-Implements ideas-better-structure.md item #13. Backed by `_memory/outbox-log.yaml` + sub-folders under `Outbox/`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #13. Backed by `_memory/outbox-log.yaml` + sub-folders under `Outbox/`.
 
 **Lifecycle stages** (folders under `Outbox/`):
 

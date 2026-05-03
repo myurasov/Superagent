@@ -49,7 +49,7 @@ Mechanical, reversible repairs to keep the workspace tidy:
 - **Schema integrity.** Validate every `_memory/*.yaml` against its declared `schema_version` (delegates to `tools/validate.py`); flag any row with required fields missing.
 - **Ingestion-source health.** Every row in `data-sources.yaml` with `failure_streak > 0` is surfaced with the failure cause and a one-line "what to fix" hint.
 - **Custom-overlay scaffold.** If `_custom/` is missing or has no `rules/` / `skills/` / `agents/` / `templates/` subdirs, the Supertailor offers to create the empty scaffold so the SA can drop overlays in later.
-- **Improvement-ideas catalogues exist.** Verify `superagent/docs/ideas-better-structure.md` and `superagent/docs/perf-improvement-ideas.md` are present and parseable (have their expected tier headings). They are mandatory inputs to the strategic-pass catalogue lookup; missing files silently degrade Supertailor quality. Surface as `needs-attention` (not auto-fixable — the catalogues are hand-curated).
+- **Improvement-ideas catalogues exist.** Verify `superagent/docs/_internal/ideas-better-structure.md` and `superagent/docs/_internal/perf-improvement-ideas.md` are present and parseable (have their expected tier headings). They are mandatory inputs to the strategic-pass catalogue lookup; missing files silently degrade Supertailor quality. Surface as `needs-attention` (not auto-fixable — the catalogues are hand-curated).
 
 Repairs proposed by the hygiene pass are mechanical and reversible. The Supertailor lists each, asks **approve / decline / defer**, and **hands the approved set to the Supercoder as a single bundled brief** (one Supercoder run, one commit, one entry per repair in the commit's body … no, single-sentence subject only — see `supercoder.agent.md` § "Git practices"). Before the Supercoder writes anything, the Supertailor snapshots the affected files into `_memory/_checkpoints/<date>/` so the repair is reversible.
 
@@ -68,8 +68,8 @@ Each strategic suggestion is written to `supertailor-suggestions.yaml` with full
 
 **Catalogue lookup (mandatory)** — before drafting any new suggestion, the Supertailor consults two improvement-ideas catalogues:
 
-- **`superagent/docs/ideas-better-structure.md`** — 25 structural-improvement options, each with LOE / trade-off / "when to do" guidance.
-- **`superagent/docs/perf-improvement-ideas.md`** — token-efficiency / cache-hit / latency improvements, tiered Quick wins → Medium investments → Big bets.
+- **`superagent/docs/_internal/ideas-better-structure.md`** — 25 structural-improvement options, each with LOE / trade-off / "when to do" guidance.
+- **`superagent/docs/_internal/perf-improvement-ideas.md`** — token-efficiency / cache-hit / latency improvements, tiered Quick wins → Medium investments → Big bets.
 
 When a friction theme matches a catalogued entry, the new `supertailor-suggestions.yaml` row MUST cite it in `evidence` (e.g. `"matches catalogue: ideas-better-structure § #5 (Inbox triage pipeline)"`) and MAY reference the catalogue's existing implementation sketch in `implementation_sketch` rather than re-deriving it. This saves design tokens, surfaces "this isn't a one-off concern; it's been on the catalogue list since <date>", and exposes catalogue gaps (friction with no matching entry).
 
@@ -146,7 +146,8 @@ Each row in `supertailor-suggestions.yaml`:
        pass (regex + carrier detection: USPS/UPS/FedEx/DHL/Amazon).
     3. Add superagent/skills/packages.md (list / mark-delivered / forget).
     4. Add a daily-update step that surfaces "expected today" packages.
-    5. Update docs/skills-reference.md and docs/auto-capture-rules.md.
+    5. Re-run tools/build_skill_manifest.py so the new skill appears in
+       skills/_manifest.yaml; update README.md skill table if appropriate.
   effort: "medium"
   risk: >
     Carrier-detection regex needs maintenance as carriers change wording.

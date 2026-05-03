@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 39`. Citation form: `contracts/anti-patterns.md`. -->
 
-Implements perf-improvement-ideas.md § "Anti-patterns to flag in skills".
+Implements superagent/docs/_internal/perf-improvement-ideas.md § "Anti-patterns to flag in skills".
 
 **Source of truth**: `superagent/rules/anti-patterns.yaml` (the regex catalogue, severities, mitigations). The `superagent/rules/` directory holds machine-readable rule files; this section is the human-readable summary that points at them.
 

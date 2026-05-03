@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Per-session scratchpad / dedupe.
 
-Implements perf-improvement-ideas.md MI-1.
+Implements superagent/docs/_internal/perf-improvement-ideas.md MI-1.
 
 Tracks what the agent loaded in the current conversation. Before any read,
 the agent (or skill orchestrator) checks the scratchpad: if the file's

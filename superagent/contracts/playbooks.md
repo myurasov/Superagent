@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 26`. Citation form: `contracts/playbooks.md`. -->
 
-Implements ideas-better-structure.md item #21. Backed by `superagent/playbooks/<name>.yaml` (framework) and `workspace/_custom/playbooks/<name>.yaml` (user overlay). Resolver: `tools/play.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #21. Backed by `superagent/playbooks/<name>.yaml` (framework) and `workspace/_custom/playbooks/<name>.yaml` (user overlay). Resolver: `tools/play.py`.
 
 **A playbook is a sequence of skills with conditions**. The resolver evaluates conditions against current workspace state and yields the ordered list of skills. The agent then walks the list, invoking each skill in turn.
 

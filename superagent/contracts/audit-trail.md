@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 30`. Citation form: `contracts/audit-trail.md`. -->
 
-Implements ideas-better-structure.md item #17. Backed by `<file>.history.jsonl` siblings + `tools/audit.py`.
+Implements superagent/docs/_internal/ideas-better-structure.md item #17. Backed by `<file>.history.jsonl` siblings + `tools/audit.py`.
 
 **Every entity-mutating skill SHOULD** call:
 ```python

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Time-windowed views over append-only logs (events stream and friends).
 
-Implements ideas-better-structure.md item #22 + perf-improvement-ideas.md MI-2.
+Implements superagent/docs/_internal/ideas-better-structure.md item #22 + superagent/docs/_internal/perf-improvement-ideas.md MI-2.
 
 For partitioned logs (default: `_memory/events/<YYYY-Qn>.yaml`), this module
 yields events in a date range without loading the entire history.
