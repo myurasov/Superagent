@@ -2,8 +2,10 @@
 name: superagent-inbox-triage
 description: >-
   Walk every file in `Inbox/`, classify it by extension + filename, propose
-  a destination under `Sources/documents/<category>/`, and ask the user
-  per file: file / discard / leave / defer. Records every decision in
+  a destination under `Sources/<category>/` (the user can always override;
+  layout under Sources/ is user-defined per `contracts/sources.md`), and
+  ask the user per file: file / discard / leave / defer. Records every
+  decision in
   `Inbox/_processed.yaml` so the agent learns the user's filing patterns.
 triggers:
   - inbox triage
@@ -37,7 +39,7 @@ For each file (highest-confidence first), surface:
 
 ```
 [N/total] <filename>  (<size>, <kind>, modified <date>)
-  Suggested: <Sources/documents/<category>/<filename>>  (confidence: <high|medium|low>)
+  Suggested: <Sources/<category>/<filename>>  (confidence: <high|medium|low>)
   Matched keywords: <list>
 
   What do you want to do?
@@ -53,7 +55,7 @@ Per choice:
 
 - **f**: invoke `add-source --document <Inbox/path> --category <suggested category>`. The `add-source` skill moves the file and writes to `_memory/sources-index.yaml`.
 - **F**: prompt for category; same path with the override.
-- **a**: invoke `add-source --reference --kind file --source <Inbox/path>`. The original file stays where it is; a `.ref.md` is added to `Sources/references/<category>/`. Useful for one-off recordings or photos that the user wants indexed but not relocated.
+- **a**: invoke `add-source --reference --kind file --source <Inbox/path>`. The original file stays where it is; a `.ref.md` is added at the user-chosen path under `Sources/` (typically `Sources/<category>/<short-slug>.ref.md`). Useful for one-off recordings or photos that the user wants indexed but not relocated.
 - **d**: move to `workspace/Tmp/_inbox-discarded/<YYYY-MM-DD>/<filename>` (so discards are reversible for 30 days before `doctor` cleans them).
 - **l**: leave the file in place; don't ask again until next triage run.
 - **s**: same as `l` but the next triage run re-surfaces it first.
@@ -66,7 +68,7 @@ python3 -m superagent.tools.inbox_triage record --file <name> --action <filed|di
 
 ## 4. Pattern learning
 
-After processing the batch, scan `Inbox/_processed.yaml` for repeated `(filename-pattern, category, destination)` patterns. If the user has `filed` 3+ files matching the same pattern (e.g. `Verizon*.pdf` → `Sources/documents/home/utilities/verizon/`), surface:
+After processing the batch, scan `Inbox/_processed.yaml` for repeated `(filename-pattern, category, destination)` patterns. If the user has `filed` 3+ files matching the same pattern (e.g. `Verizon*.pdf` → `Sources/home/utilities/verizon/`), surface:
 
 > "I notice you've filed Verizon PDFs to `home/utilities/verizon/` 4 times. Want to auto-file matching files next time? (yes / always-ask)"
 

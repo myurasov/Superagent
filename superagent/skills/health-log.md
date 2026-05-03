@@ -134,7 +134,7 @@ Append to `_memory/health-records.yaml.results[]`:
   ordered_by: <contact-id>
   abnormal: <bool>
   summary: "<one paragraph — the user's takeaway>"
-  path: "<relative path to PDF; vault-grade lab PDFs go in Sources/documents/medical/<member>/ via `add-source --to-domain health`; working scans go in Domains/Health/Resources/<member>/>"
+  path: "<relative path to PDF; vault-grade lab PDFs go under Sources/medical/<member>/ via `add-source --to-domain health` (path is suggested; user picks); working scans go in Domains/Health/Resources/<member>/>"
   notes: "<text>"
 ```
 

@@ -97,7 +97,7 @@ To `_memory/assets-index.yaml`:
 
 If the user has receipts / scans / titles / warranty PDFs to file (vault-grade documents):
 
-1. **Source documents** — invoke `add-source --to-domain <Domain> --asset <asset-slug>` for each. The skill will place them under `workspace/Sources/documents/<category>/<asset-slug>/` and add a row to `Domains/<Domain>/sources.md`. Source documents NEVER go under `Domains/<X>/` directly.
+1. **Source documents** — invoke `add-source --to-domain <Domain> --asset <asset-slug>` for each. The skill will SUGGEST a path like `workspace/Sources/<category>/<asset-slug>/` (you can override) and add a row to `Domains/<Domain>/sources.md`. Source documents NEVER go under `Domains/<X>/` directly.
 2. **Working files** — for context photos (the serial-number sticker, the leak that started this), per-asset `workspace/Domains/<Domain>/Resources/<asset-slug>/` is the right home. Created lazily.
 
 Do NOT create either folder if there's nothing to put in it.

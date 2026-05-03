@@ -173,9 +173,9 @@ If yes: pattern-match the project kind for templated task lists:
 
 | Project kind hint | Suggested tasks |
 |---|---|
-| Tax filing | "Gather W-2s + 1099s", "Compile charitable receipts", "Schedule call with accountant", "File return", "Archive return PDF in Sources/documents/taxes/<year>/" |
+| Tax filing | "Gather W-2s + 1099s", "Compile charitable receipts", "Schedule call with accountant", "File return", "Archive return PDF in Sources/taxes/<year>/" |
 | Trip planning | "Book flights", "Book hotels", "Renew passport (if needed)", "Set up house-sitter / pet-sitter", "Build packing list", "Pre-trip TSA check" |
-| Appliance replacement | "Get 3 quotes", "Read reviews", "Schedule install", "Coordinate haul-away of old", "Test on cycle", "File receipt + warranty in Sources/documents/warranties/" |
+| Appliance replacement | "Get 3 quotes", "Read reviews", "Schedule install", "Coordinate haul-away of old", "Test on cycle", "File receipt + warranty in Sources/warranties/" |
 | Annual health tune-up | "Schedule annual physical", "Schedule dental cleaning", "Schedule eye exam", "Refill standing prescriptions", "Review labs from last year" |
 | Job search | "Update resume", "Curate target list", "Reach out to 5 contacts", "Apply to N roles", "Schedule mock interviews" |
 | Renovation | "Define scope + budget", "Get 3 contractor bids", "Get permits", "Schedule start", "Punch list at end" |

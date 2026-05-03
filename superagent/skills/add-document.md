@@ -96,9 +96,9 @@ If `expires_at` is set, surface immediately:
 
 If `path` is in `workspace/Inbox/`, offer:
 
-> "Want me to move this to `Sources/documents/<category>/`? (yes / no)"
+> "Want me to move this to `Sources/<category>/<filename>`? (yes / no — you can also pick a different path)"
 
-On `yes`: move the file via `add-source --to-domain <inferred>` (which routes it correctly + adds a row to the relevant domain's `sources.md` + updates `_memory/sources-index.yaml`). Update `documents-index.yaml.<doc>.path` to the new `Sources/documents/<category>/<...>` location.
+On `yes`: move the file via `add-source --to-domain <inferred>` (which routes it correctly + adds a row to the relevant domain's `sources.md` + refreshes `_memory/sources-index.yaml`). Update `documents-index.yaml.<doc>.path` to the new `Sources/<category>/<...>` location.
 
 This skill is being progressively superseded by `add-source` — the canonical capture skill for any document. `add-document` survives for the structured-metadata fields specific to vital records (passport / license / etc.) that need expiration tracking; the file-placement side delegates to `add-source`.
 

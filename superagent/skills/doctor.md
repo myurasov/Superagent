@@ -71,7 +71,7 @@ Find files in `Domains/<domain>/Resources/` and `Projects/<slug>/Resources/` whe
 
 Surface; offer `archive` (move to `Archive/<YYYY-MM>/_doctor-resources/`) or `keep`.
 
-**Note**: `doctor` NEVER touches `Sources/documents/` or `Sources/references/` (immutable per `contracts/sources.md` § 15.2). The strict pass for stale Sources is the user's job, surfaced via `monthly-review` § 7c as a candidate list, never auto-actioned.
+**Note**: `doctor` NEVER touches user-curated content under `Sources/` (the agent only manages `Sources/_cache/`; everything else is read-only per `contracts/sources.md` § 15.7). The strict pass for stale Sources is the user's job, surfaced via `monthly-review` § 7c as a candidate list, never auto-actioned.
 
 ## 4. Duplicates
 

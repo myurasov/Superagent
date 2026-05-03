@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-02T20:22:34-07:00'
+generated_at: '2026-05-03T02:22:07-07:00'
 skill_count: 48
 skills:
 - name: superagent-add-account
@@ -62,10 +62,9 @@ skills:
   lines: 168
   h2_steps: 8
   h3_subsections: 0
-  typical_token_cost: 1502
+  typical_token_cost: 1505
   typical_files_read:
   - _memory/assets-index.yaml
-  - workspace/Sources/documents/<category>/<asset-slug>/`
   - _memory/bills.yaml
   origin: framework
 - name: superagent-add-bill
@@ -125,11 +124,9 @@ skills:
   lines: 122
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 1152
+  typical_token_cost: 1160
   typical_files_read:
-  - Sources/documents/<category>/`?
   - _memory/sources-index.yaml
-  - Sources/documents/<category>/<...>`
   origin: framework
 - name: superagent-add-domain
   stem: add-domain
@@ -193,19 +190,17 @@ skills:
   lines: 226
   h2_steps: 8
   h3_subsections: 10
-  typical_token_cost: 1832
+  typical_token_cost: 1827
   typical_files_read:
   - _memory/projects-index.yaml
   - _memory/domains-index.yaml
   - _memory/contacts.yaml
-  - Sources/documents/taxes/<year>/"
-  - Sources/documents/warranties/"
   origin: framework
 - name: superagent-add-source
   stem: add-source
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-source.md
-  one_line: Add a document or a `.ref.md` reference to `Sources/`. Documents are copied into `Sources/documents/<category>/`;
-    references are written as `.ref.md` files in `Sources/references/<category>/`. Both ar
+  one_line: Add a document or a `.ref.md` / `.ref.txt` reference to `Sources/`. The user picks (or accepts
+    a suggestion for) where the file goes — there is no enforced subfolder layout. The agent runs `sources_in
   triggers:
   - add a source
   - add this to <domain>
@@ -218,19 +213,18 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 254
-  h2_steps: 9
+  lines: 238
+  h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 2599
+  typical_token_cost: 2888
   typical_files_read:
+  - Sources/_cache/`
   - _memory/domains-index.yaml
   - _memory/projects-index.yaml
   - _memory/context.yaml
-  - workspace/Sources/documents/<category>/<filename>`.
-  - Sources/documents/<category>/<filename>"
   - _memory/sources-index.yaml
-  - workspace/Sources/references/<category>/<short-slug>.ref.md`
-  - Sources/documents/<category>/<...>`
+  - _memory/assets-index.yaml
+  - _memory/accounts-index.yaml
   origin: framework
 - name: superagent-add-subscription
   stem: add-subscription
@@ -294,7 +288,7 @@ skills:
   lines: 80
   h2_steps: 4
   h3_subsections: 2
-  typical_token_cost: 588
+  typical_token_cost: 595
   typical_files_read: []
   origin: framework
 - name: superagent-bills
@@ -370,7 +364,7 @@ skills:
   lines: 129
   h2_steps: 4
   h3_subsections: 4
-  typical_token_cost: 877
+  typical_token_cost: 883
   typical_files_read:
   - _memory/decisions.yaml
   origin: framework
@@ -391,11 +385,10 @@ skills:
   lines: 151
   h2_steps: 14
   h3_subsections: 0
-  typical_token_cost: 1353
+  typical_token_cost: 1366
   typical_files_read:
   - _memory/domains-index.yaml
-  - Sources/documents/`
-  - Sources/references/`
+  - Sources/_cache/`;
   - _memory/action-signals.yaml
   origin: framework
 - name: superagent-draft-email
@@ -437,7 +430,7 @@ skills:
   lines: 87
   h2_steps: 3
   h3_subsections: 4
-  typical_token_cost: 713
+  typical_token_cost: 726
   typical_files_read:
   - _memory/events.yaml
   origin: framework
@@ -537,13 +530,12 @@ skills:
   lines: 161
   h2_steps: 5
   h3_subsections: 6
-  typical_token_cost: 1093
+  typical_token_cost: 1099
   typical_files_read:
   - _memory/health-records.yaml
   - Domains/Health/info.md
   - Domains/Health/status.md
   - Domains/Health/history.md
-  - Sources/documents/medical/<member>/
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-home-maintenance
@@ -596,9 +588,8 @@ skills:
 - name: superagent-inbox-triage
   stem: inbox-triage
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/inbox-triage.md
-  one_line: 'Walk every file in `Inbox/`, classify it by extension + filename, propose a destination under
-    `Sources/documents/<category>/`, and ask the user per file: file / discard / leave / defer. Records
-    every '
+  one_line: Walk every file in `Inbox/`, classify it by extension + filename, propose a destination under
+    `Sources/<category>/` (the user can always override; layout under Sources/ is user-defined per `contracts/
   triggers:
   - inbox triage
   - drain inbox
@@ -609,15 +600,12 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 94
+  lines: 96
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 938
+  typical_token_cost: 977
   typical_files_read:
-  - Sources/documents/<category>/<filename>>
   - _memory/sources-index.yaml
-  - Sources/references/<category>/`.
-  - Sources/documents/home/utilities/verizon/`
   - _memory/inbox-rules.yaml
   origin: framework
 - name: superagent-ingest
@@ -666,7 +654,7 @@ skills:
   lines: 293
   h2_steps: 12
   h3_subsections: 1
-  typical_token_cost: 4099
+  typical_token_cost: 4101
   typical_files_read:
   - workspace/_memory/config.yaml
   - _memory/insights.yaml
@@ -791,7 +779,7 @@ skills:
   lines: 80
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 624
+  typical_token_cost: 631
   typical_files_read: []
   origin: framework
 - name: superagent-pm-review
@@ -892,14 +880,14 @@ skills:
   lines: 76
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 618
+  typical_token_cost: 624
   typical_files_read: []
   origin: framework
 - name: superagent-sources
   stem: sources
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/sources.md
   one_line: List, search, fetch (through cache), refresh, and inspect entries in `Sources/`. The user-facing
-    front-end to the immutable reference library + cache (contracts/sources.md).
+    front-end to the user-curated reference library + agent-managed cache (contracts/sources.md).
   triggers:
   - sources
   - list sources
@@ -907,25 +895,20 @@ skills:
   - what's in Sources
   - fetch source
   - refresh source
+  - rescan sources
   - what does my <X> say
   - find <doc>
   mcp_required: []
   mcp_optional:
-  - any source-fetch ingestor (depends on the .ref.md kind)
+  - any source-fetch ingestor (depends on the ref kind)
   cli_required: []
   cli_optional: []
-  lines: 200
-  h2_steps: 8
+  lines: 215
+  h2_steps: 9
   h3_subsections: 7
-  typical_token_cost: 1713
+  typical_token_cost: 1927
   typical_files_read:
   - _memory/sources-index.yaml
-  - Sources/references/**/*.ref.md`
-  - Sources/_cache/<*>/_summary.md`.
-  - Sources/_cache/<hash>/_meta.yaml`.
-  - Sources/_cache/<hash>/
-  - Sources/_cache/<hash>/`
-  - Sources/_cache/`
   origin: framework
 - name: superagent-subscriptions
   stem: subscriptions
@@ -991,7 +974,7 @@ skills:
   lines: 153
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2355
+  typical_token_cost: 2423
   typical_files_read:
   - _memory/supertailor-suggestions.yaml
   - _memory/contacts.yaml
@@ -1019,7 +1002,7 @@ skills:
   lines: 133
   h2_steps: 5
   h3_subsections: 6
-  typical_token_cost: 854
+  typical_token_cost: 861
   typical_files_read:
   - _memory/tags.yaml
   origin: framework
@@ -1174,6 +1157,6 @@ skills:
   lines: 90
   h2_steps: 4
   h3_subsections: 7
-  typical_token_cost: 612
+  typical_token_cost: 625
   typical_files_read: []
   origin: framework
