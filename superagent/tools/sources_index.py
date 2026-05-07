@@ -454,13 +454,21 @@ def diff_and_merge(existing: list[dict[str, Any]], scanned: list[dict[str, Any]]
                    ) -> list[dict[str, Any]]:
     """Merge a fresh scan into the existing index rows.
 
-    Strategy:
-      - Index existing rows by id.
-      - For each scanned row: if id matches an existing row, run `merge_existing`;
-        else this is a new row (added: now).
-      - Existing rows that disappeared from the scan: mark present=false IF they
-        were `present` last time; drop entirely if they were already absent
-        (one-cycle grace period).
+    Strategy (4 passes):
+      1. id-match: scanned rows whose id matches an existing row -> `merge_existing`
+         (path unchanged; preserves curated fields).
+      2. rename-detection: for unmatched scanned + unmatched existing rows,
+         pair by basename. When EXACTLY one unmatched-existing and EXACTLY one
+         unmatched-scanned share the same basename, treat as a directory move:
+         take the new row's id+path, transplant curated fields from the old
+         row via `merge_existing`. Honors `contracts/sources.md` § 15.6:
+         "Changed (path move detected by content-hash + filename match):
+         update path in place, preserve everything else."
+      3. add-new: remaining unmatched-scanned rows -> append as new (added: now).
+      4. mark-absent: remaining unmatched-existing rows -> mark `present: false`
+         IF they were `present` last cycle; drop entirely if already absent
+         (one-cycle grace period so an accidental `rm` doesn't immediately
+         destroy hand-curated notes).
       - Skip fully-empty placeholder rows from the template (id == "").
     """
     by_id_existing = {r.get("id"): r for r in existing if r.get("id")}
@@ -469,18 +477,64 @@ def diff_and_merge(existing: list[dict[str, Any]], scanned: list[dict[str, Any]]
     merged: list[dict[str, Any]] = []
     timestamp = now_iso()
 
+    # Pass 1: id-matched rows (path unchanged).
     for sid, srow in by_id_scanned.items():
         if srow.get("kind") == "_skip_ref_with_companion":
             continue
         if sid in by_id_existing:
             merged.append(merge_existing(srow, by_id_existing[sid]))
-        else:
-            if not srow.get("added"):
-                srow["added"] = timestamp
-            merged.append(srow)
 
+    # Pass 2: rename detection by basename.
+    unmatched_existing_by_basename: dict[str, list[dict[str, Any]]] = {}
     for eid, erow in by_id_existing.items():
         if eid in by_id_scanned:
+            continue
+        if erow.get("present", True) is False:
+            continue
+        basename = Path(erow.get("path") or "").name
+        if not basename:
+            continue
+        unmatched_existing_by_basename.setdefault(basename, []).append(erow)
+
+    unmatched_scanned_by_basename: dict[str, list[dict[str, Any]]] = {}
+    for sid, srow in by_id_scanned.items():
+        if sid in by_id_existing:
+            continue
+        if srow.get("kind") == "_skip_ref_with_companion":
+            continue
+        basename = Path(srow.get("path") or "").name
+        if not basename:
+            continue
+        unmatched_scanned_by_basename.setdefault(basename, []).append(srow)
+
+    renamed_existing_ids: set[str] = set()
+    renamed_scanned_ids: set[str] = set()
+    for basename, existing_candidates in unmatched_existing_by_basename.items():
+        scanned_candidates = unmatched_scanned_by_basename.get(basename, [])
+        if len(existing_candidates) == 1 and len(scanned_candidates) == 1:
+            old_row = existing_candidates[0]
+            new_row = scanned_candidates[0]
+            merged.append(merge_existing(new_row, old_row))
+            renamed_existing_ids.add(old_row.get("id"))
+            renamed_scanned_ids.add(new_row.get("id"))
+
+    # Pass 3: remaining unmatched-scanned rows -> add as new.
+    for sid, srow in by_id_scanned.items():
+        if srow.get("kind") == "_skip_ref_with_companion":
+            continue
+        if sid in by_id_existing:
+            continue
+        if sid in renamed_scanned_ids:
+            continue
+        if not srow.get("added"):
+            srow["added"] = timestamp
+        merged.append(srow)
+
+    # Pass 4: remaining unmatched-existing rows -> mark present=false (one-cycle grace).
+    for eid, erow in by_id_existing.items():
+        if eid in by_id_scanned:
+            continue
+        if eid in renamed_existing_ids:
             continue
         was_present = erow.get("present", True)
         if was_present is False:
