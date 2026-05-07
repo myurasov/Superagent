@@ -6,6 +6,7 @@
 
 - [Superagent — Data sources catalogue](#superagent--data-sources-catalogue)
   - [Maturity legend](#maturity-legend)
+  - [Suggested utility MCPs](#suggested-utility-mcps)
   - [Email and calendar](#email-and-calendar)
     - [gmail](#gmail)
     - [icloud-mail](#icloud-mail)
@@ -54,6 +55,16 @@ Run `python3 -m superagent.tools.ingest._orchestrator setup` to probe every sour
 | **shipped** | Real ingestor implementation exists in `superagent/tools/ingest/<source>.py`. |
 | **stub** | Listed in registry; falls back to `_stubs.StubIngestor` for now. Implementing it just means adding a real `<source>.py` that subclasses `IngestorBase`. |
 | **community-best** | A reasonable third-party MCP / CLI exists; Superagent's per-source implementation can be a thin wrapper. |
+
+---
+
+## Suggested utility MCPs
+
+These MCPs do not ingest personal-life data into Superagent, but they are useful workspace companions for setup, verification, and debugging.
+
+- **Playwright MCP** - browser automation for live page checks, screenshots, accessibility snapshots, and web smoke tests.
+  - **Install**: add the `playwright` server from `.mcp.json.example` to `.cursor/mcp.json`; it runs `npx -y @playwright/mcp@latest`.
+  - **Probe**: navigate to a known public URL, such as `https://www.google.com`, and confirm the page title or accessibility snapshot returns.
 
 ---
 

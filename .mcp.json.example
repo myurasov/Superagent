@@ -12,8 +12,17 @@
     "  - plaid / monarch / ynab (finance)",
     "  - whoop / strava / oura / garmin (wearables)",
     "  - home-assistant / tesla (smart-home / vehicles)",
+    "  - playwright (browser automation / web smoke tests)",
     "",
     "Each ingestor probes its required source on first run; missing sources degrade gracefully — they never block other ingestors."
   ],
-  "mcpServers": {}
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+    }
+  }
 }
