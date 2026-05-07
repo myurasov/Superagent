@@ -44,3 +44,5 @@ Thumbs.db
 # .mcp.json.example is the redacted template that ships with the repo.
 .mcp.json
 !.mcp.json.example
+
+**/.playwright*
