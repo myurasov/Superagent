@@ -24,7 +24,7 @@
 # Users may add their own anti-patterns at workspace/_custom/rules/anti-patterns.yaml
 # (same schema). The scanner concatenates framework + user lists, in that order.
 schema_version: 1
-last_updated: "2026-05-02"
+last_updated: "2026-05-11"
 rules:
   - id: AP-1
     severity: warning
@@ -88,3 +88,10 @@ rules:
     pattern: '\b(?:load|read|open)\b[^.]*\b(?:full file|entire file|whole file)\b[^.]*\b(?:extract|find|locate|get)\s+(?:one|a single|the)\s+\w+\b'
     flags: [IGNORECASE, DOTALL]
     mitigation: "Use `Grep` (or, when available, the FTS5 search index) to extract just the matching lines."
+
+  - id: AP-10
+    severity: info
+    description: "Entity-side payment-history append (bills/subscriptions) without a co-located accounts-index.yaml.<acct>.transactions[] mirror — see contracts/payment-confirmations.md § 4 step 3a."
+    pattern: '\bappend(?:s|ed|ing)?\b[^.]*?\b(?:bills|subscriptions)\.yaml\.[^.]*?\.history\[\](?![\s\S]*?accounts-index\.yaml[\s\S]*?transactions)'
+    flags: [IGNORECASE, DOTALL]
+    mitigation: "Per contracts/payment-confirmations.md § 4 step 3a, every entity-side payment-history append must be paired with a symmetric `accounts-index.yaml.<account-id>.transactions[]` append in the same skill. If this skill already does both and the regex still fires, the lookahead failed to span the gap — annotate the section with a stronger cross-reference instead of restructuring."

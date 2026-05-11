@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-03T02:22:07-07:00'
+generated_at: '2026-05-11T15:58:51-07:00'
 skill_count: 48
 skills:
 - name: superagent-add-account
@@ -15,10 +15,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 150
+  lines: 154
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 1093
+  typical_token_cost: 1246
   typical_files_read:
   - _memory/accounts-index.yaml
   - _memory/data-sources.yaml
@@ -121,10 +121,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 122
+  lines: 124
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 1160
+  typical_token_cost: 1305
   typical_files_read:
   - _memory/sources-index.yaml
   origin: framework
@@ -216,7 +216,7 @@ skills:
   lines: 238
   h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 2888
+  typical_token_cost: 2889
   typical_files_read:
   - Sources/_cache/`
   - _memory/domains-index.yaml
@@ -262,10 +262,10 @@ skills:
   - calendar ingestors (gcal / icloud_calendar / outlook_calendar)
   cli_required: []
   cli_optional: []
-  lines: 99
+  lines: 100
   h2_steps: 3
   h3_subsections: 5
-  typical_token_cost: 1029
+  typical_token_cost: 1083
   typical_files_read:
   - _memory/appointments.yaml
   - _memory/health-records.yaml
@@ -307,12 +307,13 @@ skills:
   - any finance ingestor (plaid / monarch / ynab) — for reconciliation
   cli_required: []
   cli_optional: []
-  lines: 92
-  h2_steps: 3
+  lines: 134
+  h2_steps: 4
   h3_subsections: 5
-  typical_token_cost: 803
+  typical_token_cost: 1235
   typical_files_read:
   - _memory/bills.yaml
+  - _memory/accounts-index.yaml
   - _memory/transactions.yaml
   origin: framework
 - name: superagent-daily-update
@@ -450,11 +451,13 @@ skills:
   - finance ingestors (plaid / monarch / ynab / csv) — required for any data
   cli_required: []
   cli_optional: []
-  lines: 86
+  lines: 93
   h2_steps: 4
   h3_subsections: 6
-  typical_token_cost: 765
+  typical_token_cost: 947
   typical_files_read:
+  - _memory/accounts-index.yaml
+  - _memory/transactions.yaml
   - _memory/expense-categories.yaml
   origin: framework
 - name: superagent-follow-up
@@ -927,12 +930,13 @@ skills:
   - usage ingestors (Spotify / Strava / Apple Health → updates `last_used`)
   cli_required: []
   cli_optional: []
-  lines: 90
-  h2_steps: 3
-  h3_subsections: 5
-  typical_token_cost: 775
+  lines: 117
+  h2_steps: 4
+  h3_subsections: 6
+  typical_token_cost: 1166
   typical_files_read:
   - _memory/subscriptions.yaml
+  - _memory/accounts-index.yaml
   - Domains/Finances/status.md
   origin: framework
 - name: superagent-summarize-thread
@@ -1067,10 +1071,10 @@ skills:
   - tesla — auto-ingests mileage / charging
   cli_required: []
   cli_optional: []
-  lines: 140
+  lines: 141
   h2_steps: 6
   h3_subsections: 6
-  typical_token_cost: 1044
+  typical_token_cost: 1080
   typical_files_read:
   - Domains/Vehicles/history.md
   - Domains/Vehicles/status.md

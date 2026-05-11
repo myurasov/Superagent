@@ -34,6 +34,51 @@ accounts:
   #   plaid_item_id     — Internal id from Plaid ingestor; null if not Plaid-linked.
   #   ingest_source     — Which ingestor mirrors this account: plaid | monarch | ynab |
   #                        csv | manual.
+  #   transactions      — Per-account chronological history of inflows / outflows / fees.
+  #                        Append-only; mandated by contracts/payment-confirmations.md
+  #                        § 4 step 3a (the symmetric account-side mirror of every payment
+  #                        captured on the entity side). Each row:
+  #     id              —   "txn-YYYYMMDD-NNN" stable id. Day-scoped counter.
+  #     timestamp       —   ISO 8601 datetime (initiation time when known; date-only
+  #                          acceptable for bulk imports from statements / CSVs).
+  #     direction       —   out | in | transfer_in | transfer_out | fee. The sign
+  #                          convention: amount is always positive; direction carries
+  #                          the sign. `out` = money leaves the account; `in` = arrives;
+  #                          `transfer_*` = internal between user's own accounts;
+  #                          `fee` = institution-charged with no direct counterparty.
+  #     amount          —   Positive number.
+  #     currency        —   ISO 4217. Defaults to the account's `currency`.
+  #     counterparty    —   Free text. Who got paid / paid you / which sibling account
+  #                          did the transfer touch.
+  #     purpose         —   One-line description of what the payment was for.
+  #     channel         —   ach | wire | check | card_debit | card_credit |
+  #                          internal_transfer | cash | zelle | paypal | venmo | other.
+  #     confirmation    —   Payee's confirmation / reference number; "" when none.
+  #     confirmation_ref —  Workspace-relative path to the saved artifact (per
+  #                          contracts/payment-confirmations.md § 1-3). "" when no artifact.
+  #     status          —   pending | posted | failed | reversed. `pending` on initial
+  #                          agent-driven save; flip to `posted` via ingestor pass or
+  #                          manual confirmation. `failed` / `reversed` triage as needed.
+  #     related_project —   Project slug, or null.
+  #     related_bill    —   Bill id, or null.
+  #     related_asset   —   List of asset ids (one payment can touch several assets,
+  #                          e.g. a single property-tax ACH that pays two parcels).
+  #     related_entities —  List of operational handles per
+  #                          contracts/operational-handles.md ("<kind>:<slug>" form).
+  #                          Includes project, asset, contact, bill — the union view
+  #                          read by tools/world.py.
+  #     provenance      —   Per contracts/provenance.md.
+  #     notes           —   Free-form context.
+  #
+  #                       Idempotency dedup key: id, plus
+  #                          (timestamp ± 1 day, amount, counterparty, channel).
+  #                       Append-only: never mutate prior rows in place to "fix" amounts
+  #                          or statuses; instead append a corrective row (e.g. a
+  #                          `reversed` row of equal amount with `notes` linking the
+  #                          originating id).
+  #                       Long-running accounts: doctor skill rotates older years
+  #                          into _memory/<file>.transactions.<YYYY>.yaml partitions
+  #                          and keeps the in-row tail to the trailing 18 months.
   #   notes             — Free-form (rate, terms, special instructions).
   #   tags              — Short labels.
   #   created           — ISO 8601 date this row was added.
@@ -56,6 +101,7 @@ accounts:
     low_balance_threshold: null
     plaid_item_id: null
     ingest_source: "manual"
+    transactions: []
     notes: ""
     tags: []
     created: null

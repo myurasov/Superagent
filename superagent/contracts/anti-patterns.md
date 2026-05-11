@@ -21,6 +21,7 @@ Implements superagent/docs/_internal/perf-improvement-ideas.md § "Anti-patterns
 | AP-7 | warning | Unbounded read of long doc (AGENTS.md or contracts/*). | Use Grep + `Read --offset --limit` against documented ranges. |
 | AP-8 | warning | Manifest-bypass: "read every skill markdown". | Read `skills/_manifest.yaml` first. |
 | AP-9 | info | Load-then-extract: large file loaded, single fact extracted. | Use Grep / FTS5 first. |
+| AP-10 | info | Entity-side payment-history append without account-side `accounts-index.transactions[]` mirror. | Per `contracts/payment-confirmations.md § 4 step 3a`, append the symmetric account-side row in the same skill section. |
 
 **Adding a pattern**: append a row to `rules/anti-patterns.yaml` with the next AP-N id (never renumber existing rows), then add a row to the table above. Bump `last_updated` in the YAML.
 

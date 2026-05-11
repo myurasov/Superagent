@@ -28,6 +28,13 @@ If no finance ingestor has been enabled (no rows in `data-sources.yaml` with kin
 
 Stop here.
 
+Read order (per `contracts/local-first-read-order.md`):
+1. `_memory/accounts-index.yaml.<acct>.transactions[]` — per-account chronological history (mandated by `contracts/payment-confirmations.md § 4 step 3a`); already covers user-reported + agent-initiated payments.
+2. `_memory/transactions.yaml` — cross-account ingestor-normalized output (when populated by Plaid / Monarch / YNAB / CSV ingestors).
+3. Live ingestor pull only when both above are stale.
+
+The two sources are intentionally redundant: per-account transactions support `expenses --account <id>` cleanly; the cross-account file supports merchant + category aggregation. Ingestors keep them in sync via the dedup key in `contracts/payment-confirmations.md § 4.3`.
+
 ## 1. Branch on intent
 
 ### `expenses` (default) — current month

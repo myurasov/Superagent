@@ -109,6 +109,13 @@ Every save MUST trigger the following side-effects, in order:
    - **`Domains/<domain>/history.md`** — append a 1-line entry for material payments (taxes, property tax, major medical, large purchases). Routine recurring-bill payments can skip the domain-history entry if `bills.yaml.<bill>.history[]` already records them.
    - **`_memory/todo.yaml`** — close any todo whose closing condition is this payment; link the confirmation_ref.
 
+3a. **Mirror to the funding account** (REQUIRED for every payment with a known funding account):
+    - **`_memory/accounts-index.yaml.<account-id>.transactions[]`** — append a structured row capturing the **account side** of the payment. This is symmetric to the entity-side update in step 3 above; both are required. Without this step, the user cannot answer "what did I spend from <account> this year?" without grepping logs.
+    - Resolve the funding account by `(institution, number_last4)` matching the receipt artifact's payment-method line, OR by the user's explicit account choice in the conversation, OR by the `pay_from_account` field on `bills.yaml.<bill>` / `subscriptions.yaml.<sub>` when set.
+    - Schema for the appended row is documented in § 4.3 below.
+    - Set `status: pending` on initial save; flip to `posted` either on next finance-ingestor reconciliation pass or on explicit user confirmation. `failed` / `reversed` are surfaced to triage skills.
+    - For payments with NO funding account on file (cash, money order, peer-to-peer with no bank trace), skip this step but log the reason in the artifact's frontmatter `notes`.
+
 4. **Append to `interaction-log.yaml`** with `kind: payment_confirmation_saved`, citing:
    - `path` — saved artifact path (workspace-relative)
    - `payee`, `amount`, `currency`, `payment_date`
@@ -120,6 +127,38 @@ Every save MUST trigger the following side-effects, in order:
 6. **Provenance** — write the `provenance` block on the saved artifact's frontmatter (or sidecar `.ref.md`) per `contracts/provenance.md`. For ingestor-sourced confirmations, also include the `ingestion_log_row` reference.
 
 7. **Sensitive routing** — if the artifact contains a full account number, full card number, SSN, or medical detail beyond a generic receipt line, route per `contracts/sensitive-tier.md` (rename file with `.sensitive.<ext>` suffix and/or move under a `_memory/sensitive/`-routed path). Default visibility is `private` per `contracts/visibility.md`; mark `household` only when the user has explicitly enabled household-shared receipts.
+
+---
+
+### 4.3 Account-side transaction row (schema for step 3a)
+
+Every entry appended to `_memory/accounts-index.yaml.<account-id>.transactions[]` carries the following fields. The row is the canonical account-side record of a single inflow / outflow / fee event; it complements (does NOT replace) the artifact saved in step 1 + the entity-side history append in step 3.
+
+| Field | Type / values | Notes |
+|---|---|---|
+| `id` | `txn-YYYYMMDD-NNN` | Stable id; date is the `timestamp` calendar date; `NNN` increments per-day per-account. |
+| `timestamp` | ISO 8601 datetime | Initiation time when known; date-only acceptable for bulk imports from statements. |
+| `direction` | `out` \| `in` \| `transfer_in` \| `transfer_out` \| `fee` | `out` = money leaves the account; `in` = arrives; `transfer_*` = internal between user's own accounts; `fee` = institution-charged fee with no direct counterparty action. |
+| `amount` | positive number | Always positive; `direction` carries the sign. Avoids accidental sign flips. |
+| `currency` | ISO 4217 | Defaults to the account's `currency`. |
+| `counterparty` | string | Who got paid / paid you / which account did the transfer touch. Free text; rich enough to recognize without opening the artifact. |
+| `purpose` | string (one line) | What the payment was for. E.g. `"FY 2025-2026 property tax"`, `"April rent"`, `"2024 federal goodwill payment"`. |
+| `channel` | `ach` \| `wire` \| `check` \| `card_debit` \| `card_credit` \| `internal_transfer` \| `cash` \| `zelle` \| `paypal` \| `venmo` \| `other` | Payment rail. |
+| `confirmation` | string | Payee's confirmation / reference number; `""` when none (internal transfers, cash). |
+| `confirmation_ref` | workspace-relative path | The artifact saved in step 1. `""` when no artifact (cash, peer-to-peer with no receipt). |
+| `status` | `pending` \| `posted` \| `failed` \| `reversed` | `pending` on initial agent-driven save; `posted` after the bank statement / ingestor confirms; `failed` / `reversed` flagged to triage. |
+| `related_project` | project slug \| `null` | Operational handle without prefix. |
+| `related_bill` | bill id \| `null` | |
+| `related_asset` | list of asset ids | Multi because one payment can touch several assets (e.g. property tax on two parcels). |
+| `related_entities` | list of operational handles | Per `contracts/operational-handles.md` (`<kind>:<slug>` form). Includes project, asset, contact, bill, etc. — the union view used by `tools/world.py`. |
+| `provenance` | object | Per `contracts/provenance.md`. `source: "user" \| "agent" \| "<ingestor>"`, `source_id`, `at`, `verified_at`. |
+| `notes` | string | Free-form context. |
+
+**Idempotency**: the `id` field plus `(timestamp ± 1 day, amount, counterparty, channel)` form the dedup key. Ingestors that bulk-import from a CSV / Plaid feed MUST check this key before appending, per the local-first read in § 6.
+
+**Append-only**: do NOT mutate prior rows in-place to "fix" amounts or statuses; instead append a corrective row (e.g. a `reversed` row of equal amount with `notes` linking to the originating `id`). The `audit-trail` contract handles the row-level history if a real correction is needed.
+
+**Rotation**: when an account accumulates more than ~1000 transaction rows, the `doctor` skill rotates older years into `_memory/<file>.transactions.<YYYY>.yaml` partitions and keeps the in-row `transactions[]` tail to the trailing 18 months. `tools/account_transactions.py` (when added) reads across partitions transparently.
 
 ---
 
@@ -165,8 +204,10 @@ Default proposal: promote when the receipt's `purpose` slug matches `tax`, `home
 - **Skipping the index refresh** — saving the file and not running `sources_index refresh`. WRONG. The next local-first read will miss the new artifact.
 - **Skipping `confirmation_ref`** — adding the bill-history row without the path to the saved file. WRONG. The reconciliation skill will not be able to find the underlying artifact later.
 - **Routing sensitive content to `Sources/`** — full SSN, full account number, full card number, medical details. WRONG. Route through `contracts/sensitive-tier.md`.
+- **Entity-only capture without account-side mirror** — appending to `bills.yaml.<bill>.history[]` (or `subscriptions.yaml.<sub>.history[]`) without the symmetric `accounts-index.yaml.<acct>.transactions[]` append from step 3a. WRONG. The user can no longer answer "what did I spend from this account this year?" without a grep. Do both writes in the same turn.
+- **Entity-side amount disagreeing with account-side amount** — e.g. recording $100 in `bills.yaml.<bill>.history[]` but $98 in `accounts-index.yaml.<acct>.transactions[]` because of a service fee. WRONG. Use TWO rows on the account side: one for the bill payment ($100), one with `direction: fee` for the (-$2 or +$2) reconciling adjustment. Keep face values consistent between entity and account.
 
-The anti-pattern scanner (`tools/anti_patterns.py`) flags skills that emit text like "I noted your payment" without a corresponding file-write tool call in the same turn.
+The anti-pattern scanner (`tools/anti_patterns.py`) flags skills that emit text like "I noted your payment" without a corresponding file-write tool call in the same turn. Rule `AP-10` flags entity-side appends without an accompanying account-side mirror reference in the same skill.
 
 ---
 
@@ -186,12 +227,13 @@ The framework contract runs first; the custom overlay is appended on top per the
 
 Skills that touch payments MUST cite this contract in their frontmatter / steps:
 
-- `bills.md` mark-paid → after appending to `history[]`, follow `contracts/payment-confirmations.md`.
-- `subscriptions.md` update → same.
-- `appointments.md` post-visit → save copay/receipt per this contract.
-- `vehicle-log` service entries → save invoice per this contract.
-- `expenses` skill (when added) → all expense entries flow through this contract.
-- `ingest` (finance ingestors) → when a charge matches an open bill/sub/appt, the auto-capture pass invokes this contract.
-- `draft-email` when sending a "here is my proof of payment" reply → save the user's outgoing-payment artifact first.
+- `bills.md` mark-paid → after appending to `bills.yaml.<bill>.history[]`, follow step 3a (account-side mirror) per this contract.
+- `subscriptions.md` update / log-renewal → same.
+- `appointments.md` post-visit → save copay/receipt per this contract; if paid from a tracked account, add the account-side mirror.
+- `vehicle-log` service entries → save invoice per this contract; mirror the account side when the funding account is known.
+- `expenses` skill → all expense entries flow through this contract; ingestor-sourced rows already write the account-side mirror by virtue of being keyed on the account.
+- `ingest` (finance ingestors) → when a charge matches an open bill/sub/appt, the auto-capture pass invokes this contract; the account-side row is the ingestor's NATIVE shape, the entity-side append is the symmetric mirror.
+- `draft-email` when sending a "here is my proof of payment" reply → save the user's outgoing-payment artifact first; mirror to the funding account.
+- `add-account` → scaffolds an empty `transactions[]` list on every new account row.
 
-Cross-references: `contracts/sources.md`, `contracts/capture.md`, `contracts/local-first-read-order.md`, `contracts/provenance.md`, `contracts/operational-handles.md`, `contracts/projects.md`, `contracts/sensitive-tier.md`, `contracts/visibility.md`, `contracts/events-stream.md`, `contracts/custom-overlay.md`.
+Cross-references: `contracts/sources.md`, `contracts/capture.md`, `contracts/local-first-read-order.md`, `contracts/provenance.md`, `contracts/operational-handles.md`, `contracts/projects.md`, `contracts/sensitive-tier.md`, `contracts/visibility.md`, `contracts/events-stream.md`, `contracts/audit-trail.md`, `contracts/custom-overlay.md`. Schema: `superagent/templates/memory/accounts-index.yaml`.
