@@ -34,7 +34,7 @@ from pathlib import Path
 
 DEFAULT_DOMAINS = [
     ("Health", "Medical, dental, vision, mental health, prescriptions, vaccines, vitals, family medical history"),
-    ("Finance", "Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance, credit"),
+    ("Finances", "Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance, credit"),
     ("Home", "Mortgage / rent, utilities, HOA, maintenance schedule, contractors, security, deliveries"),
     ("Vehicles", "Every vehicle owned (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel"),
     ("Pets", "Each pet's vet, vaccinations, prescriptions, food, grooming, boarding"),

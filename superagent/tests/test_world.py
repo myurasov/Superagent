@@ -17,7 +17,7 @@ def test_rebuild_produces_nodes_for_default_domains(
     assert len(domain_nodes) == 10  # the 10 default domains
     handles = sorted(n["id"] for n in domain_nodes)
     assert "domain:health" in handles
-    assert "domain:finance" in handles
+    assert "domain:finances" in handles
 
 
 def test_related_to_returns_node_and_neighbors(

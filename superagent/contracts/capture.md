@@ -36,7 +36,7 @@ Some signals come from ingestion, not chat. Examples and where they go:
 
 | Source signal | Captured to |
 |---|---|
-| New large transaction (> 1.5× P95 of last 90 days for that category) | `Finance/history.md` + alert in next daily-update |
+| New large transaction (> 1.5× P95 of last 90 days for that category) | `Finances/history.md` + alert in next daily-update |
 | Subscription unused 60+ days (heuristic: no related app-open / charge-event signal) | `subscriptions.yaml.<row>.audit_flag: true` + monthly-review surface |
 | Document with `expires_at` < 90 days from now | `documents-index.yaml.<row>.expiring_soon: true` + monthly-review surface |
 | Vehicle mileage crosses next-service threshold (from Tesla MCP / manual log) | New row in `bills.yaml` (kind: maintenance) + `Vehicles/<vehicle>/status.md` Next Steps |

@@ -82,7 +82,7 @@ If a finance ingestor is enabled:
 
 After any cancel:
 - Append to `interaction-log.yaml` with the savings amount.
-- Update `Domains/Finance/status.md` § Recent Progress with one bullet.
+- Update `Domains/Finances/status.md` § Recent Progress with one bullet.
 - Compute new monthly + annualized total; surface in the response.
 
 ## 3. Surfacing

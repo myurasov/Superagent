@@ -85,11 +85,11 @@ Normalize Sources/finance/fidelity.ref.txt?
 | Source kind | Suggested location | Auto-routed cross-refs |
 |---|---|---|
 | Vehicle title / registration / insurance card | `Sources/vehicles/<vehicle-slug>/` (suggested; you can override) | `Domains/Vehicles/sources.md` |
-| Tax return | `Sources/taxes/<year>/` | `Domains/Finance/sources.md` (+ `Projects/tax-<year>/sources.md` if active) |
+| Tax return | `Sources/taxes/<year>/` | `Domains/Finances/sources.md` (+ `Projects/tax-<year>/sources.md` if active) |
 | Medical record / lab / imaging | `Sources/medical/<member>/` | `Domains/Health/sources.md` |
 | Appliance manual / warranty | `Sources/warranties/<asset>/` | `Domains/Home/sources.md` |
-| Will / trust / POA / advance directive | `Sources/legal/` | `Domains/Family/sources.md` AND `Domains/Finance/sources.md` |
-| Insurance policy | `Sources/insurance/<policy>/` | `Domains/Finance/sources.md` |
+| Will / trust / POA / advance directive | `Sources/legal/` | `Domains/Family/sources.md` AND `Domains/Finances/sources.md` |
+| Insurance policy | `Sources/insurance/<policy>/` | `Domains/Finances/sources.md` |
 | Mortgage / lease / deed | `Sources/property/` | `Domains/Home/sources.md` |
 | School records / diplomas | `Sources/education/<member>/` | `Domains/Family/sources.md` AND/OR `Domains/Career/sources.md` |
 | Pet vaccination / vet records | `Sources/pets/<pet>/` | `Domains/Pets/sources.md` |

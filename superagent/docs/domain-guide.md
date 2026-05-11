@@ -9,7 +9,7 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 ## Table of Contents
 
 - [Health](#health)
-- [Finance](#finance)
+- [Finances](#finances)
 - [Home](#home)
 - [Vehicles](#vehicles)
 - [Pets](#pets)
@@ -39,7 +39,7 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 
 ---
 
-## Finance
+## Finances
 
 **Scope**: bills, accounts (banks / brokerage / retirement / loans / mortgages), taxes, budget, insurance (health / life / umbrella / homeowner / renter), credit, charitable giving.
 
@@ -133,7 +133,7 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 
 ## Career
 
-**Scope**: resume, certifications, performance reviews, learning goals, networking, salary history, equity / RSUs / 401(k) vesting (cross-references Finance for the dollar tracking).
+**Scope**: resume, certifications, performance reviews, learning goals, networking, salary history, equity / RSUs / 401(k) vesting (cross-references Finances for the dollar tracking).
 
 | File | Owns |
 |---|---|
@@ -186,7 +186,7 @@ Examples worth their own domain (each runs the standard 4-file structure):
 
 - **Boat** — registration, marina, mooring, maintenance.
 - **Cabin** / **Vacation home** — separate from primary residence; same structure.
-- **Side-business** — clients, invoices, expenses (cross-references Finance).
+- **Side-business** — clients, invoices, expenses (cross-references Finances).
 - **Volunteer** / **Board work** — meetings, commitments, contacts.
 - **Music** — gear (Assets), gigs (history), bandmates / studio engineers (rolodex).
 - **Garden** — plot maps, planting calendar, suppliers, harvest log.

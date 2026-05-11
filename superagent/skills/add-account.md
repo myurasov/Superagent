@@ -120,7 +120,7 @@ On `yes`:
 
 ## 6. Update Domain
 
-If `domain` for this account is `finance` (the typical case), append an entry to `Domains/Finance/history.md`:
+If `domain` for this account is `finances` (the typical case), append an entry to `Domains/Finances/history.md`:
 
 ```markdown
 #### <YYYY-MM-DD> — Added account: <Name>

@@ -9,13 +9,13 @@ Init seeds these 10 by default. The user can delete the ones they don't need, ad
 | Domain | Scope (illustrative) |
 |---|---|
 | **Health** | medical, dental, vision, mental health, prescriptions, vaccines, vitals, family medical history |
-| **Finance** | bills, accounts (banks, brokerage, retirement), taxes, budget, insurance (health / life / umbrella), credit |
+| **Finances** | bills, accounts (banks, brokerage, retirement), taxes, budget, insurance (health / life / umbrella), credit |
 | **Home** | mortgage / rent, utilities, insurance, HOA, maintenance schedule, contractors, security, deliveries |
 | **Vehicles** | every vehicle owned (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel |
 | **Pets** | each pet's vet, vaccinations, prescriptions, food, grooming, boarding |
 | **Family** | spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events |
 | **Travel** | trips planned and past, flight / hotel / rental records, packing lists, frequent-flier numbers, passports |
-| **Career** | resume, certifications, performance reviews, learning goals, networking, salary history (if separate from Finance) |
+| **Career** | resume, certifications, performance reviews, learning goals, networking, salary history (if separate from Finances) |
 | **Hobbies** | each meaningful hobby — fitness goal, reading log, side project, garden, workshop, etc. |
 | **Self** | personal-development goals, journaling, books / podcasts / media log, life themes |
 

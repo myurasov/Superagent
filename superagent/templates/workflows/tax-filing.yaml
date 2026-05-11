@@ -20,7 +20,7 @@ parameters:
 recurring: "annual"
 default_target_date: "{year}-04-15"
 default_priority: "P1"
-related_domains: ["finance"]
+related_domains: ["finances"]
 
 goal: "Federal + state {country} returns filed for tax year {year}; refund received OR balance paid."
 
@@ -38,7 +38,7 @@ success_criteria:
   - "Return filed by April 15."
   - "Refund received OR balance paid + confirmation captured."
   - "Filed-return PDF archived under Sources/documents/taxes/{year}/."
-  - "Year-end recap appended to Domains/Finance/history.md."
+  - "Year-end recap appended to Domains/Finances/history.md."
 
 deliverables:
   - "Filed federal + state return PDFs."
@@ -82,7 +82,7 @@ seed_tasks:
   - title: "Archive filed return PDF in Sources/documents/taxes/{year}/"
     priority: "P2"
     due_offset_days: 7
-  - title: "Year-end recap in Finance history (lessons for next year)"
+  - title: "Year-end recap in Finances history (lessons for next year)"
     priority: "P3"
     due_offset_days: 14
 

@@ -194,7 +194,7 @@ If `related_asset` is set: append the workspace-relative path to `_memory/assets
 
 ### 3d. Account cross-link
 
-If `related_account` is set: append the path to `_memory/accounts-index.yaml.<account>.notes` as a single-line reference. (Per-account documents like statements typically belong to the Finance domain's `sources.md` AND get this account-level back-pointer.)
+If `related_account` is set: append the path to `_memory/accounts-index.yaml.<account>.notes` as a single-line reference. (Per-account documents like statements typically belong to the Finances domain's `sources.md` AND get this account-level back-pointer.)
 
 ## 4. Confirm
 

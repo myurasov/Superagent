@@ -25,7 +25,7 @@
 Superagent is a **personal-life operating system** built on five layers:
 
 1. **A structured-state vault** (`workspace/_memory/*.yaml`) — small, queryable indexes for things that need fast retrieval: bills, subscriptions, appointments, important dates, contacts, accounts, assets, documents, health records, projects, sources.
-2. **A narrative layer — Domains** (`workspace/Domains/<domain>/*.md`) — markdown for *ongoing* areas of responsibility (Health, Finance, Home, …). The story of each domain over time, the people in it, the routines.
+2. **A narrative layer — Domains** (`workspace/Domains/<domain>/*.md`) — markdown for *ongoing* areas of responsibility (Health, Finances, Home, …). The story of each domain over time, the people in it, the routines.
 3. **A narrative layer — Projects** (`workspace/Projects/<slug>/*.md`) — markdown for *time-bounded* efforts (file taxes, plan trip, replace dishwasher, renovate kitchen). Same 4-file shape as Domains; they cross-link via `related_domains: [..]`.
 4. **A reference library — Sources** (`workspace/Sources/`) — immutable documents the user owns (`documents/`) plus pointers to external data (`references/<*>.ref.md`), with an evictable cache (`_cache/`) so the agent reads local first.
 5. **An agent skin** (`superagent/skills/*.md` + `superagent/tools/`) — invocable behaviours that read all four layers, write to layers 1-3, and speak the user's language.
@@ -37,7 +37,7 @@ The split between Domains and Projects is the PARA distinction made explicit:
 - **Domain (PARA "Area")** — ongoing responsibility with a *standard to maintain*. Health is a domain because you're never "done" being healthy. Home is a domain because you're never "done" maintaining a house.
 - **Project (PARA "Project")** — time-bounded effort with a *clear goal and end*. "File 2026 taxes" is a project — when the return is filed, the project is done. "Replace the dishwasher" is a project — when it's installed and running, done.
 
-A project can touch multiple domains (a kitchen renovation touches Home + Finance). The cross-link is `related_domains: [..]` on the project; the domain's status surfaces a one-bullet summary back.
+A project can touch multiple domains (a kitchen renovation touches Home + Finances). The cross-link is `related_domains: [..]` on the project; the domain's status surfaces a one-bullet summary back.
 
 ## Two halves of the repo
 
@@ -214,7 +214,7 @@ The safeguard runs **twice** — once in the Supertailor (at suggestion-write ti
 
 Every Domain folder has the same four files. The convention exists for two reasons:
 
-1. **The same skills can read every domain identically.** A skill that needs "show me the recent history of <X>" can read `Domains/<X>/history.md` without knowing whether X is Health, Finance, or a custom domain the user added five minutes ago.
+1. **The same skills can read every domain identically.** A skill that needs "show me the recent history of <X>" can read `Domains/<X>/history.md` without knowing whether X is Health, Finances, or a custom domain the user added five minutes ago.
 2. **Hand-edits and machine-edits coexist.** Each file has named sub-sections; skills update specific sections only, and respect (diff and merge, not blindly clobber) hand-edits in any section.
 
 The four files:

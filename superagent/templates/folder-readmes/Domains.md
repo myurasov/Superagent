@@ -5,7 +5,7 @@ Every folder under `Domains/` is one slice of your life. The 10 default domains 
 | Domain | What it covers |
 |---|---|
 | **Health** | Medical, dental, vision, mental health, prescriptions, vaccines, vitals, family medical history. |
-| **Finance** | Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance (health / life / umbrella), credit. |
+| **Finances** | Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance (health / life / umbrella), credit. |
 | **Home** | Mortgage / rent, utilities, HOA, maintenance schedule, contractors, security, deliveries. |
 | **Vehicles** | Every vehicle you own (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel. |
 | **Pets** | Each pet's vet, vaccinations, prescriptions, food, grooming, boarding. |

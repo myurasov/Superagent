@@ -12,8 +12,8 @@
 #   - "Renovate the kitchen"
 #   - "Move to new house"
 #
-# Projects link UP to one or more Domains (e.g. tax project → Finance,
-# kitchen renovation → Home + Finance). Tasks in `todo.yaml` link DOWN to
+# Projects link UP to one or more Domains (e.g. tax project → Finances,
+# kitchen renovation → Home + Finances). Tasks in `todo.yaml` link DOWN to
 # a Project via `related_project: <id>`.
 #
 # Lifecycle (state machine):
@@ -46,8 +46,8 @@ projects:
   #   workflow        — Optional id of a workflow template that this project
   #                      was instantiated from (per item #2).
   #                      Example: "tax-filing", "trip-planning".
-  #   related_domains — List of domain ids (e.g. ["finance"]) — Projects often
-  #                      cut across domains (a kitchen reno touches Home + Finance).
+  #   related_domains — List of domain ids (e.g. ["finances"]) — Projects often
+  #                      cut across domains (a kitchen reno touches Home + Finances).
   #   stakeholders    — List of contact ids from contacts.yaml that have a stake.
   #   start_date      — ISO 8601 date when work began (or planned to begin).
   #   target_date     — ISO 8601 date — the deadline / when "done" is expected.

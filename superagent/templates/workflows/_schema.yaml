@@ -38,7 +38,7 @@ workflow_schema_example:
   recurring: "annual"           # none | annual | quarterly | monthly | every_n_years
   default_target_date: "{year}-04-15"   # supports {param} substitution
   default_priority: "P1"
-  related_domains: ["finance"]
+  related_domains: ["finances"]
   goal: "Federal + state {country} returns filed for {year}; refund received OR balance paid."
   scope_in:
     - "Gather W-2s, 1099s, K-1s, charitable receipts."
@@ -52,7 +52,7 @@ workflow_schema_example:
     - "Return filed by deadline."
     - "Refund received OR balance paid."
     - "Filed-return PDF archived under Sources/documents/taxes/{year}/."
-    - "Year-end recap captured in Domains/Finance/history.md."
+    - "Year-end recap captured in Domains/Finances/history.md."
   deliverables:
     - "Filed return (PDF)."
     - "Receipts archive (PDF or scans)."
@@ -76,7 +76,7 @@ workflow_schema_example:
     - title: "Archive filed return PDF in Sources/documents/taxes/{year}/"
       priority: "P2"
       due_offset_days: 7
-    - title: "Year-end recap entry in Finance history"
+    - title: "Year-end recap entry in Finances history"
       priority: "P3"
       due_offset_days: 14
   source_subfolders:

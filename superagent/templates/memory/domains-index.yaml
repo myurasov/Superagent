@@ -1,5 +1,5 @@
 # [Do not change manually — managed by Superagent]
-# Superagent memory: index of life domains (Health, Finance, Home, Vehicles,
+# Superagent memory: index of life domains (Health, Finances, Home, Vehicles,
 # Pets, Family, Travel, Career, Hobbies, Self, plus any custom).
 # init() seeds the 10 default domains; user adds more via add-domain skill.
 
@@ -46,14 +46,14 @@ domains:
     last_updated: null
     tags: ["default"]
     notes: ""
-  - id: "finance"
-    name: "Finance"
+  - id: "finances"
+    name: "Finances"
     scope: "Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance, credit"
     priority: "P1"
     status: "active"
-    path: "workspace/Domains/Finance"
+    path: "workspace/Domains/Finances"
     parent: null
-    handle: "domain:finance"
+    handle: "domain:finances"
     visibility: "private"
     provenance: { source: "init", at: null }
     created: null

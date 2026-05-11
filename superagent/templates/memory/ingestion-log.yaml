@@ -32,7 +32,7 @@ runs:
   #     contacts: 0
   #     domain_history:
   #       Health: 0
-  #       Finance: 0
+  #       Finances: 0
   #       …
   #   duration_ms       — Total run duration.
   #   notes             — Free text.

@@ -6,24 +6,24 @@ A **Project** is anything in your life with:
 - A **target date** or end condition
 - A finite set of **tasks** that, when completed, achieve the goal
 
-Distinct from **Domains** (`Domains/`), which are *ongoing* areas of responsibility (Health, Finance, Home — these never "complete"). Projects start, run, finish.
+Distinct from **Domains** (`Domains/`), which are *ongoing* areas of responsibility (Health, Finances, Home — these never "complete"). Projects start, run, finish.
 
 ## Examples
 
 | Project | Domain it touches | Recurring? | Typical duration |
 |---|---|---|---|
-| File 2026 taxes | Finance | annual | Jan-April |
+| File 2026 taxes | Finances | annual | Jan-April |
 | Plan summer Italy trip | Travel + Family | none | 2-3 months ahead |
 | Find a new dentist | Health | none | 2-4 weeks |
 | Replace the dishwasher | Home | none | 1-2 weeks |
-| Renovate the kitchen | Home + Finance | none | 3-6 months |
+| Renovate the kitchen | Home + Finances | none | 3-6 months |
 | Job search Q3 2026 | Career | none | 1-3 months |
 | Annual health tune-up | Health | annual | physical + dental + eye exam scheduled in same window |
-| Move to new house | Home + Finance + Family | none | 3-6 months |
+| Move to new house | Home + Finances + Family | none | 3-6 months |
 | Get marathon-ready by October | Hobbies + Health | annual | 4-6 months |
 | Spring deep-clean | Home | annual | 1 weekend, planned for weeks |
-| Annual giving (charitable) | Finance | annual | December |
-| Q4 RSU vesting + sell decision | Career + Finance | quarterly | 1 week per quarter |
+| Annual giving (charitable) | Finances | annual | December |
+| Q4 RSU vesting + sell decision | Career + Finances | quarterly | 1 week per quarter |
 
 ## Layout
 
@@ -79,7 +79,7 @@ The conventions Superagent enforces:
 - **Burn-down rendering** — when a project has ≥ 5 success criteria, `status.md` shows a simple "checked / total — N days to target" line.
 - **Linked tasks** — every task in `_memory/todo.yaml` can carry `related_project: <slug>`. Tasks for a project are filtered into the project's `status.md` `## Open` block automatically.
 - **History is sacred** — append-only. Decisions, status flips, milestone completions all log there.
-- **Cross-domain awareness** — `related_domains: [..]` makes a project visible to its parent domains' status. The kitchen-reno project shows up in both `Domains/Home/status.md` § Next Steps AND `Domains/Finance/status.md` § Next Steps.
+- **Cross-domain awareness** — `related_domains: [..]` makes a project visible to its parent domains' status. The kitchen-reno project shows up in both `Domains/Home/status.md` § Next Steps AND `Domains/Finances/status.md` § Next Steps.
 
 ## When NOT to make something a Project
 

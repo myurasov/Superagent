@@ -25,7 +25,7 @@ EXPECTED_MEMORY_FILES = [
 ]
 
 EXPECTED_DEFAULT_DOMAINS = [
-    "Health", "Finance", "Home", "Vehicles", "Pets",
+    "Health", "Finances", "Home", "Vehicles", "Pets",
     "Family", "Travel", "Career", "Hobbies", "Self",
 ]
 

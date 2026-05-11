@@ -188,7 +188,7 @@ Three first-class folder kinds in `workspace/`:
 
 ### Domains/
 
-**Domain** = ongoing area of responsibility (Health, Finance, Home, …). Never "completes". 4-file structure:
+**Domain** = ongoing area of responsibility (Health, Finances, Home, …). Never "completes". 4-file structure:
 
 ```
 Domains/<domain>/
@@ -200,7 +200,7 @@ Domains/<domain>/
   Resources/    # optional, lazily created — drafts, working files, agent-generated artifacts
 ```
 
-The 10 default domains seeded by `init` are: **Health**, **Finance**, **Home**, **Vehicles**, **Pets**, **Family**, **Travel**, **Career**, **Hobbies**, **Self**. Users add their own via `add-domain`.
+The 10 default domains seeded by `init` are: **Health**, **Finances**, **Home**, **Vehicles**, **Pets**, **Family**, **Travel**, **Career**, **Hobbies**, **Self**. Users add their own via `add-domain`.
 
 ### Projects/
 

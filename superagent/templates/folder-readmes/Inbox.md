@@ -15,13 +15,13 @@ Source documents NEVER end up under `Domains/<X>/` directly — they go to `Sour
 
 | File type | Auto-routed to | Pointer in |
 |---|---|---|
-| Insurance card / policy doc | `Sources/documents/insurance/` | `Domains/Finance/sources.md` |
+| Insurance card / policy doc | `Sources/documents/insurance/` | `Domains/Finances/sources.md` |
 | Vehicle registration / title / receipt | `Sources/documents/vehicles/<vehicle-slug>/` | `Domains/Vehicles/sources.md` |
 | Medical record / lab result / vaccine card | `Sources/documents/medical/<member-slug>/` | `Domains/Health/sources.md` |
 | Appliance manual / warranty / receipt | `Sources/documents/warranties/<appliance-slug>/` | `Domains/Home/sources.md` |
 | Pet vaccination / vet record | `Sources/documents/pets/<pet-slug>/` | `Domains/Pets/sources.md` |
 | Travel itinerary / boarding pass / passport scan | `Sources/documents/travel/<trip-slug>/` | `Domains/Travel/sources.md` (or active trip `Projects/<trip-slug>/sources.md`) |
-| Tax return / W-2 / 1099 | `Sources/documents/taxes/<year>/` | `Domains/Finance/sources.md` AND `Projects/tax-<year>/sources.md` |
+| Tax return / W-2 / 1099 | `Sources/documents/taxes/<year>/` | `Domains/Finances/sources.md` AND `Projects/tax-<year>/sources.md` |
 | Reference material (article you want to keep) | `Sources/documents/reference/` (or your notes app of choice) | `Domains/Self/sources.md` |
 | Working draft / scratch photo / quote spreadsheet | `Domains/<X>/Resources/` (or `Projects/<X>/Resources/`) | n/a (not a Source) |
 | Thing to send to someone | `Outbox/` after the agent drafts it | n/a |

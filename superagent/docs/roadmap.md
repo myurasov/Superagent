@@ -148,7 +148,7 @@ The "implement one ingestor" tier — the bulk of where Superagent grows.
 | L-07 | **Health-records EHR pull** — Apple HealthKit Clinical Records / Epic MyChart / Kaiser portal scraping (where APIs exist). | Massive jump in `health-records.yaml` quality without manual entry. | Per-EHR ingestors; opt-in; tested against sandbox / synthetic data. |
 | L-08 | **Estate-planning sync** — the `handoff` packet's vault references can be auto-validated against 1Password / Bitwarden / Apple Keychain (does the referenced item still exist?). | Detects stale vault refs that would surprise an executor. | Pre-flight check before each `handoff` run; surfaces broken refs as P1 tasks. |
 | L-09 | **Voice output** — `daily-update` and `whatsup` can speak the briefing via macOS `say` or a local TTS, optimized for "while making coffee". | "Read me my morning" hands-free. | New `--speak` flag on cadence skills; uses `say` by default; configurable voice. |
-| L-10 | **Per-domain dashboards** — for power users, render a domain (e.g. Finance) as an interactive HTML dashboard with charts. | Visual access for people who think in pictures. | `tools/render_dashboard.py <domain>` → static HTML in `Outbox/dashboards/`. |
+| L-10 | **Per-domain dashboards** — for power users, render a domain (e.g. Finances) as an interactive HTML dashboard with charts. | Visual access for people who think in pictures. | `tools/render_dashboard.py <domain>` → static HTML in `Outbox/dashboards/`. |
 
 ## LOE-XL — multi-week / quarter projects
 

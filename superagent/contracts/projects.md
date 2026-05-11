@@ -110,7 +110,7 @@ Disable per-project via `recurring: none` after completion if the user wants to 
 - The Domain's `status.md` § Next Steps surfaces a one-bullet summary per active linked project.
 - The Domain's `history.md` carries an H4 entry on every project status flip (planning → active, active → completed) related to that Domain.
 
-This is how a kitchen-reno Project shows up in BOTH `Domains/Home/status.md` AND `Domains/Finance/status.md` without duplicating the project itself.
+This is how a kitchen-reno Project shows up in BOTH `Domains/Home/status.md` AND `Domains/Finances/status.md` without duplicating the project itself.
 
 ### 16.9 Archival
 

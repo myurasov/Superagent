@@ -22,7 +22,7 @@ skills:
   typical_files_read:
   - _memory/accounts-index.yaml
   - _memory/data-sources.yaml
-  - Domains/Finance/history.md
+  - Domains/Finances/history.md
   origin: framework
 - name: superagent-add-appointment
   stem: add-appointment
@@ -933,7 +933,7 @@ skills:
   typical_token_cost: 775
   typical_files_read:
   - _memory/subscriptions.yaml
-  - Domains/Finance/status.md
+  - Domains/Finances/status.md
   origin: framework
 - name: superagent-summarize-thread
   stem: summarize-thread
