@@ -55,6 +55,7 @@ User said "I just got back from / had <appointment>":
    - **Outcome** — free text. What happened, what was decided, what they said.
    - **Medications changed** (yes / no, only for medical / vet appointments).
    - **Follow-ups** — list of `{description, due_date}` items.
+   - **Copay / payment** — if the appointment involved an out-of-pocket payment, capture the receipt per `contracts/payment-confirmations.md` and record the saved path in `appointments.yaml.<appt>.confirmation_ref`.
 3. Set `status: completed`, `completed_at: now`, `outcome: <text>`, `followup: <list>`.
 4. For each follow-up, create a P2 task in `todo.yaml` with `related_appointment: <id>`.
 5. Append to the relevant `Domains/<Domain>/history.md`:

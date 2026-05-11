@@ -179,6 +179,7 @@ Superagent's value scales with the breadth of authorized data sources. The contr
 
 - **Log significant agent actions** (skill runs, structural edits to memory, autonomous suggestions that change files, ingestion runs) by appending to **`workspace/_memory/interaction-log.yaml`** per its schema (append-only; do not rewrite history).
 - **Ingestion runs** *also* append a row to **`workspace/_memory/ingestion-log.yaml`** with per-source counts, durations, and any errors. The interaction-log entry can simply reference the ingestion-log row.
+- **Payment confirmations** (any time money changes hands on the user's behalf, the user reports a completed payment, or the user shares a receipt) MUST be captured as files per `contracts/payment-confirmations.md` — long-lived / auditable payments go to `Sources/<Domain>/`; project-scoped purchases go to `Projects/<project>/Resources/`. Cross-linked from `bills.yaml` / `subscriptions.yaml` / `appointments.yaml` / project history. Capture by *what* the payment is, not by dollar amount.
 
 ---
 

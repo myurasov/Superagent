@@ -102,6 +102,8 @@ On `yes`: move the file via `add-source --to-domain <inferred>` (which routes it
 
 This skill is being progressively superseded by `add-source` — the canonical capture skill for any document. `add-document` survives for the structured-metadata fields specific to vital records (passport / license / etc.) that need expiration tracking; the file-placement side delegates to `add-source`.
 
+**Payment receipts**: when `kind: receipt` and the receipt represents a payment (vs. a purchase warranty), the canonical capture path is `contracts/payment-confirmations.md`, NOT this skill. That contract decides destination (`Sources/<Domain>/` vs `Projects/<project>/Resources/`), cross-links to `bills.yaml` / `subscriptions.yaml` / `appointments.yaml`, and only invokes `add-document` for long-lived receipts that warrant a `documents-index.yaml` row (taxes, large medical, property, vehicle major service). Routine bill-payment confirmations skip the `documents-index` row.
+
 ## 5. Confirm
 
 ```

@@ -33,6 +33,9 @@ bills:
   #     - date: null    —   ISO 8601 date paid
   #       amount: null  —   Numeric paid (may differ from canonical amount)
   #       confirmation: ""  Optional confirmation number or ingestor txn id
+  #       confirmation_ref: ""  Workspace-relative path to the saved confirmation
+  #                              artifact (PDF / image / md / email) — see
+  #                              `contracts/payment-confirmations.md`.
   #       source: ""    —   "manual" | ingestor name
   #       notes: ""     —   Optional notes (late, refunded, etc.)
   #   status            — active | paused | cancelled.

@@ -166,3 +166,7 @@ contracts:
     slug: anti-patterns
     title: "Skill-anti-pattern Catalogue"
     path: contracts/anti-patterns.md
+  - id: C-40
+    slug: payment-confirmations
+    title: "Payment Confirmation Capture Contract"
+    path: contracts/payment-confirmations.md

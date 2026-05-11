@@ -60,6 +60,15 @@ User said "I just used <sub>" OR an ingestor (Spotify / Strava / etc.) reports u
 2. Set `last_used: now`.
 3. (Silent for ingestor calls; one-line confirmation for manual.)
 
+### Log-renewal
+
+User said "<sub> just renewed" OR a finance ingestor detects the renewal charge:
+
+1. Resolve sub.
+2. **Capture the renewal receipt per `contracts/payment-confirmations.md`** when the artifact is available (in-app receipt, email, statement line). Record the saved path under `subscriptions.yaml.<sub>.history[].confirmation_ref`.
+3. Append a `{date, amount, confirmation, confirmation_ref, source}` row to `subscriptions.yaml.<sub>.history[]`.
+4. Update `last_renewed: <date>` and recompute `next_renewal`.
+
 ### Cancel
 
 User asked to cancel:

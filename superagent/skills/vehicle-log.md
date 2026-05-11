@@ -65,6 +65,7 @@ Ask:
 - **Cost**.
 - **Performed by** (contact id from `contacts.yaml` if a known mechanic, else free text — offer `add-contact`).
 - **Notes** (issues found, recommended next-time).
+- **Invoice / receipt** — capture the artifact per `contracts/payment-confirmations.md` and link the saved path from the history entry below.
 
 Update:
 - `assets-index.yaml.<vehicle>.maintenance` — for the matching maintenance kind, set `last_done: <date>`, recompute `next_due`.

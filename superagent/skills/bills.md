@@ -43,17 +43,19 @@ User asked "mark <bill> paid", "I just paid <bill>":
 
 1. Resolve bill by id or fuzzy match on name. Confirm if multiple match.
 2. Ask for / infer payment date (default: today), amount paid (default: `amount`), confirmation number, source ("manual" or ingestor name).
-3. Append to `bills.yaml.<bill>.history[]`:
+3. **Capture the confirmation artifact per `contracts/payment-confirmations.md`** — save the receipt / PDF / email / screenshot to the right `Sources/<Domain>/` (or `Projects/<project>/Resources/`) folder before writing the history row, so the next step can record `confirmation_ref`.
+4. Append to `bills.yaml.<bill>.history[]`:
 
    ```yaml
    - date: <payment-date>
      amount: <amount paid>
      confirmation: "<conf>"
+     confirmation_ref: "<workspace-relative-path-to-saved-artifact>"
      source: "<source>"
      notes: ""
    ```
-4. Recompute `next_due` from cadence + due_day relative to the payment date.
-5. Update `bills.yaml.<bill>.last_updated`.
+5. Recompute `next_due` from cadence + due_day relative to the payment date.
+6. Update `bills.yaml.<bill>.last_updated`.
 
 ### Reconcile (`bills reconcile`)
 
