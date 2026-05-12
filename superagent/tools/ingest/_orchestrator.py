@@ -2,9 +2,9 @@
 
 Used by the `ingest` skill. CLI:
 
-  python3 -m superagent.tools.ingest._orchestrator status
-  python3 -m superagent.tools.ingest._orchestrator setup
-  python3 -m superagent.tools.ingest._orchestrator run [--source S] [--all] [--backfill] [--dry-run]
+  uv run python -m superagent.tools.ingest._orchestrator status
+  uv run python -m superagent.tools.ingest._orchestrator setup
+  uv run python -m superagent.tools.ingest._orchestrator run [--source S] [--all] [--backfill] [--dry-run]
 
 Lifecycle:
   1. Load `_memory/data-sources.yaml`.

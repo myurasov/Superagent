@@ -46,7 +46,7 @@ If the user's phrasing maps clearly to one of the five canned scenarios, pick it
 ## 3. Execute
 
 ```
-python3 -m superagent.tools.scenarios <scenario> <args> --out <name>.md
+uv run python -m superagent.tools.scenarios <scenario> <args> --out <name>.md
 ```
 
 Pipe the result back into chat.

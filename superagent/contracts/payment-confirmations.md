@@ -95,7 +95,7 @@ If a confirmation could plausibly live in either place, **prefer `Sources/`**. T
 Every save MUST trigger the following side-effects, in order:
 
 1. **Refresh the Sources index** when saving into `Sources/`:
-   `python3 -m superagent.tools.sources_index refresh` (mtime-lazy — near-no-op when nothing changed).
+   `uv run python -m superagent.tools.sources_index refresh` (mtime-lazy — near-no-op when nothing changed).
 
 2. **Register as a document (optional but recommended)** for confirmations that matter long-term (taxes, large medical, property, vehicles): file a `documents-index.yaml` row via the `add-document` skill with `kind: receipt` (or `kind: tax_return` / `property_tax` when applicable). This makes the artifact queryable by domain and surfaces it in `monthly-review` and `handoff`.
 

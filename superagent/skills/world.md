@@ -28,7 +28,7 @@ Implements superagent/docs/_internal/ideas-better-structure.md item #3 + superag
 User said "what's connected to X":
 
 1. Resolve `X` to a canonical handle (use `tools/handles.py parse` semantics — accepts canonical `<kind>:<slug>` and legacy bare ids).
-2. Run `python3 -m superagent.tools.world related <handle> --depth 1` (or 2 if the user said "show me everything" rather than "directly").
+2. Run `uv run python -m superagent.tools.world related <handle> --depth 1` (or 2 if the user said "show me everything" rather than "directly").
 3. Group neighbors by `kind`; render compact list.
 
 Example output:
@@ -54,7 +54,7 @@ Example output:
 `world stats` — node + edge counts by kind. Useful for sanity-checking after schema changes.
 
 ```
-python3 -m superagent.tools.world stats
+uv run python -m superagent.tools.world stats
 ```
 
 ### Rebuild
@@ -62,7 +62,7 @@ python3 -m superagent.tools.world stats
 User said "rebuild the graph" / after a major data import:
 
 ```
-python3 -m superagent.tools.world rebuild
+uv run python -m superagent.tools.world rebuild
 ```
 
 This walks every entity-shape file and reconstructs nodes + edges from scratch. The graph is *derived* state — safe to delete and rebuild.

@@ -25,13 +25,13 @@ Implements superagent/docs/_internal/ideas-better-structure.md item #5. Classifi
 
 ## 1. Survey
 
-Run `python3 -m superagent.tools.inbox_triage list` — get the count and modified-at of every file currently in `Inbox/`. Also run `python3 -m superagent.tools.inbox_triage stale --days <config.preferences.inbox_triage.stale_days>` (default 14) to surface anything sitting too long.
+Run `uv run python -m superagent.tools.inbox_triage list` — get the count and modified-at of every file currently in `Inbox/`. Also run `uv run python -m superagent.tools.inbox_triage stale --days <config.preferences.inbox_triage.stale_days>` (default 14) to surface anything sitting too long.
 
 If the inbox is empty, end here with: "Inbox is empty. Nothing to triage."
 
 ## 2. Classify
 
-Run `python3 -m superagent.tools.inbox_triage classify --json` — get per-file `{filename, size, extension, kind_hint, category_suggested, confidence, suggested_path}` rows.
+Run `uv run python -m superagent.tools.inbox_triage classify --json` — get per-file `{filename, size, extension, kind_hint, category_suggested, confidence, suggested_path}` rows.
 
 ## 3. Walk + ask
 
@@ -63,7 +63,7 @@ Per choice:
 After each decision, record it:
 
 ```
-python3 -m superagent.tools.inbox_triage record --file <name> --action <filed|discarded|left|deferred> --destination <path> --note "<optional>"
+uv run python -m superagent.tools.inbox_triage record --file <name> --action <filed|discarded|left|deferred> --destination <path> --note "<optional>"
 ```
 
 ## 4. Pattern learning

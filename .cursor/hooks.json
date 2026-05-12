@@ -3,7 +3,7 @@
   "hooks": {
     "UserPromptSubmit": [
       {
-        "command": "python3 superagent/tools/log_user_query.py"
+        "command": "uv run python superagent/tools/log_user_query.py"
       }
     ]
   }

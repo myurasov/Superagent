@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Generate `superagent/skills/_manifest.yaml` — the skill-discovery manifest.
 
 Implements superagent/docs/_internal/perf-improvement-ideas.md QW-1.

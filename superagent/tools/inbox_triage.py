@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Inbox triage helper.
 
 Implements superagent/docs/_internal/ideas-better-structure.md item #5.

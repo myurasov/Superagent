@@ -200,7 +200,7 @@ class AppleRemindersIngestor(IngestorBase):
 
 
 def main() -> int:
-    """CLI entry point for `python3 -m superagent.tools.ingest.apple_reminders`."""
+    """CLI entry point for `uv run python -m superagent.tools.ingest.apple_reminders`."""
     import argparse
 
     parser = argparse.ArgumentParser(prog="ingest-apple-reminders")

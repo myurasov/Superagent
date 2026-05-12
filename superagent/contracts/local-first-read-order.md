@@ -6,7 +6,7 @@ Implements superagent/docs/_internal/perf-improvement-ideas.md QW-7. Codifies th
 
 **Every skill that needs data MUST consult local first**:
 
-1. **Local index** (`_memory/<index>.yaml`). For the Sources index specifically, always call `python3 -m superagent.tools.sources_index refresh` first — the index is derived from the filesystem and the call is mtime-lazy when nothing changed.
+1. **Local index** (`_memory/<index>.yaml`). For the Sources index specifically, always call `uv run python -m superagent.tools.sources_index refresh` first — the index is derived from the filesystem and the call is mtime-lazy when nothing changed.
 2. **Local Sources cache** (`<cache_path>/<hash>/`, default `Sources/_cache/`) — `_summary.md` first, then `_toc.yaml`, then only relevant chunks. If the matching ref is not yet in canonical form, run `tools/sources_normalize.py apply --mode ask <path>` (interactive) before fetching.
 3. **Domain / Project history.md** for narrative recall.
 4. **Events stream** (`tools/log_window.py read`) for cross-entity timelines.

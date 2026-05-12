@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """World-model entity graph — query and rebuild.
 
 Implements superagent/docs/_internal/ideas-better-structure.md item #3 + superagent/docs/_internal/perf-improvement-ideas.md BB-4.
@@ -11,11 +11,11 @@ This module is the canonical writer / reader. Skills should call:
     from superagent.tools.world import rebuild, related_to, ensure_node, ensure_edge
 
 CLI:
-    python3 -m superagent.tools.world rebuild           # full rebuild from entity files
-    python3 -m superagent.tools.world related <handle>  # one-hop neighbors
-    python3 -m superagent.tools.world expand <handle> --depth 2
-    python3 -m superagent.tools.world stats             # node/edge counts by kind
-    python3 -m superagent.tools.world validate          # check graph vs entities
+    uv run python -m superagent.tools.world rebuild           # full rebuild from entity files
+    uv run python -m superagent.tools.world related <handle>  # one-hop neighbors
+    uv run python -m superagent.tools.world expand <handle> --depth 2
+    uv run python -m superagent.tools.world stats             # node/edge counts by kind
+    uv run python -m superagent.tools.world validate          # check graph vs entities
 """
 from __future__ import annotations
 

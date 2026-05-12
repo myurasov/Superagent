@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Idempotent workspace scaffolder for Superagent.
 
 Creates `workspace/` (or the path configured via
@@ -15,7 +15,7 @@ repeatedly — useful after pulling framework updates that ship new
 template files. Existing files are kept as-is.
 
 Usage:
-  python3 superagent/tools/workspace_init.py [--workspace PATH]
+  uv run python superagent/tools/workspace_init.py [--workspace PATH]
                                                 [--framework PATH]
                                                 [--dry-run]
 

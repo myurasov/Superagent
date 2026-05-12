@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Maintain `<file>.summary.yaml` siblings for unbounded YAML logs.
 
 Implements superagent/docs/_internal/perf-improvement-ideas.md QW-4.

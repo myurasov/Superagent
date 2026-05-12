@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Sources index manager for Superagent.
 
 Implements the derived-index contract documented in `contracts/sources.md` § 15.6.
@@ -18,12 +18,12 @@ Key invariants:
     notes / cross-references.
 
 CLI:
-  python3 -m superagent.tools.sources_index refresh [--force]
-  python3 -m superagent.tools.sources_index list   [--kind document|reference] [--category X]
-  python3 -m superagent.tools.sources_index get    <id>
-  python3 -m superagent.tools.sources_index by-path <path>
-  python3 -m superagent.tools.sources_index touch  <id>     # mark last_accessed=now, read_count++
-  python3 -m superagent.tools.sources_index remove <id>     # drop a row (does NOT delete the file)
+  uv run python -m superagent.tools.sources_index refresh [--force]
+  uv run python -m superagent.tools.sources_index list   [--kind document|reference] [--category X]
+  uv run python -m superagent.tools.sources_index get    <id>
+  uv run python -m superagent.tools.sources_index by-path <path>
+  uv run python -m superagent.tools.sources_index touch  <id>     # mark last_accessed=now, read_count++
+  uv run python -m superagent.tools.sources_index remove <id>     # drop a row (does NOT delete the file)
 """
 from __future__ import annotations
 

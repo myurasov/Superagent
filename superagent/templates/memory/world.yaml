@@ -6,7 +6,7 @@
 # subscriptions.yaml, appointments.yaml, important-dates.yaml,
 # documents-index.yaml, domains-index.yaml, projects-index.yaml,
 # sources-index.yaml, health-records.yaml) by running
-# `python3 -m superagent.tools.world rebuild`.
+# `uv run python -m superagent.tools.world rebuild`.
 #
 # Every entity-mutating skill SHOULD update the graph in the same
 # transaction (per `contracts/world-graph.md`).

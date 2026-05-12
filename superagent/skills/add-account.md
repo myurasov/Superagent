@@ -119,8 +119,8 @@ If `_memory/data-sources.yaml` has Plaid or Monarch enabled:
 > "Want to link this account to **Plaid / Monarch** so transactions get auto-ingested? (yes / later / never)"
 
 On `yes`:
-- For Plaid: invoke `python3 superagent/tools/ingest/plaid.py --link-account <id>` (which walks the user through the link flow and sets `plaid_item_id`).
-- For Monarch: invoke `python3 superagent/tools/ingest/monarch.py --link-account <id>`.
+- For Plaid: invoke `uv run python superagent/tools/ingest/plaid.py --link-account <id>` (which walks the user through the link flow and sets `plaid_item_id`).
+- For Monarch: invoke `uv run python superagent/tools/ingest/monarch.py --link-account <id>`.
 
 ## 6. Update Domain
 

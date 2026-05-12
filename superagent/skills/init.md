@@ -107,7 +107,7 @@ Capture answers — they drive (a) seeded `_memory/insights.yaml` rows, (b) whic
 
 ## 3. Scaffold the workspace
 
-Run `python3 superagent/tools/workspace_init.py`. The script:
+Run `uv run python superagent/tools/workspace_init.py`. The script:
 
 1. Creates `workspace/` if missing.
 2. Creates `workspace/_memory/` and copies every YAML template from `superagent/templates/memory/` into it (only if the destination file doesn't exist; never overwrite user data).
@@ -177,7 +177,7 @@ If the user picks **yes**:
 
 For each source enabled in step 5:
 
-1. Invoke `python3 superagent/tools/ingest/<source>.py --first-run` with the conservative `recency_window_days` from `data-sources.yaml`.
+1. Invoke `uv run python superagent/tools/ingest/<source>.py --first-run` with the conservative `recency_window_days` from `data-sources.yaml`.
 2. Surface live progress (every 10 items or 5 seconds, whichever first): "<source>: 47 items pulled, 41 inserted, 6 deduped …".
 3. On completion, print a one-line summary: "<source>: <N> items ingested, <K> domains touched, took <T>s."
 4. On failure, log the error and keep going — no source's failure aborts the rest.

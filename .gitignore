@@ -3,6 +3,7 @@ workspace/
 
 # Development / temporary scratch
 .tmp/
+.tools/
 __dev/
 __workspace-*/
 

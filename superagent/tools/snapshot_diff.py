@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Compute diffs between two `_memory/_checkpoints/<date>/` snapshots.
 
 Implements superagent/docs/_internal/ideas-better-structure.md item #6 + superagent/docs/_internal/perf-improvement-ideas.md QW-5
@@ -10,10 +10,10 @@ removed), new entities, status flips on existing entities, and a summary
 header.
 
 Usage:
-  python3 -m superagent.tools.snapshot_diff --since 2026-04-21 [--until 2026-04-28]
-  python3 -m superagent.tools.snapshot_diff --weekly
-  python3 -m superagent.tools.snapshot_diff --monthly
-  python3 -m superagent.tools.snapshot_diff --from <date> --to <date>
+  uv run python -m superagent.tools.snapshot_diff --since 2026-04-21 [--until 2026-04-28]
+  uv run python -m superagent.tools.snapshot_diff --weekly
+  uv run python -m superagent.tools.snapshot_diff --monthly
+  uv run python -m superagent.tools.snapshot_diff --from <date> --to <date>
 
 When checkpoint folders are missing, falls through to comparing live `_memory/`
 against the latest checkpoint.

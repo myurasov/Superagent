@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Log every user prompt to `_memory/user-queries.jsonl`.
 
 Wired as a `UserPromptSubmit` hook in Cursor (`.cursor/hooks.json`). The

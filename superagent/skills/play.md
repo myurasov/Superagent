@@ -29,11 +29,11 @@ If the user's phrasing matches a known playbook trigger (see `superagent/playboo
 
 > "Available playbooks: <list>. Which one?"
 
-Run `python3 -m superagent.tools.play list` to enumerate.
+Run `uv run python -m superagent.tools.play list` to enumerate.
 
 ## 2. Resolve conditions
 
-Run `python3 -m superagent.tools.play resolve <name> --json` to get the ordered list of skill invocations after condition evaluation. The resolver evaluates each `if:` against current workspace state (via small queries against `bills.yaml`, `appointments.yaml`, etc.).
+Run `uv run python -m superagent.tools.play resolve <name> --json` to get the ordered list of skill invocations after condition evaluation. The resolver evaluates each `if:` against current workspace state (via small queries against `bills.yaml`, `appointments.yaml`, etc.).
 
 The output is a list like:
 

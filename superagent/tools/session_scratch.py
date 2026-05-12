@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Per-session scratchpad / dedupe.
 
 Implements superagent/docs/_internal/perf-improvement-ideas.md MI-1.

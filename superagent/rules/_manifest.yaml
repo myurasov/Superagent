@@ -2,20 +2,34 @@
 #
 # Index of framework-shipped rule files under `superagent/rules/`.
 #
-# Each rule file is a YAML document carrying a list of named, machine-readable
-# rules that one or more tools / skills enforce. Rules differ from contracts
-# (which live in `contracts/`): a rule is a single behavior the agent
-# should follow or avoid; a contract is a multi-actor protocol that several
-# components implement.
+# Each rule file is either:
+#   - a YAML document carrying a list of named, machine-readable rules
+#     (kind: yaml — the default; consumed by a scanner like
+#     `tools/anti_patterns.py`); or
+#   - a markdown policy doc that humans and agents read directly
+#     (kind: doc — no machine consumer required).
 #
-# Users may extend the rule set at `workspace/_custom/rules/<file>.yaml` using
-# the same schema; loaders concatenate framework + user lists.
+# Rules differ from contracts (which live in `contracts/`): a rule is a single
+# behavior the agent should follow or avoid; a contract is a multi-actor
+# protocol that several components implement.
+#
+# Users may extend the rule set at `workspace/_custom/rules/<file>.{yaml,md}`
+# using the same schema; loaders concatenate framework + user lists for
+# machine-readable rules, and merge framework + user docs for policy files.
 schema_version: 1
 files:
   - path: anti-patterns.yaml
+    kind: yaml
     purpose: "Skill-markdown anti-patterns that waste tokens or hide intent."
     consumed_by:
       - tools/anti_patterns.py
       - skills/supertailor-review.md
       - skills/doctor.md
     user_overlay: workspace/_custom/rules/anti-patterns.yaml
+  - path: development-tooling.md
+    kind: doc
+    purpose: "Python venv, non-Python tool install location, temp-file path, and scope-discipline rules for the repository."
+    consumed_by:
+      - AGENTS.md
+      - docs/architecture.md
+    user_overlay: workspace/_custom/rules/development-tooling.md

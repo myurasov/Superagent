@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Validate Superagent workspace memory files against expected schema.
 
 Loads every YAML file under `<workspace>/_memory/`, verifies:
@@ -10,7 +10,7 @@ Loads every YAML file under `<workspace>/_memory/`, verifies:
 Reports findings to stdout. Exit code 0 if all clean, 1 if any errors.
 
 Usage:
-  python3 superagent/tools/validate.py [--workspace PATH] [--framework PATH]
+  uv run python superagent/tools/validate.py [--workspace PATH] [--framework PATH]
 """
 from __future__ import annotations
 
@@ -141,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     memory_dir = workspace / "_memory"
     if not memory_dir.is_dir():
         print(f"No _memory/ directory at {memory_dir}", file=sys.stderr)
-        print("Run `python3 superagent/tools/workspace_init.py` first.", file=sys.stderr)
+        print("Run `uv run python superagent/tools/workspace_init.py` first.", file=sys.stderr)
         return 1
 
     yaml_files = sorted(memory_dir.glob("*.yaml"))

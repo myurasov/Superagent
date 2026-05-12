@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Reference-file normalizer for Superagent.
 
 Implements the liberal-input parser + canonical serializer described in
@@ -22,9 +22,9 @@ Modes (matches the interactive prompt described in the contract):
   ask                 — interactive (CLI only)
 
 CLI:
-  python3 -m superagent.tools.sources_normalize parse <path>
-  python3 -m superagent.tools.sources_normalize check <path>
-  python3 -m superagent.tools.sources_normalize apply <path> --mode rewrite|...
+  uv run python -m superagent.tools.sources_normalize parse <path>
+  uv run python -m superagent.tools.sources_normalize check <path>
+  uv run python -m superagent.tools.sources_normalize apply <path> --mode rewrite|...
 """
 from __future__ import annotations
 

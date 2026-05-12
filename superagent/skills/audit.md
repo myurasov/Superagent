@@ -30,7 +30,7 @@ User said "when did X change" / "audit history of Y":
 2. Resolve the row id (if specified) — accepts canonical handles via `tools/handles.py parse`.
 3. Run:
    ```
-   python3 -m superagent.tools.audit history --file <_memory/<file>.yaml> --row <id> --limit 50
+   uv run python -m superagent.tools.audit history --file <_memory/<file>.yaml> --row <id> --limit 50
    ```
 4. Render entries:
    ```
@@ -46,7 +46,7 @@ User said "when did X change" / "audit history of Y":
 Show every audit-trail file in the workspace:
 
 ```
-python3 -m superagent.tools.audit list
+uv run python -m superagent.tools.audit list
 ```
 
 Outputs each `<file>.history.jsonl` with row count.

@@ -83,7 +83,7 @@ Read `workspace/_memory/context.yaml`:
 
 For each row in `_memory/data-sources.yaml` with `enabled: true`, `capture_mode: scheduled`, and `schedule` matching today's cadence (per `contracts/ingestion.md` § 2.3):
 
-1. Invoke `python3 superagent/tools/ingest/<source>.py`.
+1. Invoke `uv run python superagent/tools/ingest/<source>.py`.
 2. Apply the per-source `max_items_per_run` cap.
 3. Capture stdout summary; aggregate counts.
 

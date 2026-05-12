@@ -35,7 +35,7 @@ User said "what happened on April 15" / "show events this week":
    - "between X and Y" -> explicit range.
 2. Run:
    ```
-   python3 -m superagent.tools.log_window read --since <iso> --until <iso> [--kind <kind>] [--limit 200]
+   uv run python -m superagent.tools.log_window read --since <iso> --until <iso> [--kind <kind>] [--limit 200]
    ```
 3. Group by `kind`. Surface: `<ts>  [<kind>] <subject>` per row.
 
@@ -44,7 +44,7 @@ User said "what happened on April 15" / "show events this week":
 When a skill (or the user) reports something happened:
 
 ```
-python3 -m superagent.tools.log_window append \
+uv run python -m superagent.tools.log_window append \
   --kind <kind> --subject "<short>" --summary "<paragraph>" \
   [--related-domain <id>] [--related-project <id>] \
   [--payload '<json>'] [--tags "tag1,tag2"]
@@ -63,7 +63,7 @@ Standard event kinds (see `events.yaml` template):
 `events stats` -- partition counts; useful after rotation or import.
 
 ```
-python3 -m superagent.tools.log_window stats
+uv run python -m superagent.tools.log_window stats
 ```
 
 ### Rebuild index
@@ -71,7 +71,7 @@ python3 -m superagent.tools.log_window stats
 After manual edits to a partition file:
 
 ```
-python3 -m superagent.tools.log_window rebuild-index
+uv run python -m superagent.tools.log_window rebuild-index
 ```
 
 Refreshes `_memory/events.yaml` (the partition index over the events/ directory).

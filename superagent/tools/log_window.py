@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Time-windowed views over append-only logs (events stream and friends).
 
 Implements superagent/docs/_internal/ideas-better-structure.md item #22 + superagent/docs/_internal/perf-improvement-ideas.md MI-2.
@@ -10,9 +10,9 @@ Also writes events into the appropriate quarterly partition. The partition
 index `_memory/events.yaml` is updated atomically.
 
 CLI:
-  python3 -m superagent.tools.log_window read --since 2026-04-01 --until 2026-04-28
-  python3 -m superagent.tools.log_window append --kind skill_run --subject "ran daily-update"
-  python3 -m superagent.tools.log_window stats
+  uv run python -m superagent.tools.log_window read --since 2026-04-01 --until 2026-04-28
+  uv run python -m superagent.tools.log_window append --kind skill_run --subject "ran daily-update"
+  uv run python -m superagent.tools.log_window stats
 """
 from __future__ import annotations
 

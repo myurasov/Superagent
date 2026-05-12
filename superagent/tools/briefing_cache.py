@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Pre-rendered briefing cache + skill-output write-back caching.
 
 Implements superagent/docs/_internal/perf-improvement-ideas.md QW-5 + MI-5.

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Render scoped status.md files from `_memory/todo.yaml`.
 
 For each domain referenced by an open task in todo.yaml, regenerate
@@ -8,7 +8,7 @@ sync contract documented in `superagent/contracts/task-management.md` § 5.1.
 Also regenerates the workspace-level `<workspace>/todo.md` cross-cutting view.
 
 Usage:
-  python3 superagent/tools/render_status.py [--workspace PATH] [--scope SCOPE]
+  uv run python superagent/tools/render_status.py [--workspace PATH] [--scope SCOPE]
 
 Scope is optional; if omitted, all affected scopes are re-rendered.
 """

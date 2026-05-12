@@ -154,12 +154,12 @@ The user is also free to author refs by hand in `.ref.txt` form (loose `Key: val
 
 After placement (document or reference):
 
-1. Run `python3 -m superagent.tools.sources_index refresh`. The walker picks up the new file and writes a row to `_memory/sources-index.yaml` with:
+1. Run `uv run python -m superagent.tools.sources_index refresh`. The walker picks up the new file and writes a row to `_memory/sources-index.yaml` with:
    - `id` derived from the workspace-relative path
    - `kind`, `title`, `path`, `category`
    - `present: true`, `read_count: 0`, `added: <now>`
    - any cross-references parsed from a sidecar / standalone ref's frontmatter
-2. If you collected additional fields the agent should remember (notes, sensitive, related_*), update the row via `python3 -m superagent.tools.sources_index ... ` (or write the YAML in place — refresh preserves them on subsequent runs).
+2. If you collected additional fields the agent should remember (notes, sensitive, related_*), update the row via `uv run python -m superagent.tools.sources_index ... ` (or write the YAML in place — refresh preserves them on subsequent runs).
 
 The index is **derived from the filesystem**. The user can drop a file by hand from a shell at any time; the next read of `_memory/sources-index.yaml` triggers a refresh that picks it up. `add-source` is the convenience path; it does not own placement.
 

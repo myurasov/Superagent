@@ -4,7 +4,7 @@ Parses CSV exports from common banks into a normalized `_memory/transactions.yam
 index. Intentionally low-tech: works without any API or MCP — the user
 downloads a CSV from their bank's web UI and runs:
 
-  python3 -m superagent.tools.ingest.csv --file ~/Downloads/chase-export.csv
+  uv run python -m superagent.tools.ingest.csv --file ~/Downloads/chase-export.csv
 
 Recognizes column headers from:
   - Chase

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Insert / refresh step indexes (superagent/docs/_internal/perf-improvement-ideas.md QW-2 + MI-4).
 
 Operates in two modes:

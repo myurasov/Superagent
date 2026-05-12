@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Scanner for anti-patterns in skill markdown files.
 
 Implements superagent/docs/_internal/perf-improvement-ideas.md § "Anti-patterns to flag in skills".

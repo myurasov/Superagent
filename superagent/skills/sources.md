@@ -48,7 +48,7 @@ The Sources contract is in `contracts/sources.md`. The agent uses this skill to 
 `_memory/sources-index.yaml` is **derived from the filesystem**. Before any read, run:
 
 ```
-python3 -m superagent.tools.sources_index refresh
+uv run python -m superagent.tools.sources_index refresh
 ```
 
 It's mtime-lazy — when nothing under `Sources/` has changed, it's a near-no-op (one mtime walk + one yaml load). Skipping it risks missing files the user dropped in by hand.

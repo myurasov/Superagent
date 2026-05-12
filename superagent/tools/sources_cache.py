@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Sources cache manager for Superagent.
 
 Implements the local-first read pattern documented in `contracts/sources.md` § 15.4
@@ -6,10 +6,10 @@ Implements the local-first read pattern documented in `contracts/sources.md` § 
 source through this module so caching, eviction, and chunking are uniform.
 
 CLI:
-  python3 -m superagent.tools.sources_cache get <ref-id>           # local-first read
-  python3 -m superagent.tools.sources_cache fetch <ref-id> [--refresh]
-  python3 -m superagent.tools.sources_cache evict --all-stale | --over-cap | <ref-id>
-  python3 -m superagent.tools.sources_cache list
+  uv run python -m superagent.tools.sources_cache get <ref-id>           # local-first read
+  uv run python -m superagent.tools.sources_cache fetch <ref-id> [--refresh]
+  uv run python -m superagent.tools.sources_cache evict --all-stale | --over-cap | <ref-id>
+  uv run python -m superagent.tools.sources_cache list
 
 The actual upstream-fetching for each `kind` (mcp / cli / url / api / file /
 vault / manual) is delegated to the matching ingestor or to a kind-specific

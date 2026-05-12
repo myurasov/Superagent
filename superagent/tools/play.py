@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run python
 """Playbook runner — chains skills with conditions.
 
 Implements superagent/docs/_internal/ideas-better-structure.md item #21.

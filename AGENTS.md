@@ -26,6 +26,7 @@
   - [Provenance](#provenance)
   - [Time-shape vs entity-shape vs event-shape](#time-shape-vs-entity-shape-vs-event-shape)
   - [Privacy and data location](#privacy-and-data-location)
+  - [Local development tooling](#local-development-tooling)
   - [IDE setup (Cursor)](#ide-setup-cursor)
   - [Prompt-cache discipline](#prompt-cache-discipline)
 
@@ -415,13 +416,24 @@ Tools enforce the shape — `tools/audit.py.record_change()` writes to `<file>.h
 
 ---
 
+## Local development tooling
+
+Full policy: [`superagent/rules/development-tooling.md`](superagent/rules/development-tooling.md). Four non-negotiable defaults for any contributor (human or agent):
+
+- **Python** — one shared `uv` venv at `./.venv/`. ALWAYS invoke through `uv run` (e.g. `uv run python superagent/tools/foo.py`, `uv run python -m superagent.tools.sources_index refresh`, `uv run pytest`). NEVER call `python3 …` directly; NEVER create per-tool venvs. Dependencies live in root `pyproject.toml`; lockfile is `uv.lock` (committed).
+- **Non-Python tools** — install under `./.tools/` (gitignored). NEVER install system-wide (`brew install`, `npm -g`, `cargo install --root /usr/local`, etc.) from inside this project.
+- **Temporary files** — write to `./.tmp/` only (gitignored). NEVER use `/tmp`, `$TMPDIR`, `~/`, OS temp dirs, sibling repos, or anything outside the project root.
+- **Scope discipline (safety rule)** — the agent MUST NOT install software, create files, or modify files outside this project folder unless the user explicitly authorizes that specific action. Read access outside is fine; write access outside is forbidden by default — refuse and ask first.
+
+---
+
 ## IDE setup (Cursor)
 
 Superagent currently targets Cursor as the host IDE. Cursor reads `AGENTS.md` at the repo root natively, so no `.cursor/rules/` shim is needed — the user opts in to Superagent per session by invoking a skill or by saying so, and the agent loads `AGENTS.md` on demand.
 
 Optional Cursor wiring:
 
-- **User-prompt logging** (used by the Supertailor for friction analysis): wire a `UserPromptSubmit` hook in `.cursor/hooks.json` that runs `python3 superagent/tools/log_user_query.py`. The script appends one line per prompt to `workspace/_memory/user-queries.jsonl`. This is opt-in and can be disabled via `_memory/config.yaml.preferences.privacy.log_user_queries: false`.
+- **User-prompt logging** (used by the Supertailor for friction analysis): wire a `UserPromptSubmit` hook in `.cursor/hooks.json` that runs `uv run python superagent/tools/log_user_query.py`. The script appends one line per prompt to `workspace/_memory/user-queries.jsonl`. This is opt-in and can be disabled via `_memory/config.yaml.preferences.privacy.log_user_queries: false`.
 - **Commit-message hook**: install a `commit-msg` hook at `.githooks/commit-msg` (and `git config core.hooksPath .githooks`) that blocks AI-attribution patterns at commit time. The reference implementation lives at `superagent/templates/githooks/commit-msg`.
 
 If the repo also hosts other assistant frameworks, route each turn to the right framework based on the request's evident scope rather than auto-injecting Superagent on every turn.

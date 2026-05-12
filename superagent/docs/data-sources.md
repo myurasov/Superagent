@@ -46,7 +46,7 @@
 
 This is the master catalogue of every data source Superagent supports (or stubs out for future implementation). Each entry covers: what gets ingested, where it writes, install / auth steps, the probe that tells you whether it's available, and any known caveats.
 
-Run `python3 -m superagent.tools.ingest._orchestrator setup` to probe every source on your machine and get an availability table. Run `... run --source <name>` to ingest one. Run `... run --all` to refresh everything that's enabled.
+Run `uv run python -m superagent.tools.ingest._orchestrator setup` to probe every source on your machine and get an availability table. Run `... run --source <name>` to ingest one. Run `... run --all` to refresh everything that's enabled.
 
 ## Maturity legend
 
