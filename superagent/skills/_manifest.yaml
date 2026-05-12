@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-11T15:58:51-07:00'
+generated_at: '2026-05-12T02:59:19-07:00'
 skill_count: 48
 skills:
 - name: superagent-add-account
@@ -18,7 +18,7 @@ skills:
   lines: 154
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 1246
+  typical_token_cost: 1249
   typical_files_read:
   - _memory/accounts-index.yaml
   - _memory/data-sources.yaml
@@ -131,8 +131,8 @@ skills:
 - name: superagent-add-domain
   stem: add-domain
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-domain.md
-  one_line: Bootstrap a new life domain (e.g. Boat, Cabin, Side-business, Volunteer) beyond the 10 defaults
-    seeded by init. Creates the folder, scaffolds the 4-file structure, registers it in `domains-index.yaml`
+  one_line: Bootstrap a new life domain (e.g. Boat, Cabin, Estate, Volunteer) beyond the 12 defaults seeded
+    by init. Creates the folder, scaffolds the 4-file structure, registers it in `domains-index.yaml`.
   triggers:
   - add a domain
   - new domain
@@ -145,7 +145,7 @@ skills:
   lines: 93
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 686
+  typical_token_cost: 685
   typical_files_read:
   - _memory/domains-index.yaml
   origin: framework
@@ -216,7 +216,7 @@ skills:
   lines: 238
   h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 2889
+  typical_token_cost: 2892
   typical_files_read:
   - Sources/_cache/`
   - _memory/domains-index.yaml
@@ -288,7 +288,7 @@ skills:
   lines: 80
   h2_steps: 4
   h3_subsections: 2
-  typical_token_cost: 595
+  typical_token_cost: 598
   typical_files_read: []
   origin: framework
 - name: superagent-bills
@@ -335,7 +335,7 @@ skills:
   lines: 290
   h2_steps: 25
   h3_subsections: 0
-  typical_token_cost: 2762
+  typical_token_cost: 2763
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/context.yaml
@@ -431,7 +431,7 @@ skills:
   lines: 87
   h2_steps: 3
   h3_subsections: 4
-  typical_token_cost: 726
+  typical_token_cost: 732
   typical_files_read:
   - _memory/events.yaml
   origin: framework
@@ -606,7 +606,7 @@ skills:
   lines: 96
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 977
+  typical_token_cost: 983
   typical_files_read:
   - _memory/sources-index.yaml
   - _memory/inbox-rules.yaml
@@ -642,7 +642,7 @@ skills:
   stem: init
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/init.md
   one_line: 'First-run initialization for the Superagent personal-life assistant after cloning: short
-    orientation questionnaire, scaffold workspace/ with the 10 default Domains and all _memory/ files,
+    orientation questionnaire, scaffold workspace/ with the 12 default Domains and all _memory/ files,
     optionally p'
   triggers:
   - User runs init / first-time setup / "initialize Superagent"
@@ -657,7 +657,7 @@ skills:
   lines: 293
   h2_steps: 12
   h3_subsections: 1
-  typical_token_cost: 4101
+  typical_token_cost: 4104
   typical_files_read:
   - workspace/_memory/config.yaml
   - _memory/insights.yaml
@@ -782,7 +782,7 @@ skills:
   lines: 80
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 631
+  typical_token_cost: 634
   typical_files_read: []
   origin: framework
 - name: superagent-pm-review
@@ -883,7 +883,7 @@ skills:
   lines: 76
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 624
+  typical_token_cost: 626
   typical_files_read: []
   origin: framework
 - name: superagent-sources
@@ -909,7 +909,7 @@ skills:
   lines: 215
   h2_steps: 9
   h3_subsections: 7
-  typical_token_cost: 1927
+  typical_token_cost: 1929
   typical_files_read:
   - _memory/sources-index.yaml
   origin: framework
@@ -1161,6 +1161,6 @@ skills:
   lines: 90
   h2_steps: 4
   h3_subsections: 7
-  typical_token_cost: 625
+  typical_token_cost: 630
   typical_files_read: []
   origin: framework

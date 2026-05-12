@@ -1,7 +1,7 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: index of life domains (Health, Finances, Home, Vehicles,
-# Pets, Family, Travel, Career, Hobbies, Self, plus any custom).
-# init() seeds the 10 default domains; user adds more via add-domain skill.
+# Assets, Pets, Family, Travel, Career, Business, Hobbies, Self, plus any custom).
+# init() seeds the 12 default domains; user adds more via add-domain skill.
 
 schema_version: 1
 
@@ -88,6 +88,20 @@ domains:
     last_updated: null
     tags: ["default"]
     notes: ""
+  - id: "assets"
+    name: "Assets"
+    scope: "Movable physical possessions worth tracking for insurance / warranty / recall — electronics, appliances, jewelry, instruments, tools, art, collectibles, sports gear (excludes vehicles + the home structure)"
+    priority: "P2"
+    status: "active"
+    path: "workspace/Domains/Assets"
+    parent: null
+    handle: "domain:assets"
+    visibility: "household"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
   - id: "pets"
     name: "Pets"
     scope: "Each pet's vet, vaccinations, prescriptions, food, grooming, boarding"
@@ -138,6 +152,20 @@ domains:
     path: "workspace/Domains/Career"
     parent: null
     handle: "domain:career"
+    visibility: "private"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: ""
+  - id: "business"
+    name: "Business"
+    scope: "Side income, freelancing, consulting, sole-proprietor / LLC operations — clients, contracts, invoices, business expenses, business taxes, vendor relationships (separate from W-2 Career employment)"
+    priority: "P2"
+    status: "active"
+    path: "workspace/Domains/Business"
+    parent: null
+    handle: "domain:business"
     visibility: "private"
     provenance: { source: "init", at: null }
     created: null

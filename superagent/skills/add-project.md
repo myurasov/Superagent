@@ -88,7 +88,7 @@ For recurring projects (taxes due April 15, year-end giving in December), the ta
 
 ### Q5 — Related domains (multi-select)
 
-Present the 10 default domains plus any custom ones from `_memory/domains-index.yaml.domains[]` with `status: active`. The user picks 1+.
+Present the 12 default domains plus any custom ones from `_memory/domains-index.yaml.domains[]` with `status: active`. The user picks 1+.
 
 Examples:
 - "File 2026 taxes" → `finance`

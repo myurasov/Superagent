@@ -1,6 +1,6 @@
 # Superagent — Domain guide
 
-What each of the 10 default Domains covers, what to put in each file, and which skills naturally write to each.
+What each of the 12 default Domains covers, what to put in each file, and which skills naturally write to each.
 
 The Domain folders are seeded by `init`. You can delete any default you don't need (the system tolerates a missing default folder gracefully) and add any number of your own via `add-domain`.
 
@@ -12,10 +12,12 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 - [Finances](#finances)
 - [Home](#home)
 - [Vehicles](#vehicles)
+- [Assets](#assets)
 - [Pets](#pets)
 - [Family](#family)
 - [Travel](#travel)
 - [Career](#career)
+- [Business](#business)
 - [Hobbies](#hobbies)
 - [Self](#self)
 - [Custom domains you might add](#custom-domains-you-might-add)
@@ -84,6 +86,23 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 
 ---
 
+## Assets
+
+**Scope**: movable physical possessions worth tracking for insurance / warranty / recall — electronics (laptops, phones, cameras, monitors, AV gear), countertop appliances, jewelry / watches, instruments, art, collectibles, hand & power tools, sports gear, high-value furniture. **Excludes** vehicles (`Vehicles` domain) and the home structure + permanently-installed fixtures (`Home` domain — HVAC, water heater, built-in appliances). Consumables (food, cleaning supplies, paper goods) are out of scope.
+
+| File | Owns |
+|---|---|
+| `info.md` | Inventory snapshot grouped by sub-kind (electronics, jewelry, instruments, tools, …); insurance riders (jewelry rider, valuable-articles policy, scheduled-personal-property endorsement); preferred repair contacts per category. |
+| `status.md` | Warranties expiring in the next 90 days; assets due for service or recalibration; recall alerts; theft / loss claims in flight; recently-acquired assets pending warranty registration. |
+| `history.md` | Acquisitions, dispositions (sold / donated / lost / stolen / replaced), repairs, warranty claims, recall responses, insurance-rider changes, condition-photo refresh dates. |
+| `rolodex.md` | Repair specialists per category (jeweler, instrument luthier, electronics repair, watch repair, art restorer), valuation appraisers, insurance agent for the personal-property rider, photographer (for high-value-item documentation). |
+
+**Skills that write here**: `add-asset` (with `domain: assets`) → `_memory/assets-index.yaml` row, optional warranty entry on `important-dates.yaml`; `add-source` (warranty / receipt / appraisal) → `Sources/<your-folders>/<asset-slug>/` then catalogue row in `sources.md`; `add-document` (appraisal, insurance rider) → `documents-index.yaml`. Photos for insurance documentation go in `Sources/...` (canonical, immutable per the sources contract); working / condition photos go in `Domains/Assets/Resources/<asset-slug>/`.
+
+**Differs from `Vehicles` and `Home` how**: by **kind of physical thing**. Vehicles is for titled motor vehicles (legal registration, license plates, VIN). Home is for the structure + fixtures + utilities + HOA + the property's recurring maintenance. Assets is the catch-all for movables that don't fit either.
+
+---
+
 ## Pets
 
 **Scope**: each pet's vet, vaccinations, prescriptions, food, grooming, boarding, microchip, pet insurance.
@@ -146,6 +165,25 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 
 ---
 
+## Business
+
+**Scope**: side income, freelancing, consulting, sole-proprietor / single-member-LLC / S-corp operations. Clients, contracts, statements of work, invoices issued + collected, business expenses + categorization for Schedule C / 1120-S, business-license + DBA filings, vendor relationships, business insurance, business-entity formation docs. **Excludes** W-2 employment (`Career` domain) and personal income / personal taxes (`Finances` domain).
+
+| File | Owns |
+|---|---|
+| `info.md` | Business name + entity type (sole-prop / LLC / S-corp / partnership), EIN (last-4 reference; full EIN in vault), business-bank-account references (last-4), business-credit-card references (last-4), business-license + DBA renewal dates, accounting cadence (monthly close? quarterly?), tax preparer + bookkeeper, current client roster summary, current contract summary. |
+| `status.md` | Open invoices (issued, awaiting payment); contracts up for renewal; quarterly estimated taxes due; license / DBA renewals due; pipeline status (proposals out, prospects in conversation); year-to-date revenue + expense summary. |
+| `history.md` | Client wins / losses, major contracts signed, large invoices paid, tax filings, license renewals, entity changes (formation, dissolution, conversion), pivots, year-end summaries. |
+| `rolodex.md` | Active clients (per-client subsection if heavy-touch), prospects worth following up, contractors / subcontractors, accountant / bookkeeper, business attorney, registered agent, business-bank rep, software vendors, professional-association contacts. |
+
+**Skills that write here**: `add-account` (business bank / card) → `accounts-index.yaml` with `related_domain: business`; `add-bill` (business utilities, software subscriptions) with `related_domain: business`; `add-contact` (client / contractor) with `related_domains: [business]`; `add-document` (contract, SOW, license) → `documents-index.yaml` with `related_domain: business`; `add-important-date` (contract renewal, license renewal, quarterly estimate) → `important-dates.yaml`; `expenses` skill filters business-tagged transactions for tax-prep at year end.
+
+**Differs from `Career` how**: by **income source**. Career is for W-2 employment, employer-paid benefits, salary history, performance reviews, professional development tied to that job. Business is for self-employed income — what hits Schedule C / 1120-S rather than W-2 line 1. A user with no side income can leave `Business` empty (or delete the folder); a freelance-only user can leave `Career` empty.
+
+**Differs from `Finances` how**: Finances tracks personal money flows (personal accounts, household bills, personal income tax). Business tracks business money flows (business accounts, business invoices issued, business expenses, business income tax). The cleanest separation is by which **set of books** the transaction belongs to — even if the user is the only stakeholder of both.
+
+---
+
 ## Hobbies
 
 **Scope**: each meaningful hobby — fitness goals, reading log, side projects, garden, workshop, music, photography, etc. One sub-folder per hobby is encouraged.
@@ -186,11 +224,12 @@ Examples worth their own domain (each runs the standard 4-file structure):
 
 - **Boat** — registration, marina, mooring, maintenance.
 - **Cabin** / **Vacation home** — separate from primary residence; same structure.
-- **Side-business** — clients, invoices, expenses (cross-references Finances).
+- **Estate** / **Continuity** — wills, trusts, POA, beneficiaries, executor instructions (a richer home for what `handoff` packages today).
 - **Volunteer** / **Board work** — meetings, commitments, contacts.
-- **Music** — gear (Assets), gigs (history), bandmates / studio engineers (rolodex).
+- **Education** — for users actively in school or running a multi-year learning plan; otherwise lives in `Career`.
+- **Music** — gear (cross-references `Assets`), gigs (history), bandmates / studio engineers (rolodex).
 - **Garden** — plot maps, planting calendar, suppliers, harvest log.
-- **Wine cellar** — inventory (Assets), tasting notes (history), wine-shop contacts.
+- **Wine cellar** — inventory (cross-references `Assets`), tasting notes (history), wine-shop contacts.
 - **Cars (multi-vehicle enthusiast)** — could split out from Vehicles into its own domain if you have many.
 
 Just say "add a domain for X" and the agent walks the user through `add-domain`.

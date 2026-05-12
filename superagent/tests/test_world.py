@@ -14,10 +14,12 @@ def test_rebuild_produces_nodes_for_default_domains(
     data = rebuild(initialized_workspace)
     assert "nodes" in data and "edges" in data
     domain_nodes = [n for n in data["nodes"] if n.get("kind") == "domain"]
-    assert len(domain_nodes) == 10  # the 10 default domains
+    assert len(domain_nodes) == 12  # the 12 default domains
     handles = sorted(n["id"] for n in domain_nodes)
     assert "domain:health" in handles
     assert "domain:finances" in handles
+    assert "domain:assets" in handles
+    assert "domain:business" in handles
 
 
 def test_related_to_returns_node_and_neighbors(
@@ -73,5 +75,5 @@ def test_stats_reports_counts(initialized_workspace: Path) -> None:
 
     rebuild(initialized_workspace)
     s = stats(initialized_workspace)
-    assert s["node_total"] >= 10  # at least the 10 default domains
+    assert s["node_total"] >= 12  # at least the 12 default domains
     assert "domain" in s["by_node_kind"]

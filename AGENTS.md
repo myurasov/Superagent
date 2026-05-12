@@ -202,7 +202,7 @@ Domains/<domain>/
   Resources/    # optional, lazily created — drafts, working files, agent-generated artifacts
 ```
 
-The 10 default domains seeded by `init` are: **Health**, **Finances**, **Home**, **Vehicles**, **Pets**, **Family**, **Travel**, **Career**, **Hobbies**, **Self**. Users add their own via `add-domain`.
+The 12 default domains seeded by `init` are: **Health**, **Finances**, **Home**, **Vehicles**, **Assets**, **Pets**, **Family**, **Travel**, **Career**, **Business**, **Hobbies**, **Self**. Users add their own via `add-domain`.
 
 ### Projects/
 

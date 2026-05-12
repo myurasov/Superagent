@@ -4,7 +4,7 @@
 Creates `workspace/` (or the path configured via
 `--workspace`) with:
   - `_memory/`  — copied from `superagent/templates/memory/`
-  - `Domains/`  — the 10 default domains, each with the 4-file structure
+  - `Domains/`  — the 12 default domains, each with the 4-file structure
   - `Inbox/`, `Outbox/`, `Archive/` — staging / output / archive folders
   - `Projects/`, `Sources/`         — personal-life folders
   - `_custom/`                      — empty per-user overlay scaffold
@@ -37,10 +37,12 @@ DEFAULT_DOMAINS = [
     ("Finances", "Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance, credit"),
     ("Home", "Mortgage / rent, utilities, HOA, maintenance schedule, contractors, security, deliveries"),
     ("Vehicles", "Every vehicle owned (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel"),
+    ("Assets", "Movable physical possessions worth tracking for insurance / warranty / recall — electronics, appliances, jewelry, instruments, tools, art, collectibles, sports gear (excludes vehicles + the home structure)"),
     ("Pets", "Each pet's vet, vaccinations, prescriptions, food, grooming, boarding"),
     ("Family", "Spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events"),
     ("Travel", "Trips planned and past, flights, hotels, rentals, packing lists, frequent-flier numbers, passports"),
     ("Career", "Resume, certifications, performance reviews, learning goals, networking, salary history"),
+    ("Business", "Side income, freelancing, consulting, sole-proprietor / LLC operations — clients, contracts, invoices, business expenses, business taxes, vendor relationships (separate from W-2 Career employment)"),
     ("Hobbies", "Each meaningful hobby — fitness, reading log, side project, garden, workshop, etc."),
     ("Self", "Personal-development goals, journaling, books / podcasts / media log, life themes"),
 ]
@@ -186,7 +188,7 @@ def init_memory(workspace: Path, framework: Path, dry_run: bool, log: list[str])
 
 
 def init_domains(workspace: Path, framework: Path, dry_run: bool, log: list[str]) -> int:
-    """Create the 10 default domain folders with the 5-file structure. Returns count of folders touched."""
+    """Create the 12 default domain folders with the 5-file structure. Returns count of folders touched."""
     domains_dir = workspace / "Domains"
     safe_mkdir(domains_dir, dry_run=dry_run, log=log)
     template_dir = framework / "templates" / "domains"

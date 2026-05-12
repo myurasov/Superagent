@@ -1,7 +1,7 @@
 """Tests for `tools/workspace_init.py`.
 
 Verifies the scaffolder produces the expected structure, every YAML loads,
-the 10 default domains are present with the 4-file shape, and re-running
+the 12 default domains are present with the 4-file shape, and re-running
 is idempotent.
 """
 from __future__ import annotations
@@ -25,8 +25,8 @@ EXPECTED_MEMORY_FILES = [
 ]
 
 EXPECTED_DEFAULT_DOMAINS = [
-    "Health", "Finances", "Home", "Vehicles", "Pets",
-    "Family", "Travel", "Career", "Hobbies", "Self",
+    "Health", "Finances", "Home", "Vehicles", "Assets", "Pets",
+    "Family", "Travel", "Career", "Business", "Hobbies", "Self",
 ]
 
 DOMAIN_FILES = ["info.md", "status.md", "history.md", "rolodex.md", "sources.md"]

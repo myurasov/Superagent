@@ -2,9 +2,9 @@
 
 <!-- Migrated from `procedures.md § 6`. Citation form: `contracts/domains-and-assets.md`. -->
 
-### 6.1 The 10 default domains
+### 6.1 The 12 default domains
 
-Init seeds these 10 by default. The user can delete the ones they don't need, add more via `add-domain`, or rename in-place.
+Init seeds these 12 by default. The user can delete the ones they don't need, add more via `add-domain`, or rename in-place.
 
 | Domain | Scope (illustrative) |
 |---|---|
@@ -12,12 +12,18 @@ Init seeds these 10 by default. The user can delete the ones they don't need, ad
 | **Finances** | bills, accounts (banks, brokerage, retirement), taxes, budget, insurance (health / life / umbrella), credit |
 | **Home** | mortgage / rent, utilities, insurance, HOA, maintenance schedule, contractors, security, deliveries |
 | **Vehicles** | every vehicle owned (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel |
+| **Assets** | movable possessions worth tracking for insurance / warranty / recall — electronics, appliances, jewelry, instruments, tools, art, collectibles, sports gear (excludes vehicles + the home structure) |
 | **Pets** | each pet's vet, vaccinations, prescriptions, food, grooming, boarding |
 | **Family** | spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events |
 | **Travel** | trips planned and past, flight / hotel / rental records, packing lists, frequent-flier numbers, passports |
-| **Career** | resume, certifications, performance reviews, learning goals, networking, salary history (if separate from Finances) |
+| **Career** | resume, certifications, performance reviews, learning goals, networking, salary history (W-2 employment side) |
+| **Business** | side income, freelancing, consulting, sole-proprietor / LLC operations — clients, contracts, invoices, business expenses, business taxes (separate from W-2 Career) |
 | **Hobbies** | each meaningful hobby — fitness goal, reading log, side project, garden, workshop, etc. |
 | **Self** | personal-development goals, journaling, books / podcasts / media log, life themes |
+
+The split between `Vehicles` / `Assets` / `Home` is by **kind of physical thing**: Vehicles owns titled motor vehicles (cars, motorcycles, RVs, boats), Home owns the structure + fixtures + utilities, Assets owns everything movable that doesn't fit either. The `assets-index.yaml.<asset>.domain` field selects which of the three a given asset is filed under.
+
+The split between `Career` / `Business` is by **income source**: Career owns W-2 employment, employer-paid benefits, professional development tied to that job; Business owns side-income / sole-proprietor / LLC operations, client relationships, business expenses, business taxes. A user with no side income can leave `Business` empty (or delete it); a freelance-only user can leave `Career` empty.
 
 ### 6.2 4-file convention
 

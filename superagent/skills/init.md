@@ -3,7 +3,7 @@ name: superagent-init
 description: >-
   First-run initialization for the Superagent personal-life assistant after
   cloning: short orientation questionnaire, scaffold workspace/
-  with the 10 default Domains and all _memory/ files, optionally probe and
+  with the 12 default Domains and all _memory/ files, optionally probe and
   enable available data sources (MCPs and CLI tools), and end with a 5-minute
   walkthrough of the most relevant capture skill. Quick-start works without
   any data sources; heavy ingestion is opt-in and deferred.
@@ -111,7 +111,7 @@ Run `uv run python superagent/tools/workspace_init.py`. The script:
 
 1. Creates `workspace/` if missing.
 2. Creates `workspace/_memory/` and copies every YAML template from `superagent/templates/memory/` into it (only if the destination file doesn't exist; never overwrite user data).
-3. Creates `workspace/Domains/` plus the 10 default domain folders, each with the four template files (`info.md`, `status.md`, `history.md`, `rolodex.md`) populated with `{{DOMAIN_NAME}}` substitutions.
+3. Creates `workspace/Domains/` plus the 12 default domain folders, each with the four template files (`info.md`, `status.md`, `history.md`, `rolodex.md`) populated with `{{DOMAIN_NAME}}` substitutions.
 4. Creates `workspace/Projects/` (empty; populated as the user adds projects via `add-project`).
 5. Creates `workspace/Sources/` with `documents/`, `references/`, `_cache/` subdirectories (per the immutability + caching contract in `contracts/sources.md`).
 6. Creates `workspace/Inbox/`, `workspace/Outbox/`, `workspace/Archive/`, and drops the explanatory README from `superagent/templates/folder-readmes/` into each.
@@ -244,7 +244,7 @@ Walk through the chosen skill **interactively**: ask the user to provide the one
 Print a structured summary:
 
 - Workspace created at `<absolute path to workspace>`.
-- Domains seeded: 10 default folders.
+- Domains seeded: 12 default folders.
 - Memory files seeded: 13 `_memory/*.yaml`.
 - Data sources enabled: <list, or "none yet (run `ingest --setup` later)">.
 - Pain-point → skill mapping (the user's top 3 pain points, each pointing to the most relevant skill).

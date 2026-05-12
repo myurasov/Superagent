@@ -1,8 +1,8 @@
 ---
 name: superagent-add-domain
 description: >-
-  Bootstrap a new life domain (e.g. Boat, Cabin, Side-business, Volunteer)
-  beyond the 10 defaults seeded by init. Creates the folder, scaffolds the
+  Bootstrap a new life domain (e.g. Boat, Cabin, Estate, Volunteer)
+  beyond the 12 defaults seeded by init. Creates the folder, scaffolds the
   4-file structure, registers it in `domains-index.yaml`.
 triggers:
   - add a domain

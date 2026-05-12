@@ -1,6 +1,6 @@
 # `Domains/` — your life, sliced into stable buckets
 
-Every folder under `Domains/` is one slice of your life. The 10 default domains seeded by `init` are:
+Every folder under `Domains/` is one slice of your life. The 12 default domains seeded by `init` are:
 
 | Domain | What it covers |
 |---|---|
@@ -8,14 +8,16 @@ Every folder under `Domains/` is one slice of your life. The 10 default domains 
 | **Finances** | Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance (health / life / umbrella), credit. |
 | **Home** | Mortgage / rent, utilities, HOA, maintenance schedule, contractors, security, deliveries. |
 | **Vehicles** | Every vehicle you own (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel. |
+| **Assets** | Movable possessions worth tracking for insurance / warranty / recall — electronics, appliances, jewelry, instruments, tools, art, collectibles, sports gear (excludes vehicles + the home structure). |
 | **Pets** | Each pet's vet, vaccinations, prescriptions, food, grooming, boarding. |
 | **Family** | Spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events. |
 | **Travel** | Trips planned and past, flights, hotels, rentals, packing lists, frequent-flier numbers, passports. |
-| **Career** | Resume, certifications, performance reviews, learning goals, networking, salary history. |
+| **Career** | Resume, certifications, performance reviews, learning goals, networking, salary history (W-2 employment side). |
+| **Business** | Side income, freelancing, consulting, sole-proprietor / LLC operations — clients, contracts, invoices, business expenses, business taxes (separate from W-2 Career). |
 | **Hobbies** | Each meaningful hobby — fitness goal, reading log, side project, garden, workshop, etc. |
 | **Self** | Personal-development goals, journaling, books / podcasts / media log, life themes. |
 
-Add your own (e.g. `Boat/`, `Cabin/`, `Side-business/`, `Volunteer/`) via `add-domain`. Delete any default you don't need; the system tolerates a missing default folder gracefully.
+Add your own (e.g. `Boat/`, `Cabin/`, `Volunteer/`, `Estate/`) via `add-domain`. Delete any default you don't need; the system tolerates a missing default folder gracefully.
 
 ## File structure
 

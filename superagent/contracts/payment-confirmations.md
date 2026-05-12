@@ -56,10 +56,12 @@ Canonical default domains (seeded by `init`) and their typical payment classes:
 | **Taxes** *(or `Finances/Taxes/`)* | federal / state / local income tax, property tax, estimated quarterlies, FBAR-related, filing fees |
 | **Home** | HOA dues, homeowner's insurance, capital improvements, major repairs that affect cost basis |
 | **Vehicles** | registration / DMV fees, insurance premiums, major service invoices, tickets, smog/inspection fees |
+| **Assets** | warranty registrations, repair invoices for high-value movables (jewelry restoration, instrument repair, electronics out-of-warranty fixes), insurance riders (jewelry rider, valuable-articles policy) |
 | **Health** | out-of-pocket medical, dental, vision, therapy, HSA / FSA-eligible receipts, copays for chronic-care visits |
 | **Pets** | vet bills worth keeping (annual exam, dental, surgery), pet insurance premiums |
 | **Family** | tuition, school fees, childcare, dependent-care payments |
-| **Career** | professional dues, license / certification renewals, business-expense receipts the user will claim |
+| **Career** | professional dues, license / certification renewals, employer-reimbursable receipts the user will claim |
+| **Business** | client invoices, vendor payments, contractor fees, business-license fees, sole-prop / LLC quarterly estimates, business-insurance premiums, deductible business expenses (route here when the receipt belongs to the side-business books, NOT to personal Finances) |
 | **Travel** | trip-related receipts the user will reimburse / claim (otherwise use the trip's project, per § 3.2) |
 | **Self / Legal / Government** | passport / visa fees, court costs, license renewals, filing fees, notary, immigration |
 
