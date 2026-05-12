@@ -24,6 +24,7 @@ EXPECTED_MEMORY_FILES = [
     "action-signals.yaml", "supertailor-suggestions.yaml",
     "world.yaml", "decisions.yaml", "tags.yaml", "notification-policy.yaml",
     "outbox-log.yaml", "events.yaml", "working-sets.yaml", "upstream-writes.yaml",
+    "domain-suggestions.yaml",
 ]
 
 EXPECTED_DEFAULT_DOMAINS = [

@@ -133,6 +133,24 @@ For each domain in `domains-index.yaml` with `status: active`:
 
 User can mark a domain `paused` (kept around but not surfaced) or trigger an archive proposal (`doctor` skill picks up later).
 
+## 7d. Domain suggestions (detection-driven)
+
+Per `contracts/domains-and-assets.md` § 6.4b, run the domain detector and
+surface candidates the user hasn't already accepted / declined / deferred.
+
+```
+uv run python -m superagent.tools.domain_detector run --json
+```
+
+If the JSON list is non-empty, delegate to the `domain-suggest` skill to
+batch-ask the user (yes / not now / never) per candidate. Each accepted
+candidate routes to `add-domain` with the pre-filled name + scope. Each
+"not now" defers 90 days; each "never" suppresses permanently.
+
+This is the periodic surface — the ambient mid-conversation surface (per
+§ 6.4b) runs at any time during normal turns when the agent observes a
+strong cluster signal.
+
 ## 7b. Project archival proposals
 
 Read `_memory/projects-index.yaml.projects[]`:

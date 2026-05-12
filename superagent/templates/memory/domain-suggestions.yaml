@@ -1,0 +1,92 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: history of detection-driven domain suggestions.
+#
+# Implements `contracts/domains-and-assets.md` § 6.4b. Backed by
+# `superagent/tools/domain_detector.py` and the `domain-suggest` skill.
+#
+# Lifecycle: a candidate cluster (a tag, contact-role, or project-theme not
+# covered by any registered domain) is detected → row appended to suggested[]
+# → user is asked ONCE per session, with three options:
+#
+#   yes      → invoke `add-domain` with the proposed name/scope; on success
+#              move the row to accepted[] (with `domain_id` filled in).
+#   not now  → move the row to deferred[] with `revisit_after` = today + 90d.
+#              Detector skips this theme until then.
+#   never    → move the row to declined[]. Detector skips this theme forever
+#              unless the user explicitly clears the row.
+#
+# The `surfaced[]` list tracks ambient mid-conversation surfacings (so the
+# agent doesn't ask twice in the same session). It is append-only; rows are
+# moved out into one of accepted/declined/deferred when the user answers.
+
+schema_version: 1
+last_updated: null
+
+suggested:
+  # Open candidates currently surfaced or surfaceable. Each row:
+  #   theme           — slug for the underlying cluster (e.g. "sailing",
+  #                      "garden", "volunteer", "crypto"). Stable across runs.
+  #   proposed_name   — Title-cased name for the new domain.
+  #   proposed_scope  — One-line description for the domains-index row.
+  #   proposed_priority — Default P2 unless evidence suggests otherwise.
+  #   rationale       — Single-sentence "why this came up" explanation.
+  #   evidence        — List of {kind, ref, weight} entries describing the
+  #                      cluster signals (kind: tag | contact-role | project |
+  #                      source-folder | repeated-todo).
+  #   score           — Detector's confidence score (entity count + recency
+  #                      bonus). Higher = stronger signal.
+  #   detected_at     — ISO 8601 of first detection.
+  #   last_surfaced_at — ISO 8601 of last time the agent asked the user.
+  #                      Null when never surfaced (still in queue).
+  - theme: ""
+    proposed_name: ""
+    proposed_scope: ""
+    proposed_priority: "P2"
+    rationale: ""
+    evidence: []
+    score: 0
+    detected_at: null
+    last_surfaced_at: null
+
+accepted:
+  # User said yes → `add-domain` was invoked → domain registered.
+  #   theme           — original cluster theme.
+  #   domain_id       — slug of the created domain row in domains-index.yaml.
+  #   accepted_at     — ISO 8601 of acceptance.
+  - theme: ""
+    domain_id: ""
+    accepted_at: null
+
+declined:
+  # User said never → don't surface this cluster again.
+  #   theme           — original cluster theme.
+  #   declined_at     — ISO 8601 of decline.
+  #   revisit_after   — null (default = never). Override only on explicit
+  #                      user instruction to re-evaluate.
+  - theme: ""
+    declined_at: null
+    revisit_after: null
+
+deferred:
+  # User said not now → don't surface this cluster again until
+  # `revisit_after` has passed.
+  #   theme           — original cluster theme.
+  #   deferred_at     — ISO 8601 of deferral.
+  #   revisit_after   — ISO 8601 date after which the detector may surface
+  #                      this theme again. Default: deferred_at + 90 days.
+  - theme: ""
+    deferred_at: null
+    revisit_after: null
+
+surfaced:
+  # Append-only audit of every time the agent surfaced a candidate to the
+  # user. Used by the agent to answer "have I asked about <theme> in this
+  # session?" without rescanning suggested[].
+  #   theme           — cluster theme surfaced.
+  #   session_id      — best-effort session identifier (timestamp ok).
+  #   surfaced_at     — ISO 8601.
+  #   answer          — yes | not_now | never | no_answer.
+  - theme: ""
+    session_id: ""
+    surfaced_at: null
+    answer: ""

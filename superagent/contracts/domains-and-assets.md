@@ -109,6 +109,107 @@ appending to the rolodex), `add-source` (when appending to sources.md),
 `add-account` (when touching the domain's `info.md` Routines section), and
 every ingestor that writes domain history (per `contracts/ingestion.md`).
 
+### 6.4b Detection-driven domain suggestions
+
+In addition to the user explicitly invoking `add-domain`, Superagent
+proactively surfaces a candidate new domain when accumulated workspace
+signals strongly suggest one fits the user's situation. The contract is
+ask-once-per-cluster — pestering is the failure mode this section exists to
+prevent.
+
+#### Signals the detector watches
+
+`superagent/tools/domain_detector.py` walks these signals on demand (CLI:
+`uv run python -m superagent.tools.domain_detector run`) and on schedule
+(monthly-review § 7d). It surfaces clusters that:
+
+- **Off-domain tags** — a tag in `_memory/tags.yaml` used across ≥ N entities
+  (default N=5) that doesn't map to any registered domain id, name, or its
+  built-in synonym list. Example: tag `sailing` on 8 entities (3 contacts,
+  2 sources, 3 projects) → suggest `Sailing` domain.
+- **Off-domain contact-role clusters** — ≥ N contacts (default 3) sharing a
+  `role` value that doesn't fit any registered domain. Example: 4 contacts
+  with `role: "board_member"` → suggest `Volunteer` or `Community`.
+- **Off-domain project clusters** — ≥ 2 projects in `projects-index.yaml`
+  with empty `related_domains[]` AND a common keyword in their `name` /
+  `goal`. Example: "kitchen-renovation" + "bathroom-remodel" → suggest
+  `Renovations`.
+- **Off-domain source-folder clusters** — top-level `Sources/<folder>/`
+  paths with ≥ N entries (default 5) that don't map to any registered
+  domain. Example: many files under `Sources/Sailing/` → suggest `Sailing`.
+
+The detector folds each cluster's signals into one canonical `theme` slug
+(e.g. `sailing`, `garden`, `crypto`) and computes a confidence score
+(entity count + recency bonus). It returns the top N (default 3)
+candidates per run.
+
+#### Filtering — don't suggest what's already handled
+
+Before scoring, the detector filters out:
+
+1. Themes that map to a registered domain (id, name, or synonym).
+2. Themes already in `_memory/domain-suggestions.yaml.accepted[]`.
+3. Themes in `domain-suggestions.yaml.declined[]` with `revisit_after: null`
+   (the default — "never").
+4. Themes in `domain-suggestions.yaml.deferred[]` whose `revisit_after` is
+   in the future.
+
+This is the "ask once" enforcement. A user who said "never" is never asked
+again. A user who said "not now" is asked again after the deferral window
+(default 90 days).
+
+#### How the agent surfaces a candidate
+
+Two surfacing paths:
+
+1. **Periodic** (highest confidence, low noise) — `monthly-review` calls
+   `domain-suggest --run-detector` after Domain hygiene (§ 7d in
+   `monthly-review.md`). The skill renders a short "I noticed …" block per
+   candidate (max 3) and asks the user via `AskQuestion` with three
+   options: **yes** (route to `add-domain`), **not now** (defer 90d),
+   **never** (decline forever).
+
+2. **Ambient** (mid-conversation, opportunistic) — when the agent observes
+   a strong cluster *during a normal turn* (e.g. the user mentions the
+   same off-domain theme three times in this session, OR is creating
+   multiple entities the agent can't naturally route), it MAY surface
+   ONCE per session at the START of the next turn:
+
+   > Quick observation — I notice <evidence summary>. Want me to add a
+   > `<Name>` domain to track that separately? (yes / not now / never)
+
+   Constraints on ambient surfacing:
+   - Only ONE ambient surfacing per session. If the agent has already
+     asked about a different cluster in this session, defer the next one
+     to monthly-review.
+   - Don't interrupt high-friction flows (active triage, payment
+     processing, emergency captures). Hold the question for the next turn.
+   - Skip when `_memory/config.yaml.preferences.domain_detection.enabled`
+     is `false` (default `true`).
+
+#### Per-answer side-effects
+
+| Answer | What the agent does |
+|---|---|
+| **yes** | Invoke `add-domain` skill with `proposed_name` / `proposed_scope` / `proposed_priority` pre-filled (user can edit). On the new domain row landing in `domains-index.yaml`, move the suggestion row to `accepted[]` with `domain_id` set. Append to `interaction-log.yaml`. |
+| **not now** | Append to `deferred[]` with `revisit_after = today + 90d` (or per `config.preferences.domain_detection.defer_days`). Detector skips this theme until that date. |
+| **never** | Append to `declined[]` with `revisit_after: null`. Detector skips this theme forever (until the user explicitly clears the row via `domain-suggest forget <theme>`). |
+
+Every answer is also written to `surfaced[]` for audit ("when did the agent
+last ask about <theme>?").
+
+#### User overrides
+
+- **Disable detection entirely**:
+  `_memory/config.yaml.preferences.domain_detection.enabled: false`.
+- **Tighten thresholds** (suppress noisy suggestions):
+  `_memory/config.yaml.preferences.domain_detection.min_score: <int>`.
+- **Forget a previously declined / deferred theme** (re-allow it to surface):
+  `uv run python -m superagent.tools.domain_detector forget <theme>`
+  (see `skills/domain-suggest.md` for the user-facing flow).
+- **Force a fresh detection run** any time:
+  `uv run python -m superagent.tools.domain_detector run`.
+
 ### 6.5 Adding an asset
 
 Assets are physical things you own (vehicles, electronics, appliances, jewelry, instruments, tools, collectibles). The full skill is in `skills/add-asset.md`. Summary:

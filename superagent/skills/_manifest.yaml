@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-05-12T15:13:16-07:00'
-skill_count: 48
+generated_at: '2026-05-12T15:19:58-07:00'
+skill_count: 49
 skills:
 - name: superagent-add-account
   stem: add-account
@@ -393,6 +393,32 @@ skills:
   - Sources/_cache/`;
   - _memory/action-signals.yaml
   origin: framework
+- name: superagent-domain-suggest
+  stem: domain-suggest
+  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/domain-suggest.md
+  one_line: 'Detection-driven domain suggestions per `contracts/domains-and-assets.md` § 6.4b. Walks workspace
+    signals (off-domain tags, contact-role clusters, off-domain project clusters, source folder clusters) '
+  triggers:
+  - domain suggest
+  - suggest a domain
+  - any new domains?
+  - what should I add as a domain
+  - run the domain detector
+  - I keep tracking <topic>; should that be a domain?
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 188
+  h2_steps: 8
+  h3_subsections: 5
+  typical_token_cost: 1368
+  typical_files_read:
+  - _memory/domain-suggestions.yaml
+  - _memory/config.yaml
+  - _memory/domains-index.yaml
+  - _memory/interaction-log.yaml
+  origin: framework
 - name: superagent-draft-email
   stem: draft-email
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/draft-email.md
@@ -703,10 +729,10 @@ skills:
   - any scheduled-cadence ingest source
   cli_required: []
   cli_optional: []
-  lines: 197
-  h2_steps: 21
+  lines: 215
+  h2_steps: 22
   h3_subsections: 0
-  typical_token_cost: 1791
+  typical_token_cost: 1969
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/documents-index.yaml
