@@ -202,7 +202,7 @@ Domains/<domain>/
   Resources/    # optional, lazily created — drafts, working files, agent-generated artifacts
 ```
 
-The 12 default domains seeded by `init` are: **Health**, **Finances**, **Home**, **Vehicles**, **Assets**, **Pets**, **Family**, **Travel**, **Career**, **Business**, **Hobbies**, **Self**. Users add their own via `add-domain`.
+The 12 default domains **registered** by `init` are: **Health**, **Finances**, **Home**, **Vehicles**, **Assets**, **Pets**, **Family**, **Travel**, **Career**, **Business**, **Hobbies**, **Self**. Users add their own via `add-domain`. Per `contracts/domains-and-assets.md` § 6.4a, the per-domain folder under `Domains/<Name>/` is **lazy** — it materializes the first time real data lands for that domain (call `uv run python -m superagent.tools.domains ensure <id>` before writing).
 
 ### Projects/
 

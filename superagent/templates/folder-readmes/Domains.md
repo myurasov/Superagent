@@ -1,6 +1,6 @@
 # `Domains/` — your life, sliced into stable buckets
 
-Every folder under `Domains/` is one slice of your life. The 12 default domains seeded by `init` are:
+Every folder under `Domains/` is one slice of your life. The 12 default domains **registered** by `init` (the folder appears the first time real data lands for that domain — see "lazy materialization" below):
 
 | Domain | What it covers |
 |---|---|
@@ -17,7 +17,28 @@ Every folder under `Domains/` is one slice of your life. The 12 default domains 
 | **Hobbies** | Each meaningful hobby — fitness goal, reading log, side project, garden, workshop, etc. |
 | **Self** | Personal-development goals, journaling, books / podcasts / media log, life themes. |
 
-Add your own (e.g. `Boat/`, `Cabin/`, `Volunteer/`, `Estate/`) via `add-domain`. Delete any default you don't need; the system tolerates a missing default folder gracefully.
+Add your own (e.g. `Boat/`, `Cabin/`, `Volunteer/`, `Estate/`) via `add-domain`.
+
+## Lazy materialization
+
+`Domains/<Name>/` folders are **created the first time real data lands for that domain** — never speculatively at init time. The principle is "no empty folders": if you've never logged anything Pet-related, `Domains/Pets/` simply doesn't exist on disk.
+
+Triggers that materialize a folder:
+
+- A capture skill writes the first row referencing the domain (`add-bill`, `add-contact`, `add-asset`, `add-source`, `add-document`, `add-appointment`, `add-important-date`).
+- A logging skill writes the first event (`log-event`, `health-log`, `vehicle-log`, `home-maintenance`, `pet-care`).
+- An ingestor writes its first row attributable to the domain.
+- The `add-domain` flow's optional "capture an initial fact" step.
+
+The 12 defaults stay **registered** in `_memory/domains-index.yaml` regardless — capture skills know where to route when you start. The folder itself is just absent until earned.
+
+To prune folders that ended up empty (e.g. after a default-domain experiment that never accumulated real data):
+
+```
+uv run python -m superagent.tools.domains purge-empty [--dry-run]
+```
+
+User-edited folders are always kept; only bare-template defaults get deleted.
 
 ## File structure
 

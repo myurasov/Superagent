@@ -4,7 +4,11 @@
 Creates `workspace/` (or the path configured via
 `--workspace`) with:
   - `_memory/`  — copied from `superagent/templates/memory/`
-  - `Domains/`  — the 12 default domains, each with the 4-file structure
+  - `Domains/`  — top-level directory + README only; per-domain folders are
+                  LAZY (materialized on first data write per
+                  `contracts/domains-and-assets.md` § 6.4a). The 12 default
+                  domains are still REGISTERED in `_memory/domains-index.yaml`
+                  so the `add-*` skills can route to them.
   - `Inbox/`, `Outbox/`, `Archive/` — staging / output / archive folders
   - `Projects/`, `Sources/`         — personal-life folders
   - `_custom/`                      — empty per-user overlay scaffold
@@ -188,38 +192,19 @@ def init_memory(workspace: Path, framework: Path, dry_run: bool, log: list[str])
 
 
 def init_domains(workspace: Path, framework: Path, dry_run: bool, log: list[str]) -> int:
-    """Create the 12 default domain folders with the 5-file structure. Returns count of folders touched."""
+    """Create the `Domains/` directory only.
+
+    Per-domain folders are LAZY — materialized on first data write per
+    `contracts/domains-and-assets.md` § 6.4a. The 12 default domains are
+    still REGISTERED in `_memory/domains-index.yaml` (handled by
+    `init_memory`), so capture skills know where to route data when the
+    user starts adding rows.
+
+    Returns 1 if `Domains/` was newly created, else 0.
+    """
+    del framework  # no longer needed at init time; reserved for future use
     domains_dir = workspace / "Domains"
-    safe_mkdir(domains_dir, dry_run=dry_run, log=log)
-    template_dir = framework / "templates" / "domains"
-    info_t = (template_dir / "info.md").read_text()
-    status_t = (template_dir / "status.md").read_text()
-    history_t = (template_dir / "history.md").read_text()
-    rolodex_t = (template_dir / "rolodex.md").read_text()
-    sources_t = (template_dir / "sources.md").read_text()
-    touched = 0
-    for name, _scope in DEFAULT_DOMAINS:
-        domain_dir = domains_dir / name
-        safe_mkdir(domain_dir, dry_run=dry_run, log=log)
-        wrote = False
-        wrote |= safe_write(domain_dir / "info.md",
-                            render_domain_file(info_t, name),
-                            dry_run=dry_run, log=log)
-        wrote |= safe_write(domain_dir / "status.md",
-                            render_domain_file(status_t, name),
-                            dry_run=dry_run, log=log)
-        wrote |= safe_write(domain_dir / "history.md",
-                            render_domain_file(history_t, name),
-                            dry_run=dry_run, log=log)
-        wrote |= safe_write(domain_dir / "rolodex.md",
-                            render_domain_file(rolodex_t, name),
-                            dry_run=dry_run, log=log)
-        wrote |= safe_write(domain_dir / "sources.md",
-                            render_domain_file(sources_t, name),
-                            dry_run=dry_run, log=log)
-        if wrote:
-            touched += 1
-    return touched
+    return 1 if safe_mkdir(domains_dir, dry_run=dry_run, log=log) else 0
 
 
 def init_folders(workspace: Path, framework: Path, dry_run: bool, log: list[str]) -> int:
@@ -345,7 +330,7 @@ def main(argv: list[str] | None = None) -> int:
     print()
     print("Summary:")
     print(f"  _memory files created:    {memory_copied}")
-    print(f"  Domain folders touched:   {domains_touched}")
+    print(f"  Domains/ created:         {domains_touched}  (per-domain folders are lazy)")
     print(f"  Top-level folders:        {folders_touched}")
     print(f"  internal _memory dirs:    {internal_touched}")
     print(f"  _custom subfolders:       {custom_touched}")

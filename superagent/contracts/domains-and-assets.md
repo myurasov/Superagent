@@ -27,7 +27,7 @@ The split between `Career` / `Business` is by **income source**: Career owns W-2
 
 ### 6.2 4-file convention
 
-Every domain folder has the same 4 files:
+Every domain folder has the same 4 files (the folder itself is lazy — see § 6.4a):
 
 ```
 Domains/<domain>/
@@ -54,9 +54,55 @@ Every framework-managed markdown file under `workspace/Domains/` opens with the 
 The full skill is in `skills/add-domain.md`. Summary:
 
 1. Ask the user: domain name, slug (auto-derived), one-line scope, priority (P0–P3).
-2. Append a row to `_memory/domains-index.yaml`.
-3. Create `Domains/<slug>/` with the four template files filled in.
-4. Append `domain_added` entry to `interaction-log.yaml`.
+2. Append a row to `_memory/domains-index.yaml` — this is the **registration**.
+3. **Do NOT** pre-create `Domains/<Name>/`. The folder is lazy per § 6.4a — it
+   appears the first time a real piece of data lands for the domain (a contact,
+   a contract, a logged event, a status update, …), via `ensure_folder` (see
+   § 6.4a). Tell the user "I've registered <Name>; the folder will appear when
+   the first row of data lands."
+4. Append a `domain_added` entry to `interaction-log.yaml`.
+
+### 6.4a Lazy folder materialization (no empty domains)
+
+Default-domain (and custom-domain) folders under `Domains/<Name>/` are
+**created on first write**, never speculatively at init time. The contract:
+
+- `init` (and `add-domain`) **registers** the domain in `_memory/domains-index.yaml`
+  but does NOT create `Domains/<Name>/`. The user opens `Domains/` and sees
+  only what the workspace has actually accumulated content for — no clutter.
+- The first time any skill is about to write to `Domains/<Name>/<file>` (any
+  of `info.md`, `status.md`, `history.md`, `rolodex.md`, `sources.md`) — or
+  about to drop a working file under `Domains/<Name>/Resources/` — it MUST
+  first call:
+
+      uv run python -m superagent.tools.domains ensure <id>
+
+  …or, when the skill is itself a Python tool, import the helper directly:
+
+      from superagent.tools.domains import ensure_folder
+      ensure_folder(workspace, framework, "<id>")
+
+- `ensure_folder` is **idempotent**: when the folder already exists it is a
+  near-no-op. When missing, it materializes the 5-file scaffold from
+  `superagent/templates/domains/` with the registered domain name substituted.
+- After `ensure_folder` returns, the skill proceeds with its normal write.
+  The newly-materialized folder is now permanent (until explicitly removed by
+  a future `purge-empty` sweep, which only deletes folders with NO user
+  content beyond the bare template).
+- **`purge-empty`** (CLI: `uv run python -m superagent.tools.domains purge-empty`)
+  is the housekeeping pass that removes default-domain folders that match the
+  bare-template state (no real entries beyond the framework's seeded
+  scaffolding). Custom-named domains created by the user are NEVER touched by
+  the purge — only folders whose name matches one of the defaults seeded by
+  init.
+
+Skills MUST cite this section in their frontmatter / first step when they are
+in the set that writes to `Domains/<X>/<file>`. Implicated skills: `health-log`,
+`pet-care`, `vehicle-log`, `home-maintenance`, `log-event`, `add-contact` (when
+appending to the rolodex), `add-source` (when appending to sources.md),
+`add-asset` (when writing to Resources/), `add-bill` / `add-subscription` /
+`add-account` (when touching the domain's `info.md` Routines section), and
+every ingestor that writes domain history (per `contracts/ingestion.md`).
 
 ### 6.5 Adding an asset
 

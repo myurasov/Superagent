@@ -1,9 +1,12 @@
 ---
 name: superagent-add-domain
 description: >-
-  Bootstrap a new life domain (e.g. Boat, Cabin, Estate, Volunteer)
-  beyond the 12 defaults seeded by init. Creates the folder, scaffolds the
-  4-file structure, registers it in `domains-index.yaml`.
+  Register a new life domain (e.g. Boat, Cabin, Estate, Volunteer) beyond the
+  12 defaults seeded by init. Appends a row to `_memory/domains-index.yaml`.
+  Per `contracts/domains-and-assets.md` § 6.4a, the folder under
+  `Domains/<Name>/` is LAZY — it materializes the first time real data lands
+  for the domain (via add-contact / add-asset / log-event / etc., or via the
+  optional initial-entry step in this skill).
 triggers:
   - add a domain
   - new domain
@@ -31,18 +34,7 @@ Auto-derive **slug** from the name: lowercase, hyphens for spaces, no punctuatio
 Check `_memory/domains-index.yaml`:
 - If the slug already exists, ask whether to **rename**, **use the existing one**, or **cancel**.
 
-## 2. Scaffold the folder
-
-1. Create `workspace/Domains/<Name>/`.
-2. Copy the four templates from `superagent/templates/domains/` into it:
-   - `info.md` with `{{DOMAIN_NAME}}` substitutions; sections empty.
-   - `status.md` with `{{DOMAIN_NAME}}` and `{{LAST_UPDATED}}` substitutions; no tasks yet.
-   - `history.md` with `{{DOMAIN_NAME}}` and `{{LAST_UPDATED}}`; empty Log.
-   - `rolodex.md` with `{{DOMAIN_NAME}}` and `{{LAST_UPDATED}}`; empty tables.
-3. Write `sources.md` from the template `superagent/templates/domains/sources.md` (initially with empty tables).
-4. **Do not** pre-create `Resources/` — it's lazily created on first working-file write.
-
-## 3. Register the domain
+## 2. Register the domain (no folder creation)
 
 Append a row to `_memory/domains-index.yaml`:
 
@@ -59,28 +51,50 @@ Append a row to `_memory/domains-index.yaml`:
   notes: ""
 ```
 
-## 4. Optional — seed an initial entry
+**Do NOT** pre-create `workspace/Domains/<Name>/` here. Per
+`contracts/domains-and-assets.md` § 6.4a, default- and custom-domain folders
+are lazy: they materialize on the first real data write via
+`uv run python -m superagent.tools.domains ensure <slug>` (called automatically
+by capture skills, or by step 3 below if the user opts in).
+
+## 3. Optional — seed an initial entry (this is what materializes the folder)
 
 Ask:
 
 > "Want to capture an initial fact, contact, or task while we're here? (yes / no)"
 
-If yes:
-- **Fact** → append a bullet to `info.md` § Key Facts.
-- **Contact** → invoke `add-contact` with `related_domains: [<slug>]`.
-- **Task** → invoke `todo` with `related_domain: <slug>`.
+If yes — invoke the matching capture skill, which will materialize the folder
+as a side-effect of writing the first row:
 
-## 5. Confirm
+- **Fact** → call `uv run python -m superagent.tools.domains ensure <slug>` first,
+  then append a bullet to `info.md` § Key Facts.
+- **Contact** → invoke `add-contact` with `related_domains: [<slug>]`. The
+  add-contact skill calls `ensure` itself before touching `rolodex.md`.
+- **Task** → invoke `todo` with `related_domain: <slug>`. The todo skill
+  calls `ensure` before syncing the per-domain `status.md`.
 
-Print:
+If the user picks **no**, the domain stays registered-but-not-materialized.
+That's fine — the folder will appear the first time you log something there.
+
+## 4. Confirm
+
+If folder was materialized in step 3:
 
 ```
-Created domain "<Name>" at <path>.
-Files: info.md, status.md, history.md, rolodex.md.
-Registered in domains-index.yaml.
+Registered domain "<Name>" in domains-index.yaml.
+Materialized Domains/<Name>/ (info.md, status.md, history.md, rolodex.md, sources.md).
 ```
 
-## 6. Logging
+If folder is still lazy:
+
+```
+Registered domain "<Name>" in domains-index.yaml.
+Domains/<Name>/ will appear when the first row of data lands (via
+add-contact / add-asset / log-event / health-log / ... or by re-running this
+skill and saying "yes" to the initial-entry prompt).
+```
+
+## 5. Logging
 
 Append to `interaction-log.yaml`:
 
@@ -88,6 +102,6 @@ Append to `interaction-log.yaml`:
 - timestamp: <now>
   type: skill_run
   subject: "add-domain"
-  summary: "Created domain <slug> (<scope>)."
+  summary: "Registered domain <slug> (<scope>). Folder materialized: <yes|deferred>."
   related_domain: <slug>
 ```

@@ -20,6 +20,17 @@ cli_optional: []
 
 This is the catch-all "I just did / experienced / heard X — record it" capture skill. The agent figures out from context which sub-flow to run.
 
+> **Pre-flight (lazy-materialization contract — `contracts/domains-and-assets.md` § 6.4a)**:
+> This skill writes to `Domains/<domain>/history.md` (and sometimes
+> `rolodex.md`) for whichever domain the event resolves to. After step 1
+> classifies the event and the target domain is known, run:
+>
+>     uv run python -m superagent.tools.domains ensure <domain-id>
+>
+> BEFORE the first append. Sub-flows that delegate to a dedicated skill
+> (`health-log`, `vehicle-log`, `home-maintenance`, `pet-care`, `bills`)
+> inherit that skill's own ensure call — no duplicate needed.
+
 ## 1. Classify the event
 
 Heuristics:

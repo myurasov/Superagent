@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-12T02:59:19-07:00'
+generated_at: '2026-05-12T14:07:56-07:00'
 skill_count: 48
 skills:
 - name: superagent-add-account
@@ -59,10 +59,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 168
+  lines: 178
   h2_steps: 8
   h3_subsections: 0
-  typical_token_cost: 1505
+  typical_token_cost: 1630
   typical_files_read:
   - _memory/assets-index.yaml
   - _memory/bills.yaml
@@ -101,10 +101,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 138
+  lines: 147
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 994
+  typical_token_cost: 1105
   typical_files_read:
   - _memory/contacts.yaml
   origin: framework
@@ -131,8 +131,9 @@ skills:
 - name: superagent-add-domain
   stem: add-domain
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-domain.md
-  one_line: Bootstrap a new life domain (e.g. Boat, Cabin, Estate, Volunteer) beyond the 12 defaults seeded
-    by init. Creates the folder, scaffolds the 4-file structure, registers it in `domains-index.yaml`.
+  one_line: Register a new life domain (e.g. Boat, Cabin, Estate, Volunteer) beyond the 12 defaults seeded
+    by init. Appends a row to `_memory/domains-index.yaml`. Per `contracts/domains-and-assets.md` § 6.4a,
+    the
   triggers:
   - add a domain
   - new domain
@@ -142,10 +143,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 93
-  h2_steps: 6
+  lines: 107
+  h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 685
+  typical_token_cost: 891
   typical_files_read:
   - _memory/domains-index.yaml
   origin: framework
@@ -213,10 +214,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 238
+  lines: 247
   h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 2892
+  typical_token_cost: 2989
   typical_files_read:
   - Sources/_cache/`
   - _memory/domains-index.yaml
@@ -530,10 +531,10 @@ skills:
   - apple_health / whoop / strava / garmin / oura — auto-ingest vitals
   cli_required: []
   cli_optional: []
-  lines: 161
+  lines: 170
   h2_steps: 5
   h3_subsections: 6
-  typical_token_cost: 1099
+  typical_token_cost: 1196
   typical_files_read:
   - _memory/health-records.yaml
   - Domains/Health/info.md
@@ -556,10 +557,10 @@ skills:
   - home_assistant — could surface filter-due signals from sensor data
   cli_required: []
   cli_optional: []
-  lines: 120
+  lines: 128
   h2_steps: 5
   h3_subsections: 3
-  typical_token_cost: 881
+  typical_token_cost: 969
   typical_files_read:
   - _memory/assets-index.yaml
   - Domains/Home/history.md
@@ -642,8 +643,8 @@ skills:
   stem: init
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/init.md
   one_line: 'First-run initialization for the Superagent personal-life assistant after cloning: short
-    orientation questionnaire, scaffold workspace/ with the 12 default Domains and all _memory/ files,
-    optionally p'
+    orientation questionnaire, scaffold workspace/ with the Domains/ directory (per-domain folders are
+    LAZY per con'
   triggers:
   - User runs init / first-time setup / "initialize Superagent"
   - User asks to set up Superagent / start using Superagent
@@ -654,10 +655,10 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 293
+  lines: 296
   h2_steps: 12
   h3_subsections: 1
-  typical_token_cost: 4104
+  typical_token_cost: 4224
   typical_files_read:
   - workspace/_memory/config.yaml
   - _memory/insights.yaml
@@ -679,10 +680,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 76
+  lines: 87
   h2_steps: 4
   h3_subsections: 0
-  typical_token_cost: 719
+  typical_token_cost: 862
   typical_files_read:
   - _memory/interaction-log.yaml
   origin: framework
@@ -755,10 +756,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 124
+  lines: 133
   h2_steps: 6
   h3_subsections: 7
-  typical_token_cost: 883
+  typical_token_cost: 991
   typical_files_read:
   - Domains/Pets/status.md
   origin: framework
@@ -1071,10 +1072,10 @@ skills:
   - tesla — auto-ingests mileage / charging
   cli_required: []
   cli_optional: []
-  lines: 141
+  lines: 149
   h2_steps: 6
   h3_subsections: 6
-  typical_token_cost: 1080
+  typical_token_cost: 1152
   typical_files_read:
   - Domains/Vehicles/history.md
   - Domains/Vehicles/status.md
