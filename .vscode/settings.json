@@ -2,10 +2,16 @@
     "files.exclude": {
         "**/__pycache__": true,
         "**/.pytest_cache": true,
-        "**/.playwright*": true
+        "**/.playwright*": true,
+        "LICENSE": true,
+        "*.*": true
     },
     "markdown.preview.openMarkdownLinks": "inEditor",
     "workbench.editorAssociations": {
         "*.md": "vscode.markdown.preview.editor"
+    },
+    "explorer.decorations.colors": true,
+    "workbench.colorCustomizations": {
+        "gitDecoration.ignoredResourceForeground": "#34ffe7"
     }
 }
