@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-12T14:07:56-07:00'
+generated_at: '2026-05-12T15:13:16-07:00'
 skill_count: 48
 skills:
 - name: superagent-add-account
@@ -131,7 +131,7 @@ skills:
 - name: superagent-add-domain
   stem: add-domain
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-domain.md
-  one_line: Register a new life domain (e.g. Boat, Cabin, Estate, Volunteer) beyond the 12 defaults seeded
+  one_line: Register a new life domain (e.g. Boat, Cabin, Estate, Volunteer) beyond the 13 defaults seeded
     by init. Appends a row to `_memory/domains-index.yaml`. Per `contracts/domains-and-assets.md` § 6.4a,
     the
   triggers:
@@ -143,10 +143,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 107
+  lines: 108
   h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 891
+  typical_token_cost: 913
   typical_files_read:
   - _memory/domains-index.yaml
   origin: framework

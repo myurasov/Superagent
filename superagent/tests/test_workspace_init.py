@@ -1,7 +1,7 @@
 """Tests for `tools/workspace_init.py`.
 
 Verifies the scaffolder produces the expected structure, every YAML loads,
-the 12 default domains are REGISTERED in `_memory/domains-index.yaml` (their
+the 13 default domains are REGISTERED in `_memory/domains-index.yaml` (their
 folders under `Domains/<Name>/` are LAZY per
 `contracts/domains-and-assets.md` § 6.4a — see `test_domains_lazy.py`), and
 re-running is idempotent.
@@ -28,7 +28,7 @@ EXPECTED_MEMORY_FILES = [
 
 EXPECTED_DEFAULT_DOMAINS = [
     "Health", "Finances", "Home", "Vehicles", "Assets", "Pets",
-    "Family", "Travel", "Career", "Business", "Hobbies", "Self",
+    "Family", "Travel", "Career", "Business", "Education", "Hobbies", "Self",
 ]
 
 DOMAIN_FILES = ["info.md", "status.md", "history.md", "rolodex.md", "sources.md"]

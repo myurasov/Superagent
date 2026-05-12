@@ -1,7 +1,10 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: index of life domains (Health, Finances, Home, Vehicles,
-# Assets, Pets, Family, Travel, Career, Business, Hobbies, Self, plus any custom).
-# init() seeds the 12 default domains; user adds more via add-domain skill.
+# Assets, Pets, Family, Travel, Career, Business, Education, Hobbies, Self,
+# plus any custom).
+# init() seeds the 13 default domains; user adds more via add-domain skill,
+# or accepts auto-detected suggestions per contracts/domains-and-assets.md
+# § 6.4b.
 
 schema_version: 1
 
@@ -48,7 +51,7 @@ domains:
     notes: ""
   - id: "finances"
     name: "Finances"
-    scope: "Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance, credit"
+    scope: "Operational financial life — bills, banking accounts (the operational tubes), credit cards, loans, mortgages, insurance policies, payroll, taxes, budget, cash flow. Holdings themselves (stocks, significant cash positions, bonds, crypto) live in Assets."
     priority: "P1"
     status: "active"
     path: "workspace/Domains/Finances"
@@ -59,7 +62,7 @@ domains:
     created: null
     last_updated: null
     tags: ["default"]
-    notes: ""
+    notes: "Owns the OPERATIONAL machinery — accounts as routing/access, debts, recurring outflows, cash flow, tax filing. The HOLDINGS inside accounts (equity positions, large cash reserves, crypto, bonds, treasuries) live in Assets. Bank account = Finances; the $200k cash position in it = Assets. Brokerage account = Finances; the AAPL shares inside = Assets."
   - id: "home"
     name: "Home"
     scope: "Mortgage / rent, utilities, HOA, maintenance schedule, contractors, security, deliveries"
@@ -90,7 +93,7 @@ domains:
     notes: ""
   - id: "assets"
     name: "Assets"
-    scope: "Movable physical possessions worth tracking for insurance / warranty / recall — electronics, appliances, jewelry, instruments, tools, art, collectibles, sports gear (excludes vehicles + the home structure)"
+    scope: "Things of value worth tracking — physical (electronics, appliances, jewelry, instruments, tools, art, collectibles) AND financial (stock holdings, ETFs, bonds, crypto, significant cash positions, precious metals, treasuries) AND real estate. Excludes vehicles (Vehicles) and the home structure / fixtures (Home). The asset is the holding itself; the operational account it lives in stays in Finances."
     priority: "P2"
     status: "active"
     path: "workspace/Domains/Assets"
@@ -101,7 +104,7 @@ domains:
     created: null
     last_updated: null
     tags: ["default"]
-    notes: ""
+    notes: "Net-worth view. Assets are stores of wealth — physical or financial. A row in assets-index.yaml has kind: physical | financial | real_estate, and (for financial) a held_in_account field pointing at the Finances-side account. Significant cash positions (above the threshold in config.preferences.assets.cash_position_threshold) are tracked here too."
   - id: "pets"
     name: "Pets"
     scope: "Each pet's vet, vaccinations, prescriptions, food, grooming, boarding"
@@ -172,6 +175,20 @@ domains:
     last_updated: null
     tags: ["default"]
     notes: ""
+  - id: "education"
+    name: "Education"
+    scope: "Active enrollment in a degree / certificate program (yourself — kids' schooling lives in Family). Courses in flight, credits earned, credentials being pursued, study schedule, advisors, registrar, transcripts, FAFSA / financial aid, employer tuition assistance. Distinct from Career which owns the W-2 employment side."
+    priority: "P3"
+    status: "active"
+    path: "workspace/Domains/Education"
+    parent: null
+    handle: "domain:education"
+    visibility: "private"
+    provenance: { source: "init", at: null }
+    created: null
+    last_updated: null
+    tags: ["default"]
+    notes: "P3 by default — most adults aren't actively in a degree program. The folder materializes (per § 6.4a) only when the first row of education data lands. A user enrolled in a multi-year program often promotes this to P1/P2."
   - id: "hobbies"
     name: "Hobbies"
     scope: "Each meaningful hobby — fitness, reading log, side project, garden, workshop, etc."

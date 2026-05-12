@@ -5,7 +5,7 @@ description: >-
   cloning: short orientation questionnaire, scaffold workspace/
   with the Domains/ directory (per-domain folders are LAZY per
   contracts/domains-and-assets.md § 6.4a — they materialize on first data
-  write) and all _memory/ files (the 12 default domains are registered in
+  write) and all _memory/ files (the 13 default domains are registered in
   domains-index.yaml so capture skills know how to route), optionally probe
   and enable available data sources (MCPs and CLI tools), and end with a
   5-minute walkthrough of the most relevant capture skill. Quick-start works
@@ -113,7 +113,7 @@ Capture answers — they drive (a) seeded `_memory/insights.yaml` rows, (b) whic
 Run `uv run python superagent/tools/workspace_init.py`. The script:
 
 1. Creates `workspace/` if missing.
-2. Creates `workspace/_memory/` and copies every YAML template from `superagent/templates/memory/` into it (only if the destination file doesn't exist; never overwrite user data). The shipped `domains-index.yaml` template **registers** the 12 default domains so capture skills can route to them.
+2. Creates `workspace/_memory/` and copies every YAML template from `superagent/templates/memory/` into it (only if the destination file doesn't exist; never overwrite user data). The shipped `domains-index.yaml` template **registers** the 13 default domains so capture skills can route to them.
 3. Creates `workspace/Domains/` (the directory only — per-domain folders are LAZY per `contracts/domains-and-assets.md` § 6.4a; they materialize the first time data lands for a given domain). Drops the explanatory `Domains/README.md` template explaining the convention.
 4. Creates `workspace/Projects/` (empty; populated as the user adds projects via `add-project`).
 5. Creates `workspace/Sources/` with `documents/`, `references/`, `_cache/` subdirectories (per the immutability + caching contract in `contracts/sources.md`).
@@ -247,7 +247,7 @@ Walk through the chosen skill **interactively**: ask the user to provide the one
 Print a structured summary:
 
 - Workspace created at `<absolute path to workspace>`.
-- Domains: 12 defaults registered (folders materialize on first data write per `contracts/domains-and-assets.md` § 6.4a).
+- Domains: 13 defaults registered (folders materialize on first data write per `contracts/domains-and-assets.md` § 6.4a).
 - Memory files seeded: 13 `_memory/*.yaml`.
 - Data sources enabled: <list, or "none yet (run `ingest --setup` later)">.
 - Pain-point → skill mapping (the user's top 3 pain points, each pointing to the most relevant skill).

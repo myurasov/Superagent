@@ -86,8 +86,9 @@ def test_list_status_marks_registered_vs_materialized(
     assert rows["self"]["materialized"] is True
     assert rows["health"]["materialized"] is False
     assert rows["business"]["materialized"] is False
+    assert rows["education"]["materialized"] is False
     assert all(r["registered"] for r in rows.values())
-    assert len(rows) == 12
+    assert len(rows) == 13
 
 
 def test_purge_empty_removes_only_bare_templates(

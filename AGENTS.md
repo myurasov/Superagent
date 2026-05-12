@@ -202,7 +202,9 @@ Domains/<domain>/
   Resources/    # optional, lazily created — drafts, working files, agent-generated artifacts
 ```
 
-The 12 default domains **registered** by `init` are: **Health**, **Finances**, **Home**, **Vehicles**, **Assets**, **Pets**, **Family**, **Travel**, **Career**, **Business**, **Hobbies**, **Self**. Users add their own via `add-domain`. Per `contracts/domains-and-assets.md` § 6.4a, the per-domain folder under `Domains/<Name>/` is **lazy** — it materializes the first time real data lands for that domain (call `uv run python -m superagent.tools.domains ensure <id>` before writing).
+The 13 default domains **registered** by `init` are: **Health**, **Finances**, **Home**, **Vehicles**, **Assets**, **Pets**, **Family**, **Travel**, **Career**, **Business**, **Education**, **Hobbies**, **Self**. Users add their own via `add-domain`, or accept detection-driven suggestions (per `contracts/domains-and-assets.md` § 6.4b — Superagent surfaces a candidate ONCE when accumulated signals strongly suggest a new domain fits the user's situation; user replies yes / not now / never). Per § 6.4a the per-domain folder under `Domains/<Name>/` is **lazy** — it materializes the first time real data lands for that domain (call `uv run python -m superagent.tools.domains ensure <id>` before writing).
+
+`Finances` is the **operational** financial layer (accounts as routing tubes, bills, credit, payroll, taxes, cash flow, insurance policies). `Assets` is the **holdings** layer (stock positions, significant cash, crypto, bonds, real estate, plus all physical possessions). The brokerage account row lives in Finances; the AAPL position inside it lives in Assets with a `held_in_account` cross-link.
 
 ### Projects/
 

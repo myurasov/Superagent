@@ -103,7 +103,7 @@ Superagent exists to take this load off, surgically and ambiently.
 ### Core capabilities
 
 - **Ambient ingestion.** Pulls from your email, calendar, banks, health apps, smart home, notes, and reminders on a schedule you control. Each source is a discrete ingestor with its own state file.
-- **Domain-organized memory.** Life is sliced into a small number of **Domains** (Health, Finances, Home, Vehicles, Assets, Pets, Family, Travel, Career, Business, Hobbies, Self, plus any custom). Each domain is a folder with a 4-file structure (`info.md`, `status.md`, `history.md`, `rolodex.md`).
+- **Domain-organized memory.** Life is sliced into a small number of **Domains** (Health, Finances, Home, Vehicles, Assets, Pets, Family, Travel, Career, Business, Education, Hobbies, Self, plus any custom — see `contracts/domains-and-assets.md` § 6.4b for detection-driven suggestions). Each domain is a folder with a 4-file structure (`info.md`, `status.md`, `history.md`, `rolodex.md`).
 - **Structured indexes.** YAML indexes hold the "small data" that needs to be queried fast: `bills.yaml`, `subscriptions.yaml`, `appointments.yaml`, `important-dates.yaml`, `assets-index.yaml`, `accounts-index.yaml`, `contacts.yaml`, `documents-index.yaml`, `health-records.yaml`.
 - **Cadence-driven surfacing.** Daily, weekly, monthly skills aggregate state into briefings ("here's what's due this week, here are the three appointments, here are the two birthdays you forgot last year, here's the subscription you haven't used since January").
 - **Capture-anywhere, file-anywhere.** A single command turns "I just got a new health-insurance card" or "the plumber gave me his number" into the right structured row in the right file.

@@ -2,11 +2,12 @@
 name: superagent-add-domain
 description: >-
   Register a new life domain (e.g. Boat, Cabin, Estate, Volunteer) beyond the
-  12 defaults seeded by init. Appends a row to `_memory/domains-index.yaml`.
+  13 defaults seeded by init. Appends a row to `_memory/domains-index.yaml`.
   Per `contracts/domains-and-assets.md` § 6.4a, the folder under
   `Domains/<Name>/` is LAZY — it materializes the first time real data lands
   for the domain (via add-contact / add-asset / log-event / etc., or via the
-  optional initial-entry step in this skill).
+  optional initial-entry step in this skill). Detection-driven suggestions
+  (per § 6.4b) also route through this skill on user "yes".
 triggers:
   - add a domain
   - new domain

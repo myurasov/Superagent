@@ -6,7 +6,7 @@ Creates `workspace/` (or the path configured via
   - `_memory/`  — copied from `superagent/templates/memory/`
   - `Domains/`  — top-level directory + README only; per-domain folders are
                   LAZY (materialized on first data write per
-                  `contracts/domains-and-assets.md` § 6.4a). The 12 default
+                  `contracts/domains-and-assets.md` § 6.4a). The 13 default
                   domains are still REGISTERED in `_memory/domains-index.yaml`
                   so the `add-*` skills can route to them.
   - `Inbox/`, `Outbox/`, `Archive/` — staging / output / archive folders
@@ -38,15 +38,16 @@ from pathlib import Path
 
 DEFAULT_DOMAINS = [
     ("Health", "Medical, dental, vision, mental health, prescriptions, vaccines, vitals, family medical history"),
-    ("Finances", "Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance, credit"),
+    ("Finances", "Operational financial life — bills, banking accounts (the operational tubes), credit cards, loans, mortgages, insurance policies, payroll, taxes, budget, cash flow. Holdings themselves (stocks, significant cash positions, bonds, crypto) live in Assets"),
     ("Home", "Mortgage / rent, utilities, HOA, maintenance schedule, contractors, security, deliveries"),
     ("Vehicles", "Every vehicle owned (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel"),
-    ("Assets", "Movable physical possessions worth tracking for insurance / warranty / recall — electronics, appliances, jewelry, instruments, tools, art, collectibles, sports gear (excludes vehicles + the home structure)"),
+    ("Assets", "Things of value worth tracking — physical (electronics, appliances, jewelry, instruments, tools, art, collectibles) AND financial (stock holdings, ETFs, bonds, crypto, significant cash positions, precious metals) AND real estate. Excludes vehicles (Vehicles) and the home structure / fixtures (Home). The asset is the holding; the operational account it lives in stays in Finances"),
     ("Pets", "Each pet's vet, vaccinations, prescriptions, food, grooming, boarding"),
     ("Family", "Spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events"),
     ("Travel", "Trips planned and past, flights, hotels, rentals, packing lists, frequent-flier numbers, passports"),
     ("Career", "Resume, certifications, performance reviews, learning goals, networking, salary history"),
     ("Business", "Side income, freelancing, consulting, sole-proprietor / LLC operations — clients, contracts, invoices, business expenses, business taxes, vendor relationships (separate from W-2 Career employment)"),
+    ("Education", "Active enrollment in a degree / certificate program (yourself — kids' schooling lives in Family). Courses in flight, credits earned, credentials being pursued, study schedule, advisors, registrar, transcripts, FAFSA / financial aid, employer tuition assistance. Distinct from Career which owns the W-2 employment side"),
     ("Hobbies", "Each meaningful hobby — fitness, reading log, side project, garden, workshop, etc."),
     ("Self", "Personal-development goals, journaling, books / podcasts / media log, life themes"),
 ]
@@ -195,7 +196,7 @@ def init_domains(workspace: Path, framework: Path, dry_run: bool, log: list[str]
     """Create the `Domains/` directory only.
 
     Per-domain folders are LAZY — materialized on first data write per
-    `contracts/domains-and-assets.md` § 6.4a. The 12 default domains are
+    `contracts/domains-and-assets.md` § 6.4a. The 13 default domains are
     still REGISTERED in `_memory/domains-index.yaml` (handled by
     `init_memory`), so capture skills know where to route data when the
     user starts adding rows.

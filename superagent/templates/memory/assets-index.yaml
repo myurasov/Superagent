@@ -1,21 +1,49 @@
 # [Do not change manually — managed by Superagent]
-# Superagent memory: index of physical assets you own.
-# Vehicles, electronics, appliances, jewelry, instruments, tools, collectibles,
-# anything worth recording for insurance, warranty, or maintenance.
+# Superagent memory: index of assets you own — physical AND financial.
+#
+# Physical assets: vehicles, electronics, appliances, jewelry, instruments,
+# tools, collectibles, art, furniture (anything worth recording for insurance,
+# warranty, or maintenance).
+#
+# Financial holdings: stock positions, ETFs, bonds, crypto, treasuries,
+# precious metals, significant cash positions (above the threshold in
+# config.preferences.assets.cash_position_threshold). The HOLDING lives here;
+# the OPERATIONAL ACCOUNT it sits in (the brokerage account, the bank account)
+# stays in `accounts-index.yaml` (Finances domain). Cross-link via
+# `held_in_account` field.
+#
+# Real estate: house, lot, rental property — uses `kind: real_estate`.
 
 schema_version: 1
 
 assets:
   # Each asset:
-  #   id              — Stable slug (e.g. "blue-camry-2018", "samsung-tv-living-room").
+  #   id              — Stable slug (e.g. "blue-camry-2018", "samsung-tv-living-room",
+  #                      "aapl-holdings", "savings-cash-position").
   #   name            — Human-readable name.
-  #   kind            — vehicle | appliance | electronics | jewelry | instrument |
-  #                      tool | collectible | furniture | art | other.
-  #   sub_kind        — More specific (e.g. for vehicle: car / motorcycle / bicycle / boat / RV).
+  #   kind            — high-level category. Choose from:
+  #                       physical:    vehicle | appliance | electronics | jewelry |
+  #                                    instrument | tool | collectible | furniture |
+  #                                    art | sports_gear | other_physical
+  #                       financial:   stock | etf | mutual_fund | bond | treasury |
+  #                                    crypto | cash_position | precious_metal |
+  #                                    other_financial
+  #                       real estate: real_estate
+  #   sub_kind        — More specific (e.g. vehicle: car / motorcycle / bicycle /
+  #                      boat / RV; real_estate: single_family_home / condo /
+  #                      vacant_land / rental).
   #   domain          — Which Domain owns this asset (id from domains-index).
+  #                      Default mappings:
+  #                        Vehicles  → vehicles
+  #                        Real estate (residence + structure) → home
+  #                        Real estate (investment / vacant land / rental) → assets
+  #                        Physical movables (electronics / jewelry / etc.) → assets
+  #                        Financial holdings (stock / bond / cash position) → assets
   #   purchase_date   — ISO 8601 date.
   #   purchase_price  — Numeric (USD by default; honors config.preferences.money.currency).
   #   current_value   — Optional — for insurance / net-worth tracking.
+  #                      For financial holdings, refresh on each ingest pass.
+  #   # ---- Physical-asset fields (use when kind in physical/real_estate) ----
   #   serial          — Serial number (for electronics / appliances).
   #   vin             — Vehicle Identification Number (for vehicles).
   #   model           — Manufacturer model number / name.
@@ -31,20 +59,46 @@ assets:
   #       interval_miles: 0 — vehicles only; null otherwise
   #       last_done: null   — ISO 8601 date
   #       next_due: null    — ISO 8601 date (auto-computed)
-  #   receipts        — List of paths into Sources/documents/<category>/<asset-slug>/.
+  #   # ---- Financial-asset fields (use when kind in financial bucket) ----
+  #   ticker          — Public-market identifier (e.g. "AAPL", "VTI", "BTC"). Empty
+  #                      for cash positions and OTC holdings.
+  #   exchange        — Where it trades (e.g. "NASDAQ", "NYSE", "Coinbase"). Empty
+  #                      for cash positions.
+  #   units           — Quantity held (shares, coins, ounces, contracts, dollars
+  #                      for cash positions). Numeric; precision per asset class.
+  #   cost_basis      — Total cost basis in account currency. Numeric.
+  #   acquired_at     — ISO 8601 date of first acquisition (for tax holding-period
+  #                      math). For DCA / multi-lot positions, point at lots[]
+  #                      below for per-lot detail.
+  #   lots:           — Optional list of acquisition lots (for tax basis tracking):
+  #     - acquired_at: <iso>
+  #       units: <number>
+  #       cost_basis: <number>
+  #       source: "<lot id from broker statement>"
+  #   held_in_account — Operational handle of the account this lives in
+  #                      (`account:<slug>` from accounts-index.yaml). E.g.
+  #                      "account:schwab-brokerage" or "account:ally-savings".
+  #                      The account is in Finances; the holding (this row) is in
+  #                      Assets. Cross-domain link.
+  #   # ---- Common fields ----
+  #   receipts        — List of paths under `Sources/<your-folders>/<asset-slug>/`.
   #                      (Source documents are NEVER stored under Domains/. They live
-  #                      in Sources/ and are pointed at from the relevant
-  #                      Domains/<X>/sources.md catalogue.)
+  #                      under `Sources/` and are pointed at from the relevant
+  #                      Domains/<X>/sources.md catalogue. For financial holdings,
+  #                      this is where confirmation slips, lot reports, and
+  #                      account-statement PDFs live.)
   #   photos          — List of paths. Working / context photos go in
   #                      Domains/<domain>/Resources/<asset-slug>/. Vault-grade photos
   #                      (asset-condition photos retained for insurance) go in
-  #                      Sources/documents/<category>/<asset-slug>/.
-  #   notes           — Free-form context (defects, customizations, history of repairs).
+  #                      Sources/<your-folders>/<asset-slug>/.
+  #   notes           — Free-form context (defects, customizations, history of
+  #                      repairs; for financial: thesis, rebalance notes, etc.).
   #   status          — active | inactive | disposed.
   #   disposed:
   #     date: null
-  #     reason: ""        # sold | donated | lost | stolen | replaced | recycled
-  #     proceeds: null    # if sold
+  #     reason: ""        # sold | donated | lost | stolen | replaced | recycled |
+  #                       # liquidated (financial) | matured (bonds) | transferred
+  #     proceeds: null    # if sold / liquidated
   #   tags            — Short labels for filtering.
   #   created         — ISO 8601 date this row was added.
   #   last_updated    — ISO 8601 of last meaningful update.

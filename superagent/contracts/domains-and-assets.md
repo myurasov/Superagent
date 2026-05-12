@@ -2,28 +2,33 @@
 
 <!-- Migrated from `procedures.md § 6`. Citation form: `contracts/domains-and-assets.md`. -->
 
-### 6.1 The 12 default domains
+### 6.1 The 13 default domains
 
-Init seeds these 12 by default. The user can delete the ones they don't need, add more via `add-domain`, or rename in-place.
+Init seeds these 13 by default. The user can delete the ones they don't need, add more via `add-domain`, or rename in-place. New domains can also be **auto-suggested** by the detector per § 6.4b.
 
 | Domain | Scope (illustrative) |
 |---|---|
 | **Health** | medical, dental, vision, mental health, prescriptions, vaccines, vitals, family medical history |
-| **Finances** | bills, accounts (banks, brokerage, retirement), taxes, budget, insurance (health / life / umbrella), credit |
-| **Home** | mortgage / rent, utilities, insurance, HOA, maintenance schedule, contractors, security, deliveries |
+| **Finances** | operational financial life — bills, banking accounts (the operational tubes), credit cards, loans, mortgages, insurance policies, payroll, taxes, budget, cash flow. Holdings themselves live in Assets |
+| **Home** | mortgage (the loan / payment side; the equity / structure-as-property is also Home), utilities, insurance, HOA, maintenance schedule, contractors, security, deliveries |
 | **Vehicles** | every vehicle owned (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel |
-| **Assets** | movable possessions worth tracking for insurance / warranty / recall — electronics, appliances, jewelry, instruments, tools, art, collectibles, sports gear (excludes vehicles + the home structure) |
+| **Assets** | things of value — physical (electronics, appliances, jewelry, instruments, tools, art, collectibles), financial (stock holdings, ETFs, bonds, crypto, significant cash positions, precious metals, treasuries), and non-residential real estate. Excludes vehicles + the home structure |
 | **Pets** | each pet's vet, vaccinations, prescriptions, food, grooming, boarding |
-| **Family** | spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events |
+| **Family** | spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events (kids' schooling included here, NOT in Education) |
 | **Travel** | trips planned and past, flight / hotel / rental records, packing lists, frequent-flier numbers, passports |
 | **Career** | resume, certifications, performance reviews, learning goals, networking, salary history (W-2 employment side) |
 | **Business** | side income, freelancing, consulting, sole-proprietor / LLC operations — clients, contracts, invoices, business expenses, business taxes (separate from W-2 Career) |
+| **Education** | active enrollment in a degree / certificate program (yourself — kids' schooling lives in Family). Courses, credits, credentials being pursued, advisors, registrar, transcripts, FAFSA, employer tuition assistance |
 | **Hobbies** | each meaningful hobby — fitness goal, reading log, side project, garden, workshop, etc. |
 | **Self** | personal-development goals, journaling, books / podcasts / media log, life themes |
 
-The split between `Vehicles` / `Assets` / `Home` is by **kind of physical thing**: Vehicles owns titled motor vehicles (cars, motorcycles, RVs, boats), Home owns the structure + fixtures + utilities, Assets owns everything movable that doesn't fit either. The `assets-index.yaml.<asset>.domain` field selects which of the three a given asset is filed under.
+The split between `Vehicles` / `Assets` / `Home` is by **kind of physical thing**: Vehicles owns titled motor vehicles (cars, motorcycles, RVs, boats), Home owns the primary residence structure + fixtures + utilities, Assets owns everything movable / non-residential that doesn't fit either. The `assets-index.yaml.<asset>.domain` field selects which of the three a given asset row is filed under. Investment / rental / vacant-land real estate sits in Assets; the primary residence sits in Home.
+
+The split between `Finances` / `Assets` is by **operational vs holding**: Finances owns the operational machinery (accounts as routing/access tubes, bills, credit, payroll, taxes, cash flow, insurance policies). Assets owns the **holdings themselves** — what you OWN, not the rails it moves on. A brokerage account row in `accounts-index.yaml` lives in Finances; the AAPL position inside it lives in `assets-index.yaml` with `held_in_account: "account:schwab-brokerage"`. A high-yield-savings account lives in Finances; a $200k cash position parked there above the threshold (`config.preferences.assets.cash_position_threshold`, default $50k) lives in Assets as a `cash_position` row. Mortgages and other debts stay in Finances (operational liabilities). For day-to-day "did this bill clear?" the user lives in Finances; for "what's my net worth and what do I own?" the user lives in Assets.
 
 The split between `Career` / `Business` is by **income source**: Career owns W-2 employment, employer-paid benefits, professional development tied to that job; Business owns side-income / sole-proprietor / LLC operations, client relationships, business expenses, business taxes. A user with no side income can leave `Business` empty (or delete it); a freelance-only user can leave `Career` empty.
+
+The split between `Career` / `Education` is by **what you're pursuing**: Career covers the role you currently hold (or want next) and the certifications / development tied to it. Education covers active enrollment in a structured program (degree, multi-semester certificate, bootcamp) — registrar, syllabi, advisors, transcripts, financial aid. A one-off cert renewal stays in Career; a multi-year MBA program goes in Education with `related_domain: career` cross-link.
 
 ### 6.2 4-file convention
 

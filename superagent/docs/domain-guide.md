@@ -1,8 +1,8 @@
 # Superagent — Domain guide
 
-What each of the 12 default Domains covers, what to put in each file, and which skills naturally write to each.
+What each of the 13 default Domains covers, what to put in each file, and which skills naturally write to each.
 
-The Domain folders are seeded by `init`. You can delete any default you don't need (the system tolerates a missing default folder gracefully) and add any number of your own via `add-domain`.
+The Domain folders are **registered** by `init` (the per-folder scaffold is lazy — see `contracts/domains-and-assets.md` § 6.4a). You can delete any default you don't need (the system tolerates a missing default gracefully) and add your own via `add-domain` — or wait for Superagent to auto-suggest one when usage signals warrant (per § 6.4b).
 
 ---
 
@@ -18,6 +18,7 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 - [Travel](#travel)
 - [Career](#career)
 - [Business](#business)
+- [Education](#education)
 - [Hobbies](#hobbies)
 - [Self](#self)
 - [Custom domains you might add](#custom-domains-you-might-add)
@@ -43,16 +44,18 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 
 ## Finances
 
-**Scope**: bills, accounts (banks / brokerage / retirement / loans / mortgages), taxes, budget, insurance (health / life / umbrella / homeowner / renter), credit, charitable giving.
+**Scope**: the **operational** financial life — bills, banking accounts (the operational tubes), credit cards, loans, mortgages, insurance policies, payroll, taxes, budget, cash flow, charitable giving. **The accounts as routing/access; not the holdings inside them** — those live in [Assets](#assets). Mortgages and other debts stay here (operational liabilities, even though the underlying property might be tracked in Home or Assets).
 
 | File | Owns |
 |---|---|
-| `info.md` | Net-worth snapshot, budget summary, insurance carriers + policy numbers last-4, financial advisor + accountant + lawyer, savings goals, retirement contributions targets. |
-| `status.md` | This month's bill payment progress, upcoming bills, account low-balance alerts, tax deadlines this quarter. |
-| `history.md` | Major financial events (open / close account, new policy, refinance, large purchase, charitable giving log, tax filing). |
+| `info.md` | Operational summary — banking institutions + last-4s, credit cards + last-4s, loan balances + payoff dates, mortgage(s) — payment / escrow / lender, insurance carriers + policy numbers (last-4), payroll cadence, recurring-bill summary, financial advisor + accountant + lawyer, budget targets, tax-prep workflow notes. *Net-worth snapshot is computed in Assets and cross-linked here.* |
+| `status.md` | This month's bill payment progress, upcoming bills, account low-balance alerts, tax deadlines this quarter, expiring policies. |
+| `history.md` | Operational events — opened / closed account, new policy, refinance, mortgage paydown, large outflow, charitable giving, tax filing, debt restructuring. |
 | `rolodex.md` | Bank rep (if you have one), financial advisor, accountant, tax preparer, insurance agents (one per policy carrier), estate lawyer. |
 
 **Skills that write here**: `add-account` → `_memory/accounts-index.yaml` + `history.md`; `add-bill` / `add-subscription` → respective YAML + `info.md` § Routines; `bills mark-paid` → `bills.yaml.history[]` + occasionally `history.md`; `expenses` → ad-hoc analysis (no writes); finance ingestors → `_memory/transactions.yaml` + cross-checks into `bills.yaml` + `subscriptions.yaml`.
+
+**Cross-domain link to Assets**: every brokerage / IRA / 401(k) / HYSA account in `accounts-index.yaml` here is referenced from each held position in `assets-index.yaml.<asset>.held_in_account`. The "what do I own?" view is in Assets; the "how does money flow?" view is here.
 
 ---
 
@@ -88,18 +91,28 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 
 ## Assets
 
-**Scope**: movable physical possessions worth tracking for insurance / warranty / recall — electronics (laptops, phones, cameras, monitors, AV gear), countertop appliances, jewelry / watches, instruments, art, collectibles, hand & power tools, sports gear, high-value furniture. **Excludes** vehicles (`Vehicles` domain) and the home structure + permanently-installed fixtures (`Home` domain — HVAC, water heater, built-in appliances). Consumables (food, cleaning supplies, paper goods) are out of scope.
+**Scope**: things of value worth tracking — across THREE buckets:
+
+1. **Physical** — electronics (laptops, phones, cameras, monitors, AV gear), countertop appliances, jewelry / watches, instruments, art, collectibles, hand & power tools, sports gear, high-value furniture.
+2. **Financial holdings** — stock positions, ETFs, mutual funds, bonds, treasuries, CDs, crypto holdings, precious metals (physical or paper), significant cash positions (above `config.preferences.assets.cash_position_threshold`, default $50k).
+3. **Real estate** — investment properties, rental properties, vacant land, second homes. (Primary residence stays in `Home`.)
+
+**Excludes** vehicles (`Vehicles` domain), the primary residence structure + permanently-installed fixtures (`Home` domain — HVAC, water heater, built-in appliances), the operational accounts that hold financial assets (`Finances` domain), and consumables.
 
 | File | Owns |
 |---|---|
-| `info.md` | Inventory snapshot grouped by sub-kind (electronics, jewelry, instruments, tools, …); insurance riders (jewelry rider, valuable-articles policy, scheduled-personal-property endorsement); preferred repair contacts per category. |
-| `status.md` | Warranties expiring in the next 90 days; assets due for service or recalibration; recall alerts; theft / loss claims in flight; recently-acquired assets pending warranty registration. |
-| `history.md` | Acquisitions, dispositions (sold / donated / lost / stolen / replaced), repairs, warranty claims, recall responses, insurance-rider changes, condition-photo refresh dates. |
-| `rolodex.md` | Repair specialists per category (jeweler, instrument luthier, electronics repair, watch repair, art restorer), valuation appraisers, insurance agent for the personal-property rider, photographer (for high-value-item documentation). |
+| `info.md` | Net-worth snapshot — physical inventory by sub-kind; financial holdings by class (equity / fixed-income / cash / crypto / metals); real-estate parcels. Insurance riders (jewelry rider, valuable-articles policy). Investment thesis / target allocation if you keep one. |
+| `status.md` | Warranties / titles expiring in the next 90 days; assets due for service / recalibration / appraisal refresh; rebalancing windows; large unrealized gains / losses; positions crossing concentration thresholds; recently-acquired assets pending registration. |
+| `history.md` | Acquisitions, dispositions (sold / donated / lost / stolen / replaced / liquidated / matured), repairs, warranty claims, recall responses, insurance-rider changes, rebalances, position adds / sells, dividend / interest reinvestments worth recording, lot-tax-basis events. |
+| `rolodex.md` | Repair specialists per category (jeweler, instrument luthier, electronics repair, watch repair, art restorer); appraisers; the financial advisor (cross-listed with Finances); broker dealer reps; insurance agent for the personal-property rider. |
 
-**Skills that write here**: `add-asset` (with `domain: assets`) → `_memory/assets-index.yaml` row, optional warranty entry on `important-dates.yaml`; `add-source` (warranty / receipt / appraisal) → `Sources/<your-folders>/<asset-slug>/` then catalogue row in `sources.md`; `add-document` (appraisal, insurance rider) → `documents-index.yaml`. Photos for insurance documentation go in `Sources/...` (canonical, immutable per the sources contract); working / condition photos go in `Domains/Assets/Resources/<asset-slug>/`.
+**Schema fields on `assets-index.yaml.<asset>` for financial holdings**: `kind: stock | etf | mutual_fund | bond | treasury | crypto | cash_position | precious_metal`, plus `ticker`, `exchange`, `units`, `cost_basis`, `acquired_at`, optional per-lot `lots[]`, and (critically) `held_in_account: "account:<slug>"` pointing at the operational account in `accounts-index.yaml` (which lives under Finances).
 
-**Differs from `Vehicles` and `Home` how**: by **kind of physical thing**. Vehicles is for titled motor vehicles (legal registration, license plates, VIN). Home is for the structure + fixtures + utilities + HOA + the property's recurring maintenance. Assets is the catch-all for movables that don't fit either.
+**Skills that write here**: `add-asset` (with `domain: assets` and the right `kind`) → `_memory/assets-index.yaml` row, optional warranty / maturity entry on `important-dates.yaml`; `add-source` (warranty / receipt / appraisal / brokerage statement) → `Sources/<your-folders>/<asset-slug>/` then catalogue row in `sources.md`; `add-document` (appraisal, insurance rider, share certificate, deed) → `documents-index.yaml`. Finance ingestors (Plaid / Monarch / brokerage exports) write per-position rows here automatically once enabled.
+
+**Differs from `Vehicles` and `Home` how**: by **kind of physical thing**. Vehicles is for titled motor vehicles (legal registration, license plates, VIN). Home is for the primary residence structure + fixtures + utilities + HOA + that property's recurring maintenance. Assets is the catch-all for everything else of value.
+
+**Differs from `Finances` how**: Finances is the **operational** machinery (the accounts as routing tubes, recurring outflows, taxes, debts, cash flow). Assets is the **holdings** layer (what you actually own). The brokerage account row goes in Finances; the AAPL position inside it goes in Assets with a `held_in_account` cross-link. Day-to-day "did the bill clear?" lives in Finances; "what's my net worth?" lives in Assets.
 
 ---
 
@@ -181,6 +194,25 @@ The Domain folders are seeded by `init`. You can delete any default you don't ne
 **Differs from `Career` how**: by **income source**. Career is for W-2 employment, employer-paid benefits, salary history, performance reviews, professional development tied to that job. Business is for self-employed income — what hits Schedule C / 1120-S rather than W-2 line 1. A user with no side income can leave `Business` empty (or delete the folder); a freelance-only user can leave `Career` empty.
 
 **Differs from `Finances` how**: Finances tracks personal money flows (personal accounts, household bills, personal income tax). Business tracks business money flows (business accounts, business invoices issued, business expenses, business income tax). The cleanest separation is by which **set of books** the transaction belongs to — even if the user is the only stakeholder of both.
+
+---
+
+## Education
+
+**Scope**: active enrollment in a structured learning program — a degree (BA, MS, MBA, PhD), a multi-semester certificate, a bootcamp, or any other multi-quarter / multi-year course of study. Yourself only — kids' schooling lives in `Family`. Courses in flight, syllabi, credits earned, credentials being pursued, study-schedule blocks, advisor / professor contacts, registrar / bursar interactions, transcripts, FAFSA / financial-aid paperwork, employer tuition-assistance reimbursement workflow, exam scheduling.
+
+| File | Owns |
+|---|---|
+| `info.md` | Active program(s) — institution, program name, advisor, expected completion date, credits earned vs needed, GPA snapshot if relevant, financial-aid summary (last-4 of award reference), registrar contact, study-cadence notes. |
+| `status.md` | Courses this term, deadlines (assignments, exams, registration windows), tuition-payment status, financial-aid renewal windows, transcript requests in flight. |
+| `history.md` | Term-by-term progress (courses taken, grades, credits earned), credentials earned, advisor meetings, financial-aid disbursements, transcripts requested / received. |
+| `rolodex.md` | Advisor(s), professors / instructors of record (current + recent), registrar contact, financial-aid officer, study group / cohort members worth keeping warm, mentors specific to this program. |
+
+**Skills that write here**: `add-document` (acceptance letter, transcript, FA award, certificate / diploma) → `documents-index.yaml` with `related_domain: education`; `add-contact` (advisor, professor) → `contacts.yaml` with `related_domains: [education]`; `add-important-date` (term deadline, FA renewal) → `important-dates.yaml`; `log-event` (advisor meeting, exam taken) → `Domains/Education/history.md`; `add-source` (syllabus, course materials, lecture recordings) → `Sources/<your-folders>/<program-slug>/`.
+
+**Differs from `Career` how**: Career covers your current / target W-2 role, salary history, employer-paid benefits, performance reviews, professional development tied to a specific job. Education is for **structured-program enrollment** — a registrar exists, you have transcripts, there's a clear start / end date for the program. A one-off cert renewal stays in Career. A multi-year MBA goes in Education with `related_domain: career` cross-link so the Career narrative can reference it.
+
+**Optional**: most adults aren't in school. The Education domain ships at **P3** by default and stays empty (and the folder unmaterialized — per § 6.4a) until the first row of education data lands. Users actively enrolled often promote it to P1 or P2 in `domains-index.yaml`.
 
 ---
 

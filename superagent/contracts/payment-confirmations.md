@@ -62,6 +62,7 @@ Canonical default domains (seeded by `init`) and their typical payment classes:
 | **Family** | tuition, school fees, childcare, dependent-care payments |
 | **Career** | professional dues, license / certification renewals, employer-reimbursable receipts the user will claim |
 | **Business** | client invoices, vendor payments, contractor fees, business-license fees, sole-prop / LLC quarterly estimates, business-insurance premiums, deductible business expenses (route here when the receipt belongs to the side-business books, NOT to personal Finances) |
+| **Education** | tuition payments, registration / course fees, textbooks, exam / proctoring fees, financial-aid disbursements, employer tuition-assistance reimbursements |
 | **Travel** | trip-related receipts the user will reimburse / claim (otherwise use the trip's project, per § 3.2) |
 | **Self / Legal / Government** | passport / visa fees, court costs, license renewals, filing fees, notary, immigration |
 

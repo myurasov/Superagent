@@ -1,23 +1,24 @@
 # `Domains/` — your life, sliced into stable buckets
 
-Every folder under `Domains/` is one slice of your life. The 12 default domains **registered** by `init` (the folder appears the first time real data lands for that domain — see "lazy materialization" below):
+Every folder under `Domains/` is one slice of your life. The 13 default domains **registered** by `init` (the folder appears the first time real data lands for that domain — see "lazy materialization" below):
 
 | Domain | What it covers |
 |---|---|
 | **Health** | Medical, dental, vision, mental health, prescriptions, vaccines, vitals, family medical history. |
-| **Finances** | Bills, accounts (banks, brokerage, retirement), taxes, budget, insurance (health / life / umbrella), credit. |
-| **Home** | Mortgage / rent, utilities, HOA, maintenance schedule, contractors, security, deliveries. |
+| **Finances** | Operational financial life — bills, banking accounts (the operational tubes), credit cards, loans, mortgages, insurance policies, payroll, taxes, budget, cash flow. *Holdings* themselves live in Assets. |
+| **Home** | Primary residence — mortgage / rent, utilities, HOA, maintenance schedule, contractors, security, deliveries. |
 | **Vehicles** | Every vehicle you own (cars, bikes, motorcycles, RVs, boats); registration, insurance, maintenance, fuel. |
-| **Assets** | Movable possessions worth tracking for insurance / warranty / recall — electronics, appliances, jewelry, instruments, tools, art, collectibles, sports gear (excludes vehicles + the home structure). |
+| **Assets** | Things of value — physical (electronics, jewelry, instruments, tools, art, collectibles), financial (stock holdings, ETFs, bonds, crypto, significant cash positions, precious metals, treasuries), and non-residential real estate. The asset is the holding; the operational account it lives in stays in Finances. |
 | **Pets** | Each pet's vet, vaccinations, prescriptions, food, grooming, boarding. |
-| **Family** | Spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events. |
+| **Family** | Spouse, kids, parents, siblings; school calendars, kids' doctors, extracurriculars, family events (kids' schooling lives here, NOT in Education). |
 | **Travel** | Trips planned and past, flights, hotels, rentals, packing lists, frequent-flier numbers, passports. |
 | **Career** | Resume, certifications, performance reviews, learning goals, networking, salary history (W-2 employment side). |
 | **Business** | Side income, freelancing, consulting, sole-proprietor / LLC operations — clients, contracts, invoices, business expenses, business taxes (separate from W-2 Career). |
+| **Education** | Active enrollment in a degree / certificate program (yourself — kids' schooling lives in Family). Courses, credits, advisors, registrar, transcripts, FAFSA, employer tuition assistance. |
 | **Hobbies** | Each meaningful hobby — fitness goal, reading log, side project, garden, workshop, etc. |
 | **Self** | Personal-development goals, journaling, books / podcasts / media log, life themes. |
 
-Add your own (e.g. `Boat/`, `Cabin/`, `Volunteer/`, `Estate/`) via `add-domain`.
+Add your own (e.g. `Boat/`, `Cabin/`, `Volunteer/`, `Estate/`) via `add-domain`. Or wait — Superagent will auto-suggest a new domain (per `contracts/domains-and-assets.md` § 6.4b) when accumulated tags / contacts / projects strongly suggest one fits your situation; you'll be asked once with three options (yes / not now / never).
 
 ## Lazy materialization
 
