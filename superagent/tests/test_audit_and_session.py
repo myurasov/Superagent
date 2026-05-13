@@ -3,7 +3,6 @@
 """Tests for `tools/audit.py` and `tools/session_scratch.py`."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 

@@ -31,7 +31,6 @@ def test_play_resolve_no_conditions(framework_dir: Path,
 
 
 def test_play_eval_condition() -> None:
-    from superagent.tools.play import eval_condition
 
     # The function reads workspace state — here we just test the parser
     # does not crash on a "always" case.

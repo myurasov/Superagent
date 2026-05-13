@@ -27,7 +27,7 @@ from typing import Any
 
 import yaml
 
-from ._base import IngestorBase, ProbeResult, ProbeStatus, RunResult, now_iso
+from ._base import IngestorBase, ProbeStatus, now_iso
 from ._registry import REGISTRY, find as find_spec
 from ._stubs import StubIngestor
 

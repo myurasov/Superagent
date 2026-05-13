@@ -18,7 +18,6 @@ import argparse
 import datetime as dt
 import hashlib
 import json
-import os
 import sys
 import uuid
 from pathlib import Path
@@ -198,7 +197,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--session", type=str, default=None,
                         help="Session id; default derives a new one.")
     sub = parser.add_subparsers(dest="cmd", required=True)
-    n = sub.add_parser("new", help="Start a new session id.")
+    sub.add_parser("new", help="Start a new session id.")
     r = sub.add_parser("record", help="Record a file read in the session.")
     r.add_argument("--file", required=True, type=Path)
     c = sub.add_parser("check", help="Check whether a file is already loaded.")

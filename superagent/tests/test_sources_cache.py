@@ -3,8 +3,6 @@
 """Tests for `tools/sources_cache.py`."""
 from __future__ import annotations
 
-import datetime as dt
-import json
 from pathlib import Path
 
 import yaml
@@ -112,7 +110,6 @@ def test_chunking_kicks_in_for_large_content(
     """A ref pointing at content over chunk_threshold_kb gets chunked."""
     from superagent.tools.sources_cache import cache_dir, get_cache
 
-    big = "para\n\n" * 5000  # roughly 30 KB; threshold default is 100 KB
     src = tmp_path / "big.md"
     huge = "para\n\n" * 30000  # ~180 KB → exceeds 100 KB threshold
     src.write_text(huge)

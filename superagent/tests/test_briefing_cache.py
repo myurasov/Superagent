@@ -3,7 +3,6 @@
 """Tests for `tools/briefing_cache.py`."""
 from __future__ import annotations
 
-import datetime as dt
 import time
 from pathlib import Path
 

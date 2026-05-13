@@ -15,12 +15,10 @@ Exercises the contract documented in `contracts/sources.md` § 15.6:
 """
 from __future__ import annotations
 
-import datetime as dt
 import os
 import time
 from pathlib import Path
 
-import yaml
 
 
 def _write(p: Path, text: str = "") -> None:
