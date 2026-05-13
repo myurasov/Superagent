@@ -279,6 +279,20 @@ def init_workspace_todo(workspace: Path, framework: Path, dry_run: bool, log: li
     return safe_write(workspace / "todo.md", rendered, dry_run=dry_run, log=log)
 
 
+def init_version_file(workspace: Path, framework: Path, dry_run: bool, log: list[str]) -> bool:
+    """Stamp `workspace/.version` with the framework's current version.
+
+    Per `contracts/versioning.md` § 2 + § 6: a fresh workspace records
+    the framework version it was scaffolded from, so future framework
+    upgrades can compute the correct migration chain. Idempotent — keeps
+    an existing `.version` file untouched (the `migrate` skill is the
+    sole authority for advancing it after init).
+    """
+    from superagent.tools.version import current_version
+    version = current_version(framework.parent / "pyproject.toml")
+    return safe_write(workspace / ".version", f"{version}\n", dry_run=dry_run, log=log)
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse CLI args."""
     parser = argparse.ArgumentParser(
@@ -329,6 +343,7 @@ def main(argv: list[str] | None = None) -> int:
         internal_touched = init_internal_dirs(workspace, args.dry_run, log)
         custom_touched = init_custom(workspace, args.dry_run, log)
         todo_written = init_workspace_todo(workspace, framework, args.dry_run, log)
+        version_written = init_version_file(workspace, framework, args.dry_run, log)
     except Exception as exc:
         print(f"ERROR during init: {exc}", file=sys.stderr)
         return 1
@@ -344,6 +359,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  internal _memory dirs:    {internal_touched}")
     print(f"  _custom subfolders:       {custom_touched}")
     print(f"  workspace todo.md:        {'created' if todo_written else 'kept'}")
+    print(f"  workspace .version:       {'created' if version_written else 'kept'}")
     if args.dry_run:
         print("\nDry run complete. Re-run without --dry-run to apply.")
     else:

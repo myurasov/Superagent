@@ -170,3 +170,7 @@ contracts:
     slug: payment-confirmations
     title: "Payment Confirmation Capture Contract"
     path: contracts/payment-confirmations.md
+  - id: C-41
+    slug: versioning
+    title: "Versioning and Migration Contract"
+    path: contracts/versioning.md

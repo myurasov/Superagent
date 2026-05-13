@@ -145,6 +145,24 @@ def test_init_creates_workspace_todo(initialized_workspace: Path) -> None:
     assert "P0" in body and "P1" in body, "workspace todo.md missing priority sections"
 
 
+def test_init_creates_version_file(
+    framework_dir: Path, initialized_workspace: Path
+) -> None:
+    """Init stamps `workspace/.version` with the framework's current version
+    per `contracts/versioning.md` § 2 + § 6.
+    """
+    from superagent.tools.version import current_version
+
+    version_file = initialized_workspace / ".version"
+    assert version_file.is_file(), "workspace/.version not created by init"
+    text = version_file.read_text(encoding="utf-8")
+    assert text.endswith("\n"), ".version must end with newline"
+    cur = current_version(framework_dir.parent / "pyproject.toml")
+    assert text.strip() == cur, (
+        f".version content {text.strip()!r} != current framework {cur!r}"
+    )
+
+
 def test_init_is_idempotent(framework_dir: Path, initialized_workspace: Path) -> None:
     """A second run does not change file contents.
 

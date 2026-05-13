@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-05-13T02:27:18-07:00'
-skill_count: 50
+generated_at: '2026-05-13T02:52:05-07:00'
+skill_count: 51
 skills:
 - name: superagent-add-account
   stem: add-account
@@ -681,10 +681,10 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 313
+  lines: 314
   h2_steps: 12
   h3_subsections: 1
-  typical_token_cost: 4397
+  typical_token_cost: 4466
   typical_files_read:
   - workspace/_memory/config.yaml
   - _memory/insights.yaml
@@ -713,6 +713,33 @@ skills:
   typical_token_cost: 862
   typical_files_read:
   - _memory/interaction-log.yaml
+  origin: framework
+- name: superagent-migrate
+  stem: migrate
+  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/migrate.md
+  one_line: Migrate a workspace from its currently-recorded Superagent version (workspace/.version, defaults
+    to 0.1.0 when absent) to the framework's current version. Computes the chain via tools/version.py,
+    appl
+  triggers:
+  - migrate
+  - migrate workspace
+  - upgrade superagent
+  - upgrade workspace
+  - workspace version mismatch
+  - version mismatch detected
+  - what version is my workspace
+  - revert migration
+  - downgrade workspace
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 339
+  h2_steps: 11
+  h3_subsections: 10
+  typical_token_cost: 2786
+  typical_files_read:
+  - workspace/_memory/interaction-log.yaml
   origin: framework
 - name: superagent-monthly-review
   stem: monthly-review

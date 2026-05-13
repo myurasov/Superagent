@@ -10,6 +10,7 @@ The future. Organized by **LOE tier** so you can match work to time available.
   - [How to read this](#how-to-read-this)
   - [LOE legend](#loe-legend)
   - [North-star themes](#north-star-themes)
+  - [Released](#released)
   - [LOE-XS — under an hour each](#loe-xs--under-an-hour-each)
   - [LOE-S — half a day each](#loe-s--half-a-day-each)
   - [LOE-M — a few days each](#loe-m--a-few-days-each)
@@ -49,6 +50,17 @@ Three themes guide which items get pulled forward:
 1. **Know your life better than you do.** Anything that closes the gap between "data Superagent could see" and "data Superagent does see" is high-leverage. Most LOE-S work is in this theme — implementing more ingestors.
 2. **Be ambient, not a chore.** Anything that turns a manual chore into background work — auto-capture rules, smarter surfacing windows, trial-end alerts, recurring-charge auto-detection — is high-leverage.
 3. **Stay safe by construction.** Anything that strengthens the safeguards — sensitive-store options, deeper data redaction in outbound, multi-user permission boundaries — moves up the priority list when the data volume increases.
+
+---
+
+## Released
+
+Newest first. One line per release. Migrations (when one is required) live at `superagent/migrations/<to_version>.md` per [`contracts/versioning.md`](../contracts/versioning.md).
+
+| Version | Date | Summary |
+|---|---|---|
+| **0.2.0** | 2026-05-13 | Introduce semver versioning + migration system: `workspace/.version` tracking, `superagent/migrations/`, `migrate` skill, `tools/version.py` (`contracts/versioning.md`, [migration](../migrations/0.2.0.md)). |
+| **0.1.0** | bootstrap | Initial framework. |
 
 ---
 

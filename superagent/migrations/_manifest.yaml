@@ -1,0 +1,16 @@
+# [Do not change manually - managed by superagent/tools/version.py refresh-manifest]
+#
+# Ordered registry of migration files under `superagent/migrations/`.
+# Single source of truth for the `migrate` skill's chain resolution.
+#
+# Citation form: `migrations/<to_version>.md`.
+schema_version: 1
+generated_at: '2026-05-13T09:52:09+00:00'
+migrations:
+- to_version: 0.2.0
+  from_version: 0.1.0
+  file: 0.2.0.md
+  title: Bootstrap workspace .version tracking
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute

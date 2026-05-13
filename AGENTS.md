@@ -18,6 +18,7 @@
   - [Domain / Project / Sources folder convention](#domain--project--sources-folder-convention)
   - [Public artifact destination](#public-artifact-destination)
   - [Git commits](#git-commits)
+  - [Versioning and migrations](#versioning-and-migrations)
   - [Local task references](#local-task-references)
   - [Read budget (token efficiency)](#read-budget-token-efficiency)
   - [Local-first read order](#local-first-read-order)
@@ -100,7 +101,8 @@ When the agent first opens (or first acts in) `workspace/` in a session:
 
 1. Check whether **`workspace/_memory/config.yaml`** exists.
 2. **If it does not exist**, suggest running the **init** skill (`superagent/skills/init.md`) before relying on Superagent memory or paths.
-3. **If it exists**, read **`workspace/_memory/context.yaml`** and inspect **`last_check`**. If `last_check` is **more than 24 hours ago** (or null / stale), suggest running the **whatsup** or **daily-update** skill to refresh.
+3. **If it exists**, run `uv run python -m superagent.tools.version check`. If the framework version is **ahead** of `workspace/.version` by a MINOR or MAJOR step, suggest the **migrate** skill BEFORE any other skill writes data (a stale workspace queried with new schemas can corrupt). PATCH-only deltas are silently advanced by `migrate`. See § "Versioning and migrations".
+4. Read **`workspace/_memory/context.yaml`** and inspect **`last_check`**. If `last_check` is **more than 24 hours ago** (or null / stale), suggest running the **whatsup** or **daily-update** skill to refresh.
 
 ---
 
@@ -158,6 +160,7 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 | **personal-signals** | Capture self-development feedback; surface growth themes on request. |
 | **doctor** | Workspace data hygiene — stale domains, duplicate contacts, near-duplicate todos, simplification candidates. |
 | **supertailor-review** | Framework hygiene + strategic improvement; produces ranked suggestions in `supertailor-suggestions.yaml`. |
+| **migrate** | Apply or revert framework version migrations on the workspace (chained, one version at a time, revertible). Sole entry point per `contracts/versioning.md`. |
 | **handoff** | Generate the "if I get hit by a bus" packet — account list, document locations, executor instructions. |
 
 ---
@@ -332,6 +335,19 @@ uv run ruff check superagent/                 # confirm clean — then commit
 ```
 
 The `./.githooks/pre-commit` hook enforces this locally once the user runs `git config core.hooksPath .githooks` (one-time per clone). The agent must NOT pass `--no-verify` to bypass without explicit user authorization.
+
+---
+
+## Versioning and migrations
+
+Full policy: [`contracts/versioning.md`](superagent/contracts/versioning.md). One-paragraph summary:
+
+- **Semver.** The framework's authoritative version lives in `pyproject.toml`. **MAJOR** = breaking workspace-data change (migration **required**). **MINOR** = backwards-compatible significant change (migration **required when it touches workspace data**). **PATCH** = bug fix / doc tweak / internal refactor (no migration; `workspace/.version` advances silently).
+- **Workspace `.version`.** Every workspace records the framework version that built it in **`workspace/.version`** — a single semver line. Created by `init`, updated only by the `migrate` skill (never edited by hand). Missing file = legacy workspace at `0.1.0`.
+- **Migration files.** Live in `superagent/migrations/<to_version>.md` (one per version, registered in `superagent/migrations/_manifest.yaml`). Each declares `breaking`, `revertible`, pre-flight checks, migrate steps, validate steps, revert steps. **Sole** way to migrate.
+- **The `migrate` skill** is the **sole** entry point. Always interactive (proceed / dry-run / cancel). Applies migrations **chained, one version at a time**, validates after each step, updates `.version` after each success, logs to `interaction-log.yaml`. Halts cleanly on any failure — never half-applies.
+- **Revertible by default.** Mark `revertible: false` only for genuinely irreversible changes; the skill refuses to advance past a non-revertible step without explicit user acceptance.
+- **Authoring.** When a framework change requires a migration: bump `pyproject.toml`, copy `superagent/migrations/_template.md` to `<to_version>.md`, fill it in, run `uv run python -m superagent.tools.version refresh-manifest`, add a one-line entry to `docs/roadmap.md`, commit. The `tools/version.py` module exposes `current_version()`, `workspace_version()`, `find_chain()`, etc., for skills + scripts.
 
 ---
 
