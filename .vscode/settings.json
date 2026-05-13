@@ -12,6 +12,9 @@
     },
     "explorer.decorations.colors": true,
     "workbench.colorCustomizations": {
-        "gitDecoration.ignoredResourceForeground": "#34ffe7"
+        "gitDecoration.ignoredResourceForeground": "#a5e8c2"
     }
+    ,
+    // set color theme to solarized dark
+    "workbench.colorTheme": "Dusk Office Bay",
 }
