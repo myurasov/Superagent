@@ -12,6 +12,7 @@
   - [Superagent](#superagent)
     - [Purpose](#purpose)
     - [Boundaries](#boundaries)
+    - [Knowledge discipline](#knowledge-discipline)
     - [Core capabilities](#core-capabilities)
     - [Implementation model](#implementation-model)
     - [Integrations (MCPs and CLI tools)](#integrations-mcps-and-cli-tools)
@@ -99,6 +100,35 @@ Superagent exists to take this load off, surgically and ambiently.
 - **Not a surveillance system.** Superagent ingests **only** the data sources you authorize (per `data-sources.yaml`), stores results **locally** on your machine (under `workspace/` which is gitignored), and never sends your personal data anywhere on its own initiative. The framework treats the workspace like a vault.
 - **Privacy-first by construction.** No telemetry. No remote sync. No cloud account required to run. The default deployment is your laptop, your files, your control.
 - **Quick-start works without any data sources.** A user can start using Superagent in five minutes with zero MCPs configured — entering their first contact, their first bill, their first appointment by hand. Heavy ingestion (Apple Health export, multi-year email backfill, bank-transaction history) is **opt-in**, **deferred**, and runnable any time later via the `ingest` skill family.
+
+### Knowledge discipline
+
+Superagent's core operating principle: **know as much as possible, fetch as little as necessary.** Two complementary rules that govern every skill, every tool call, every response.
+
+**1. Discovery is lean.** Don't pre-fetch context the immediate task does not need. For each request:
+
+- Ask first: "what is the minimum local read I need to answer this well?" Answer with that, not more.
+- Default to the local-first read order (`contracts/local-first-read-order.md`): index → cache → narrative → events stream → live source. Step out to live MCPs / CLIs only when the local read is genuinely insufficient AND freshness genuinely matters AND the user's window extends past `last_ingest`.
+- Don't probe data sources, don't enrich entities the user didn't ask about, don't run the daily-update sweep just because you happened to open the workspace. Sweeps run on cadence (per `contracts/update-cadences.md`); ad-hoc requests answer ad-hoc requests.
+- The `tools/anti_patterns.py` scanner flags skills that violate the lean-discovery posture (whole-file reads of long files, sequential MCP chains, redundant fetches). The Supertailor's strategic pass surfaces persistent violations.
+
+**2. Retention is opportunistic.** Anything Superagent legitimately encountered while doing its work — a new contact mentioned in an email read for another reason, a phone number on a receipt opened to answer a different question, a new domain implied by a recurring pattern, a new tag worth registering — gets captured to its proper home. The user does not have to surface the same fact twice.
+
+- Generalizes the ingestion contract's "capture-through" rule (`contracts/ingestion.md`) to every skill: every live read that returns a new fact MUST persist that fact to the right index / domain / cache before the skill exits.
+- Captures carry `provenance` (`contracts/provenance.md`) — `source: <skill-or-ingestor>`, `at: <iso>` — so future "are you sure?" questions get an honest answer.
+- New tags introduced by a capture auto-register (`contracts/tags.md`) when `config.preferences.tags.auto_register: true`. Same for new domains under the detection-driven suggestion flow (`contracts/domains-and-assets.md` § 6.4b — surface ONCE, not every turn).
+- Captures NEVER block the user's flow with per-fact confirmation. The user reviews via `doctor` (workspace hygiene) and `supertailor-review` (framework hygiene) on cadence.
+
+**The two rules cooperate.** Lean discovery means the workspace stays a sustainable, opt-in size and sessions stay cheap. Opportunistic retention means the data Superagent does have is fresh, complete, and grows ambient over time. Superagent does not become a hoarder; it becomes a careful note-taker who never misses a fact already in front of it.
+
+**Boundaries that bound retention:**
+
+- Personal data captured during discovery still respects the privacy + sensitive tiers (`contracts/privacy.md`, `contracts/sensitive-tier.md`). A retained fact about a sensitive subject lands in `_memory/sensitive/` or carries `visibility: private` like any other.
+- Captures NEVER write upstream sources (no remote write per `AGENTS.md` § "Privacy and data location"). Discovery may read a third-party API; retention writes only to `workspace/`.
+- Retention to `superagent/` (the framework) is forbidden by the Framework Artifact Creation Contract — only `workspace/` data persists facts about the user's life.
+- Stale facts get re-validated on read (provenance carries `verified_at`). When the agent surfaces a high-stakes fact whose `verified_at` is old, it disclaims confidence and offers to re-fetch.
+
+This is the principle that makes Superagent feel ambient instead of demanding: it asks for as little as possible up front, but it never forgets what it learned along the way.
 
 ### Core capabilities
 

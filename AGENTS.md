@@ -20,6 +20,7 @@
   - [Git commits](#git-commits)
   - [Versioning and migrations](#versioning-and-migrations)
   - [Local task references](#local-task-references)
+  - [Knowledge discipline](#knowledge-discipline)
   - [Read budget (token efficiency)](#read-budget-token-efficiency)
   - [Local-first read order](#local-first-read-order)
   - [Operational handles](#operational-handles)
@@ -354,6 +355,19 @@ Full policy: [`contracts/versioning.md`](superagent/contracts/versioning.md). On
 ## Local task references
 
 When discussing items from the local task tracker (e.g. `task-2026-04-28-001`, `task-031`), **do not surface the task IDs to the user** in casual conversation. Give a brief inline noun-phrase description of what the task is about. Internal tool calls (grep, file reads) may still use IDs to locate the right rows.
+
+---
+
+## Knowledge discipline
+
+Core operating principle: **know as much as possible, fetch as little as necessary.** Two complementary rules govern every skill:
+
+- **Discovery is lean.** Don't pre-fetch context the immediate task does not need. Default to the local-first read order (§ "Local-first read order"); step out to live MCPs / CLIs only when the local read is genuinely insufficient AND freshness genuinely matters. Don't probe data sources, don't enrich entities the user didn't ask about, don't run sweeps on ad-hoc requests.
+- **Retention is opportunistic.** Anything legitimately encountered during a task — a new contact in an email read for another reason, an account number on a receipt opened for a different question, a new tag worth registering — gets captured to its proper home, with `provenance`. The user does not have to surface the same fact twice. Generalizes the ingestion contract's "capture-through" rule (`contracts/ingestion.md`) to every skill.
+
+These two rules cooperate: lean discovery keeps sessions cheap and the workspace sustainable; opportunistic retention keeps the data Superagent does have fresh and growing ambient. **Superagent is a careful note-taker, not a hoarder.**
+
+Boundaries: captured personal data still respects `contracts/privacy.md` + `contracts/sensitive-tier.md`; captures NEVER write upstream sources; retention writes only to `workspace/` (never `superagent/`). Full statement: `superagent/superagent.agent.md` § "Knowledge discipline". The next two sections (§ "Read budget", § "Local-first read order") formalize the discovery side.
 
 ---
 
