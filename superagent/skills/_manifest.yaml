@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-12T15:19:58-07:00'
+generated_at: '2026-05-13T02:04:04-07:00'
 skill_count: 49
 skills:
 - name: superagent-add-account
@@ -434,10 +434,10 @@ skills:
   - email ingestors (for prior-thread context)
   cli_required: []
   cli_optional: []
-  lines: 99
+  lines: 109
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 717
+  typical_token_cost: 832
   typical_files_read: []
   origin: framework
 - name: superagent-events
@@ -526,10 +526,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 206
+  lines: 215
   h2_steps: 16
   h3_subsections: 0
-  typical_token_cost: 1830
+  typical_token_cost: 1930
   typical_files_read:
   - _memory/config.yaml
   - _memory/contacts.yaml

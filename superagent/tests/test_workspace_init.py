@@ -109,11 +109,20 @@ def test_init_does_not_force_sources_subfolders(initialized_workspace: Path) -> 
     assert not (sources / "_cache").exists(), "Sources/_cache/ should be lazy-created on first fetch"
 
 
-def test_init_creates_outbox_lifecycle_subfolders(initialized_workspace: Path) -> None:
-    """Outbox/ ships with the four lifecycle stages (item #13)."""
+def test_init_does_not_pre_create_outbox_subfolders(
+    initialized_workspace: Path,
+) -> None:
+    """Outbox/ ships FLAT — only the README. Sub-folders are LAZY per
+    `contracts/outbox-lifecycle.md` § "Lazy sub-directory creation"; they
+    materialize on first write via `superagent.tools.outbox.ensure`.
+    """
     outbox = initialized_workspace / "Outbox"
-    for sub in ["drafts", "staging", "sent", "sealed"]:
-        assert (outbox / sub).is_dir(), f"missing Outbox/{sub}/"
+    assert outbox.is_dir()
+    assert (outbox / "README.md").is_file()
+    children = sorted(p.name for p in outbox.iterdir())
+    assert children == ["README.md"], (
+        f"Outbox/ should ship flat (only README.md); got {children}"
+    )
 
 
 def test_init_creates_internal_memory_dirs(initialized_workspace: Path) -> None:

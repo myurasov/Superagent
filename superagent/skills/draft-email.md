@@ -18,6 +18,16 @@ cli_optional: []
 
 # Superagent draft-email skill
 
+> **Pre-flight (lazy-Outbox contract — `contracts/outbox-lifecycle.md` § "Lazy sub-directory creation")**:
+> This skill writes to `Outbox/emails/<YYYYMMDD>-<recipient-slug>-<short-subject-slug>.md`.
+> Before the write in step 3, run:
+>
+>     uv run python -m superagent.tools.outbox ensure emails
+>
+> Idempotent — near-no-op when `Outbox/emails/` already exists; materializes
+> it otherwise. The Outbox ships flat at init; sub-folders appear on first
+> use.
+
 ## 1. Resolve the recipient
 
 1. Match user's reference against `contacts.yaml.contacts[].name + aliases + email`.

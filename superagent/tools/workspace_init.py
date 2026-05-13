@@ -211,7 +211,17 @@ def init_domains(workspace: Path, framework: Path, dry_run: bool, log: list[str]
 
 
 def init_folders(workspace: Path, framework: Path, dry_run: bool, log: list[str]) -> int:
-    """Create the standard top-level workspace folders with their READMEs. Returns count touched."""
+    """Create the standard top-level workspace folders with their READMEs.
+
+    `Outbox/` ships FLAT — only `Outbox/` + `Outbox/README.md`. The four
+    documented lifecycle sub-folders (drafts / staging / sent / sealed) and
+    any artifact-kind sub-folders (emails / handoff / contractors / ...)
+    are LAZY per `contracts/outbox-lifecycle.md` § "Lazy sub-directory
+    creation" — they materialize on first write via
+    `superagent.tools.outbox.ensure(workspace, <subdir>)`.
+
+    Returns count of top-level folders newly created.
+    """
     readmes = framework / "templates" / "folder-readmes"
     folders = [
         ("Inbox", readmes / "Inbox.md"),
@@ -231,10 +241,6 @@ def init_folders(workspace: Path, framework: Path, dry_run: bool, log: list[str]
     if domains_readme.exists():
         safe_copy(domains_readme, workspace / "Domains" / "README.md",
                   dry_run=dry_run, log=log)
-    # Outbox lifecycle sub-folders (item #13).
-    outbox_root = workspace / "Outbox"
-    for sub in ("drafts", "staging", "sent", "sealed"):
-        safe_mkdir(outbox_root / sub, dry_run=dry_run, log=log)
     return touched
 
 

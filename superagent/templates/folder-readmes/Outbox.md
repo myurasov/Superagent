@@ -24,22 +24,39 @@ If a file is for *your own* use (a chart, a briefing, a draft you'll keep iterat
 | Drafts you keep working on, agent-rendered briefings for your own use, working photos / sketches | `Domains/<X>/Resources/` or `Projects/<X>/Resources/` |
 | Files in transit, pending classification | `Inbox/` |
 
-## Lifecycle (suggested sub-folders)
+## Lifecycle + sub-folder conventions (created lazily)
 
-The convention is loose; the agent uses sub-folders to mark intent:
+`Outbox/` ships **flat** — only this README. Sub-folders are created the first time the agent writes an artifact at that location, never speculatively at init. The principle is "no empty folders": if you've never used `staging/`, it doesn't exist on disk.
+
+The conventional sub-folders the agent uses to mark intent (per `contracts/outbox-lifecycle.md`):
 
 ```
 Outbox/
   drafts/                 ← in-progress; agent may revise
   staging/                ← finalized; awaiting your "send"
   sent/                   ← user marked sent; immutable thereafter
+  sealed/                 ← versioned snapshots; immutable on creation
   handoff/                ← versioned snapshots of the executor packet
   emails/<recipient>/     ← per-recipient drafted emails
   contractors/<job>/      ← per-job packets
   taxes/<year>/           ← year-end packets for the tax preparer
 ```
 
-You don't have to use every sub-folder. The agent creates them lazily.
+You don't have to use any specific sub-folder — the layout is loose. The agent calls `ensure` before each write:
+
+```
+uv run python -m superagent.tools.outbox ensure drafts
+uv run python -m superagent.tools.outbox ensure drafts/emails
+uv run python -m superagent.tools.outbox ensure handoff
+```
+
+To clean up empty sub-folders (e.g. after experimenting with a layout you didn't end up using):
+
+```
+uv run python -m superagent.tools.outbox purge-empty [--dry-run]
+```
+
+Sub-folders with files are always kept; only empty ones get deleted.
 
 ## Outbound is scrubbed
 

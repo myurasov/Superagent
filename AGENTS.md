@@ -250,7 +250,7 @@ Filenames inside Domain / Project folders are lowercase and hyphenated; sub-fold
 
 ## Public artifact destination
 
-- **Default outbox: `workspace/Outbox/`**. Whenever a Superagent skill or tool generates a **publicly-shareable artifact** (a draft email, a printable shopping list, a packed-and-ready PDF for a contractor, an exported spreadsheet you'll attach to a tax return) and no destination is otherwise specified, the file lands here. The folder is created on first use.
+- **Default outbox: `workspace/Outbox/`**. Whenever a Superagent skill or tool generates a **publicly-shareable artifact** (a draft email, a printable shopping list, a packed-and-ready PDF for a contractor, an exported spreadsheet you'll attach to a tax return) and no destination is otherwise specified, the file lands here. `Outbox/` ships **flat** (just the README) — sub-folders (`drafts/`, `staging/`, `sent/`, `sealed/`, `handoff/`, `emails/`, ...) are **lazy** per `contracts/outbox-lifecycle.md` § "Lazy sub-directory creation": call `uv run python -m superagent.tools.outbox ensure <subdir>[/<sub>...]` before writing.
 - **What does *not* go in Outbox** — destination-specific artifacts that already have a canonical home:
   - **Domain notes** → `workspace/Domains/<domain>/`.
   - **Memory / state files** → `workspace/_memory/`.
