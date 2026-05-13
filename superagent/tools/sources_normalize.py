@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Reference-file normalizer for Superagent.
 
 Implements the liberal-input parser + canonical serializer described in

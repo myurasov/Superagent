@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Tests for `tools/audit.py` and `tools/session_scratch.py`."""
 from __future__ import annotations
 

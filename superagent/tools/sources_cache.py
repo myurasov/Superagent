@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Sources cache manager for Superagent.
 
 Implements the local-first read pattern documented in `contracts/sources.md` § 15.4

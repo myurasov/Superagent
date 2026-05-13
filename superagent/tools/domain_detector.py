@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Detection-driven domain suggestions.
 
 Implements `contracts/domains-and-assets.md` § 6.4b. Walks workspace signals

@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Per-session scratchpad / dedupe.
 
 Implements superagent/docs/_internal/perf-improvement-ideas.md MI-1.

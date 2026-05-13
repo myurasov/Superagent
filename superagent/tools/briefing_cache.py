@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Pre-rendered briefing cache + skill-output write-back caching.
 
 Implements superagent/docs/_internal/perf-improvement-ideas.md QW-5 + MI-5.

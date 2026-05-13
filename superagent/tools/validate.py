@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Validate Superagent workspace memory files against expected schema.
 
 Loads every YAML file under `<workspace>/_memory/`, verifies:

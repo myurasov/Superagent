@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Tests for `tools/log_window.py` (events stream + windowing)."""
 from __future__ import annotations
 

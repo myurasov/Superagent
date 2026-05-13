@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Log every user prompt to `_memory/user-queries.jsonl`.
 
 Wired as a `UserPromptSubmit` hook in Cursor (`.cursor/hooks.json`). The

@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Render scoped status.md files from `_memory/todo.yaml`.
 
 For each domain referenced by an open task in todo.yaml, regenerate

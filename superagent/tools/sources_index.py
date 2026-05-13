@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Sources index manager for Superagent.
 
 Implements the derived-index contract documented in `contracts/sources.md` § 15.6.

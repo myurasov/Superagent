@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Operational-handle parsing and formatting.
 
 Implements superagent/docs/_internal/ideas-better-structure.md item #20 — every entity gets a

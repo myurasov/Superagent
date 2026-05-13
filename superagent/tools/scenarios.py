@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Scenario / what-if engine.
 
 Implements superagent/docs/_internal/ideas-better-structure.md item #14.

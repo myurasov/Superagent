@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Lazy domain-folder materialization + bare-template purge.
 
 Per the lazy-materialization contract (`contracts/domains-and-assets.md` § 6.4a),

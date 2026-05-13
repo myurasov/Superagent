@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Ingest orchestrator — front-end to every ingestor.
 
 Used by the `ingest` skill. CLI:

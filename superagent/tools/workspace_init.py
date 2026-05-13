@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Idempotent workspace scaffolder for Superagent.
 
 Creates `workspace/` (or the path configured via

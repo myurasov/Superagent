@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Time-windowed views over append-only logs (events stream and friends).
 
 Implements superagent/docs/_internal/ideas-better-structure.md item #22 + superagent/docs/_internal/perf-improvement-ideas.md MI-2.

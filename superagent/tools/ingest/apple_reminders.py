@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Apple Reminders ingestor.
 
 Reads Apple Reminders via the `rem` CLI (https://rem.sidv.dev/) and mirrors

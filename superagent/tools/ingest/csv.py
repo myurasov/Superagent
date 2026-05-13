@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Generic bank-statement CSV ingestor.
 
 Parses CSV exports from common banks into a normalized `_memory/transactions.yaml`

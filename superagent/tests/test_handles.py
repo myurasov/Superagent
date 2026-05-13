@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Tests for `tools/handles.py` (operational-handles parser)."""
 from __future__ import annotations
 

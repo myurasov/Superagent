@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Base interface every Superagent ingestor must implement.
 
 The contract is the runtime expression of `superagent/contracts/ingestion.md`

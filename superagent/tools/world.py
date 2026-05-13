@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """World-model entity graph — query and rebuild.
 
 Implements superagent/docs/_internal/ideas-better-structure.md item #3 + superagent/docs/_internal/perf-improvement-ideas.md BB-4.

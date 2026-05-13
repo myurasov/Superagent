@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Smoke tests for the skill catalogue.
 
 Every skill named in the AGENTS.md skill table must exist as a markdown

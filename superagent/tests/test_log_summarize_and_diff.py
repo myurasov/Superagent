@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Tests for `tools/log_summarize.py` and `tools/snapshot_diff.py`."""
 from __future__ import annotations
 

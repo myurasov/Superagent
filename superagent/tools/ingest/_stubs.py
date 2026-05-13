@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Stub ingestor implementations.
 
 Every entry in `_registry.py` ships with a corresponding stub here so that

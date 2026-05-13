@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Tests for `tools/sources_index.py` (the derived-index tool).
 
 Exercises the contract documented in `contracts/sources.md` § 15.6:

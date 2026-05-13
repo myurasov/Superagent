@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Tests for `tools/domains.py` (lazy folder materialization + purge).
 
 Implements `contracts/domains-and-assets.md` § 6.4a.

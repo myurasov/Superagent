@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Superagent — personal-life AI assistant framework.
 
 The framework code lives here; user data lives in `workspace/`

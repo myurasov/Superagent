@@ -1,4 +1,6 @@
 #!/usr/bin/env -S uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Scanner for anti-patterns in skill markdown files.
 
 Implements superagent/docs/_internal/perf-improvement-ideas.md § "Anti-patterns to flag in skills".

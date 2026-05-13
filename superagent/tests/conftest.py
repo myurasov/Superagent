@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Shared pytest fixtures for Superagent tests."""
 from __future__ import annotations
 

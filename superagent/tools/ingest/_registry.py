@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Registry of every supported Superagent ingestor.
 
 The registry is metadata-only — it describes what's possible, the auth /

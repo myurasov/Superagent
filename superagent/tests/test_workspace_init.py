@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """Tests for `tools/workspace_init.py`.
 
 Verifies the scaffolder produces the expected structure, every YAML loads,
