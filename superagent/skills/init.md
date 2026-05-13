@@ -108,6 +108,22 @@ Options:
 
 Capture answers — they drive (a) seeded `_memory/insights.yaml` rows, (b) which capture skill the walkthrough demos in step 7, (c) which optional data sources to recommend with priority in step 5.
 
+**Question 4 — "How far back should spreadsheet exports reach?"** (single-select)
+
+Per the workbook subsystem (see `skills/workbooks.md`), Superagent renders
+human-friendly `.xlsx` projections of your structured data — Bills,
+Transactions, Vet Visits, Service History, etc. Time-series sheets respect
+this window; reference sheets (Accounts, Properties, Certifications) ignore
+it.
+
+Options:
+- 5 years
+- **10 years** (default — covers most personal-tax + net-worth cases)
+- 20 years
+- All available history (no truncation)
+
+Captured into `_memory/config.yaml.preferences.workbooks.history_window_years`.
+
 ## 3. Scaffold the workspace
 
 Run `uv run python superagent/tools/workspace_init.py`. The script:
@@ -133,6 +149,7 @@ Open `workspace/_memory/config.yaml` and fill in:
 - `profile.timezone` from system (`date +%Z` or equivalent).
 - `profile.household_composition` from Q2 (concatenated short text, e.g. "spouse + 2 kids + 1 dog").
 - `preferences.pain_points` from Q3 (the option ids).
+- `preferences.workbooks.history_window_years` from Q4 (5 / 10 / 20 / null for "all").
 
 If Q3 included specific pain points, also seed `_memory/insights.yaml` with one row per pain point mapping it to the recommended skill (see § 8 mapping reference).
 

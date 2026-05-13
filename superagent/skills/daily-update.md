@@ -266,6 +266,20 @@ Ingested N new items from K sources since your last check.
 
 Skip empty sections silently. Target ≤ 80 lines.
 
+## 13b. Workbook refresh (safety net)
+
+Per `skills/workbooks.md`, end the run with a render-all sweep. Mtime-aware
+and lazy — near-no-op when nothing changed; only writes the workbooks
+whose source files have advanced since the last render. Catches any
+captures elsewhere in this run that didn't trigger an inline render.
+
+```
+uv run python -m superagent.tools.render_workbooks --all
+```
+
+Skip the sweep entirely when
+`_memory/config.yaml.preferences.workbooks.enabled: false`.
+
 ## 14. Update memory
 
 1. `_memory/context.yaml.last_check` → now.

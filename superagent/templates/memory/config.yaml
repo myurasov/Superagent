@@ -224,10 +224,46 @@ preferences:
 
   # Outbox lifecycle (see contracts/outbox-lifecycle.md / item #13).
   outbox:
-    # Sub-folders to scaffold and auto-route artifacts through.
+    # Conventional lifecycle sub-folders. NOT auto-created at init —
+    # materialized lazily on first write per
+    # `contracts/outbox-lifecycle.md` § "Lazy sub-directory creation".
     lifecycle_stages: ["drafts", "staging", "sent", "sealed"]
     # Max age (days) before stage:drafts artifacts are surfaced as stale.
     drafts_stale_days: 14
+
+  # Workbook projections (see superagent/tools/render_workbooks.py).
+  # Per-domain (and optional per-entity) `.xlsx` views of the structured
+  # YAML data, regenerated lazily — only when ≥1 row of data exists for a
+  # given workbook AND the underlying source files have changed since the
+  # last render. Source-of-truth stays in YAML / markdown; xlsx is a
+  # human-friendly read-only projection (the agent never reads it back).
+  workbooks:
+    # Master switch for the whole subsystem.
+    enabled: true
+    # How far back the time-series sheets (transactions, vet visits,
+    # service history, etc.) reach. Set during init via the workbook
+    # history-window question. 10 years covers most personal-tax /
+    # net-worth use-cases.
+    history_window_years: 10
+    # Privacy scan posture for cell values:
+    #   strict — refuse any cell matching SSN / full account # / full card # /
+    #            high-entropy secret patterns; cell becomes "[REDACTED]".
+    #   lenient — only redact obvious SSN / 16-digit numerics.
+    #   off    — no scan (NOT recommended; xlsx files leak easily).
+    privacy_scan: strict
+    # When true, also render per-entity workbooks (per pet, per vehicle,
+    # per asset) alongside the per-domain workbook. Per-entity workbooks
+    # are themselves lazy — they materialize only when the entity has
+    # accumulated meaningful event-history (≥5 events, or ≥2 lots).
+    per_entity: true
+    # Sensitivity overrides — both default to opt-in (false) because the
+    # workbooks aggregate data that's easy to over-share by accident.
+    health:
+      # Flip to true to enable rendering Domains/Health/health.xlsx.
+      enabled: false
+    business:
+      # Flip to true to enable rendering Domains/Business/business.xlsx.
+      enabled: false
 
   # Inbox triage (see contracts/inbox-triage.md / item #5).
   inbox_triage:

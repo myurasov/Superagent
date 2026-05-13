@@ -1,0 +1,77 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: Business-domain invoices issued to clients.
+#
+# Distinct from `bills.yaml` (which tracks recurring outflows the user owes)
+# and `subscriptions.yaml` (recurring services the user pays for). This file
+# is the AR (accounts-receivable) side: what the user has billed clients
+# and what the client has paid back.
+#
+# Lifecycle of a row:
+#   open      — issued, awaiting payment.
+#   paid      — full amount received; `paid_date` + `paid_amount` set.
+#   overdue   — past `due_date` and not yet paid (computed daily by
+#               daily-update); `status` is auto-flipped from open.
+#   void      — invoice cancelled / reissued; `void_reason` populated.
+#   partial   — partial payment received; `paid_amount` < `amount`;
+#               `paid_date` is the LATEST partial payment date.
+#
+# Cross-references: `client` → contacts.yaml.<id> with related_domains:
+# [business]. `payment_confirmation_ref` → workspace path to the saved
+# payment artifact per contracts/payment-confirmations.md.
+#
+# Schema shape: entity-shape (mutate-in-place); audit history goes to
+# `invoices.yaml.history.jsonl` per contracts/audit-trail.md.
+
+schema_version: 1
+last_updated: null
+
+invoices:
+  # Each invoice:
+  #   id                       — Stable invoice number / slug.
+  #   client                   — contact id (from contacts.yaml; must have
+  #                              related_domains including 'business').
+  #   project                  — Optional: project id this invoice belongs to.
+  #   issue_date               — ISO 8601 date the invoice was sent.
+  #   due_date                 — ISO 8601 date payment is expected by.
+  #   amount                   — Numeric. Pre-tax invoice total.
+  #   tax                      — Numeric. Tax line item if applicable.
+  #   currency                 — ISO 4217. Defaults to config.preferences.money.currency.
+  #   status                   — open | paid | overdue | void | partial.
+  #   paid_date                — ISO 8601 (latest payment date if partial).
+  #   paid_amount              — Numeric. Total received so far.
+  #   payment_method           — wire | ach | check | card | paypal | other.
+  #   payment_confirmation     — Confirmation/reference number from the payer.
+  #   payment_confirmation_ref — Workspace-relative path to the saved
+  #                              payment artifact per
+  #                              contracts/payment-confirmations.md.
+  #   line_items               — Optional list of {description, hours, rate, amount}.
+  #   notes                    — Free-form context.
+  #   void_reason              — When status = void, why.
+  #   provenance               — Per contracts/provenance.md.
+  #   tags                     — Short labels.
+  #   created                  — ISO 8601 of row creation.
+  #   last_updated             — ISO 8601 of last meaningful update.
+  - id: ""
+    client: ""
+    project: null
+    issue_date: null
+    due_date: null
+    amount: 0
+    tax: 0
+    currency: "USD"
+    status: "open"
+    paid_date: null
+    paid_amount: null
+    payment_method: ""
+    payment_confirmation: ""
+    payment_confirmation_ref: ""
+    line_items: []
+    notes: ""
+    void_reason: ""
+    provenance:
+      source: ""
+      source_id: ""
+      at: null
+    tags: []
+    created: null
+    last_updated: null

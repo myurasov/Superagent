@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-05-13T02:04:04-07:00'
-skill_count: 49
+generated_at: '2026-05-13T02:27:18-07:00'
+skill_count: 50
 skills:
 - name: superagent-add-account
   stem: add-account
@@ -333,10 +333,10 @@ skills:
   - any scheduled-cadence ingest source (gmail, gcal, icloud, apple_health, …)
   cli_required: []
   cli_optional: []
-  lines: 290
-  h2_steps: 25
+  lines: 304
+  h2_steps: 26
   h3_subsections: 0
-  typical_token_cost: 2763
+  typical_token_cost: 2883
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/context.yaml
@@ -681,13 +681,14 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 296
+  lines: 313
   h2_steps: 12
   h3_subsections: 1
-  typical_token_cost: 4224
+  typical_token_cost: 4397
   typical_files_read:
   - workspace/_memory/config.yaml
   - _memory/insights.yaml
+  - _memory/config.yaml
   - _memory/interaction-log.yaml
   - workspace/_memory/data-sources.yaml
   origin: framework
@@ -1168,6 +1169,33 @@ skills:
   - _memory/todo.yaml
   - _memory/ingestion-log.yaml
   - _memory/action-signals.yaml
+  origin: framework
+- name: superagent-workbooks
+  stem: workbooks
+  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/workbooks.md
+  one_line: Render lazy per-domain (and per-entity) `.xlsx` projections of the structured YAML data —
+    Bills / Subscriptions / Accounts / Vehicles / Pets / etc. — for human-friendly review in Excel, Numbers,
+    or Go
+  triggers:
+  - render workbooks
+  - update spreadsheets
+  - regenerate xlsx
+  - workbooks
+  - workbook status
+  - what spreadsheets do I have
+  - enable health workbook
+  - enable business workbook
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 147
+  h2_steps: 9
+  h3_subsections: 0
+  typical_token_cost: 1276
+  typical_files_read:
+  - _memory/config.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-world
   stem: world
