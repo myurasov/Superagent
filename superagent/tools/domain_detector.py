@@ -242,10 +242,10 @@ def is_aliased(theme: str, aliases: set[str]) -> bool:
         return True
     if theme in aliases:
         return True
-    for part in theme.split("-"):
-        if len(part) >= 4 and part in aliases:
-            return True
-    return False
+    return any(
+        len(part) >= 4 and part in aliases
+        for part in theme.split("-")
+    )
 
 
 def handled_themes(data: dict[str, Any], today: dt.date | None = None) -> set[str]:

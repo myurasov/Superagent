@@ -3,8 +3,9 @@
 """Tests for `tools/play.py` (playbook resolver) and `tools/scenarios.py`."""
 from __future__ import annotations
 
-import yaml
 from pathlib import Path
+
+import yaml
 
 
 def test_play_list(framework_dir: Path, initialized_workspace: Path) -> None:
@@ -40,8 +41,9 @@ def test_play_eval_condition() -> None:
 
 def test_scenarios_cancel_subscriptions(initialized_workspace: Path) -> None:
     """Inject a subscription, then run cancel-subscriptions."""
-    from superagent.tools.scenarios import cancel_subscriptions
     import yaml
+
+    from superagent.tools.scenarios import cancel_subscriptions
 
     sub_path = initialized_workspace / "_memory" / "subscriptions.yaml"
     data = yaml.safe_load(sub_path.read_text()) or {}
@@ -62,8 +64,9 @@ def test_scenarios_cancel_subscriptions(initialized_workspace: Path) -> None:
 
 
 def test_scenarios_bill_shock(initialized_workspace: Path) -> None:
-    from superagent.tools.scenarios import bill_shock
     import yaml
+
+    from superagent.tools.scenarios import bill_shock
 
     bill_path = initialized_workspace / "_memory" / "bills.yaml"
     data = yaml.safe_load(bill_path.read_text()) or {}
@@ -83,8 +86,9 @@ def test_scenarios_bill_shock(initialized_workspace: Path) -> None:
 
 
 def test_scenarios_project_overrun(initialized_workspace: Path) -> None:
-    from superagent.tools.scenarios import project_overrun
     import yaml
+
+    from superagent.tools.scenarios import project_overrun
 
     proj_path = initialized_workspace / "_memory" / "projects-index.yaml"
     data = yaml.safe_load(proj_path.read_text()) or {}

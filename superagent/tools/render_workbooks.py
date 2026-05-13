@@ -37,9 +37,10 @@ import datetime as dt
 import hashlib
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import yaml
 from openpyxl import Workbook
@@ -54,7 +55,7 @@ DEFAULT_HISTORY_YEARS = 10
 DEFAULT_PER_ENTITY_MIN_EVENTS = 5     # per-entity workbook threshold
 DEFAULT_PER_ENTITY_MIN_LOTS = 2       # alt threshold for financial holdings
 
-DEFAULT_PRIVACY_PATTERNS: tuple[tuple[str, "re.Pattern[str]"], ...] = (
+DEFAULT_PRIVACY_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("ssn",    re.compile(r"\b\d{3}-\d{2}-\d{4}\b")),
     ("card16", re.compile(r"\b(?:\d[ -]?){13,19}\b")),
     ("secret", re.compile(r"\b[A-Za-z0-9_/+=-]{32,}\b")),  # high-entropy string
@@ -1366,9 +1367,9 @@ def render_asset_entity(workspace: Path, cfg: dict[str, Any], slug: str) -> tupl
                 name="Lots",
                 columns=["Acquired", "Units", "Cost basis", "Source"],
                 rows=[
-                    [l.get("acquired_at"), l.get("units"),
-                     l.get("cost_basis"), l.get("source")]
-                    for l in lots if isinstance(l, dict)
+                    [lot.get("acquired_at"), lot.get("units"),
+                     lot.get("cost_basis"), lot.get("source")]
+                    for lot in lots if isinstance(lot, dict)
                 ],
             ))
         receipts = asset.get("receipts") or []

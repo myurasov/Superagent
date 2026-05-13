@@ -13,6 +13,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest",
+    "ruff>=0.15.12",
 ]
 
 [tool.uv]
@@ -21,3 +22,40 @@ default-groups = ["dev"]
 [tool.pytest.ini_options]
 testpaths = ["superagent/tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+# Mirror pyproject's requires-python so ruff lints against the same target.
+target-version = "py312"
+line-length = 100
+extend-exclude = [
+    ".venv",
+    ".tools",
+    ".tmp",
+    ".playwright-mcp",
+    ".playwright-superagent",
+    "workspace",  # user data; out of scope for framework lint
+]
+
+[tool.ruff.lint]
+# Default rule set (E + F) plus a couple of stylistic catches that have
+# already paid for themselves in this project (W = pycodestyle warnings,
+# I = isort, UP = pyupgrade, B = bugbear, SIM = flake8-simplify). Keep the
+# set tight — every additional rule is a long tail of ratchet maintenance.
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+# Ignored rules:
+#   E501 — line-length warnings; line-length is enforced by `line-length`
+#          above and the formatter, not by lint.
+#   B008 — function calls in argument defaults (we use `Path(...)` defaults
+#          intentionally for CLI argparse).
+#   SIM102 / SIM103 / SIM108 — style-preference SIM rules; nested-if and
+#          if-else-vs-ternary are readability calls, not correctness ones.
+ignore = ["E501", "B008", "SIM102", "SIM103", "SIM108"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests use pytest fixtures and assert-style; relax a few rules that
+# false-positive on test code (e.g. unused fixtures register via name).
+"superagent/tests/**" = ["F811"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

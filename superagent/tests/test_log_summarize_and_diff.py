@@ -48,4 +48,4 @@ def test_snapshot_diff_detects_added_row(initialized_workspace: Path,
     diffs = diff_files(snap_a, snap_b)
     assert len(diffs) == 1
     assert diffs[0]["change"] == "modified"
-    assert any("contacts:alice" == k for k in diffs[0]["added"])
+    assert any(k == "contacts:alice" for k in diffs[0]["added"])

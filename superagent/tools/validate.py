@@ -23,7 +23,6 @@ from typing import Any
 
 import yaml
 
-
 # Files that have a top-level `<key>` whose value is a list of rows.
 LIST_FILES: dict[str, str] = {
     "todo.yaml": "tasks",

@@ -26,7 +26,6 @@ from typing import Any
 
 import yaml
 
-
 # Filename hints → suggested category.
 KEYWORD_CATEGORIES: list[tuple[str, str]] = [
     ("w-2", "taxes"), ("w2", "taxes"), ("1099", "taxes"),
@@ -125,7 +124,7 @@ def classify(path: Path) -> dict[str, Any]:
         "matched_keywords": [m[0] for m in matched],
         "suggested_path": suggested_path,
         "modified_at": dt.datetime.fromtimestamp(
-            path.stat().st_mtime, tz=dt.timezone.utc).isoformat()
+            path.stat().st_mtime, tz=dt.UTC).isoformat()
             if path.exists() else None,
     }
 

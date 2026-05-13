@@ -22,6 +22,7 @@ defer to the corresponding ingestor when it ships.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import hashlib
 import json
@@ -33,7 +34,6 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-
 
 # Maximum cache write before LRU sweep runs (bytes).
 DEFAULT_CACHE_MAX_MB = 500
@@ -130,11 +130,11 @@ def parse_ref_md(path: Path) -> dict[str, Any]:
     # Liberal fallback for hand-authored `.ref.txt` / loose `.ref.md`.
     try:
         from superagent.tools.sources_normalize import propose
-    except ImportError:
+    except ImportError as exc:
         raise ValueError(
             f"{path}: missing canonical YAML frontmatter and "
             f"sources_normalize unavailable"
-        )
+        ) from exc
     proposal = propose(path)
     fields = dict(proposal["fields"])
     if not (fields.get("kind") and fields.get("source")):
@@ -177,10 +177,8 @@ def total_cache_size(workspace: Path, config: dict[str, Any] | None = None) -> i
     total = 0
     for p in root.rglob("*"):
         if p.is_file():
-            try:
+            with contextlib.suppress(OSError):
                 total += p.stat().st_size
-            except OSError:
-                pass
     return total
 
 
@@ -205,7 +203,7 @@ def evict_lru(workspace: Path, target_bytes: int,
         size = sum(
             p.stat().st_size for p in sub.rglob("*") if p.is_file()
         )
-        entries.append((last_used or dt.datetime.fromtimestamp(0, tz=dt.timezone.utc),
+        entries.append((last_used or dt.datetime.fromtimestamp(0, tz=dt.UTC),
                         sub, size))
     entries.sort(key=lambda x: x[0])
     evicted = 0

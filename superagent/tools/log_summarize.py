@@ -20,11 +20,11 @@ import argparse
 import datetime as dt
 import sys
 from collections import Counter
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import yaml
-
 
 # Files we know how to summarize, mapped to their list-key.
 SUMMARIZABLE: dict[str, str] = {
@@ -49,9 +49,9 @@ def parse_iso(value: Any) -> dt.datetime | None:
     if value is None:
         return None
     if isinstance(value, dt.datetime):
-        return value if value.tzinfo else value.replace(tzinfo=dt.timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=dt.UTC)
     if isinstance(value, dt.date):
-        return dt.datetime(value.year, value.month, value.day, tzinfo=dt.timezone.utc)
+        return dt.datetime(value.year, value.month, value.day, tzinfo=dt.UTC)
     if not isinstance(value, str):
         return None
     try:
@@ -59,7 +59,7 @@ def parse_iso(value: Any) -> dt.datetime | None:
     except ValueError:
         return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=dt.timezone.utc)
+        parsed = parsed.replace(tzinfo=dt.UTC)
     return parsed
 
 
@@ -139,7 +139,7 @@ def build_summary(path: Path, list_key: str) -> dict[str, Any]:
     last_30 = filter_window(rows, 30)
     last_7 = filter_window(rows, 7)
     last_30_sorted = sorted(
-        last_30, key=lambda r: get_row_ts(r) or dt.datetime.min.replace(tzinfo=dt.timezone.utc),
+        last_30, key=lambda r: get_row_ts(r) or dt.datetime.min.replace(tzinfo=dt.UTC),
         reverse=True,
     )
     summary: dict[str, Any] = {

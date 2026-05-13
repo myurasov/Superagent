@@ -27,11 +27,11 @@ import datetime as dt
 import hashlib
 import json
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import yaml
-
 
 DEFAULT_TTL_MINUTES = 720  # 12h
 
@@ -48,7 +48,7 @@ def parse_iso_dt(value: Any) -> dt.datetime | None:
     if value is None:
         return None
     if isinstance(value, dt.datetime):
-        return value if value.tzinfo else value.replace(tzinfo=dt.timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=dt.UTC)
     if not isinstance(value, str):
         return None
     try:
@@ -56,7 +56,7 @@ def parse_iso_dt(value: Any) -> dt.datetime | None:
     except ValueError:
         return None
     if out.tzinfo is None:
-        out = out.replace(tzinfo=dt.timezone.utc)
+        out = out.replace(tzinfo=dt.UTC)
     return out
 
 

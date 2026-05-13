@@ -33,6 +33,7 @@ def test_classify_unknown_falls_back(initialized_workspace: Path) -> None:
 
 def test_record_decision_writes_log(initialized_workspace: Path) -> None:
     import yaml
+
     from superagent.tools.inbox_triage import record_decision
 
     record_decision(initialized_workspace, {
@@ -54,6 +55,7 @@ def test_stale_items(initialized_workspace: Path) -> None:
     """Stale window finds files older than --days."""
     import os
     import time
+
     from superagent.tools.inbox_triage import stale_items
 
     inbox = initialized_workspace / "Inbox"

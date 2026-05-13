@@ -40,7 +40,6 @@ from typing import Any
 
 import yaml
 
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -435,13 +434,7 @@ def merge_existing(new_row: dict[str, Any], existing_row: dict[str, Any]) -> dic
         existing_val = existing_row.get(field)
         if existing_val in (None, "", [], 0, False):
             continue
-        if field == "read_count" and isinstance(existing_val, int) and existing_val > 0:
-            merged[field] = existing_val
-        elif field == "tags" and isinstance(existing_val, list) and existing_val:
-            merged[field] = existing_val
-        elif field in ("notes", "title") and isinstance(existing_val, str) and existing_val:
-            merged[field] = existing_val
-        elif field in ("sensitive",) and isinstance(existing_val, bool):
+        if field == "read_count" and isinstance(existing_val, int) and existing_val > 0 or field == "tags" and isinstance(existing_val, list) and existing_val or field in ("notes", "title") and isinstance(existing_val, str) and existing_val or field in ("sensitive",) and isinstance(existing_val, bool):
             merged[field] = existing_val
         elif field in ("related_domain", "related_project",
                        "related_asset", "related_account",

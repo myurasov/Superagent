@@ -9,7 +9,9 @@ from pathlib import Path
 
 def test_append_and_read_roundtrip(initialized_workspace: Path) -> None:
     from superagent.tools.log_window import (
-        append_event, parse_iso_dt, read_window,
+        append_event,
+        parse_iso_dt,
+        read_window,
     )
 
     ev = append_event(initialized_workspace, {
@@ -31,7 +33,9 @@ def test_append_and_read_roundtrip(initialized_workspace: Path) -> None:
 
 def test_partition_index_updated(initialized_workspace: Path) -> None:
     from superagent.tools.log_window import (
-        append_event, index_path, load_yaml,
+        append_event,
+        index_path,
+        load_yaml,
     )
 
     append_event(initialized_workspace, {
@@ -52,15 +56,17 @@ def test_partition_index_updated(initialized_workspace: Path) -> None:
 def test_quarter_for_consistent() -> None:
     from superagent.tools.log_window import quarter_for
 
-    assert quarter_for(dt.datetime(2026, 1, 5, tzinfo=dt.timezone.utc)) == "2026-Q1"
-    assert quarter_for(dt.datetime(2026, 4, 1, tzinfo=dt.timezone.utc)) == "2026-Q2"
-    assert quarter_for(dt.datetime(2026, 7, 31, tzinfo=dt.timezone.utc)) == "2026-Q3"
-    assert quarter_for(dt.datetime(2026, 12, 31, tzinfo=dt.timezone.utc)) == "2026-Q4"
+    assert quarter_for(dt.datetime(2026, 1, 5, tzinfo=dt.UTC)) == "2026-Q1"
+    assert quarter_for(dt.datetime(2026, 4, 1, tzinfo=dt.UTC)) == "2026-Q2"
+    assert quarter_for(dt.datetime(2026, 7, 31, tzinfo=dt.UTC)) == "2026-Q3"
+    assert quarter_for(dt.datetime(2026, 12, 31, tzinfo=dt.UTC)) == "2026-Q4"
 
 
 def test_filter_by_kind(initialized_workspace: Path) -> None:
     from superagent.tools.log_window import (
-        append_event, parse_iso_dt, read_window,
+        append_event,
+        parse_iso_dt,
+        read_window,
     )
 
     e1 = append_event(initialized_workspace, {

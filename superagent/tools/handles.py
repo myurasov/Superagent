@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import dataclasses as dc
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 # Canonical entity kinds (singular). Keep in sync with the world graph
 # node-kind taxonomy in templates/memory/world.yaml.

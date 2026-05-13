@@ -103,9 +103,9 @@ def parse_iso_dt(value: Any) -> dt.datetime | None:
     if value is None:
         return None
     if isinstance(value, dt.datetime):
-        return value if value.tzinfo else value.replace(tzinfo=dt.timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=dt.UTC)
     if isinstance(value, dt.date):
-        return dt.datetime(value.year, value.month, value.day, tzinfo=dt.timezone.utc)
+        return dt.datetime(value.year, value.month, value.day, tzinfo=dt.UTC)
     if not isinstance(value, str):
         return None
     try:
@@ -113,7 +113,7 @@ def parse_iso_dt(value: Any) -> dt.datetime | None:
     except ValueError:
         return None
     if out.tzinfo is None:
-        out = out.replace(tzinfo=dt.timezone.utc)
+        out = out.replace(tzinfo=dt.UTC)
     return out
 
 
@@ -132,7 +132,7 @@ def query_workspace(workspace: Path, query: str) -> int:
             1 for r in rows
             if isinstance(r, dict)
             and r.get("status") == "active"
-            and (parse_iso_dt(r.get("next_due")) or dt.datetime.max.replace(tzinfo=dt.timezone.utc)).date() < today
+            and (parse_iso_dt(r.get("next_due")) or dt.datetime.max.replace(tzinfo=dt.UTC)).date() < today
         )
     if query == "appointments_today":
         rows = data.get("appointments") or []

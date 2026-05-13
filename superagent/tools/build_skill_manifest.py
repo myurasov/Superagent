@@ -31,7 +31,6 @@ from typing import Any
 
 import yaml
 
-
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 H2_RE = re.compile(r"^##\s+(.*)$", re.MULTILINE)
 H3_RE = re.compile(r"^###\s+(.*)$", re.MULTILINE)

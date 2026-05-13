@@ -28,7 +28,6 @@ from typing import Any
 
 import yaml
 
-
 SKIP_DEFAULT = ("interaction-log.yaml", "ingestion-log.yaml",
                 "user-queries.jsonl", "events.yaml")
 

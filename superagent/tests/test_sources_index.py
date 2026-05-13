@@ -20,7 +20,6 @@ import time
 from pathlib import Path
 
 
-
 def _write(p: Path, text: str = "") -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text)
@@ -129,7 +128,9 @@ def test_refresh_is_mtime_lazy(initialized_workspace: Path) -> None:
 def test_preserve_user_curated_fields(initialized_workspace: Path) -> None:
     """Hand-curated notes / tags / cross-refs survive a refresh."""
     from superagent.tools.sources_index import (
-        get_by_path, refresh, update_row,
+        get_by_path,
+        refresh,
+        update_row,
     )
 
     doc = initialized_workspace / "Sources" / "taxes" / "2024-return.pdf"
@@ -161,7 +162,8 @@ def test_removed_file_marked_present_false_first_then_dropped(
     initialized_workspace: Path,
 ) -> None:
     from superagent.tools.sources_index import (
-        get_by_path, refresh,
+        get_by_path,
+        refresh,
     )
 
     doc = initialized_workspace / "Sources" / "doomed" / "x.pdf"
@@ -215,7 +217,9 @@ def test_project_scoped_sources_indexed_with_related_project(
 
 def test_mark_accessed_increments_read_count(initialized_workspace: Path) -> None:
     from superagent.tools.sources_index import (
-        get_by_id, mark_accessed, refresh,
+        get_by_id,
+        mark_accessed,
+        refresh,
     )
 
     doc = initialized_workspace / "Sources" / "warranties" / "fridge.pdf"
@@ -233,7 +237,9 @@ def test_mark_accessed_increments_read_count(initialized_workspace: Path) -> Non
 
 def test_remove_drops_row_but_not_file(initialized_workspace: Path) -> None:
     from superagent.tools.sources_index import (
-        get_by_id, refresh, remove_row,
+        get_by_id,
+        refresh,
+        remove_row,
     )
 
     doc = initialized_workspace / "Sources" / "misc" / "keep-me.txt"
@@ -272,7 +278,10 @@ def test_directory_rename_preserves_curated_fields(initialized_workspace: Path) 
     when both old and new have exactly one row with the same basename.
     """
     from superagent.tools.sources_index import (
-        get_by_path, id_for_path, refresh, update_row,
+        get_by_path,
+        id_for_path,
+        refresh,
+        update_row,
     )
 
     doc_a = initialized_workspace / "Sources" / "Taxes" / "Taxes 2026" / "W-2.pdf"

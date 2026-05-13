@@ -27,6 +27,7 @@ def test_audit_record_and_read(initialized_workspace: Path) -> None:
 
 def test_audit_skips_when_disabled(initialized_workspace: Path) -> None:
     import yaml
+
     from superagent.tools.audit import history_path, record_change
 
     cfg_path = initialized_workspace / "_memory" / "config.yaml"
@@ -56,7 +57,9 @@ def test_audit_skips_listed_files(initialized_workspace: Path) -> None:
 
 def test_session_record_and_check(initialized_workspace: Path, tmp_path: Path) -> None:
     from superagent.tools.session_scratch import (
-        derive_session_id, is_already_loaded, record_read,
+        derive_session_id,
+        is_already_loaded,
+        record_read,
     )
 
     sid = derive_session_id()
@@ -70,7 +73,9 @@ def test_session_record_and_check(initialized_workspace: Path, tmp_path: Path) -
 
 def test_session_list(initialized_workspace: Path) -> None:
     from superagent.tools.session_scratch import (
-        derive_session_id, list_sessions, record_read,
+        derive_session_id,
+        list_sessions,
+        record_read,
     )
 
     sid = derive_session_id()

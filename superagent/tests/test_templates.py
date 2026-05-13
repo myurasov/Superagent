@@ -15,7 +15,6 @@ from pathlib import Path
 
 import yaml
 
-
 REQUIRED_MEMORY_TEMPLATES = [
     "config.yaml",
     "context.yaml",

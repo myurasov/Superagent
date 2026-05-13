@@ -13,7 +13,6 @@ from pathlib import Path
 
 import yaml
 
-
 # Skill files that must exist (one per row in AGENTS.md skill table).
 EXPECTED_SKILLS = {
     "init", "whatsup", "daily-update", "weekly-review", "monthly-review",

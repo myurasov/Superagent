@@ -40,7 +40,9 @@ def test_source_hash_deterministic() -> None:
 def test_fetch_kind_file_writes_cache(initialized_workspace: Path, tmp_path: Path) -> None:
     """A `kind: file` ref produces a populated cache folder."""
     from superagent.tools.sources_cache import (
-        cache_dir, get_cache, source_hash,
+        cache_dir,
+        get_cache,
+        source_hash,
     )
 
     src = tmp_path / "sample.md"
@@ -129,7 +131,10 @@ def test_evict_lru_removes_oldest_first(
 ) -> None:
     """LRU eviction removes the oldest-`last_used` entry first."""
     from superagent.tools.sources_cache import (
-        cache_dir, evict_lru, get_cache, total_cache_size,
+        cache_dir,
+        evict_lru,
+        get_cache,
+        total_cache_size,
     )
 
     a = tmp_path / "a.md"

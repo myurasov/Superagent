@@ -66,9 +66,67 @@ Tool scripts under `superagent/tools/*.py` use a `uv run`-aware shebang so direc
 
 ---
 
-## Enforcement
+## 5. Lint before commit — `ruff check` is mandatory
 
-This is a policy doc consumed by humans and by the Superagent / Supercoder agents. It has no automatic enforcement at this time; violations are caught in review or by the user.
+Every commit to the framework tree (`superagent/`) MUST pass `uv run ruff check superagent/` before it lands. The agent — and the human — runs lint as part of the pre-commit cycle, not after the fact.
+
+### The rule
+
+```bash
+uv run ruff check superagent/             # report
+uv run ruff check --fix superagent/       # auto-fix the easy ones
+```
+
+Workflow before any commit:
+
+1. Run `uv run ruff check superagent/`.
+2. If clean, proceed to commit.
+3. If errors, run `uv run ruff check --fix superagent/` to auto-fix what ruff can. Re-run step 1.
+4. For remaining issues (the manual ones), edit the affected files and fix. Re-run step 1.
+5. Loop until clean. THEN commit.
+
+The agent must not stage-and-commit until the project is lint-clean. This applies to every commit, including documentation-only and test-only commits — the run is cheap (sub-second on this codebase) and the enforcement boundary stays simple.
+
+### Configuration
+
+Ruff config lives in the root `pyproject.toml` under `[tool.ruff]`:
+
+- `target-version = "py312"` — mirrors `requires-python` so lint targets the same interpreter as the runtime.
+- `line-length = 100` — the project's chosen wrap width.
+- `extend-exclude` — `.venv`, `.tools`, `.tmp`, `.playwright-*`, and `workspace/` (user data is out of framework-lint scope).
+- `select = ["E", "F", "W", "I", "UP", "B", "SIM"]` — pycodestyle errors + pyflakes + warnings + isort + pyupgrade + bugbear + flake8-simplify.
+- `ignore = ["E501", "B008", "SIM102", "SIM103", "SIM108"]` — line-length is enforced by the formatter not lint; `Path(...)` defaults in argparse are intentional; the three SIM rules ignored are pure style preferences (nested-if vs collapse, ternary vs if-else).
+- Per-file ignores relax `F811` for `superagent/tests/**` (pytest fixtures register by name).
+
+When changing the rule set, update both `pyproject.toml` and this section, then run a full check + test pass before committing.
+
+### Pre-commit hook (enforcement)
+
+`./.githooks/pre-commit` runs `uv run ruff check superagent/` and blocks the commit on any error. It mirrors the `commit-msg` hook's pattern: in-repo script, gitignored install state, opt-in via one-time per-clone config.
+
+Activate the hooks (one time per clone):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Bypass (rare; never silently from an agent — explicit user authorization required):
+
+```bash
+git commit --no-verify -m "..."
+```
+
+### Enforcement summary
+
+This rule is enforced at three layers:
+
+1. **Agent discipline** — Superagent / Supercoder agents run `ruff check` as part of every commit cycle. This is policy, not a tool.
+2. **Pre-commit hook** — `./.githooks/pre-commit` blocks the local commit when ruff fails (once `core.hooksPath` is set per the install above).
+3. **CI (future)** — when the project gains CI, the same `uv run ruff check superagent/` runs there as a hard gate.
+
+## Enforcement (other rules)
+
+The four rules above (#1 single-venv, #2 tools-under-dot-tools, #3 temp-under-dot-tmp, #4 scope-discipline) have no automatic enforcement yet; violations are caught in review or by the user. Pre-commit hook scope is currently ruff only.
 
 Future work (tracked in `docs/roadmap.md` if escalated):
 - Pre-commit hook that fails on `python3 superagent/tools/` invocations in committed files.

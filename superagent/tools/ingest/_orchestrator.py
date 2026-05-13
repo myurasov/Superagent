@@ -28,7 +28,8 @@ from typing import Any
 import yaml
 
 from ._base import IngestorBase, ProbeStatus, now_iso
-from ._registry import REGISTRY, find as find_spec
+from ._registry import REGISTRY
+from ._registry import find as find_spec
 from ._stubs import StubIngestor
 
 

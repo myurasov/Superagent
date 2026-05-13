@@ -95,7 +95,9 @@ def test_vault_uri_becomes_vault_kind(tmp_path: Path) -> None:
 
 def test_to_canonical_round_trip(tmp_path: Path) -> None:
     from superagent.tools.sources_normalize import (
-        is_canonical, propose, to_canonical,
+        is_canonical,
+        propose,
+        to_canonical,
     )
 
     p = tmp_path / "loose.ref.txt"

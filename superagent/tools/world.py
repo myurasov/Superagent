@@ -32,7 +32,6 @@ from typing import Any
 import yaml
 
 
-
 def now_iso() -> str:
     return dt.datetime.now().astimezone().isoformat(timespec="seconds")
 

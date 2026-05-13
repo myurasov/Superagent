@@ -6,7 +6,6 @@ from __future__ import annotations
 from pathlib import Path
 
 
-
 def test_rebuild_produces_nodes_for_default_domains(
     initialized_workspace: Path,
 ) -> None:

@@ -320,6 +320,19 @@ Run this immediately after each commit, or as a batch right before `git push`. N
 - **Only framework files** under `superagent/` are committed — **never** `workspace/` data.
 - **Commit messages do not mention** anything personally identifying, household-specific, or account-specific.
 
+### Lint before commit
+
+Every commit MUST pass `uv run ruff check superagent/` before it lands (per `superagent/rules/development-tooling.md` § "Lint before commit"). Workflow:
+
+```bash
+uv run ruff check superagent/                 # report
+uv run ruff check --fix superagent/           # auto-fix the easy ones
+# fix any remaining issues by hand
+uv run ruff check superagent/                 # confirm clean — then commit
+```
+
+The `./.githooks/pre-commit` hook enforces this locally once the user runs `git config core.hooksPath .githooks` (one-time per clone). The agent must NOT pass `--no-verify` to bypass without explicit user authorization.
+
 ---
 
 ## Local task references

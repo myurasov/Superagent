@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#
+# Superagent pre-commit hook — block commits that fail `ruff check`.
+#
+# Install:
+#   cp superagent/templates/githooks/pre-commit .githooks/pre-commit
+#   chmod +x .githooks/pre-commit
+#   git config core.hooksPath .githooks
+#
+# Reference: superagent/rules/development-tooling.md § "Lint before commit".
+#
+# Why a hook? The dev-tooling rule says every commit runs ruff first; this
+# hook is the enforcement floor so an agent or a human who forgets the
+# pre-commit step still gets caught locally before the commit lands.
+#
+# Behavior:
+#   - Run `uv run ruff check superagent/` against the framework tree.
+#   - On clean exit, allow the commit.
+#   - On ruff errors, print the full report and exit 1 (commit blocked).
+#   - The user can fix issues with `uv run ruff check --fix superagent/`
+#     and re-stage / re-commit.
+#
+# Skip with `git commit --no-verify` ONLY when explicitly authorized by the
+# user (per AGENTS.md "Git Safety Protocol" — agents must never use
+# --no-verify on their own).
+
+set -euo pipefail
+
+# Resolve the repo root (this hook may be invoked from a subdirectory).
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+# Bail gracefully when the project venv is missing — surface the install
+# command instead of failing in a confusing way.
+if [[ ! -x ".venv/bin/python" ]] && ! command -v uv >/dev/null 2>&1; then
+  echo "" >&2
+  echo "ERROR: pre-commit hook needs uv (or the project venv) to run ruff." >&2
+  echo "Run \`uv sync\` to create .venv, or install uv from https://docs.astral.sh/uv/." >&2
+  echo "" >&2
+  exit 1
+fi
+
+if ! uv run --quiet ruff check superagent/; then
+  echo "" >&2
+  echo "ERROR: ruff check failed. Commit blocked." >&2
+  echo "" >&2
+  echo "Fix the issues above (often \`uv run ruff check --fix superagent/\`" >&2
+  echo "auto-resolves the easy ones), re-stage the affected files, and" >&2
+  echo "commit again." >&2
+  echo "" >&2
+  echo "If you genuinely need to bypass this guard (rare; e.g. you are" >&2
+  echo "iterating on the ruff config itself), pass --no-verify on the" >&2
+  echo "commit. Agents must NOT do this without explicit user authorization." >&2
+  echo "" >&2
+  exit 1
+fi
+
+exit 0

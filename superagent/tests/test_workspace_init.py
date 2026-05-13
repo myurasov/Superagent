@@ -14,7 +14,6 @@ from pathlib import Path
 
 import yaml
 
-
 EXPECTED_MEMORY_FILES = [
     "config.yaml", "context.yaml", "model-context.yaml", "interaction-log.yaml",
     "todo.yaml", "domains-index.yaml", "projects-index.yaml", "sources-index.yaml",

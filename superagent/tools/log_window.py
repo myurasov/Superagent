@@ -19,11 +19,13 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import json
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import yaml
 
@@ -40,9 +42,9 @@ def parse_iso_dt(value: Any) -> dt.datetime | None:
     if value is None:
         return None
     if isinstance(value, dt.datetime):
-        return value if value.tzinfo else value.replace(tzinfo=dt.timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=dt.UTC)
     if isinstance(value, dt.date):
-        return dt.datetime(value.year, value.month, value.day, tzinfo=dt.timezone.utc)
+        return dt.datetime(value.year, value.month, value.day, tzinfo=dt.UTC)
     if not isinstance(value, str):
         return None
     raw = value.strip()
@@ -54,7 +56,7 @@ def parse_iso_dt(value: Any) -> dt.datetime | None:
         except ValueError:
             return None
     if out.tzinfo is None:
-        out = out.replace(tzinfo=dt.timezone.utc)
+        out = out.replace(tzinfo=dt.UTC)
     return out
 
 
@@ -67,9 +69,9 @@ def quarters_in_range(since: dt.datetime, until: dt.datetime) -> list[str]:
     """Return all quarters that overlap [since, until]."""
     out: list[str] = []
     cursor = dt.datetime(since.year, ((since.month - 1) // 3) * 3 + 1, 1,
-                         tzinfo=since.tzinfo or dt.timezone.utc)
+                         tzinfo=since.tzinfo or dt.UTC)
     end = dt.datetime(until.year, until.month, 1,
-                      tzinfo=until.tzinfo or dt.timezone.utc)
+                      tzinfo=until.tzinfo or dt.UTC)
     while cursor <= end:
         out.append(quarter_for(cursor))
         if cursor.month >= 10:
@@ -181,10 +183,8 @@ def next_event_id(existing: list[dict[str, Any]], when: dt.datetime) -> str:
     for r in existing:
         rid = r.get("id", "")
         if isinstance(rid, str) and rid.startswith(prefix):
-            try:
+            with contextlib.suppress(ValueError):
                 nums.append(int(rid.rsplit("-", 1)[-1]))
-            except ValueError:
-                pass
     return f"{prefix}{(max(nums) + 1 if nums else 1):03d}"
 
 

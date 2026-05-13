@@ -36,7 +36,6 @@ import yaml
 
 from ._base import IngestorBase, ProbeResult, ProbeStatus, RunResult, now_iso
 
-
 # Column-name aliases per known bank format. Lowercase comparison.
 DATE_COLUMNS = {"date", "transaction date", "posting date", "post date", "trade date"}
 AMOUNT_COLUMNS = {"amount", "amount (usd)", "transaction amount", "debit", "credit"}

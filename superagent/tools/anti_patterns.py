@@ -35,7 +35,6 @@ from typing import Any
 
 import yaml
 
-
 _FRAMEWORK_ROOT = Path(__file__).resolve().parent.parent
 _RULES_FILE = _FRAMEWORK_ROOT / "rules" / "anti-patterns.yaml"
 
