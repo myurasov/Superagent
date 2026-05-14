@@ -62,6 +62,15 @@ Use **today's date** in the user's local timezone (from `config.yaml.profile.tim
 
 Run the **MCP / CLI Preflight Protocol** (`contracts/mcp-preflight.md`) for every source whose row in `data-sources.yaml` has `capture_mode: scheduled` AND a schedule that includes `daily`.
 
+> **Pre-flight (email-capture contract — `contracts/email-capture.md`)**:
+> Step 10 (inbox highlights) MUST read the local email archive via
+> `superagent.tools.email.archive.find_by_query(...)` first. NO bulk Gmail
+> pulls from this skill — the dormant ingestor at `_memory/_gmail/` stays
+> dormant. If the local archive misses a thread the user pings about,
+> capture-through after a targeted `mcp_user-gmail_read_email` (or
+> `search_emails` with a tight query) via `archive.capture_inbound(...)`
+> / `archive.maybe_capture_stubs(...)`.
+
 ## 1. Load configuration
 
 Read `workspace/_memory/config.yaml`:

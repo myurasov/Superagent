@@ -14,6 +14,7 @@
   - [Model context (cross-session memory)](#model-context-cross-session-memory)
   - [Skills](#skills)
   - [Data ingestion contract](#data-ingestion-contract)
+  - [Local archives — email (capture-on-touch)](#local-archives--email-capture-on-touch)
   - [Logging](#logging)
   - [Domain / Project / Sources folder convention](#domain--project--sources-folder-convention)
   - [Public artifact destination](#public-artifact-destination)
@@ -178,6 +179,19 @@ Superagent's value scales with the breadth of authorized data sources. The contr
 - **Every ingestor** is **idempotent** within its recency window — re-running over the same window must not duplicate rows in any index or any domain `history.md`.
 - **Quick-start works without any ingestor enabled.** Init never silently turns on a source; it lists what's available and asks.
 - **Heavy ingestion is opt-in and deferred.** Backfilling 5 years of email or 3 years of bank data is a separate, explicit invocation.
+
+---
+
+## Local archives — email (capture-on-touch)
+
+Distinct from scheduled ingestors: every email the agent **reads** via `mcp_user-gmail_read_email` or **sends** via `mcp_user-gmail_send_email` is mirrored to a local per-message archive at `workspace/_memory/email/`. The archive grows by side-effect of normal work, not by bulk backfill. Governed by [`contracts/email-capture.md`](superagent/contracts/email-capture.md); one-paragraph summary:
+
+- **Layout** — `_memory/email/<YYYY>/<MM>/<DD>/<YYYY-MM-DD>_<in|out>_<from_slug>_<subject_slug>_<hash8>.json`, plus an append-only sidecar `_memory/email/_messages.jsonl` keyed by Gmail `message.id`, plus a singleton `_index.yaml` with counters.
+- **Trigger** — every successful `read_email` → `archive.capture_inbound(raw)`; every successful `send_email` → `archive.capture_sent(request, response)`; every `search_emails` → `archive.maybe_capture_stubs(results)`. Drafts that stay in `Outbox/emails/` are NOT mirrored.
+- **Attachments** — metadata-only by default. Save bytes only when the user explicitly asks, when the message looks like a receipt or confirmation, or when the attachment is the primary data the current task needs to act on.
+- **Read-side rule** — every skill that needs an email scans `_messages.jsonl` first (`superagent.tools.email.archive.find` / `find_by_query`) and only falls through to a live MCP read for the strictly-newer slice the local archive does not cover.
+- **Bulk fetch is OFF.** The pre-existing Gmail ingestor at `superagent/tools/ingest/gmail.py` stays dormant; this archive is the only active path.
+- **No SQLite FTS.** Linear scans of `_messages.jsonl` are sufficient at on-touch volume.
 
 ---
 

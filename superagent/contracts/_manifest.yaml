@@ -174,3 +174,7 @@ contracts:
     slug: versioning
     title: "Versioning and Migration Contract"
     path: contracts/versioning.md
+  - id: C-42
+    slug: email-capture
+    title: "Email Capture Contract"
+    path: contracts/email-capture.md

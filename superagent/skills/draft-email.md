@@ -28,6 +28,14 @@ cli_optional: []
 > it otherwise. The Outbox ships flat at init; sub-folders appear on first
 > use.
 
+> **Pre-flight (email-capture contract — `contracts/email-capture.md`)**:
+> Before any Gmail MCP read in step 2 (prior-thread fetch), search the local
+> archive first with `superagent.tools.email.archive.find_by_query(...)`. If
+> the agent later **sends** the drafted message via `mcp_user-gmail_send_email`
+> (not the MVP path), it MUST call `superagent.tools.email.archive.capture_sent(
+> request, response)` immediately after the send returns. Drafts that stay in
+> `Outbox/emails/` are NOT captured here.
+
 ## 1. Resolve the recipient
 
 1. Match user's reference against `contacts.yaml.contacts[].name + aliases + email`.

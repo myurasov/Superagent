@@ -47,6 +47,13 @@ Resolve paths via `_memory/config.yaml` (`workspace_path`). Read / write `_memor
 
 Run the **MCP / CLI Preflight Protocol** (`contracts/mcp-preflight.md`) for any sources this skill might touch (none required; sources are only consulted opportunistically for live state).
 
+> **Pre-flight (email-capture contract — `contracts/email-capture.md`)**:
+> If this skill ends up reading any email (rare — `whatsup` summarizes
+> already-captured signal, not raw inboxes), use
+> `superagent.tools.email.archive.find_by_query(...)` first and capture
+> any live Gmail MCP read through `archive.capture_inbound(...)`.
+> Never bulk-fetch.
+
 ## 1. Establish the time baseline
 
 Open `_memory/context.yaml` and read `last_check`. If missing or null, treat baseline as **start of today** in the user's local timezone and state that assumption.

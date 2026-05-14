@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-05-14T02:15:44+00:00'
+generated_at: '2026-05-14T08:30:13+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -18,6 +18,13 @@ migrations:
   from_version: 0.2.0
   file: 0.3.0.md
   title: Add Gmail ingestor + data-sources.yaml gmail row
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute
+- to_version: 0.4.0
+  from_version: 0.3.0
+  file: 0.4.0.md
+  title: Add _memory/email/ capture-on-read-or-send archive
   breaking: false
   revertible: true
   estimated_duration: <1 minute

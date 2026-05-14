@@ -18,6 +18,15 @@ cli_optional: []
 
 # Superagent summarize-thread skill
 
+> **Pre-flight (email-capture contract — `contracts/email-capture.md`)**:
+> Before any `mcp_user-gmail_read_email` / `mcp_user-gmail_search_emails`
+> call, scan the local archive via `superagent.tools.email.archive.find` or
+> `find_by_query(...)`. Hit the live MCP only for the strictly-newer slice
+> the local read does not cover. After every MCP read, call
+> `archive.capture_inbound(raw_message)`; after every `search_emails`,
+> call `archive.maybe_capture_stubs(results)`. Fetch only the messages this
+> summary needs — no bulk thread pulls.
+
 ## 1. Resolve the thread
 
 If the user pasted the thread, use that. Otherwise resolve by:
