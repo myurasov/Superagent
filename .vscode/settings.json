@@ -1,11 +1,13 @@
 {
     "files.exclude": {
-        "LICENSE": true,
-        "**/*.xlsx.meta.yaml": true,
         "**/__pycache__": true,
         "**/.pytest_cache": true,
         "**/.playwright*": true,
-        "*.*": false,
+        "LICENSE": true,
+        "*.*": true,
+        "**/*.xlsx.meta.yaml": true,
+        "**/.version": true,
+        "NOTICE": true
     },
     "markdown.preview.openMarkdownLinks": "inEditor",
     "workbench.editorAssociations": {
