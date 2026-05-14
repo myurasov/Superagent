@@ -33,3 +33,10 @@ files:
       - AGENTS.md
       - docs/architecture.md
     user_overlay: workspace/_custom/rules/development-tooling.md
+  - path: scope-discipline.md
+    kind: doc
+    purpose: "Operationalizes the Knowledge discipline principle: 3-test gate (necessity / discovery-cost / speculation) the agent runs before every ask or fetch; verification ritual at task end."
+    consumed_by:
+      - AGENTS.md
+      - superagent.agent.md
+    user_overlay: workspace/_custom/rules/scope-discipline.md
