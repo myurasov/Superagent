@@ -31,14 +31,15 @@ REGISTRY: tuple[IngestorSpec, ...] = (
     IngestorSpec(
         source="gmail",
         module="gmail",
-        kind="mcp",
-        description="Gmail messages → interaction-log + auto-detected appointments / bills / subs.",
-        install_hint="Install Google Workspace MCP and OAuth your Google account.",
-        docs_anchor="gmail",
-        writes_destinations=(
-            "interaction-log.yaml", "appointments.yaml", "bills.yaml",
-            "subscriptions.yaml", "Domains/<inferred>/history.md",
+        kind="api",
+        description="Gmail message metadata -> _memory/_gmail/<YYYY-MM>.jsonl (read-only).",
+        install_hint=(
+            "Install gongrzhe Gmail MCP (`sudo npm install -g @gongrzhe/server-gmail-autoauth-mcp`) "
+            "for the chat-time tools, then `npx -y @gongrzhe/server-gmail-autoauth-mcp auth` once. "
+            "The headless ingestor reuses ~/.gmail-mcp/ tokens via the Gmail API."
         ),
+        docs_anchor="gmail",
+        writes_destinations=("_memory/_gmail/<YYYY-MM>.jsonl",),
     ),
     IngestorSpec(
         source="icloud_mail",

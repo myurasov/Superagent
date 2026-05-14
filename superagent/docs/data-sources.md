@@ -72,19 +72,56 @@ These MCPs do not ingest personal-life data into Superagent, but they are useful
 
 ### gmail
 
-- **Maturity**: stub (priority: high — see `roadmap.md` LOE-S "Implement gmail ingestor").
-- **Kind**: MCP.
-- **Underlying tool**: [Google Workspace MCP](https://github.com/epaproditus/google-workspace-mcp-server).
-- **Ingests**: messages from the user's primary inbox, sent folder, and any opted-in labels.
+- **Maturity**: MVP (metadata-only ingest; downstream classification skills TBD).
+- **Kind**: API for the headless ingestor; chat-time tool surface is MCP. Both share one OAuth grant.
+- **Underlying tools**:
+  - **Headless ingest** (`tools/ingest/gmail.py`) talks to Google's Gmail API directly via `google-api-python-client`, reusing OAuth tokens that the chat MCP saved at `~/.gmail-mcp/credentials.json`.
+  - **Chat-time ad-hoc** (Cursor): the [`@gongrzhe/server-gmail-autoauth-mcp`](https://github.com/GongRzhe/Gmail-MCP-Server) server exposes 19 Gmail tools (list_emails, search_emails, get_email, modify_email, send_email, ...) for interactive use during a chat. Configured in `~/.cursor/mcp.json`.
+- **Ingests** (MVP): message metadata only — id, threadId, subject, from, to, cc, date, snippet, label_ids, size_estimate. **No body fetch in MVP**; classifiers that need the body land later.
 - **Writes to**:
-  - `_memory/interaction-log.yaml` — one row per substantive thread per recipient.
-  - `_memory/appointments.yaml` — auto-detected from "your appointment is confirmed" / "see you on" emails (regex + classifier).
-  - `_memory/bills.yaml` — auto-detected from "your <utility> statement is ready" / "amount due" emails.
-  - `_memory/subscriptions.yaml` — auto-detected from "Welcome to <service>" / "your subscription has renewed" emails.
+  - `_memory/_gmail/<YYYY-MM>.jsonl` — one JSON object per line, sharded by month based on Gmail's `internalDate`. Idempotent: each message id is appended exactly once across all shards.
+- **Future writes** (separate skills, not in this ingestor):
+  - `_memory/contacts.yaml` — auto-fill from senders not yet in contacts.
+  - `_memory/bills.yaml` — detect "your statement is ready" / "amount due" patterns.
+  - `_memory/subscriptions.yaml` — detect "Welcome to <service>" / "your subscription has renewed".
+  - `_memory/appointments.yaml` — detect "your appointment is confirmed" / "see you on".
   - `Domains/<inferred>/history.md` — narrative entries for high-signal threads.
-- **Install**: install the Google Workspace MCP per its README; OAuth your Google account; grant `gmail.readonly` and `gmail.metadata` scopes (the ingestor never sends or modifies).
-- **Probe**: tries to call `list_messages` with `maxResults: 1` and discards the result.
-- **Caveats**: Gmail's API is generous but rate-limited; the ingestor respects `max_items_per_run` (default 200) and exponentially backs off on 429.
+- **Install** (one-time, ~25 min):
+  1. **Google Cloud project + OAuth Desktop client** ([console.cloud.google.com](https://console.cloud.google.com/) → enable Gmail API, configure OAuth consent screen as External + add yourself as Test User, create Desktop OAuth client). Download the JSON; `~/.config/google-mcp/oauth-client.json` is the convention.
+  2. **Install the gongrzhe MCP globally** (avoids a 17-second `npx -y` cold-start that exceeds Cursor's 10-second startup timeout):
+     ```bash
+     sudo npm install -g @gongrzhe/server-gmail-autoauth-mcp
+     ```
+  3. **Stage the OAuth client where the MCP looks for it, then run auth** (browser opens; sign in; grant):
+     ```bash
+     mkdir -p ~/.gmail-mcp
+     cp ~/.config/google-mcp/oauth-client.json ~/.gmail-mcp/gcp-oauth.keys.json
+     npx -y @gongrzhe/server-gmail-autoauth-mcp auth
+     # tokens land at ~/.gmail-mcp/credentials.json
+     ```
+  4. **Wire the MCP into Cursor** at `~/.cursor/mcp.json`, then `Cmd+Q` and reopen Cursor:
+     ```json
+     {
+       "mcpServers": {
+         "gmail": { "command": "/usr/local/bin/gmail-mcp" }
+       }
+     }
+     ```
+     Verify: `gmail` shows green/connected with 19 tools in the MCP panel; smoke-test in a fresh chat ("list my 3 most recent emails").
+- **Scopes granted**: `gmail.modify` + `gmail.settings.basic`. The MCP requests these (not configurable). The ingestor uses ONLY the read subset (`messages.list`, `messages.get`); the framework's "no remote write" rule (`AGENTS.md` § "Privacy and data location") enforces this at the skill level. Future skills that need actual modify capability must declare `writes_upstream: true` on the `data-sources.yaml` row + ask per-call confirmation per the same rule.
+- **Probe**: `users().getProfile(userId="me")` — minimal authenticated API call; returns the connected mailbox address.
+  ```bash
+  uv run python -m superagent.tools.ingest.gmail --probe
+  ```
+- **First-run flow** (after the install above + the `0.3.0` migration that adds the `data-sources.yaml` row):
+  1. Edit `workspace/_memory/data-sources.yaml` → set `gmail.enabled: true`.
+  2. Dry-run: `uv run python -m superagent.tools.ingest.gmail --dry-run` (no writes; reports counts).
+  3. Real run: `uv run python -m superagent.tools.ingest.gmail` (appends to `_memory/_gmail/<YYYY-MM>.jsonl`).
+- **Caveats**:
+  - Gmail's API quota is huge (1B units/day per project) — `max_items_per_run` (default 200) is for cron-friendliness, not quota.
+  - First-time `npx -y` for the MCP downloads ~30 MB of npm packages; pre-install globally (step 2 above) to skip this on every Cursor cold start.
+  - Token refresh happens in-memory on the ingestor side (it doesn't write back to `~/.gmail-mcp/credentials.json`). Refresh tokens last indefinitely unless the user revokes via [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
+  - If the Cursor MCP smoke test fails, the headless ingestor will too — both share the same OAuth grant.
 
 ### icloud-mail
 

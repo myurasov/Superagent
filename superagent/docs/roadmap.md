@@ -59,6 +59,7 @@ Newest first. One line per release. Migrations (when one is required) live at `s
 
 | Version | Date | Summary |
 |---|---|---|
+| **0.3.0** | 2026-05-13 | Gmail ingestor (MVP, metadata-only) — direct Gmail-API headless ingest sharing OAuth tokens with the chat-time gongrzhe MCP. Adds `gmail` row to `data-sources.yaml` ([migration](../migrations/0.3.0.md)). |
 | **0.2.0** | 2026-05-13 | Introduce semver versioning + migration system: `workspace/.version` tracking, `superagent/migrations/`, `migrate` skill, `tools/version.py` (`contracts/versioning.md`, [migration](../migrations/0.2.0.md)). |
 | **0.1.0** | bootstrap | Initial framework. |
 
@@ -89,7 +90,7 @@ The "implement one ingestor" tier — the bulk of where Superagent grows.
 
 | ID | What | Why | Done when | Depends on |
 |---|---|---|---|---|
-| S-01 | Implement **gmail** ingestor. | Email is the highest-leverage source by a wide margin. Auto-detects appointments / bills / subs / shipments. | `probe()` works; `run()` fetches + writes; smoke test in `test_ingest_registry.py`; covered by `tests/test_ingest_gmail_smoke.py`. | Google Workspace MCP installed. |
+| S-01 | ~~Implement **gmail** ingestor.~~ **DONE in 0.3.0** — metadata-only MVP via direct Gmail API; classification follow-ups (S-22, M-05) outstanding. |  |  |  |
 | S-02 | Implement **google-calendar** ingestor. | Pairs with gmail; same MCP, same OAuth. | Same. | S-01 (shared MCP setup). |
 | S-03 | Implement **icloud-mail** + **icloud-calendar** + **icloud-reminders** ingestors. | Native macOS coverage; no OAuth, just an app-specific password. | Three ingestors shipped + tests. | iCloud MCP installed. |
 | S-04 | Implement **apple-health** ingestor (via `healthsync` SQLite). | Year of vitals + workouts in one SQL query. | `probe()` finds `~/.healthsync/healthsync.db`; `run()` parses + normalizes; tests cover normalization. | `healthsync` installed. |
