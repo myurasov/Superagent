@@ -17,7 +17,7 @@ Implements superagent/docs/_internal/perf-improvement-ideas.md § "Anti-patterns
 | AP-3 | info | Whole-workspace grep without scope. | Scope to a Domain / Project folder. |
 | AP-4 | info | Sequential "run X then Y then Z" that may be parallelizable. | Use single-message tool-call batching. |
 | AP-5 | info | Full email-thread pull without checking interaction-log first. | Consult local mirror + Sources cache first. |
-| AP-6 | info | Briefing regen without cache check. | Call `tools/briefing_cache.py get` first. |
+| AP-6 | info | Briefing regen without cache check. (DORMANT — no skill writes the cache today; see `contracts/briefing-cache.md` § Status. Re-enable once `put`/`get` is wired into the producing skills.) | Once activated: call `tools/briefing_cache.py get` first. |
 | AP-7 | warning | Unbounded read of long doc (AGENTS.md or contracts/*). | Use Grep + `Read --offset --limit` against documented ranges. |
 | AP-8 | warning | Manifest-bypass: "read every skill markdown". | Read `skills/_manifest.yaml` first. |
 | AP-9 | info | Load-then-extract: large file loaded, single fact extracted. | Use Grep / FTS5 first. |

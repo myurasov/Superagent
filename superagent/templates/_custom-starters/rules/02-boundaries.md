@@ -33,4 +33,4 @@ undone with a single command.
 ## Workspace
 
 * Never `rm -rf` anything under `workspace/`. Use `Archive/` (reversible).
-* Never modify `_memory/_checkpoints/` — that's the rollback fund.
+* (Designed: never modify `_memory/_checkpoints/` — that will become the rollback fund once `roadmap.md` § S-27 ships. Today the directory is not auto-populated.)

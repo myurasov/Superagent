@@ -63,10 +63,10 @@ rules:
 
   - id: AP-6
     severity: info
-    description: "Briefing regen without cache check."
+    description: "Briefing regen without cache check. (DORMANT — no production skill writes the cache today; see contracts/briefing-cache.md \u00a7 Status. Rule still listed so the AP-N numbering stays stable; will fire usefully once the cache is wired into producing skills.)"
     pattern: '\b(?:re-?render|regenerate)\b[^.]*\b(?:daily[- ]update|briefing|weekly[- ]review|monthly[- ]review)\b(?![^.]*(?:briefing[_ -]cache|_artifacts|cache hit))'
     flags: [IGNORECASE, DOTALL]
-    mitigation: "Call `tools/briefing_cache.py get` (or read `_memory/_artifacts/<skill>/<key>.md`) before regenerating."
+    mitigation: "Once activated: call `tools/briefing_cache.py get` (or read `_memory/_artifacts/<skill>/<key>.md`) before regenerating. Until then no action required."
 
   - id: AP-7
     severity: warning

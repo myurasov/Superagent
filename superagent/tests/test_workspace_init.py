@@ -124,12 +124,35 @@ def test_init_does_not_pre_create_outbox_subfolders(
     )
 
 
-def test_init_creates_internal_memory_dirs(initialized_workspace: Path) -> None:
-    """The internal _memory sub-directories the new tools rely on are scaffolded."""
+def test_init_creates_eager_memory_subdirs(initialized_workspace: Path) -> None:
+    """`sensitive/` and `events/` ship eagerly because their writers run today.
+
+    `sensitive/` is the sensitive-tier root (capture skills + ingestors write
+    here per `contracts/sensitive-tier.md`); `events/` holds the time-
+    partitioned events stream maintained by `tools/log_window.py`.
+    """
+    memory = initialized_workspace / "_memory"
+    for sub in ["sensitive", "events"]:
+        assert (memory / sub).is_dir(), f"missing _memory/{sub}/"
+
+
+def test_init_does_not_pre_create_lazy_memory_subdirs(
+    initialized_workspace: Path,
+) -> None:
+    """`_briefings/`, `_artifacts/`, `_session/`, `_telemetry/`, `_checkpoints/`
+    are LAZY — created on first write by their respective tools (see the
+    `init_internal_dirs` docstring in `workspace_init.py`). Pre-scaffolding
+    them at init time produces empty directories that look like silently-
+    broken features; the writer's `mkdir(parents=True, exist_ok=True)` is
+    enough.
+    """
     memory = initialized_workspace / "_memory"
     for sub in ["_briefings", "_artifacts", "_session", "_telemetry",
-                "_checkpoints", "sensitive", "events"]:
-        assert (memory / sub).is_dir(), f"missing _memory/{sub}/"
+                "_checkpoints"]:
+        assert not (memory / sub).exists(), (
+            f"_memory/{sub}/ should NOT be pre-created at init time "
+            "(lazy — created by its writer on first use)"
+        )
 
 
 def test_init_creates_custom_overlay_scaffold(initialized_workspace: Path) -> None:

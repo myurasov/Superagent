@@ -134,12 +134,14 @@ Credentials: never stored in plaintext in the workspace. Account credentials are
 
 Multiple safety nets:
 
-- **Auto-snapshots.** `_memory/_checkpoints/<date>/` keeps a daily backup of the entire `_memory/` for 14 days. Roll back any time.
 - **Append-only logs.** `interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml` never lose information; they only grow.
+- **Per-row audit trail.** Every entity-shape index file (`bills.yaml`, `contacts.yaml`, …) gets a sibling `<file>.history.jsonl` written by `tools/audit.py` on every change — so "when did this row change, and to what?" is always answerable.
 - **Reversible archives.** Anything `doctor` moves to `Archive/` is one `mv` away from coming back.
 - **Diff-and-merge, not clobber.** Skills that update markdown files diff against your hand-edits and merge; they don't overwrite blindly.
 - **The hard safeguard.** The Supertailor / Supercoder loop has a token-scan that prevents personal data from accidentally leaking into committed framework code, regardless of what the AI thinks.
 - **Plain-text data.** Worst case, you open the file in any editor and fix it manually. There's nothing the agent does that you can't undo.
+
+> **Not yet shipped:** a daily auto-snapshot of `_memory/` to `_memory/_checkpoints/<date>/` is designed (`contracts/snapshot-diff.md`, `roadmap.md` § S-27) but the writer doesn't exist today. If you want a coarse rollback target right now, `cp -R workspace/_memory workspace/_memory.<date>` before risky operations, or sync `workspace/` to a versioning backup (Time Machine / iCloud-Drive history).
 
 ## Why are some skills / ingestors not implemented yet?
 

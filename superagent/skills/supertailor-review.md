@@ -58,7 +58,7 @@ Per `supertailor.agent.md` § "Hygiene pass":
 7. **Custom-overlay scaffold**: ensure `_custom/{rules,skills,agents,templates,tools}/` exist; create empty if missing.
 8. **Improvement-ideas catalogues exist**: verify `superagent/docs/_internal/ideas-better-structure.md` (expected tier headings: § 1 through § 25 + Selection guide) and `superagent/docs/_internal/perf-improvement-ideas.md` (expected tier headings: Quick wins / Medium investments / Big bets) are present and parseable. They are mandatory inputs to step 2.5 below; missing files silently degrade Supertailor output. Surface as `needs-attention` (not auto-fixable — both are hand-curated).
 
-For each finding, list it; ask `approve all / approve some / decline all`. Apply approved repairs; back up modified files into `_memory/_checkpoints/<date>/`.
+For each finding, list it; ask `approve all / approve some / decline all`. The Supercoder applies approved repairs and commits — `git revert` is the rollback path for `superagent/` writes; `workspace/` writes rely on the file-by-file safety nets in `superagent/docs/faq.md`. (The `_memory/_checkpoints/<date>/` snapshot-before-write described in `contracts/snapshot-diff.md` is not yet implemented — see `roadmap.md` § S-27.)
 
 ## 2. Strategic pass
 
@@ -150,4 +150,4 @@ For approved suggestions:
 1. `_memory/context.yaml.last_runs.tailor_review` → now.
 2. Append to `interaction-log.yaml`.
 3. `supertailor-suggestions.yaml` updated with the new rows.
-4. `_memory/_checkpoints/<date>/` populated with backups of any files modified by hygiene-pass repairs.
+4. (Designed, not yet shipped: `_memory/_checkpoints/<date>/` populated with backups of any files modified by hygiene-pass repairs — blocked on `roadmap.md` § S-27.)

@@ -107,7 +107,7 @@ When a skill is about to read a non-canonical ref file (or `add-source` is proce
      [s] Write sibling <name>.ref.normalized.md, leave my file alone
      [k] Keep this file as-is for now (use parsed values for this read only)
    ```
-4. The user's choice is remembered in `_memory/_session/` for the rest of the session (so they aren't re-asked for a batch). Persistent default lives in `config.preferences.sources.normalize_policy` (default `ask`).
+4. The user's choice is held for the rest of the session (so they aren't re-asked for a batch). The persistent default lives in `config.preferences.sources.normalize_policy` (default `ask`). (Designed to persist via `_memory/_session/` once the per-session scratchpad is wired up — see `contracts/session-scratchpad.md` § Status; until then the choice is in-memory only.)
 5. If the parser cannot produce a complete canonical form (missing `kind` or `source`), the agent asks the user to fill the gaps before writing anything.
 
 The non-interactive default for batch tools (e.g. a ref refresh sweep) is set by `config.preferences.sources.normalize_policy_batch` (default `keep` — never silently rewrite during a non-interactive run).

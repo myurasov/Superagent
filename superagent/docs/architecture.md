@@ -73,7 +73,7 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 └── workspace/                      ← user data (gitignored; created by init)
     ├── _memory/                    ← YAML indexes (the structured-state vault)
     ├── _custom/                    ← per-user overlay (additive; rules / skills / templates)
-    ├── _checkpoints/<date>/        ← daily memory snapshots (auto, 14-day retention)
+    │   (designed: _memory/_checkpoints/<date>/ daily memory snapshots — see roadmap.md S-27)
     ├── Domains/                    ← per-domain folders (ongoing responsibilities)
     │   └── <Domain>/               ←   info.md / status.md / history.md / rolodex.md / sources.md
     │       └── Resources/          ←     drafts / working files / agent artifacts (lazy)

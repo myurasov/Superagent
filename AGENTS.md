@@ -29,6 +29,7 @@
   - [Time-shape vs entity-shape vs event-shape](#time-shape-vs-entity-shape-vs-event-shape)
   - [Privacy and data location](#privacy-and-data-location)
   - [Local development tooling](#local-development-tooling)
+  - [File naming conventions](#file-naming-conventions)
   - [IDE setup (Cursor)](#ide-setup-cursor)
   - [Prompt-cache discipline](#prompt-cache-discipline)
 
@@ -379,7 +380,6 @@ Per `docs/superagent/docs/_internal/perf-improvement-ideas.md` QW-3, every Super
 - **Skills that say "read X" implicitly mean "read the relevant section of X"** — agents should treat full reads as the exception.
 - **For long skills** (`init.md`, `daily-update.md`, `monthly-review.md`, `supertailor-review.md`, `add-source.md`, …), read the YAML frontmatter + the `## Step index` block first; use `Read --offset --limit` against the listed step ranges.
 - **Use the skill manifest**: read `superagent/skills/_manifest.yaml` (cheap, ~5-10 KB) to pick which skill applies, instead of grepping every skill markdown.
-- **Use briefing-cache before regenerating**: if `_memory/_artifacts/<skill>/<key>.md` is fresh, read it instead of running the skill again. The `tools/briefing_cache.py get` helper checks for you.
 - **Use the events stream + log summaries** instead of full-loading append-only YAML logs: `_memory/<file>.summary.yaml` (the QW-4 summary sibling) tells you whether you need the full log at all; `tools/log_window.py read` pulls just a date range.
 - **BATCH parallel reads / MCP calls** in a single tool-call message rather than chaining them sequentially. Sequential chains are reserved for the cases where step N's output feeds step N+1.
 
@@ -469,6 +469,18 @@ Full policy: [`superagent/rules/development-tooling.md`](superagent/rules/develo
 - **Non-Python tools** — install under `./.tools/` (gitignored). NEVER install system-wide (`brew install`, `npm -g`, `cargo install --root /usr/local`, etc.) from inside this project.
 - **Temporary files** — write to `./.tmp/` only (gitignored). NEVER use `/tmp`, `$TMPDIR`, `~/`, OS temp dirs, sibling repos, or anything outside the project root.
 - **Scope discipline (safety rule)** — the agent MUST NOT install software, create files, or modify files outside this project folder unless the user explicitly authorizes that specific action. Read access outside is fine; write access outside is forbidden by default — refuse and ask first.
+
+---
+
+## File naming conventions
+
+Full policy: [`superagent/rules/file-naming.md`](superagent/rules/file-naming.md). One-paragraph summary:
+
+- **No spaces in agent-created paths.** When the agent creates, renames, or moves a file or folder anywhere under `workspace/`, both the filename AND any new directory name uses `_` instead of spaces. Hyphens (`-`) remain valid for date separators (`2026-03-06`), kebab-case slugs (`tax-2026`, `audi-q7-2022`), and within-word breaks (`W-2`, `1099-DIV`).
+- **Forward-only.** Pre-existing spaced paths are NOT auto-renamed (silent mass renames break `sources-index.yaml` `id` values and cascade through cross-references). The agent files new content into spaced parent folders without complaint and writes the new component with underscores.
+- **Allowed character set.** ASCII letters, digits, `_`, `-`, and `.` (for extensions and version numbers). Slugify user-supplied strings: lowercase, drop punctuation needing shell quoting, collapse whitespace to single underscores. Date-led names use ISO 8601: `YYYY-MM-DD_<rest>`.
+- **Display strings are exempt.** The `title` field inside index rows (e.g. `_memory/sources-index.yaml`) is human-readable and may contain spaces — the constraint is on the on-disk path only.
+- **Verification ritual.** Before declaring a file-creating task complete, the agent scans its own newly-created paths for any space and renames before signing off.
 
 ---
 

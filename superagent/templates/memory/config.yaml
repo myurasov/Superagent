@@ -83,7 +83,11 @@ preferences:
   # Privacy posture.
   privacy:
     log_user_queries: true           # populate _memory/user-queries.jsonl (used by Supertailor)
-    snapshot_memory_daily: true      # _memory/_checkpoints/<date>/
+    # snapshot_memory_daily / snapshot_retention_days are DORMANT — the daily
+    # snapshot writer (roadmap.md S-27) is not yet implemented. The diff
+    # reader (tools/snapshot_diff.py) ships and works against any pair of
+    # checkpoint dirs you produce by hand. See contracts/snapshot-diff.md.
+    snapshot_memory_daily: true      # designed: _memory/_checkpoints/<date>/
     snapshot_retention_days: 14
     redact_outbound: true            # outbound surfaces go through scrub pipeline
 
@@ -169,31 +173,37 @@ preferences:
     surface_in_monthly_review: true
 
   # Briefing cache (see contracts/briefing-cache.md / QW-5 + MI-5).
+  #
+  # DORMANT — `tools/briefing_cache.py` ships, but no production skill
+  # currently calls `put()` after rendering, so the cache stays empty.
+  # `enabled: true` only means "the tool's own CLI honors it"; daily-update /
+  # weekly-review / monthly-review do not consult the cache today. Activating
+  # this block requires wiring `put` / `get` into the producing skills.
   briefing_cache:
-    # Master switch.
     enabled: true
-    # TTL for cached briefings (minutes). 720 = 12h (covers a workday).
-    ttl_minutes: 720
-    # Auto-invalidate when any source file mtime > briefing.created_at.
+    ttl_minutes: 720                 # 12h, covers a workday
     invalidate_on_source_mtime: true
 
   # Per-session scratchpad (see contracts/session-scratchpad.md / MI-1).
+  #
+  # DORMANT — `tools/session_scratch.py` ships, but no skill or hook opens a
+  # session and writes to it under normal use. Cursor exposes no per-turn
+  # hook; activating requires either an external hook or a per-skill
+  # prologue.
   session:
-    # Master switch.
     enabled: true
-    # How many sessions to keep before evicting oldest.
     keep_recent_sessions: 20
-    # Auto-cleanup sessions older than N days.
     expire_days: 30
 
   # Working sets / telemetry (item #23 / measurement section).
+  #
+  # DORMANT — no per-turn telemetry recorder ships today. Designed in
+  # `superagent/docs/_internal/perf-improvement-ideas.md` § "Measurement
+  # protocol"; until the recorder lands these flags are read by nothing.
   telemetry:
-    # Append a row to working-sets.jsonl per skill invocation.
-    record_working_sets: true
-    # Append a row to _telemetry/<YYYY-MM-DD>.jsonl per skill invocation.
-    record_per_turn: true
-    # Surface efficiency deltas in monthly-review.
-    surface_in_monthly_review: true
+    record_working_sets: true        # designed: per-skill working-sets.jsonl row
+    record_per_turn: true            # designed: _telemetry/<YYYY-MM-DD>.jsonl
+    surface_in_monthly_review: true  # designed: efficiency deltas in monthly-review
 
   # Sensitive tier (see contracts/sensitive-tier.md / item #18).
   sensitive:
