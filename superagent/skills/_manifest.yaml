@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-20T20:42:36-07:00'
+generated_at: '2026-05-20T21:03:21-07:00'
 skill_count: 51
 skills:
 - name: superagent-add-account
@@ -681,10 +681,10 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 363
+  lines: 375
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 5558
+  typical_token_cost: 5708
   typical_files_read:
   - workspace/_memory/config.yaml
   - _memory/insights.yaml
