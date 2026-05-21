@@ -55,6 +55,15 @@ Tool scripts under `superagent/tools/*.py` use a `uv run`-aware shebang so direc
 - When using `tempfile.TemporaryDirectory` / `tempfile.NamedTemporaryFile` in Python, pass `dir=Path(__file__).resolve().parents[N] / ".tmp"` (resolve N to the repo root) and ensure the directory exists.
 - `./.tmp/` is created lazily on first use; the agent does not pre-create it.
 
+### MCP tool outputs (Playwright, etc.)
+
+MCP servers default their working directory to the project root, so a bare filename like `screenshot.png` lands at the repo root — **NOT** in `./.tmp/`. The same rule applies; the burden is on the caller to route the output explicitly.
+
+- **Playwright `browser_take_screenshot`** — always pass `filename: ".tmp/<descriptive-name>.png"`. Never a bare filename.
+- **Playwright `browser_pdf_save`, `browser_evaluate` (`filename` arg), `browser_snapshot` (`filename` arg)** — same: prefix with `.tmp/`.
+- **Any future MCP tool that accepts a `filename` / `output_path` / `save_to`** — prefix with `.tmp/` unless the artifact has an explicit durable home (`Sources/`, `Outbox/`, `Domains/<…>/Resources/`, `Projects/<…>/Resources/`).
+- The `.playwright-mcp/` directory under the project root is the Playwright MCP server's own state dir (snapshots, console logs, profile) — it is gitignored and managed by the MCP itself. **Do not write user-facing artifacts (screenshots, PDFs, evaluate output) into it.** Those go to `.tmp/` like everything else transient.
+
 ---
 
 ## 4. Scope discipline — never write outside the project (safety rule)
