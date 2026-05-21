@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-05-13T02:52:05-07:00'
+generated_at: '2026-05-20T20:42:36-07:00'
 skill_count: 51
 skills:
 - name: superagent-add-account
@@ -333,10 +333,10 @@ skills:
   - any scheduled-cadence ingest source (gmail, gcal, icloud, apple_health, …)
   cli_required: []
   cli_optional: []
-  lines: 304
+  lines: 313
   h2_steps: 26
   h3_subsections: 0
-  typical_token_cost: 2883
+  typical_token_cost: 3018
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/context.yaml
@@ -434,10 +434,10 @@ skills:
   - email ingestors (for prior-thread context)
   cli_required: []
   cli_optional: []
-  lines: 109
+  lines: 117
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 832
+  typical_token_cost: 959
   typical_files_read: []
   origin: framework
 - name: superagent-events
@@ -503,10 +503,10 @@ skills:
   - email + message ingestors (to find unanswered)
   cli_required: []
   cli_optional: []
-  lines: 128
+  lines: 138
   h2_steps: 9
   h3_subsections: 6
-  typical_token_cost: 1004
+  typical_token_cost: 1147
   typical_files_read:
   - _memory/todo.yaml
   - _memory/appointments.yaml
@@ -681,10 +681,10 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 314
-  h2_steps: 12
+  lines: 363
+  h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 4466
+  typical_token_cost: 5558
   typical_files_read:
   - workspace/_memory/config.yaml
   - _memory/insights.yaml
@@ -734,10 +734,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 339
-  h2_steps: 11
+  lines: 362
+  h2_steps: 12
   h3_subsections: 10
-  typical_token_cost: 2786
+  typical_token_cost: 2928
   typical_files_read:
   - workspace/_memory/interaction-log.yaml
   origin: framework
@@ -1009,10 +1009,10 @@ skills:
   - imessage / whatsapp / signal / slack ingestors
   cli_required: []
   cli_optional: []
-  lines: 82
+  lines: 91
   h2_steps: 7
   h3_subsections: 4
-  typical_token_cost: 476
+  typical_token_cost: 612
   typical_files_read: []
   origin: framework
 - name: superagent-supertailor-review
@@ -1033,7 +1033,7 @@ skills:
   lines: 153
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2423
+  typical_token_cost: 2505
   typical_files_read:
   - _memory/supertailor-suggestions.yaml
   - _memory/contacts.yaml
@@ -1183,10 +1183,10 @@ skills:
   - any scheduled-cadence ingest source
   cli_required: []
   cli_optional: []
-  lines: 152
+  lines: 159
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 1300
+  typical_token_cost: 1389
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml

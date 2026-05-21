@@ -37,14 +37,25 @@ Thumbs.db
 !.vscode/settings.json
 !.vscode/extensions.json
 
-# Cursor — keep hooks tracked
+# Cursor — keep hooks + the project MCP template tracked, ignore the rest
+# (including .cursor/mcp.json, which is the runtime file copied from the
+# .cursor/mcp.json.cursor template by `init` and may carry auth tokens).
 !.cursor/
 .cursor/*
 !.cursor/hooks.json
+!.cursor/mcp.json.cursor
 
-# MCP project config — .mcp.json carries auth tokens and is never committed.
-# .mcp.json.example is the redacted template that ships with the repo.
+# Claude Code — keep project settings tracked; ignore per-machine local
+# overrides (.claude/settings.local.json) and any other in-tree state.
+!.claude/
+.claude/*
+!.claude/settings.json
+
+# MCP project-level config — runtime files carry auth tokens and are never
+# committed. The committed starting-point templates (one per IDE) live at:
+#   .mcp.json.claude         → committed (Claude Code starting point)
+#   .cursor/mcp.json.cursor  → committed (Cursor starting point; allow-listed above)
 .mcp.json
-!.mcp.json.example
+!.mcp.json.claude
 
 **/.playwright*

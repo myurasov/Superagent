@@ -1,0 +1,26 @@
+{
+  "_comment": [
+    "Claude Code project settings. Wires the UserPromptSubmit hook to",
+    "Superagent's user-query logger so the Supertailor's friction-analysis",
+    "log captures prompts regardless of IDE. Mirrors .cursor/hooks.json.",
+    "",
+    "Disable by setting workspace/_memory/config.yaml",
+    "preferences.privacy.log_user_queries: false (the script reads that",
+    "flag and exits silently when it's off).",
+    "",
+    "The --source flag tags each row so the Supertailor can slice by IDE.",
+    ".cursor/hooks.json relies on the script's default (source=cursor)."
+  ],
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python superagent/tools/log_user_query.py --source claude-code"
+          }
+        ]
+      }
+    ]
+  }
+}

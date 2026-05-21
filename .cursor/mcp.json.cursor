@@ -1,0 +1,45 @@
+{
+  "_comment": [
+    "Starting-point MCP server config for Cursor. The `init` skill copies",
+    "this file to .cursor/mcp.json on first run if .cursor/mcp.json is",
+    "missing. After init, edit .cursor/mcp.json (not this template) and",
+    "add any servers you want. .cursor/mcp.json is gitignored (it may",
+    "carry auth tokens); this template stays committed so the repo",
+    "self-documents.",
+    "",
+    "Claude Code users: see the companion template at .mcp.json.claude.",
+    "Content is intentionally identical (Superagent has no per-IDE OAuth",
+    "client_id constraint, unlike NVIDIA-internal frameworks); only the",
+    "destination path differs. Keep .cursor/mcp.json and .mcp.json in",
+    "sync by editing one and re-running `init` (which detects drift and",
+    "offers to mirror).",
+    "",
+    "Superagent itself requires no MCP servers for the quick-start. Each",
+    "ingestor declares its own MCP / CLI requirements; see",
+    "superagent/docs/data-sources.md.",
+    "",
+    "Common personal-life servers you might wire up here:",
+    "  - apple-reminders / apple-notes (via osascript)",
+    "  - gmail / google-calendar (Google Workspace MCP)",
+    "  - apple-health (healthsync SQLite)",
+    "  - plaid / monarch / ynab (finance)",
+    "  - whoop / strava / oura / garmin (wearables)",
+    "  - home-assistant / tesla (smart-home / vehicles)",
+    "  - playwright (browser automation / web smoke tests)",
+    "",
+    "Each ingestor probes its required source on first run; missing sources",
+    "degrade gracefully and never block other ingestors."
+  ],
+  "mcpServers": {
+    "Playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--user-data-dir",
+        ".playwright-superagent",
+        "--caps",
+        "vision,pdf,devtools"
+      ]
+    }
+  }
+}

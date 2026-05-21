@@ -31,7 +31,7 @@
   - [Privacy and data location](#privacy-and-data-location)
   - [Local development tooling](#local-development-tooling)
   - [File naming conventions](#file-naming-conventions)
-  - [IDE setup (Cursor)](#ide-setup-cursor)
+  - [IDE setup (Cursor and Claude Code)](#ide-setup-cursor-and-claude-code)
   - [Prompt-cache discipline](#prompt-cache-discipline)
 
 ---
@@ -498,24 +498,52 @@ Full policy: [`superagent/rules/file-naming.md`](superagent/rules/file-naming.md
 
 ---
 
-## IDE setup (Cursor)
+## IDE setup (Cursor and Claude Code)
 
-Superagent currently targets Cursor as the host IDE. Cursor reads `AGENTS.md` at the repo root natively, so no `.cursor/rules/` shim is needed — the user opts in to Superagent per session by invoking a skill or by saying so, and the agent loads `AGENTS.md` on demand.
+Superagent targets **Cursor** and **Claude Code** as equal first-class host IDEs. Each loads the same `AGENTS.md` content on every turn — Cursor reads `AGENTS.md` natively at the repo root, Claude Code reads [`CLAUDE.md`](CLAUDE.md) which `@`-imports `AGENTS.md`. The `workspace/_custom/` overlay applies under both IDEs identically; there is no Claude-Code-specific overlay path.
 
-Optional Cursor wiring:
+You can switch between the two IDEs interchangeably — IDE detection is environment-driven and runs on every call (no sticky config). The helper at `superagent/tools/ide.py` centralizes the probe:
 
-- **User-prompt logging** (used by the Supertailor for friction analysis): wire a `UserPromptSubmit` hook in `.cursor/hooks.json` that runs `uv run python superagent/tools/log_user_query.py`. The script appends one line per prompt to `workspace/_memory/user-queries.jsonl`. This is opt-in and can be disabled via `_memory/config.yaml.preferences.privacy.log_user_queries: false`.
-- **Commit-message hook**: install a `commit-msg` hook at `.githooks/commit-msg` (and `git config core.hooksPath .githooks`) that blocks AI-attribution patterns at commit time. The reference implementation lives at `superagent/templates/githooks/commit-msg`.
+```bash
+uv run python -m superagent.tools.ide current   # prints "claude-code" / "cursor" / "unknown"
+uv run python -m superagent.tools.ide is-claude # exit 0 iff Claude Code
+uv run python -m superagent.tools.ide is-cursor # exit 0 iff Cursor
+```
+
+Detection looks at `CLAUDECODE=1` (Claude Code) and any `CURSOR_*` env var (Cursor); when both are present, Claude Code wins. There is intentionally **no** `preferences.ide` override in `_memory/config.yaml` — re-detecting each turn keeps multi-IDE workflows frictionless.
+
+| Setup file | Cursor reads | Claude Code reads | Committed? |
+|---|---|---|---|
+| `AGENTS.md` | Yes (native) | Via `CLAUDE.md` `@`-import | Yes |
+| `CLAUDE.md` | No (irrelevant; pure re-export) | Yes (loaded every turn) | Yes |
+| `.cursor/rules/` | Yes | No (skipped via `.claudeignore`) | Yes |
+| `.claudeignore` | No | Yes (gitignore-syntax exclusions) | Yes |
+| `.cursor/hooks.json` | Yes (Cursor hooks) | No | Yes |
+| `.claude/settings.json` | No | Yes (Claude Code hooks) | Yes |
+| `.claude/settings.local.json` | No | Yes (per-machine override) | No (gitignored) |
+| `.cursor/mcp.json.cursor` | No (template only) | No (template only) | Yes |
+| `.cursor/mcp.json` | Yes (runtime; may carry tokens) | No | No (gitignored) |
+| `.mcp.json.claude` | No (template only) | No (template only) | Yes |
+| `.mcp.json` | No | Yes (runtime; may carry tokens) | No (gitignored) |
+
+**Recommended wiring** (the `init` skill sets all of these up by default):
+
+- **User-prompt logging** (used by the Supertailor for friction analysis). Both IDEs run `uv run python superagent/tools/log_user_query.py` on `UserPromptSubmit`:
+  - Cursor: `.cursor/hooks.json` (no `--source` flag; defaults to `cursor`).
+  - Claude Code: `.claude/settings.json` (passes `--source claude-code` so the Supertailor can slice by IDE).
+  - Disable in either IDE by setting `_memory/config.yaml.preferences.privacy.log_user_queries: false`; the script reads that flag and exits silently when it's off.
+- **MCP servers.** Each IDE reads its own runtime file (`.cursor/mcp.json` / `.mcp.json`). Both files start as a regular-file copy of the committed templates (`.cursor/mcp.json.cursor` / `.mcp.json.claude`). The templates are content-identical (Superagent has no per-IDE OAuth client_id constraint); only the destination path differs. **Regular-file copies, not symlinks** — this repo lives in iCloud Drive, and iCloud occasionally rewrites symlinks as placeholders. Edit one file, re-run `init`, and drift between the two is detected and offered for mirror.
+- **Commit-message hook.** Install a `commit-msg` hook at `.githooks/commit-msg` (`git config core.hooksPath .githooks`) that blocks AI-attribution patterns at commit time. The reference implementation lives at `superagent/templates/githooks/commit-msg`. IDE-agnostic.
 
 If the repo also hosts other assistant frameworks, route each turn to the right framework based on the request's evident scope rather than auto-injecting Superagent on every turn.
 
 ## Prompt-cache discipline
 
-Per `docs/superagent/docs/_internal/perf-improvement-ideas.md` BB-2-b — practical guidance for Cursor today:
+Per `docs/superagent/docs/_internal/perf-improvement-ideas.md` BB-2-b — practical guidance for both Cursor and Claude Code today:
 
-The IDE controls how the prompt is structured and which prefixes are cached. The framework can still help by keeping AGENTS.md SHORT and STABLE, and by keeping each `contracts/<name>.md` self-contained — avoiding edits during a session that would invalidate the cache for downstream turns.
+The IDE controls how the prompt is structured and which prefixes are cached. Both Cursor and Claude Code reward a stable prefix; the framework helps by keeping `AGENTS.md` SHORT and STABLE, and by keeping each `contracts/<name>.md` self-contained — avoiding edits during a session that would invalidate the cache for downstream turns.
 
-- **Don't edit `AGENTS.md` / `contracts/` mid-session.** Cursor's prompt cache rewards a stable prefix; mutating the docs that anchor the prefix forces a full re-cache, paying the long form back to the model on every subsequent turn.
+- **Don't edit `AGENTS.md` / `contracts/` mid-session.** Both IDEs' prompt caches reward a stable prefix; mutating the docs that anchor the prefix forces a full re-cache, paying the long form back to the model on every subsequent turn.
 - **The Supertailor / Supercoder loop's commit-then-restart cycle is well-suited to this.** After the Supertailor proposes a doc change, approve it, let the Supercoder commit, then start a fresh chat session. The new session pays the full prompt cost ONCE; subsequent turns reap the cache savings.
 - **Don't open many framework files mid-session.** Each one bumps the prompt; fewer files = better cache reuse.
 - **For long-running ingestion or scenario sessions**, prefer running them via dedicated tool invocations (each is a stand-alone process) rather than long chat threads.

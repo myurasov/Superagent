@@ -1,0 +1,18 @@
+# Files Claude Code should skip for context, indexing, and ambient loading.
+# Same syntax as .gitignore.
+
+# Cursor IDE shim tree. Claude Code reads CLAUDE.md (which imports AGENTS.md)
+# already; loading .cursor/* on top would duplicate the same instructions in
+# every turn's prompt for no gain. The files stay in the repo for Cursor users;
+# Claude Code disregards them.
+.cursor/
+
+# User-generated workspace data. Already .gitignored; listed here too as a
+# belt-and-braces signal that the personal-data tree is off-limits as
+# ambient context for Claude Code's indexer.
+workspace/
+
+# Notes:
+# - AGENTS.md is shared and intentionally loaded by both IDEs (via CLAUDE.md
+#   for Claude Code; natively for Cursor). Do NOT add it here.
+# - .mcp.json carries auth tokens and is already gitignored; not listed here.
