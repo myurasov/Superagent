@@ -287,6 +287,13 @@ def find_chain(
         cursor = entry.to_v
 
     if cursor != tv:
+        # A trailing PATCH gap is fine: PATCH-only bumps never carry a
+        # migration (per `contracts/versioning.md` § 4 step 8), so a
+        # chain that lands one patch short of the target is complete —
+        # the skill silently advances `.version` after applying the
+        # chain. Any larger residual gap means a migration is missing.
+        if bump_kind(cursor, tv) == "patch":
+            return chain
         raise ValueError(
             f"chain ends at {cursor}, not target {tv} "
             "(missing migration to bridge the gap)"

@@ -261,6 +261,23 @@ def test_find_chain_patch_only_returns_empty(tmp_path: Path) -> None:
     assert chain == []
 
 
+def test_find_chain_trailing_patch_gap_returns_partial(tmp_path: Path) -> None:
+    """A chain that lands one PATCH short of the target is still complete.
+
+    PATCH bumps never carry a migration per `contracts/versioning.md` § 4
+    step 8, so the chain ends at the last migration and the skill
+    silently advances `.version` to consume the trailing PATCH gap.
+    """
+    from superagent.tools.version import find_chain, refresh_manifest
+
+    _write_migration(tmp_path, "0.2.0", "0.1.0")
+    _write_migration(tmp_path, "0.3.0", "0.2.0")
+    refresh_manifest(tmp_path)
+
+    chain = find_chain("0.1.0", "0.3.4", tmp_path / "_manifest.yaml")
+    assert [e.to_version for e in chain] == ["0.2.0", "0.3.0"]
+
+
 def test_find_chain_rejects_downgrade(tmp_path: Path) -> None:
     from superagent.tools.version import find_chain
 
