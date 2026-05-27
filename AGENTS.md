@@ -498,6 +498,17 @@ Full policy: [`superagent/rules/file-naming.md`](superagent/rules/file-naming.md
 
 ---
 
+## Image format policy
+
+Full policy: [`superagent/rules/image-format-policy.md`](superagent/rules/image-format-policy.md). One-paragraph summary:
+
+- **No HEIC/HEIF under `Sources/`.** When the agent files an incoming HEIC/HEIF photo into `Sources/`, it MUST convert it to an sRGB JPEG sibling first and file ONLY the JPEG. The HEIC original is not retained alongside the JPEG.
+- **Use the framework helper.** Call `uv run python -m superagent.tools.heic_to_jpg convert <path>` (or `convert-dir <dir>`) — it dodges the macOS Display P3 black-frame bug by routing HEIC -> Quick Look PNG -> `sips` JPEG, and removes the HEIC original after the JPEG is verified.
+- **Acceptable formats.** `.jpg`/`.jpeg`, `.png`, `.pdf` are the preferred image / scan formats under `Sources/`. `.gif`, `.webp`, `.tiff` are accepted as-is when they arrive in that form (no re-encoding) — the policy targets HEIC specifically.
+- **Forward-only.** Pre-existing HEIC files are NOT auto-converted by mere presence of this rule; explicit user request or the `migrate` skill drives any one-time clean-up. Historical mentions of HEIC filenames in append-only logs (`interaction-log.yaml`, `history.md`, `_processed.yaml`) are not rewritten.
+
+---
+
 ## IDE setup (Cursor and Claude Code)
 
 Superagent targets **Cursor** and **Claude Code** as equal first-class host IDEs. Each loads the same `AGENTS.md` content on every turn — Cursor reads `AGENTS.md` natively at the repo root, Claude Code reads [`CLAUDE.md`](CLAUDE.md) which `@`-imports `AGENTS.md`. The `workspace/_custom/` overlay applies under both IDEs identically; there is no Claude-Code-specific overlay path.

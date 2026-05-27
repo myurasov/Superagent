@@ -39,6 +39,13 @@ files:
     consumed_by:
       - AGENTS.md
     user_overlay: workspace/_custom/rules/file-naming.md
+  - path: image-format-policy.md
+    kind: doc
+    purpose: "No HEIC/HEIF under Sources/: convert to sRGB JPEG via the qlmanage->sips workaround at import time, then remove the HEIC. Acceptable formats + conversion helper at tools/heic_to_jpg.py."
+    consumed_by:
+      - AGENTS.md
+      - tools/heic_to_jpg.py
+    user_overlay: workspace/_custom/rules/image-format-policy.md
   - path: scope-discipline.md
     kind: doc
     purpose: "Operationalizes the Knowledge discipline principle: 3-test gate (necessity / discovery-cost / speculation) the agent runs before every ask or fetch; verification ritual at task end."
