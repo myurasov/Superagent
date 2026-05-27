@@ -422,7 +422,22 @@ def _accounts_rows(workspace: Path) -> list[SheetSpec]:
 
 
 def _transactions_rows(workspace: Path, cutoff: dt.date) -> list[SheetSpec]:
-    """Walk every account's transactions[] and surface the recent slice."""
+    """Surface both transaction stores:
+
+      * **Narrative transactions** — nested under each account row in
+        `accounts-index.yaml`. Hand-curated entries with `purpose`,
+        `related_project`, `confirmation`, etc. -> "Transactions" sheet.
+      * **Bank feed** — flat append-only stream in `_memory/transactions.yaml`
+        written by the simplefin / plaid / monarch / csv ingestors.
+        -> "Bank Feed" sheet.
+
+    The two are intentionally separate (per user direction 2026-05-27): the
+    narrative store carries cross-references; the flat stream carries the
+    raw bank/CC line items. Both are filtered to `history_window_years`.
+    """
+    specs: list[SheetSpec] = []
+
+    # ---- Narrative transactions (nested in accounts-index.yaml) ----
     data = load_yaml(workspace / "_memory" / "accounts-index.yaml") or {}
     rows: list[list[Any]] = []
     tax_deductible: list[list[Any]] = []
@@ -451,7 +466,6 @@ def _transactions_rows(workspace: Path, cutoff: dt.date) -> list[SheetSpec]:
                 tax_deductible.append(row)
     rows.sort(key=lambda r: str(r[0] or ""), reverse=True)
     tax_deductible.sort(key=lambda r: str(r[0] or ""), reverse=True)
-    specs: list[SheetSpec] = []
     if rows:
         specs.append(SheetSpec(
             name="Transactions",
@@ -468,6 +482,38 @@ def _transactions_rows(workspace: Path, cutoff: dt.date) -> list[SheetSpec]:
                      "Confirmation", "Related entities"],
             rows=tax_deductible,
         ))
+
+    # ---- Bank feed (flat _memory/transactions.yaml) ----
+    feed_data = load_yaml(workspace / "_memory" / "transactions.yaml") or {}
+    feed_rows: list[list[Any]] = []
+    for txn in (feed_data.get("transactions") or []):
+        if not isinstance(txn, dict):
+            continue
+        ts = txn.get("date") or txn.get("transacted_at")
+        if not _within_window(ts, cutoff):
+            continue
+        feed_rows.append([
+            ts,
+            txn.get("institution"),
+            txn.get("account_label"),
+            txn.get("payee") or txn.get("description"),
+            txn.get("amount"),
+            txn.get("currency", "USD"),
+            txn.get("category"),
+            "yes" if txn.get("pending") else "",
+            txn.get("source"),
+            txn.get("external_id"),
+        ])
+    feed_rows.sort(key=lambda r: str(r[0] or ""), reverse=True)
+    if feed_rows:
+        specs.append(SheetSpec(
+            name="Bank Feed",
+            columns=["Date", "Institution", "Account", "Payee / Description",
+                     "Amount", "Currency", "Category", "Pending",
+                     "Source", "External ID"],
+            rows=feed_rows,
+        ))
+
     return specs
 
 
@@ -483,6 +529,7 @@ def render_finances(workspace: Path, cfg: dict[str, Any]) -> tuple[list[SheetSpe
         workspace / "_memory" / "bills.yaml",
         workspace / "_memory" / "subscriptions.yaml",
         workspace / "_memory" / "accounts-index.yaml",
+        workspace / "_memory" / "transactions.yaml",
     ]
     return specs, sources
 
