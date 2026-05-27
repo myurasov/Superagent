@@ -3,15 +3,18 @@
 > **[Do not change manually — managed by Superagent]**
 
 <!--
-  Cross-cutting / domain-scoped task view. Renders the relevant subset of
-  `_memory/todo.yaml` as priority-grouped markdown tables. Skills regenerate
-  this file on every add / complete / update operation per the sync contract
-  in contracts/task-management.md § 5.1.
+  Unified open-task view for the workspace. Renders every task from
+  `_memory/todo.yaml` (regardless of related_domain / related_project)
+  as priority-grouped markdown tables; the Scope column disambiguates
+  each row using the operational-handle form `project:<slug>` or
+  `domain:<id>`. Skills regenerate this file on every add / complete /
+  update operation per the sync contract in
+  contracts/task-management.md § 5.1.
 
-  Workspace-wide todo lives at `workspace/todo.md`
-  (SCOPE = "workspace"). Per-domain todos live at
-  `workspace/Domains/<domain>/status.md` (the `## Open` and
-  `## Done` blocks there).
+  Per-project status lives at `workspace/Projects/<slug>/status.md` and
+  per-domain status lives at `workspace/Domains/<domain>/status.md`;
+  those views are scoped to their own bucket, while `workspace/todo.md`
+  is the cross-cutting all-tasks view.
 -->
 
 _Last updated: {{LAST_UPDATED}}_
@@ -22,32 +25,32 @@ _Last updated: {{LAST_UPDATED}}_
 
 <!-- Bills due today, health-critical refills, time-bound emergencies. -->
 
-| ID | Task | Due | Domain |
-|----|------|-----|--------|
+| ID | Task | Due | Scope |
+|----|------|-----|-------|
 {{P0_ROWS}}
 
 ## P1 — This Week
 
 <!-- Appointments in the next 7 days, deadlines this week, important dates Sat/Sun. -->
 
-| ID | Task | Due | Domain |
-|----|------|-----|--------|
+| ID | Task | Due | Scope |
+|----|------|-----|-------|
 {{P1_ROWS}}
 
 ## P2 — Active
 
 <!-- General "should do this month". -->
 
-| ID | Task | Due | Domain |
-|----|------|-----|--------|
+| ID | Task | Due | Scope |
+|----|------|-----|-------|
 {{P2_ROWS}}
 
 ## P3 — Future / Aspirational
 
 <!-- Someday-maybe — backlog. -->
 
-| ID | Task | Due | Domain |
-|----|------|-----|--------|
+| ID | Task | Due | Scope |
+|----|------|-----|-------|
 {{P3_ROWS}}
 
 ## Done

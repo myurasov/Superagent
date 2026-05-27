@@ -60,14 +60,30 @@ def fmt_date(value: Any) -> str:
     return s[:10] if len(s) >= 10 else s
 
 
+def task_scope_label(task: dict[str, Any]) -> str:
+    """Build the Scope-column label for a task in the workspace view.
+
+    Precedence mirrors the sync contract: project takes precedence over
+    domain (per `contracts/task-management.md` § 5.1). Labels use the
+    operational-handle form `<kind>:<slug>` so the workspace view is
+    unambiguous when a task has a project but no domain (or vice versa).
+    """
+    proj = task.get("related_project")
+    if proj:
+        return f"project:{proj}"
+    domain = task.get("related_domain")
+    if domain:
+        return f"domain:{domain}"
+    return "—"
+
+
 def render_task_row(task: dict[str, Any], scope: str) -> str:
     """Render one task as a markdown table row."""
     tid = task.get("id", "—") or "—"
     title = (task.get("title", "") or "").replace("|", "\\|")[:60]
     due = fmt_date(task.get("due_date"))
     if scope == "workspace":
-        domain = task.get("related_domain") or "—"
-        return f"| {tid} | {title} | {due} | {domain} |"
+        return f"| {tid} | {title} | {due} | {task_scope_label(task)} |"
     return f"| {tid} | {title} | {due} |"
 
 
@@ -83,12 +99,14 @@ def select_tasks_for_scope(tasks: list[dict[str, Any]], scope: str) -> list[dict
     """Filter task list down to those that belong to the given scope.
 
     Scope formats:
-      - "workspace"             — tasks with no related_domain AND no related_project
+      - "workspace"             — ALL tasks regardless of related_domain / related_project;
+                                  workspace/todo.md is the unified cross-cutting view, with
+                                  the Scope column disambiguating each row.
       - "project:<slug>"        — tasks with related_project == slug
       - "<domain-id>"           — tasks with related_domain == domain-id (legacy)
     """
     if scope == "workspace":
-        return [t for t in tasks if not t.get("related_domain") and not t.get("related_project")]
+        return list(tasks)
     if scope.startswith("project:"):
         proj = scope[len("project:"):]
         return [t for t in tasks if (t.get("related_project") or "").lower() == proj.lower()]
@@ -160,8 +178,8 @@ def render_status_md(
                 continue
             lines.append(PRIORITY_HEADERS[prio])
             lines.append("")
-            lines.append("| ID | Task | Due | Domain |")
-            lines.append("|----|------|-----|--------|")
+            lines.append("| ID | Task | Due | Scope |")
+            lines.append("|----|------|-----|-------|")
             for t in rows:
                 lines.append(render_task_row(t, scope))
             lines.append("")

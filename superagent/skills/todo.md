@@ -115,23 +115,23 @@ When invoked without a clear add/list/complete/update action:
 
 After any add / complete / update operation, update the relevant scoped views per the sync contract (`contracts/task-management.md` § 5.1):
 
-1. For each task touched, resolve `related_project` then `related_domain`:
+1. For each task touched, resolve `related_project` then `related_domain` to update the per-scope status files:
    - `related_project` set → rewrite `workspace/Projects/<slug>/status.md` (priority/due-date sort; per-project burn-down updated).
    - `related_domain` set (and no project) → rewrite `workspace/Domains/<Domain>/status.md`.
-   - Neither set → update `workspace/todo.md` (the workspace-level cross-cutting view).
    - When BOTH set: render in the project's status.md (project takes precedence as the "doing" surface), AND surface a one-bullet summary in the related domain's `status.md` § Next Steps.
-2. Format as markdown tables, grouped by priority, with a separate `Done` block at the bottom (per `templates/todo.md`):
+2. ALWAYS rewrite `workspace/todo.md` on every change — it is the unified all-tasks view across every project and domain. The Scope column uses operational-handle form (`project:<slug>` or `domain:<id>`) to disambiguate each row.
+3. Format as markdown tables, grouped by priority, with a separate `Done` block at the bottom (per `templates/todo.md`):
 
    ```
    ## P0 — Today / Urgent
 
-   | ID | Task | Due | Domain |
-   |----|------|-----|--------|
-   | task-NNN | Title text | Mon DD | <domain-id> |
+   | ID | Task | Due | Scope |
+   |----|------|-----|-------|
+   | task-NNN | Title text | Mon DD | project:<slug> |
    ```
 
    - Within each priority block, sort by due date (soonest first; no-date rows last).
-   - Use `—` for missing due dates / domains.
+   - Use `—` for missing due dates / scopes.
    - Omit empty priority blocks.
 3. Update the `_Last updated:_` timestamp at the top of each modified file.
 4. If a `status.md` doesn't exist for a scope, create from `superagent/templates/domains/status.md`.

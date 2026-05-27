@@ -92,3 +92,84 @@ def test_render_per_domain_status(initialized_workspace: Path) -> None:
     health_status = (initialized_workspace / "Domains" / "Health" / "status.md").read_text()
     assert "task-20260428-002" in health_status
     assert "Schedule annual physical" in health_status
+
+
+def test_workspace_todo_includes_all_open_tasks(initialized_workspace: Path) -> None:
+    """workspace/todo.md is the unified view: every open task appears regardless of scope.
+
+    The Scope column carries the `project:<slug>` / `domain:<id>` label
+    so each row stays unambiguous when a task belongs to a project, a
+    domain, or neither.
+    """
+    from superagent.tools.render_status import main as render_main
+
+    _add_task(initialized_workspace, {
+        "id": "task-20260428-010",
+        "title": "Schedule annual physical",
+        "description": "",
+        "priority": "P1",
+        "status": "open",
+        "created": dt.datetime.now().astimezone().isoformat(),
+        "due_date": "2026-05-15",
+        "completed_date": None,
+        "related_domain": "health",
+        "related_project": None,
+        "related_asset": None,
+        "related_account": None,
+        "related_appointment": None,
+        "related_bill": None,
+        "tags": [],
+        "source": "user",
+    })
+    _add_task(initialized_workspace, {
+        "id": "task-20260428-011",
+        "title": "File 1099 supplement",
+        "description": "",
+        "priority": "P2",
+        "status": "open",
+        "created": dt.datetime.now().astimezone().isoformat(),
+        "due_date": "2026-06-01",
+        "completed_date": None,
+        "related_domain": "finances",
+        "related_project": "tax-2026",
+        "related_asset": None,
+        "related_account": None,
+        "related_appointment": None,
+        "related_bill": None,
+        "tags": [],
+        "source": "user",
+    })
+    _add_task(initialized_workspace, {
+        "id": "task-20260428-012",
+        "title": "Unscoped reminder",
+        "description": "",
+        "priority": "P3",
+        "status": "open",
+        "created": dt.datetime.now().astimezone().isoformat(),
+        "due_date": None,
+        "completed_date": None,
+        "related_domain": None,
+        "related_project": None,
+        "related_asset": None,
+        "related_account": None,
+        "related_appointment": None,
+        "related_bill": None,
+        "tags": [],
+        "source": "user",
+    })
+
+    rc = render_main([
+        "--workspace", str(initialized_workspace),
+        "--scope", "workspace",
+    ])
+    assert rc == 0
+    body = (initialized_workspace / "todo.md").read_text()
+
+    assert "task-20260428-010" in body
+    assert "domain:health" in body
+    assert "task-20260428-011" in body
+    assert "project:tax-2026" in body  # project takes precedence over domain
+    assert "task-20260428-012" in body
+    assert "| Scope |" in body
+    # Domain column header should no longer be present.
+    assert "| Domain |" not in body

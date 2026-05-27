@@ -12,9 +12,10 @@ The full skill is in `skills/todo.md`. The contract:
 
 After any add / complete / update operation:
 
-1. For each affected task, resolve its `related_domain`:
-   - If set → rewrite `workspace/Domains/<domain>/status.md` with all open tasks for that domain (priority then due date), plus recently completed tasks in the Done section.
-   - If unset → update `workspace/todo.md` (the workspace-level cross-cutting task view).
-2. Format as markdown tables, grouped by priority, with a separate Done section at the bottom (see `templates/todo.md` for the canonical shape).
-3. Update the `_Last updated:_` timestamp.
-4. If a `status.md` file does not exist for a domain, create it from `superagent/templates/domains/status.md`.
+1. For each affected task, resolve scope in precedence order — project first, then domain:
+   - `related_project` set → rewrite `workspace/Projects/<slug>/status.md` with all open tasks for that project (priority then due date), plus recently completed tasks in the Done section.
+   - `related_domain` set (and no project) → rewrite `workspace/Domains/<domain>/status.md` the same way.
+2. ALWAYS rewrite `workspace/todo.md` regardless of scope — it is the unified all-tasks view. Tasks from every project and domain appear in priority-grouped tables; the Scope column uses the operational-handle form `project:<slug>` or `domain:<id>` to disambiguate.
+3. Format as markdown tables, grouped by priority, with a separate Done section at the bottom (see `templates/todo.md` for the canonical shape).
+4. Update the `_Last updated:_` timestamp on each modified file.
+5. If a `status.md` file does not exist for a domain, create it from `superagent/templates/domains/status.md`.
