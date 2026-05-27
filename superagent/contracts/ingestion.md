@@ -24,6 +24,7 @@ Every ingestor MUST:
 8. **Append to `ingestion-log.yaml`** a row with timestamp, source, items pulled, items inserted, items updated, items skipped (already-present), errors, duration. **Append-only.**
 9. **Append to `interaction-log.yaml`** a single line summarizing the run (so daily-update / whatsup can surface "X new items from Y sources" without parsing the per-source ingestion log).
 10. **Read-only by default.** An ingestor that needs write access upstream MUST declare `writes_upstream: true` in `data-sources.yaml` for its row, MUST require explicit `--write` invocation, and MUST log every write.
+11. **Refresh affected domains.** Declare `affected_domains: tuple[str, ...]` on the ingestor class, then call `self._refresh_domains()` at the end of a successful `run()` per [`contracts/domain-reflection.md`](domain-reflection.md). The base class provides the helper; failure is best-effort (errors land in `RunResult.notes`, never fail the ingest).
 
 ### 2.3 Capture modes
 

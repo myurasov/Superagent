@@ -102,6 +102,7 @@ class SimpleFinIngestor(IngestorBase):
     source = "simplefin"
     kind = "api"
     description = "SimpleFin Bridge bank/CC/brokerage transactions."
+    affected_domains = ("finances",)
 
     CREDENTIAL_PATH = Path("_memory/sensitive/simplefin-credentials.yaml")
     INDEX_PATH = Path("_memory/transactions.yaml")
@@ -280,6 +281,16 @@ class SimpleFinIngestor(IngestorBase):
             result.notes = (result.notes + f"; dry-run, would insert {inserted}").strip("; ")
         elif inserted > 0:
             _save_index(idx_path, index)
+
+        # Refresh affected Domain marker blocks per
+        # contracts/domain-reflection.md. Best-effort; errors do not fail
+        # the ingest. Skipped on dry-run (no upstream data changed).
+        if not dry_run:
+            refresh_errors = self._refresh_domains()
+            if refresh_errors:
+                result.notes = (result.notes
+                                + "; render_domain errors: "
+                                + "; ".join(refresh_errors)).strip("; ")
 
         result.finished_at = now_iso()
         result.duration_ms = int((time.time() - t0) * 1000)

@@ -97,6 +97,10 @@ class IngestorBase(abc.ABC):
     source: str = ""
     kind: str = "unknown"  # mcp | cli | api | file
     description: str = ""
+    # Domains whose info.md / history.md surface this ingestor's data.
+    # Used by the post-run hook to refresh auto-managed marker blocks
+    # per `contracts/domain-reflection.md`. Empty tuple = skip refresh.
+    affected_domains: tuple[str, ...] = ()
 
     def __init__(self, workspace: Path):
         if not self.source:
@@ -104,6 +108,28 @@ class IngestorBase(abc.ABC):
                 f"{type(self).__name__} must set class attribute `source`"
             )
         self.workspace = workspace
+
+    def _refresh_domains(self) -> list[str]:
+        """Refresh auto-managed blocks in `affected_domains`. Best-effort.
+
+        Returns the list of error strings (empty on success). Never raises.
+        Per `contracts/domain-reflection.md`, ingestors call this at the end
+        of a successful `run()`. Failure here MUST NOT fail the ingest
+        itself — the data is already in `_memory/`; rendering is derived.
+        """
+        if not self.affected_domains:
+            return []
+        try:
+            from superagent.tools import render_domain
+        except ImportError as exc:
+            return [f"render_domain import failed: {exc}"]
+        try:
+            summary = render_domain.refresh(
+                self.workspace, list(self.affected_domains)
+            )
+        except Exception as exc:  # noqa: BLE001
+            return [f"render_domain.refresh failed: {exc}"]
+        return list(summary.get("errors", []))
 
     @abc.abstractmethod
     def probe(self) -> ProbeResult:
