@@ -225,6 +225,32 @@ These MCPs do not ingest personal-life data into Superagent, but they are useful
 
 ## Finance
 
+### simplefin
+
+- **Maturity**: **shipped** (`superagent/tools/ingest/simplefin.py`).
+- **Kind**: API.
+- **Underlying tool**: [SimpleFin Bridge](https://beta-bridge.simplefin.org/) ($1.50/month or $15/year, covers up to 25 institutions and 25 apps; read-only by design).
+- **Ingests**: bank, credit-card, brokerage, and mortgage transactions; balances; account metadata.
+- **Writes to**:
+  - `_memory/transactions.yaml` (canonical normalized ingest target).
+  - `_memory/data-sources.yaml` (`simplefin` row's `last_ingest` / `last_run`).
+  - `_memory/ingestion-log.yaml` (per-run rows).
+- **Reads / cross-links**: `accounts-index.yaml.<acct>.simplefin_account_id` — set this field on each account row to its SimpleFin account UUID so the reconciler can join transactions to bills' `pay_from_account`.
+- **Install**:
+  1. Sign up at `bridge.simplefin.org` ($1.50/mo or $15/yr).
+  2. Connect your bank institutions through their hosted UI.
+  3. Generate a "Setup Token" for an app called `superagent`.
+  4. `uv run python -m superagent.tools.simplefin_claim <SETUP_TOKEN>` — claims the token into a long-lived Access URL stored at `workspace/_memory/sensitive/simplefin-credentials.yaml` (mode 600).
+- **Probe**: `uv run python -m superagent.tools.ingest.simplefin --dry-run` returns ≥ 1 account.
+- **Run**: `uv run python -m superagent.tools.ingest.simplefin` (incremental delta with 3-day overlap), or `--backfill` for the full `backfill_window_days` (default 365). `--no-pending` to exclude not-yet-posted charges.
+- **Reconciliation**: `uv run python -m superagent.tools.reconcile_transactions [--days N] [--json]` — surfaces matched / missed bills and recurring-charge candidates not yet tracked in `bills.yaml` / `subscriptions.yaml`. The `weekly-review` skill calls this from its Bookkeeper pass.
+- **Caveats**:
+  - Per-day budget: SimpleFin allows ≤ 24 requests/day per account.
+  - Per-call window: ≤ 45 days (warning) / 90 days (hard cap). The ingestor auto-chunks larger windows.
+  - Employer 401(k) plans (Fidelity NetBenefits) often expose balances as `$0.00` to aggregators — verify directly at the provider when those numbers look wrong.
+  - The Access URL embeds HTTP Basic credentials (`https://USER:PASS@host/`). Treat it as banking credential material; it lives in `_memory/sensitive/` for that reason.
+  - SimpleFin is operated by an independent maintainer. If your specific banks have coverage gaps or you want a commercial alternative, see the `plaid` row below.
+
 ### plaid
 
 - **Maturity**: stub.

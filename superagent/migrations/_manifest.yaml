@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-05-21T03:43:03+00:00'
+generated_at: '2026-05-27T08:44:57+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -35,3 +35,10 @@ migrations:
   breaking: false
   revertible: true
   estimated_duration: <1 second
+- to_version: 0.6.0
+  from_version: 0.5.0
+  file: 0.6.0.md
+  title: Add SimpleFin Bridge ingestor + transactions.yaml + reconciler
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute

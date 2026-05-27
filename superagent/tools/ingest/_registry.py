@@ -131,6 +131,21 @@ REGISTRY: tuple[IngestorSpec, ...] = (
     ),
     # --- Finance --------------------------------------------------------------
     IngestorSpec(
+        source="simplefin",
+        module="simplefin",
+        kind="api",
+        description="SimpleFin Bridge bank / CC / brokerage transactions (read-only).",
+        install_hint=(
+            "Sign up at https://beta-bridge.simplefin.org/, generate a setup token, "
+            "then `uv run python -m superagent.tools.simplefin_claim <TOKEN>` to claim "
+            "the long-lived Access URL into workspace/_memory/sensitive/."
+        ),
+        docs_anchor="simplefin",
+        writes_destinations=(
+            "_memory/transactions.yaml",
+        ),
+    ),
+    IngestorSpec(
         source="plaid",
         module="plaid",
         kind="cli",

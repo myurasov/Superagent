@@ -59,6 +59,7 @@ Newest first. One line per release. Migrations (when one is required) live at `s
 
 | Version | Date | Summary |
 |---|---|---|
+| **0.6.0** | 2026-05-27 | SimpleFin Bridge transaction ingestion: `tools/ingest/simplefin.py` + `tools/simplefin_claim.py` (one-time token claim) + `tools/reconcile_transactions.py` (bills/subscriptions matching + recurring-charge detection). Writes to `_memory/transactions.yaml`. `simplefin_account_id` cross-link added to `accounts-index.yaml`. Weekly-review's Bookkeeper pass wired to call the reconciler ([migration](../migrations/0.6.0.md)). |
 | **0.5.0** | 2026-05-20 | First-class Claude Code support alongside Cursor: `CLAUDE.md` shim (pure `@AGENTS.md` re-export), `.claude/settings.json` hook wiring, `.claudeignore`, per-IDE MCP templates (`.mcp.json.claude` + `.cursor/mcp.json.cursor`, content-identical), `tools/ide.py` env-driven detection helper, init.md steps 4½ + 4¾, AGENTS.md "IDE setup" + "Prompt-cache discipline" sections renamed and symmetric ([migration](../migrations/0.5.0.md)). |
 | **0.4.0** | 2026-05-14 | Email capture-on-touch archive at `_memory/email/` per `contracts/email-capture.md` ([migration](../migrations/0.4.0.md)). |
 | **0.3.0** | 2026-05-13 | Gmail ingestor (MVP, metadata-only) — direct Gmail-API headless ingest sharing OAuth tokens with the chat-time gongrzhe MCP. Adds `gmail` row to `data-sources.yaml` ([migration](../migrations/0.3.0.md)). |
