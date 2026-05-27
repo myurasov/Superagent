@@ -1244,6 +1244,7 @@ def render_self(workspace: Path, cfg: dict[str, Any]) -> tuple[list[SheetSpec], 
         for d in (decisions.get("decisions") or [])
         if isinstance(d, dict)
         and d.get("id") and d.get("decision")  # template stub has both empty
+        and d.get("related_domain") == "self"
         and _within_window(d.get("ts") or d.get("at") or d.get("date"), cutoff)
     ]
     if dec_rows:
