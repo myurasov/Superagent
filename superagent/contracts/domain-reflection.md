@@ -49,16 +49,27 @@ uv run python -m superagent.tools.render_domain --domain finances
 uv run python -m superagent.tools.render_domain --all
 ```
 
-The tool:
+A single call to `render_domain.refresh(workspace, domains)` refreshes
+**every derived view** for the affected domain(s), in this order:
 
-1. Reads the affected `_memory/*.yaml` indexes.
-2. Renders each registered block.
-3. **Splices** the new content between the markers in the domain file.
-4. Leaves everything outside the markers untouched.
-5. Skips silently when a marker is absent.
+1. **Marker blocks** in `Domains/<Name>/{info,history}.md` (this module).
+   Reads `_memory/*.yaml`, renders each registered block, **splices** the
+   new content between markers, leaves everything else untouched.
+2. **`status.md` task tables** (delegated to `tools/render_status.py`).
+   The `## Open` / `## Done` tables are spliced into any existing curated
+   `status.md`, preserving the RAG / Recent Progress / Blockers / Next
+   Steps narrative authored by humans.
+3. **Per-domain `.xlsx` workbook** (delegated to `tools/render_workbooks.py`).
+   Mtime-lazy — re-rendering is a no-op when no source yaml has changed
+   since the last build.
 
-If no markers are present in any domain file, the tool exits with no
-changes — adoption is incremental.
+All three stages are **best-effort**: failures land in the aggregate
+`errors` list returned by `refresh()` but never raise. The underlying
+data is already safely in `_memory/*.yaml`; rendering is derived.
+
+If no markers are present in any domain file, stage 1 is a no-op. Stages
+2 and 3 still run — `status.md` and the `.xlsx` are managed by their own
+tools' rules independent of marker adoption.
 
 ## Ingestor obligation
 

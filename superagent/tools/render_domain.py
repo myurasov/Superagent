@@ -309,12 +309,84 @@ def refresh_domain(workspace: Path, domain: str, *, check_only: bool = False) ->
     return summary
 
 
+def _refresh_status_md(workspace: Path, domain: str) -> list[str]:
+    """Refresh `Domains/<Name>/status.md`'s Open/Done tables via render_status.
+
+    Splices into an existing curated status.md when present, preserving the
+    RAG / Recent Progress / Blockers / Next Steps narrative; otherwise
+    renders a fresh template. Returns a list of error strings.
+    """
+    try:
+        from superagent.tools import render_status as rs
+    except ImportError as exc:
+        return [f"render_status import failed: {exc}"]
+
+    todo_path = workspace / "_memory" / "todo.yaml"
+    domains_index_path = workspace / "_memory" / "domains-index.yaml"
+    if not todo_path.exists():
+        return []
+    todo_data = rs.load_yaml(todo_path) or {}
+    tasks = todo_data.get("tasks") or []
+    domains_data = rs.load_yaml(domains_index_path) or {}
+    domains_list = domains_data.get("domains") or []
+    domain_row = next(
+        (d for d in domains_list
+         if isinstance(d, dict) and (d.get("id") or "").lower() == domain.lower()),
+        None,
+    )
+    if not domain_row:
+        return [f"render_status: domain {domain!r} not in domains-index.yaml"]
+    scope_id = (domain_row.get("id") or domain).lower()
+    scope_name = domain_row.get("name") or domain
+    out_path = workspace / "Domains" / scope_name / "status.md"
+    body: str | None = None
+    if out_path.is_file():
+        body = rs.splice_open_done(out_path.read_text(), scope_id, tasks)
+    if body is None:
+        body = rs.render_status_md(scope_name, scope_id, tasks)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(body)
+    return []
+
+
+def _refresh_workbook(workspace: Path, domain: str) -> list[str]:
+    """Refresh `Domains/<Name>/<domain>.xlsx` via render_workbooks.
+
+    `render_workbooks` is mtime-lazy: a re-render is a no-op when no source
+    yaml has changed since the last build. Returns a list of error strings.
+    """
+    try:
+        from superagent.tools import render_workbooks as rw
+    except ImportError as exc:
+        return [f"render_workbooks import failed: {exc}"]
+    framework = Path(rw.__file__).resolve().parents[1]
+    try:
+        result = rw.render_domain(workspace, framework, domain.lower())
+    except Exception as exc:  # noqa: BLE001
+        return [f"render_workbooks({domain}): {exc}"]
+    if result.status == "error":
+        return [f"render_workbooks({domain}): {result.error}"]
+    return []
+
+
 def refresh(workspace: Path, domains: list[str] | None = None,
             *, check_only: bool = False) -> dict[str, Any]:
     """Public entry point used by ingestors and skills.
 
+    Per `contracts/domain-reflection.md`, this refreshes ALL derived
+    views for the affected domain(s):
+
+      1. Marker blocks in `info.md` / `history.md` (this module).
+      2. The `## Open` / `## Done` task tables in `status.md`
+         (delegated to `render_status`).
+      3. The per-domain `.xlsx` workbook (delegated to `render_workbooks`,
+         mtime-lazy — no-op when source yaml has not changed).
+
+    All three stages are best-effort: errors are aggregated into the
+    returned summary but never raised. The data is already safely in
+    `_memory/*.yaml`; rendering is a derived view.
+
     Pass `domains=None` (or `--all`) to refresh every managed domain.
-    Returns aggregate summary; never raises.
     """
     if domains is None:
         domains = list_managed_domains(workspace)
@@ -323,6 +395,9 @@ def refresh(workspace: Path, domains: list[str] | None = None,
     out: dict[str, Any] = {"domains": [], "errors": [], "checked_at": _now()}
     for d in domains:
         summary = refresh_domain(workspace, d, check_only=check_only)
+        if not check_only:
+            summary["errors"].extend(_refresh_status_md(workspace, d))
+            summary["errors"].extend(_refresh_workbook(workspace, d))
         out["domains"].append(summary)
         out["errors"].extend(summary["errors"])
     return out
