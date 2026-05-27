@@ -108,7 +108,12 @@ def render_financial_balances(workspace: Path) -> str:
             sf_linked += 1
 
     lines: list[str] = []
-    lines.append(f"- **Institutions covered**: {len(insts)} — {', '.join(sorted(insts))}.")
+    # Render institutions as a nested list — names sometimes contain both
+    # commas and semicolons (e.g. "Rocket Mortgage, LLC (originator);
+    # Nationstar Mortgage LLC ..."), so any inline separator gets ambiguous.
+    lines.append(f"- **Institutions covered** ({len(insts)}):")
+    for inst in sorted(insts):
+        lines.append(f"  - {inst}")
     lines.append("- **Accounts by kind**: " + ", ".join(
         f"{k}={v}" for k, v in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
     ) + ".")
