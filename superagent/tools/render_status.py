@@ -153,6 +153,86 @@ def select_recent_done(
     return [t for _d, t in done]
 
 
+def render_open_done_block(scope: str, tasks: list[dict[str, Any]]) -> str:
+    """Render just the `## Open` + `## Done` section for a project/domain status.md.
+
+    Used by the splice path so we can refresh the auto-managed tables at
+    the bottom of an existing curated status.md without touching the
+    narrative above (RAG, Recent Progress, Blockers, Next Steps, etc.).
+    Returns a body that starts with `## Open` and ends with a trailing
+    newline.
+    """
+    scoped = select_tasks_for_scope(tasks, scope)
+    grouped = group_open_by_priority(scoped)
+    done = select_recent_done(scoped, days=30)
+
+    lines: list[str] = []
+    lines.append("## Open")
+    lines.append("")
+    any_open = False
+    for prio in PRIORITIES:
+        rows = grouped.get(prio, [])
+        if not rows:
+            continue
+        any_open = True
+        lines.append(f"### {prio}")
+        lines.append("")
+        lines.append("| ID | Task | Due |")
+        lines.append("|----|------|-----|")
+        for t in rows:
+            lines.append(render_task_row(t, scope))
+        lines.append("")
+    if not any_open:
+        lines.append("<!-- no open tasks -->")
+        lines.append("")
+    lines.append("## Done")
+    lines.append("")
+    lines.append("| ID | Task | Completed |")
+    lines.append("|----|------|-----------|")
+    if done:
+        for t in done:
+            lines.append(render_done_row(t))
+    else:
+        lines.append("| — | — | — |")
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+def splice_open_done(existing: str, scope: str, tasks: list[dict[str, Any]]) -> str | None:
+    """Splice fresh Open/Done tables into an existing status.md.
+
+    Preserves everything strictly before the first `## Open` line —
+    including the title, the curated `## Status` narrative (RAG /
+    Recent Progress / Blockers / Next Steps / Burn-down), and any
+    surrounding `---` separators. Replaces from `## Open` onward.
+
+    Also updates the `_Last updated:` line if present (matches the
+    `_Last updated: <iso>_` form emitted by both this tool and the
+    project / domain templates).
+
+    Returns the spliced content, or None if no `## Open` boundary is
+    found (caller should write a fresh file from the full template).
+    """
+    lines = existing.splitlines(keepends=True)
+    open_idx: int | None = None
+    for i, line in enumerate(lines):
+        if line.startswith("## Open"):
+            open_idx = i
+            break
+    if open_idx is None:
+        return None
+
+    head = lines[:open_idx]
+    # Refresh the `_Last updated:` timestamp in the preserved head, if any.
+    iso = now_iso()
+    for i, line in enumerate(head):
+        if line.startswith("_Last updated:"):
+            head[i] = f"_Last updated: {iso}_\n"
+            break
+
+    return "".join(head) + render_open_done_block(scope, tasks)
+
+
 def render_status_md(
     scope_name: str, scope: str, tasks: list[dict[str, Any]]
 ) -> str:
@@ -315,6 +395,13 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             scope_name = project.get("name", proj_id)
             project_path = project.get("path") or f"Projects/{proj_id}"
+            # `projects-index.yaml` stores `path` as a workspace-rooted
+            # string (e.g. "workspace/Projects/tax-2026"). Strip the
+            # leading "workspace/" so we don't double-nest under the
+            # workspace root when joining below. Fall back is the bare
+            # "Projects/<id>" form which is already workspace-relative.
+            if project_path.startswith("workspace/"):
+                project_path = project_path[len("workspace/"):]
             out_path = workspace / project_path / "status.md"
         else:
             domain = domain_by_id.get(scope)
@@ -323,7 +410,15 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             scope_name = domain.get("name", scope)
             out_path = workspace / "Domains" / scope_name / "status.md"
-        body = render_status_md(scope_name, scope, tasks)
+        # For project/domain scope, prefer splicing into an existing
+        # curated status.md (preserves RAG, Recent Progress, Blockers,
+        # Next Steps narrative). Fall back to a fresh template render
+        # only when no `## Open` boundary is found (or no file yet).
+        body: str | None = None
+        if scope != "workspace" and out_path.is_file():
+            body = splice_open_done(out_path.read_text(), scope, tasks)
+        if body is None:
+            body = render_status_md(scope_name, scope, tasks)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(body)
         print(f"  wrote  {out_path}")
