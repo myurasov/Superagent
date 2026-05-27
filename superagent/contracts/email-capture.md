@@ -48,14 +48,13 @@ Latest-wins on dedup: when a record for a given `id` is re-appended, the **last*
 
 ## 3. When to capture
 
-The agent MUST capture a message through `superagent/tools/email/archive.py` immediately after:
+Capture is **automatic via IDE hooks** under both Claude Code and Cursor (per § 8.1 below). When the hooks are wired, the agent does NOT need to call `archive.capture_*` directly after each Gmail MCP call — the `PostToolUse` hook fires after every successful `mcp__gmail__send_email` / `mcp__gmail__read_email` / `mcp__gmail__search_emails` and feeds the tool input + response to `superagent/tools/email/archive_hook.py`, which dispatches to:
 
-- A successful `mcp_user-gmail_read_email` call → `capture_inbound(raw_message)`. Direction is inferred from the message's `labelIds` (presence of `SENT` → `direction="out"`).
-- A successful `mcp_user-gmail_send_email` call → `capture_sent(request_args, response)`. The request body (text and/or HTML) is preserved verbatim as the message content even when Gmail's response is minimal (`{messageId, threadId}`).
+- A successful `mcp__gmail__read_email` call → `capture_inbound(raw_message)`. Direction is inferred from the message's `labelIds` (presence of `SENT` → `direction="out"`).
+- A successful `mcp__gmail__send_email` call → `capture_sent(request_args, response)`. The request body (text and/or HTML) is preserved verbatim as the message content even when Gmail's response is minimal (`{messageId, threadId}`).
+- A successful `mcp__gmail__search_emails` call → `maybe_capture_stubs(results)`. Stubs are cheap and pay for themselves the next time the user asks about the same thread. A stub is upgraded to `full` on the next `read_email` for that id.
 
-The agent MAY capture stub records when:
-
-- A `mcp_user-gmail_search_emails` call returned metadata for messages that are not yet in the archive → `maybe_capture_stubs(results)`. Stubs are cheap and pay for themselves the next time the user asks about the same thread. A stub is upgraded to `full` on the next `read_email` for that id.
+If the hooks are NOT wired (a host IDE without `PostToolUse` support, or the user has disabled them), the skill MUST fall back to calling `archive.capture_*` directly as a follow-up step after each Gmail MCP call — same outcome, just driven by the agent rather than the harness.
 
 The agent MUST NOT:
 
@@ -99,9 +98,43 @@ The `_memory/email/` tree is local-only (gitignored under `workspace/`). It is *
 
 Outbound scrubbing (per `contracts/outbound-surface.md`) treats anything pulled from the archive as private by default — the agent never quotes a captured email into a draft to a different recipient without explicit user consent.
 
-## 8. Helpers
+## 8. Helpers + hook wiring
 
-A single module backs the contract: `superagent/tools/email/archive.py`. It is **pure** — no MCP calls happen inside. Skills call MCP, then hand the result to the helper.
+### 8.1 IDE-level wiring (canonical path)
+
+Both Claude Code and Cursor expose a `PostToolUse` hook surface; the framework wires three matchers against the Gmail MCP tool names so that capture is a side-effect of the tool call, not a separate agent step:
+
+```jsonc
+// .claude/settings.json  (and .cursor/hooks.json mirrors the same matchers)
+{
+  "hooks": {
+    "PostToolUse": [
+      { "matcher": "mcp__gmail__send_email",
+        "hooks": [{ "type": "command",
+          "command": "uv run python -m superagent.tools.email.archive_hook --kind=sent" }] },
+      { "matcher": "mcp__gmail__read_email",
+        "hooks": [{ "type": "command",
+          "command": "uv run python -m superagent.tools.email.archive_hook --kind=inbound" }] },
+      { "matcher": "mcp__gmail__search_emails",
+        "hooks": [{ "type": "command",
+          "command": "uv run python -m superagent.tools.email.archive_hook --kind=stubs" }] }
+    ]
+  }
+}
+```
+
+The bridge at `superagent/tools/email/archive_hook.py`:
+
+- Reads the IDE's hook envelope from stdin (`tool_input` + `tool_response`).
+- Coerces the response — accepts a Gmail-API-shaped dict, an MCP `CallToolResult` content array, or the gongrzhe MCP's text format (e.g. `"Email sent successfully with ID: <id>"` or the `"Thread ID: ... Subject: ... From: ..."` block layout).
+- Calls into the right `archive.capture_*` helper.
+- **Never blocks the parent tool call.** All error paths return exit 0 and log to `.tmp/email_archive_hook.log` for offline diagnosis.
+
+Disable globally by setting `workspace/_memory/config.yaml.preferences.privacy.archive_emails: false` — the bridge reads the flag and exits silently when off.
+
+### 8.2 Direct module API (fallback / scripting / tests)
+
+A single module backs the contract: `superagent/tools/email/archive.py`. It is **pure** — no MCP calls happen inside. Skills (or one-shot scripts) call MCP, then hand the result to the helper.
 
 ```python
 from superagent.tools.email import archive

@@ -1,15 +1,22 @@
 {
   "_comment": [
-    "Claude Code project settings. Wires the UserPromptSubmit hook to",
-    "Superagent's user-query logger so the Supertailor's friction-analysis",
-    "log captures prompts regardless of IDE. Mirrors .cursor/hooks.json.",
+    "Claude Code project settings.",
     "",
-    "Disable by setting workspace/_memory/config.yaml",
-    "preferences.privacy.log_user_queries: false (the script reads that",
-    "flag and exits silently when it's off).",
+    "UserPromptSubmit -> Superagent's user-query logger so the",
+    "Supertailor's friction-analysis log captures prompts regardless of",
+    "IDE. Mirrors .cursor/hooks.json. Disable by setting",
+    "workspace/_memory/config.yaml preferences.privacy.log_user_queries:",
+    "false. The --source flag tags each row so the Supertailor can slice",
+    "by IDE. .cursor/hooks.json relies on the script's default",
+    "(source=cursor).",
     "",
-    "The --source flag tags each row so the Supertailor can slice by IDE.",
-    ".cursor/hooks.json relies on the script's default (source=cursor)."
+    "PostToolUse -> Superagent's email archive bridge. Every Gmail MCP",
+    "tool call (send / read / search) is captured to the local archive",
+    "at workspace/_memory/email/ per contracts/email-capture.md. The",
+    "bridge reads the hook envelope from stdin, dispatches to the right",
+    "archive.capture_* helper, and always exits 0 (never blocks the",
+    "parent tool call). Disable by setting workspace/_memory/config.yaml",
+    "preferences.privacy.archive_emails: false."
   ],
   "hooks": {
     "UserPromptSubmit": [
@@ -18,6 +25,35 @@
           {
             "type": "command",
             "command": "uv run python superagent/tools/log_user_query.py --source claude-code"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__gmail__send_email",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m superagent.tools.email.archive_hook --kind=sent"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__gmail__read_email",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m superagent.tools.email.archive_hook --kind=inbound"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__gmail__search_emails",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python -m superagent.tools.email.archive_hook --kind=stubs"
           }
         ]
       }

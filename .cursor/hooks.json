@@ -1,9 +1,35 @@
 {
-  "_comment": "UserPromptSubmit hook feeds Superagent's Supertailor friction analysis. Disable by setting workspace/_memory/config.yaml.preferences.privacy.log_user_queries: false.",
+  "_comment": [
+    "Cursor agent hooks.",
+    "",
+    "UserPromptSubmit -> Superagent's user-query logger (feeds the",
+    "Supertailor's friction analysis). Disable via",
+    "workspace/_memory/config.yaml preferences.privacy.log_user_queries: false.",
+    "",
+    "PostToolUse -> Superagent's email archive bridge. Every Gmail MCP",
+    "tool call is captured to workspace/_memory/email/ per",
+    "contracts/email-capture.md. The bridge always exits 0 and never",
+    "blocks the parent tool call. Disable via workspace/_memory/config.yaml",
+    "preferences.privacy.archive_emails: false. Mirrors .claude/settings.json."
+  ],
   "hooks": {
     "UserPromptSubmit": [
       {
         "command": "uv run python superagent/tools/log_user_query.py"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__gmail__send_email",
+        "command": "uv run python -m superagent.tools.email.archive_hook --kind=sent"
+      },
+      {
+        "matcher": "mcp__gmail__read_email",
+        "command": "uv run python -m superagent.tools.email.archive_hook --kind=inbound"
+      },
+      {
+        "matcher": "mcp__gmail__search_emails",
+        "command": "uv run python -m superagent.tools.email.archive_hook --kind=stubs"
       }
     ]
   }
