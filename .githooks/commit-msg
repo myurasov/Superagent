@@ -45,7 +45,10 @@ for pattern in "${forbidden_patterns[@]}"; do
 done
 
 # Reject UTF-8 quotes / dashes / NBSP that sneak into agent-authored messages.
-if echo "$msg" | LC_ALL=C grep -qP '[^\x00-\x7F]'; then
+# Portable byte-range match: works under both GNU and BSD grep. The PCRE
+# flag (`-P`) is GNU-only and silently no-ops on macOS, which would let
+# non-ASCII through unnoticed.
+if printf '%s' "$msg" | LC_ALL=C grep -q $'[\x80-\xff]'; then
   echo "" >&2
   echo "ERROR: commit message contains non-ASCII characters." >&2
   echo "Per AGENTS.md, commit messages stay ASCII-only." >&2
