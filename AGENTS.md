@@ -31,6 +31,8 @@
   - [Privacy and data location](#privacy-and-data-location)
   - [Local development tooling](#local-development-tooling)
   - [File naming conventions](#file-naming-conventions)
+  - [Image format policy](#image-format-policy)
+  - [Memory-routing guardrail](#memory-routing-guardrail)
   - [IDE setup (Cursor and Claude Code)](#ide-setup-cursor-and-claude-code)
   - [Prompt-cache discipline](#prompt-cache-discipline)
 
@@ -506,6 +508,17 @@ Full policy: [`superagent/rules/image-format-policy.md`](superagent/rules/image-
 - **Use the framework helper.** Call `uv run python -m superagent.tools.heic_to_jpg convert <path>` (or `convert-dir <dir>`) — it dodges the macOS Display P3 black-frame bug by routing HEIC -> Quick Look PNG -> `sips` JPEG, and removes the HEIC original after the JPEG is verified.
 - **Acceptable formats.** `.jpg`/`.jpeg`, `.png`, `.pdf` are the preferred image / scan formats under `Sources/`. `.gif`, `.webp`, `.tiff` are accepted as-is when they arrive in that form (no re-encoding) — the policy targets HEIC specifically.
 - **Forward-only.** Pre-existing HEIC files are NOT auto-converted by mere presence of this rule; explicit user request or the `migrate` skill drives any one-time clean-up. Historical mentions of HEIC filenames in append-only logs (`interaction-log.yaml`, `history.md`, `_processed.yaml`) are not rewritten.
+
+---
+
+## Memory-routing guardrail
+
+Full policy: [`superagent/rules/memory-routing.md`](superagent/rules/memory-routing.md). One-paragraph summary:
+
+- **"Remember this" writes stay inside the installation.** When the user asks to remember / save / note / persist something, write ONLY to `workspace/_memory/` (structured data — the default), `workspace/_custom/` (user-specific framework artifacts: custom rules / skills / agents / templates / tools), or `superagent/` (framework code — ONLY on an explicit "make it core / part of the framework" request, per the Framework Artifact Creation Contract).
+- **NEVER write remembered content outside the repo root.** In particular NEVER use `~/.claude/projects/<...>/memory/MEMORY.md` or anything under `~/.claude/`, Claude Code's built-in memory store, `~/.cursor/`, OS temp dirs, home-dir dotfiles, sibling repos, or any host-IDE "memory" feature that persists outside this repo. If a host IDE offers such a feature, do not use it for Superagent state — route to `_memory` / `_custom`.
+- **Extends `scope-discipline`.** This is the memory-write specialization of the core rule that forbids writes outside the project folder.
+- **On finding an existing violation.** Migrate the content to its in-workspace home, then ask before deleting the external original (outside-repo deletes need explicit authorization).
 
 ---
 

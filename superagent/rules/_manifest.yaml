@@ -46,6 +46,13 @@ files:
       - AGENTS.md
       - tools/heic_to_jpg.py
     user_overlay: workspace/_custom/rules/image-format-policy.md
+  - path: memory-routing.md
+    kind: doc
+    purpose: "Memory-write specialization of scope-discipline: 'remember this' content goes ONLY to workspace/_memory (default) or workspace/_custom (or superagent/ on an explicit 'make it core' request); NEVER outside the repo root (e.g. ~/.claude/.../memory/MEMORY.md or a host-IDE memory store)."
+    consumed_by:
+      - AGENTS.md
+      - rules/scope-discipline.md
+    user_overlay: workspace/_custom/rules/memory-routing.md
   - path: scope-discipline.md
     kind: doc
     purpose: "Operationalizes the Knowledge discipline principle: 3-test gate (necessity / discovery-cost / speculation) the agent runs before every ask or fetch; verification ritual at task end."
