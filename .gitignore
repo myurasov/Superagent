@@ -1,6 +1,9 @@
 # User-generated workspace data — never committed.
 workspace/
 
+# Ad-hoc task working folders (ad-hoc-task skill) — never committed.
+tasks/
+
 # Development / temporary scratch
 .tmp/
 .tools/

@@ -151,6 +151,7 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 | **add-domain / add-project / add-asset / add-contact / add-account / add-bill / add-subscription / add-appointment / add-important-date / add-document / add-source** | Capture skills — bootstrap a single new entity with the right template + index row. |
 | **projects** | List, show, complete, pause, resume, cancel, archive Projects. Per-project burn-down. |
 | **sources** | List, search, fetch (through cache), refresh the Sources/ library. |
+| **ad-hoc-task** | Start / resume an ad-hoc task (investigation, setup, research, engineering scratch with no Domain/Project home) under a dated folder `tasks/<YYYY-MM-DD>-<slug>/` at the repo root — outside `workspace/`. |
 | **log-event** | One-shot capture: "log this medical visit", "log this car service", "log this home repair" — appends to the right `history.md` and updates indexes. |
 | **health-log** | Log a symptom / med change / vital reading; rolls into `health-records.yaml`. |
 | **vehicle-log** | Log a service / fuel-up / mileage reading; rolls into the vehicle's `history.md`. |
@@ -266,6 +267,10 @@ Sources/
 Reference files (`.ref.md` / `.ref.txt`) describe `kind` (mcp / cli / url / api / file / vault / manual) + `source` (the identifier) + `ttl_minutes`. The canonical form is YAML frontmatter (`superagent/templates/sources/ref.md`); hand-authored loose `Key: value` or bare-URL forms are accepted and **normalized on first use** with the user's permission (`tools/sources_normalize.py`; default policy `ask`). The agent resolves a ref by computing `sha256(kind + source)`, checking the cache (default `Sources/_cache/<hash>/`, override via `config.preferences.sources.cache_path`), fetching only if necessary.
 
 Filenames inside Domain / Project folders are lowercase and hyphenated; sub-folders for events, trips, sub-efforts follow the same rule.
+
+### tasks/ (ad-hoc, outside the workspace)
+
+One additional folder kind lives at the **repo root, outside `workspace/`**: `tasks/<YYYY-MM-DD>-<slug>/` — dated working folders for ad-hoc work with no Domain or Project home (one-off investigations, host/tool setup, research scratch). Managed by the `ad-hoc-task` skill: no 4-file structure, no index registration — just a `notes.md` (What/why, Steps, Findings, Outcome) plus scratch files. Resolve the root as `<workspace_path>/../tasks/`; the folder is gitignored and lazily created on first use. Distinct from the todo tracker (`_memory/todo.yaml`).
 
 ---
 

@@ -1,7 +1,33 @@
 schema_version: 1
-generated_at: '2026-05-20T21:03:21-07:00'
-skill_count: 51
+generated_at: '2026-07-26T06:13:46-07:00'
+skill_count: 52
 skills:
+- name: superagent-ad-hoc-task
+  stem: ad-hoc-task
+  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/ad-hoc-task.md
+  one_line: Start or resume an ad-hoc task — engineering scratch, system setup, investigation, or research
+    that is not (yet) a tracked Project and has no Domain home — under a dated folder `tasks/<YYYY-MM-DD>-<sl
+  triggers:
+  - new task / start a task / ad-hoc task
+  - 'ad-hoc: <anything>'
+  - resume task / work on tasks/<slug> / open tasks/<slug>
+  - investigate X / research X / figure out X (when it has no Domain or Project home)
+  - set up <host / tool / thing>
+  - one-off engineering or debugging work that doesn't belong to a Domains/ or Projects/ entity
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 144
+  h2_steps: 5
+  h3_subsections: 0
+  typical_token_cost: 1593
+  typical_files_read:
+  - _memory/config.yaml
+  - _memory/todo.yaml
+  - workspace/_memory/config.yaml
+  - workspace/_memory/interaction-log.yaml
+  origin: framework
 - name: superagent-add-account
   stem: add-account
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-account.md
@@ -684,7 +710,7 @@ skills:
   lines: 375
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 5708
+  typical_token_cost: 5791
   typical_files_read:
   - workspace/_memory/config.yaml
   - _memory/insights.yaml
@@ -1084,7 +1110,7 @@ skills:
   lines: 163
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 1424
+  typical_token_cost: 1468
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/todo.yaml
@@ -1148,14 +1174,14 @@ skills:
   - week in review
   mcp_required: []
   mcp_optional:
-  - any finance ingestor (plaid / monarch / ynab)
+  - any finance ingestor (simplefin / plaid / monarch / ynab)
   - any health / fitness ingestor (apple_health / whoop / strava / garmin / oura)
   cli_required: []
   cli_optional: []
-  lines: 195
+  lines: 206
   h2_steps: 17
   h3_subsections: 0
-  typical_token_cost: 1666
+  typical_token_cost: 1689
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md
