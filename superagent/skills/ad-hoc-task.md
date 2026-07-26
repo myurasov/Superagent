@@ -92,6 +92,11 @@ Boundaries — route elsewhere when one of these fits better:
    `notes.md` is agent/user working notes, not a regenerated living
    document — append freely.
 
+5. **Constraints accrete.** When the user adds or changes a constraint or
+   preference after the task has started ("must be X", "actually prefer
+   Y"), append it as a dated line under `What / why` — a resumed task
+   must read the *current* rules, not the original ones.
+
 ## 2. Do the work
 
 - **Engineering / scratch**: throwaway scripts, outputs, and small data
@@ -109,6 +114,11 @@ Boundaries — route elsewhere when one of these fits better:
   repo.
 - **Research**: local-first read order applies as everywhere else; capture
   key findings in `notes.md` as you go, with links / citations.
+- **Time-sensitive items get a todo immediately.** A deadline, auction
+  close, expiring offer, or dated follow-up discovered mid-task goes into
+  `_memory/todo.yaml` (with a due date) via the `todo` skill the moment it
+  surfaces — not at close. The task folder is a working area, not a
+  reminder system.
 
 ## 3. Capture and close
 
@@ -119,7 +129,11 @@ Boundaries — route elsewhere when one of these fits better:
    `## Outcome` with one short paragraph: what was achieved / decided /
    learned, and any follow-up that was spun off (todo entry, project).
 3. Append an entry to `workspace/_memory/interaction-log.yaml`,
-   `type: ad-hoc-task`, per its schema.
+   `skill: ad-hoc-task`, per its schema — **once per significant working
+   session**, not only at final close (a multi-session task gets a row
+   each time real work happens). Set `related_domain` when the task
+   obviously touches a domain (e.g. a vehicle purchase search →
+   `vehicles`) so the domain's timeline can find it later.
 4. Opportunistic retention applies as usual: anything legitimately
    encountered that belongs in the workspace (a contact, an account, a
    document) gets captured to its proper home with `provenance`.

@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-07-26T06:18:16-07:00'
+generated_at: '2026-07-26T06:44:44-07:00'
 skill_count: 52
 skills:
 - name: superagent-ad-hoc-task
@@ -18,10 +18,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 148
+  lines: 162
   h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 1659
+  typical_token_cost: 1878
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml
