@@ -1,12 +1,12 @@
 schema_version: 1
-generated_at: '2026-07-26T06:13:46-07:00'
+generated_at: '2026-07-26T06:18:16-07:00'
 skill_count: 52
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/ad-hoc-task.md
   one_line: Start or resume an ad-hoc task — engineering scratch, system setup, investigation, or research
-    that is not (yet) a tracked Project and has no Domain home — under a dated folder `tasks/<YYYY-MM-DD>-<sl
+    that is not (yet) a tracked Project and has no Domain home — under a dated folder `tasks/<YYYY>/<MM>/<YYY
   triggers:
   - new task / start a task / ad-hoc task
   - 'ad-hoc: <anything>'
@@ -18,10 +18,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 144
+  lines: 148
   h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 1593
+  typical_token_cost: 1659
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml

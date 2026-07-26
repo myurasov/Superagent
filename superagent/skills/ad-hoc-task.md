@@ -3,8 +3,8 @@ name: superagent-ad-hoc-task
 description: >-
   Start or resume an ad-hoc task — engineering scratch, system setup,
   investigation, or research that is not (yet) a tracked Project and has no
-  Domain home — under a dated folder `tasks/<YYYY-MM-DD>-<slug>/` at the
-  repo root (sibling of `workspace/`, outside it). No 4-file structure, no
+  Domain home — under a dated folder `tasks/<YYYY>/<MM>/<YYYY-MM-DD>-<slug>/`
+  at the repo root (sibling of `workspace/`, outside it). No 4-file structure, no
   index registration, no versioning: just a folder with a `notes.md`
   (What/why, Steps, Findings, Outcome) that is the durable record, plus any
   scratch files the work produces. Supports resuming an existing task folder
@@ -62,13 +62,16 @@ Boundaries — route elsewhere when one of these fits better:
    the tasks root as `<workspace_path>/../tasks/`.
 2. Pick a short **kebab-case slug** for the work (e.g.
    `nas-disk-cleanup`, `router-firmware-research`). Folder:
-   `tasks/<YYYY-MM-DD>-<slug>/` — date is the **start** date, zero-padded.
-3. **Resume check**: list `tasks/` for a recent folder whose slug matches
-   the request (same topic, different wording counts). If found, resume it
-   — read its `notes.md` first, then continue appending. Do not create a
-   second folder for the same piece of work.
-4. Otherwise create the folder (lazily creating `tasks/` on first use) and
-   seed `notes.md`:
+   `tasks/<YYYY>/<MM>/<YYYY-MM-DD>-<slug>/` — year and zero-padded month
+   partitions, then the fully-dated folder name; the date is the **start**
+   date. Example: `tasks/2026/07/2026-07-26-nas-disk-cleanup/`.
+3. **Resume check**: list the current and previous month's partitions
+   (`tasks/<YYYY>/<MM>/`) for a folder whose slug matches the request
+   (same topic, different wording counts). If found, resume it — read its
+   `notes.md` first, then continue appending. Do not create a second
+   folder for the same piece of work.
+4. Otherwise create the folder (lazily creating `tasks/<YYYY>/<MM>/` on
+   first use) and seed `notes.md`:
 
    ```markdown
    # <Title>
@@ -139,6 +142,7 @@ Graduation is a copy/promote, not a move — do not gut the task folder.
 
 ## 5. Archival
 
-Stale or concluded task folders archive to `tasks/_archive/<folder>/`.
-Archival is manual / on-request — nothing auto-deletes or auto-archives
-task folders.
+Stale or concluded task folders archive to
+`tasks/_archive/<YYYY>/<MM>/<folder>/` (preserving the year/month
+partition). Archival is manual / on-request — nothing auto-deletes or
+auto-archives task folders.
