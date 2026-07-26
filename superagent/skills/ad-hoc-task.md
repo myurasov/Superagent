@@ -99,6 +99,17 @@ Boundaries — route elsewhere when one of these fits better:
 
 ## 2. Do the work
 
+- **Everything the task produces stays in the task folder.** Reports
+  (PDF / xlsx / html), downloaded images and data, generated scripts,
+  scratch, deliverables — all of it is written inside
+  `tasks/<YYYY>/<MM>/<YYYY-MM-DD>-<slug>/`, never to `workspace/Outbox/`,
+  `Domains/**/Resources/`, `Sources/`, or anywhere else. Two exceptions:
+  (a) framework bookkeeping is not a task artifact — interaction-log
+  rows, todo entries, and opportunistic captures (contacts, bills,
+  provenance) still go to their normal `_memory/` homes per the
+  contracts; (b) an explicit user request to export / send / publish an
+  artifact somewhere wins for that artifact. On graduation, artifacts
+  may be *copied* to the new home; originals stay as history.
 - **Engineering / scratch**: throwaway scripts, outputs, and small data
   files live **inside the task folder** — that keeps the record
   self-contained. Python scratch runs through the root venv (`uv run
