@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-08-07T02:55:09-07:00'
-skill_count: 54
+generated_at: '2026-08-07T03:34:25-07:00'
+skill_count: 50
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -399,29 +399,6 @@ skills:
   - _memory/todo.yaml
   - _memory/health-records.yaml
   origin: framework
-- name: superagent-decisions
-  stem: decisions
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/decisions.md
-  one_line: Capture, list, and review meaningful decisions. Append-only log in `_memory/decisions.yaml`.
-    Surfaces in weekly-review (this week's decisions) and monthly-review (decisions whose review_at has
-    passed)
-  triggers:
-  - log a decision
-  - record a decision
-  - decisions
-  - decision log
-  - decisions made this week
-  mcp_required: []
-  mcp_optional: []
-  cli_required: []
-  cli_optional: []
-  lines: 129
-  h2_steps: 4
-  h3_subsections: 4
-  typical_token_cost: 883
-  typical_files_read:
-  - _memory/decisions.yaml
-  origin: framework
 - name: superagent-doctor
   stem: doctor
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/doctor.md
@@ -436,14 +413,15 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 159
-  h2_steps: 14
+  lines: 171
+  h2_steps: 15
   h3_subsections: 0
-  typical_token_cost: 1469
+  typical_token_cost: 1586
   typical_files_read:
   - _memory/domains-index.yaml
   - Sources/_cache/`;
   - _memory/action-signals.yaml
+  - _memory/world.yaml
   origin: framework
 - name: superagent-domain-suggest
   stem: domain-suggest
@@ -760,11 +738,12 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 87
+  lines: 88
   h2_steps: 4
   h3_subsections: 0
-  typical_token_cost: 862
+  typical_token_cost: 940
   typical_files_read:
+  - _memory/decisions.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-migrate
@@ -810,10 +789,10 @@ skills:
   - any scheduled-cadence ingest source
   cli_required: []
   cli_optional: []
-  lines: 224
-  h2_steps: 22
+  lines: 233
+  h2_steps: 23
   h3_subsections: 0
-  typical_token_cost: 2087
+  typical_token_cost: 2173
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/documents-index.yaml
@@ -869,59 +848,6 @@ skills:
   typical_token_cost: 991
   typical_files_read:
   - Domains/Pets/status.md
-  origin: framework
-- name: superagent-play
-  stem: play
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/play.md
-  one_line: Run a playbook — a named sequence of skills with optional conditions. Resolves the playbook
-    (per `tools/play.py`), then invokes each skill in the resolved order. Custom playbooks at `_custom/playbooks
-  triggers:
-  - play
-  - run playbook
-  - good morning
-  - end of week
-  - tax prep season
-  - pre-trip week
-  - quarterly health
-  mcp_required: []
-  mcp_optional: []
-  cli_required: []
-  cli_optional: []
-  lines: 80
-  h2_steps: 6
-  h3_subsections: 0
-  typical_token_cost: 634
-  typical_files_read: []
-  origin: framework
-- name: superagent-pm-review
-  stem: pm-review
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/pm-review.md
-  one_line: Project-manager-angle review of every personal-life Project under workspace/Projects/. Surfaces
-    RAG status, stalls, deadline pressure, cross-project conflicts, dropped balls, and a ranked next-best-ac
-  triggers:
-  - pm review
-  - pm-review
-  - project review
-  - project manager review
-  - what projects need attention
-  - which projects are slipping
-  - what should I focus on across projects
-  - project status check
-  mcp_required: []
-  mcp_optional: []
-  cli_required: []
-  cli_optional: []
-  lines: 200
-  h2_steps: 12
-  h3_subsections: 10
-  typical_token_cost: 2094
-  typical_files_read:
-  - workspace/_memory/projects-index.yaml
-  - workspace/_memory/todo.yaml
-  - workspace/_memory/important-dates.yaml
-  - workspace/_memory/decisions.yaml
-  - workspace/_memory/context.yaml
-  - workspace/_memory/interaction-log.yaml
   origin: framework
 - name: superagent-projects
   stem: projects
@@ -1000,27 +926,6 @@ skills:
   typical_files_read:
   - _memory/sources-index.yaml
   - Sources/_cache/<*>/_summary.md`
-  origin: framework
-- name: superagent-scenarios
-  stem: scenarios
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/scenarios.md
-  one_line: 'Run a what-if scenario against current workspace state. Five canned scenarios in MVP: cancel-subscriptions,
-    trial-end-impact, bill-shock, balance-floor, project-overrun. Outputs to stdout and optional'
-  triggers:
-  - scenario
-  - what if
-  - what would happen if
-  - simulate
-  - estimate impact
-  mcp_required: []
-  mcp_optional: []
-  cli_required: []
-  cli_optional: []
-  lines: 76
-  h2_steps: 6
-  h3_subsections: 0
-  typical_token_cost: 626
-  typical_files_read: []
   origin: framework
 - name: superagent-sources
   stem: sources
@@ -1111,10 +1016,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 161
+  lines: 162
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2607
+  typical_token_cost: 2570
   typical_files_read:
   - _memory/supertailor-suggestions.yaml
   - _memory/contacts.yaml
@@ -1233,10 +1138,10 @@ skills:
   - any health / fitness ingestor (apple_health / whoop / strava / garmin / oura)
   cli_required: []
   cli_optional: []
-  lines: 214
-  h2_steps: 17
+  lines: 223
+  h2_steps: 18
   h3_subsections: 0
-  typical_token_cost: 1791
+  typical_token_cost: 1859
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md
@@ -1245,7 +1150,7 @@ skills:
   - _memory/documents-index.yaml
   - _memory/projects-index.yaml
   - _memory/assets-index.yaml
-  - _memory/todo.yaml
+  - _memory/decisions.yaml
   origin: framework
 - name: superagent-whatsup
   stem: whatsup
