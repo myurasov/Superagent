@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-05-27T09:12:41+00:00'
+generated_at: '2026-08-07T09:38:43+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -49,3 +49,10 @@ migrations:
   breaking: false
   revertible: true
   estimated_duration: <1 minute
+- to_version: 0.7.0
+  from_version: 0.6.7
+  file: 0.7.0.md
+  title: Marker migration for the token-discipline + updater release
+  breaking: false
+  revertible: true
+  estimated_duration: <1 second

@@ -46,6 +46,20 @@ files:
       - AGENTS.md
       - tools/heic_to_jpg.py
     user_overlay: workspace/_custom/rules/image-format-policy.md
+  - path: large-file-reads.md
+    kind: doc
+    purpose: "Never Read unbounded memory-resident files whole: per-file decision table (todo.yaml, email archive, logs, events stream, transactions) with allowed vs forbidden read forms, plus a generative rule for any new file."
+    consumed_by:
+      - AGENTS.md
+    user_overlay: workspace/_custom/rules/large-file-reads.md
+  - path: machine-local-home.md
+    kind: doc
+    purpose: "Machine-local root ~/.superagent/ ($SUPERAGENT_HOME): high-churn scratch (tmp/) and non-Python tool installs (tools/) live outside the iCloud-synced repo; helper at tools/home.py; sanctioned exception to scope discipline."
+    consumed_by:
+      - AGENTS.md
+      - rules/development-tooling.md
+      - tools/home.py
+    user_overlay: workspace/_custom/rules/machine-local-home.md
   - path: memory-routing.md
     kind: doc
     purpose: "Memory-write specialization of scope-discipline: 'remember this' content goes ONLY to workspace/_memory (default) or workspace/_custom (or superagent/ on an explicit 'make it core' request); NEVER outside the repo root (e.g. ~/.claude/.../memory/MEMORY.md or a host-IDE memory store)."
@@ -60,3 +74,23 @@ files:
       - AGENTS.md
       - superagent.agent.md
     user_overlay: workspace/_custom/rules/scope-discipline.md
+  - path: subagent-bulk-reads.md
+    kind: doc
+    purpose: "Any lookup expected to pull >~20k tokens of raw tool results (and the session continues) runs in a subagent that returns only the synthesis; when-NOT-to-delegate list + cost/model tiering."
+    consumed_by:
+      - AGENTS.md
+      - skills/daily-update.md
+      - skills/weekly-review.md
+      - skills/monthly-review.md
+      - skills/research.md
+      - skills/follow-up.md
+      - skills/summarize-thread.md
+      - skills/doctor.md
+      - skills/supertailor-review.md
+    user_overlay: workspace/_custom/rules/subagent-bulk-reads.md
+  - path: tool-usage-corrections.md
+    kind: doc
+    purpose: "First-try tool-usage errors get their corrected form persisted into core docs in the same turn (AGENTS.md one-liner, then governing rule, then skill body, then tool --help), so no future session repeats the guess."
+    consumed_by:
+      - AGENTS.md
+    user_overlay: workspace/_custom/rules/tool-usage-corrections.md

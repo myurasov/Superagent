@@ -168,6 +168,7 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 | **doctor** | Workspace data hygiene — stale domains, duplicate contacts, near-duplicate todos, simplification candidates. |
 | **supertailor-review** | Framework hygiene + strategic improvement; produces ranked suggestions in `supertailor-suggestions.yaml`. |
 | **migrate** | Apply or revert framework version migrations on the workspace (chained, one version at a time, revertible). Sole entry point per `contracts/versioning.md`. |
+| **refresh** | Update the framework from git: fetch, show what's new (roadmap Released delta + migration preview), confirm, `git pull --ff-only`, `uv sync` + hooks re-assert, then dispatch into `migrate` for the workspace-data leg. Consumer-side; never pushes or commits. |
 | **handoff** | Generate the "if I get hit by a bus" packet — account list, document locations, executor instructions. |
 
 ---
@@ -404,6 +405,9 @@ Per `docs/superagent/docs/_internal/perf-improvement-ideas.md` QW-3, every Super
 - **Use the skill manifest**: read `superagent/skills/_manifest.yaml` (cheap, ~5-10 KB) to pick which skill applies, instead of grepping every skill markdown.
 - **Use the events stream + log summaries** instead of full-loading append-only YAML logs: `_memory/<file>.summary.yaml` (the QW-4 summary sibling) tells you whether you need the full log at all; `tools/log_window.py read` pulls just a date range.
 - **BATCH parallel reads / MCP calls** in a single tool-call message rather than chaining them sequentially. Sequential chains are reserved for the cases where step N's output feeds step N+1.
+- **Never `Read` unbounded memory files whole.** `todo.yaml`, the email archive, the interaction/ingestion logs, `user-queries.jsonl`, signal stores, and `transactions.yaml` are read only through slices, tails (negative `offset`), or their canonical filtering tools — per the decision table in `rules/large-file-reads.md`.
+- **Delegate bulk reads to subagents.** Any lookup expected to pull more than ~20k tokens of raw tool results (and the session continues afterward) runs in a subagent that returns only the synthesis — per `rules/subagent-bulk-reads.md`.
+- **Persist tool-usage corrections.** A first-try tool-invocation error gets its corrected form written back into core docs in the same turn, per `rules/tool-usage-corrections.md`.
 
 The `tools/anti_patterns.py` scanner flags skills that violate these patterns. The Supertailor's strategic pass surfaces persistent violations.
 
@@ -488,9 +492,9 @@ Tools enforce the shape — `tools/audit.py.record_change()` writes to `<file>.h
 Full policy: [`superagent/rules/development-tooling.md`](superagent/rules/development-tooling.md). Four non-negotiable defaults for any contributor (human or agent):
 
 - **Python** — one shared `uv` venv at `./.venv/`. ALWAYS invoke through `uv run` (e.g. `uv run python superagent/tools/foo.py`, `uv run python -m superagent.tools.sources_index refresh`, `uv run pytest`). NEVER call `python3 …` directly; NEVER create per-tool venvs. Dependencies live in root `pyproject.toml`; lockfile is `uv.lock` (committed).
-- **Non-Python tools** — install under `./.tools/` (gitignored). NEVER install system-wide (`brew install`, `npm -g`, `cargo install --root /usr/local`, etc.) from inside this project.
-- **Temporary files** — write to `./.tmp/` only (gitignored). NEVER use `/tmp`, `$TMPDIR`, `~/`, OS temp dirs, sibling repos, or anything outside the project root.
-- **Scope discipline (safety rule)** — the agent MUST NOT install software, create files, or modify files outside this project folder unless the user explicitly authorizes that specific action. Read access outside is fine; write access outside is forbidden by default — refuse and ask first.
+- **Non-Python tools** — install under the machine-local root `~/.superagent/tools/` (one folder per tool) per `superagent/rules/machine-local-home.md`; the former `./.tools/` is deprecated forward-only. NEVER install system-wide (`brew install`, `npm -g`, `cargo install --root /usr/local`, etc.) from inside this project.
+- **Temporary files** — write to the machine-local transient root `~/.superagent/tmp/` (`$SUPERAGENT_HOME` aware; helper `uv run python -m superagent.tools.home`) per `superagent/rules/machine-local-home.md`. The repo lives in iCloud Drive, so scratch NEVER goes inside the checkout (the former `./.tmp/` is deprecated forward-only), nor to `/tmp`, `$TMPDIR`, OS temp dirs, or sibling repos.
+- **Scope discipline (safety rule)** — the agent MUST NOT install software, create files, or modify files outside this project folder unless the user explicitly authorizes that specific action. Read access outside is fine; write access outside is forbidden by default — refuse and ask first. Sanctioned exceptions: `~/.superagent/` and `~/.browserctl/` (disposable machine-local state only).
 
 ---
 
@@ -562,6 +566,7 @@ Detection looks at `CLAUDECODE=1` (Claude Code) and any `CURSOR_*` env var (Curs
   - Cursor: `.cursor/hooks.json` (no `--source` flag; defaults to `cursor`).
   - Claude Code: `.claude/settings.json` (passes `--source claude-code` so the Supertailor can slice by IDE).
   - Disable in either IDE by setting `_memory/config.yaml.preferences.privacy.log_user_queries: false`; the script reads that flag and exits silently when it's off.
+- **Skill auto-loader** (Claude Code only). A second `UserPromptSubmit` hook runs `uv run python -m superagent.tools.skill_loader`: it matches the prompt against every skill's frontmatter `triggers` (framework + `_custom` overlay) and injects the matching skill deterministically — full body for short skills, a compact pointer + step index for long ones (per the read budget). Cursor's hook API cannot add context, so under Cursor the agent falls back to recognizing triggers via the skill manifest. Fail-safe (always exits 0); disable via `_memory/config.yaml.preferences.skill_autoload: false`.
 - **MCP servers.** Each IDE reads its own runtime file (`.cursor/mcp.json` / `.mcp.json`). Both files start as a regular-file copy of the committed templates (`.cursor/mcp.json.cursor` / `.mcp.json.claude`). The templates are content-identical (Superagent has no per-IDE OAuth client_id constraint); only the destination path differs. **Regular-file copies, not symlinks** — this repo lives in iCloud Drive, and iCloud occasionally rewrites symlinks as placeholders. Edit one file, re-run `init`, and drift between the two is detected and offered for mirror.
 - **Commit-message hook.** Install a `commit-msg` hook at `.githooks/commit-msg` (`git config core.hooksPath .githooks`) that blocks AI-attribution patterns at commit time. The reference implementation lives at `superagent/templates/githooks/commit-msg`. IDE-agnostic.
 

@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-08-07T01:20:23-07:00'
-skill_count: 53
+generated_at: '2026-08-07T02:55:09-07:00'
+skill_count: 54
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -18,10 +18,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 173
+  lines: 174
   h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 2064
+  typical_token_cost: 2076
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml
@@ -363,10 +363,10 @@ skills:
   - uv
   cli_optional:
   - playwright (Chromium install — one-time `uv run --with playwright playwright install chromium`)
-  lines: 173
-  h2_steps: 7
+  lines: 192
+  h2_steps: 8
   h3_subsections: 0
-  typical_token_cost: 2469
+  typical_token_cost: 2629
   typical_files_read: []
   origin: framework
 - name: superagent-daily-update
@@ -385,10 +385,10 @@ skills:
   - any scheduled-cadence ingest source (gmail, gcal, icloud, apple_health, …)
   cli_required: []
   cli_optional: []
-  lines: 313
+  lines: 328
   h2_steps: 26
   h3_subsections: 0
-  typical_token_cost: 3018
+  typical_token_cost: 3220
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/context.yaml
@@ -436,10 +436,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 151
+  lines: 159
   h2_steps: 14
   h3_subsections: 0
-  typical_token_cost: 1366
+  typical_token_cost: 1469
   typical_files_read:
   - _memory/domains-index.yaml
   - Sources/_cache/`;
@@ -555,10 +555,10 @@ skills:
   - email + message ingestors (to find unanswered)
   cli_required: []
   cli_optional: []
-  lines: 138
+  lines: 146
   h2_steps: 9
   h3_subsections: 6
-  typical_token_cost: 1147
+  typical_token_cost: 1249
   typical_files_read:
   - _memory/todo.yaml
   - _memory/appointments.yaml
@@ -628,17 +628,18 @@ skills:
   triggers:
   - home maintenance
   - what's due on the house
-  - log <maintenance task>
+  - log a <maintenance task>
+  - log home maintenance
   - schedule home-maintenance
   mcp_required: []
   mcp_optional:
   - home_assistant — could surface filter-due signals from sensor data
   cli_required: []
   cli_optional: []
-  lines: 128
+  lines: 129
   h2_steps: 5
   h3_subsections: 3
-  typical_token_cost: 969
+  typical_token_cost: 976
   typical_files_read:
   - _memory/assets-index.yaml
   - Domains/Home/history.md
@@ -809,10 +810,10 @@ skills:
   - any scheduled-cadence ingest source
   cli_required: []
   cli_optional: []
-  lines: 215
+  lines: 224
   h2_steps: 22
   h3_subsections: 0
-  typical_token_cost: 1969
+  typical_token_cost: 2087
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/documents-index.yaml
@@ -948,6 +949,34 @@ skills:
   typical_files_read:
   - _memory/projects-index.yaml
   origin: framework
+- name: superagent-refresh
+  stem: refresh
+  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/refresh.md
+  one_line: 'Update a Superagent installation to the newest framework version: fetch the latest framework
+    from git, show the user what''s new, fast-forward the checkout, re-sync dependencies (uv sync) and
+    git hooks'
+  triggers:
+  - update superagent
+  - superagent refresh / refresh superagent
+  - pull the latest superagent
+  - get the newest superagent version
+  - upgrade the framework
+  - is there a new superagent version
+  - update the framework from git
+  mcp_required: []
+  mcp_optional: []
+  cli_required:
+  - git
+  - uv
+  cli_optional: []
+  lines: 264
+  h2_steps: 12
+  h3_subsections: 0
+  typical_token_cost: 2906
+  typical_files_read:
+  - workspace/_memory/config.yaml
+  - workspace/_memory/interaction-log.yaml
+  origin: framework
 - name: superagent-research
   stem: research
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/research.md
@@ -964,10 +993,10 @@ skills:
   - web search (if available in current IDE)
   cli_required: []
   cli_optional: []
-  lines: 99
-  h2_steps: 8
+  lines: 126
+  h2_steps: 9
   h3_subsections: 7
-  typical_token_cost: 736
+  typical_token_cost: 954
   typical_files_read:
   - _memory/sources-index.yaml
   - Sources/_cache/<*>/_summary.md`
@@ -1061,10 +1090,10 @@ skills:
   - imessage / whatsapp / signal / slack ingestors
   cli_required: []
   cli_optional: []
-  lines: 91
+  lines: 98
   h2_steps: 7
   h3_subsections: 4
-  typical_token_cost: 612
+  typical_token_cost: 714
   typical_files_read: []
   origin: framework
 - name: superagent-supertailor-review
@@ -1082,10 +1111,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 153
+  lines: 161
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2505
+  typical_token_cost: 2607
   typical_files_read:
   - _memory/supertailor-suggestions.yaml
   - _memory/contacts.yaml
@@ -1204,10 +1233,10 @@ skills:
   - any health / fitness ingestor (apple_health / whoop / strava / garmin / oura)
   cli_required: []
   cli_optional: []
-  lines: 206
+  lines: 214
   h2_steps: 17
   h3_subsections: 0
-  typical_token_cost: 1689
+  typical_token_cost: 1791
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md
@@ -1282,19 +1311,18 @@ skills:
   one_line: Query and rebuild the world graph (`_memory/world.yaml`). Answers "show me everything connected
     to X" in one cheap query instead of scanning multiple entity files.
   triggers:
-  - world
-  - related
-  - show me everything connected to
-  - what is linked to
-  - graph
-  - rebuild graph
+  - world graph
+  - rebuild graph / the graph
+  - show me everything connected to <entity>
+  - what is linked to <entity>
+  - what is related to <entity>
   mcp_required: []
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 90
+  lines: 89
   h2_steps: 4
   h3_subsections: 7
-  typical_token_cost: 630
+  typical_token_cost: 641
   typical_files_read: []
   origin: framework
