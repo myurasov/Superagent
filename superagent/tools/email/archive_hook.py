@@ -12,8 +12,8 @@ Wires the `mcp__gmail__send_email` / `mcp__gmail__read_email` /
 Reads a JSON payload from stdin (the IDE's hook envelope), dispatches
 to one capture function, and exits silently. The hook NEVER blocks the
 parent tool call — every error path returns exit 0 and logs to
-`.tmp/email_archive_hook.log` in the framework root for offline
-diagnosis.
+`~/.superagent/tmp/email_archive_hook.log` (machine-local root per
+`rules/machine-local-home.md`) for offline diagnosis.
 
 Privacy gate: `_memory/config.yaml.preferences.privacy.archive_emails`
 defaults to true; setting it false disables capture entirely (the
@@ -54,15 +54,22 @@ from superagent.tools.email import archive
 EXIT_OK = 0  # always; we never block the parent tool call.
 
 FRAMEWORK_ROOT = Path(__file__).resolve().parents[3]
-LOG_PATH = FRAMEWORK_ROOT / ".tmp" / "email_archive_hook.log"
+
+
+def _log_path() -> Path:
+    """Diagnostic log under the machine-local root (never inside the repo)."""
+    from superagent.tools.home import tmp_dir
+
+    return tmp_dir(ensure=False) / "email_archive_hook.log"
 
 
 def _log(message: str) -> None:
-    """Append a diagnostic line to `.tmp/email_archive_hook.log`. Never raises."""
+    """Append a diagnostic line to the machine-local hook log. Never raises."""
     try:
-        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        log_path = _log_path()
+        log_path.parent.mkdir(parents=True, exist_ok=True)
         ts = dt.datetime.now().astimezone().isoformat(timespec="seconds")
-        with LOG_PATH.open("a", encoding="utf-8") as fh:
+        with log_path.open("a", encoding="utf-8") as fh:
             fh.write(f"{ts}  {message}\n")
     except OSError:
         pass

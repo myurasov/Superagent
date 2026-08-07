@@ -128,7 +128,7 @@ The bridge at `superagent/tools/email/archive_hook.py`:
 - Reads the IDE's hook envelope from stdin (`tool_input` + `tool_response`).
 - Coerces the response — accepts a Gmail-API-shaped dict, an MCP `CallToolResult` content array, or the gongrzhe MCP's text format (e.g. `"Email sent successfully with ID: <id>"` or the `"Thread ID: ... Subject: ... From: ..."` block layout).
 - Calls into the right `archive.capture_*` helper.
-- **Never blocks the parent tool call.** All error paths return exit 0 and log to `.tmp/email_archive_hook.log` for offline diagnosis.
+- **Never blocks the parent tool call.** All error paths return exit 0 and log to `~/.superagent/tmp/email_archive_hook.log` (machine-local root per `rules/machine-local-home.md`) for offline diagnosis.
 
 Disable globally by setting `workspace/_memory/config.yaml.preferences.privacy.archive_emails: false` — the bridge reads the flag and exits silently when off.
 

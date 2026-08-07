@@ -39,29 +39,31 @@ Tool scripts under `superagent/tools/*.py` use a `uv run`-aware shebang so direc
 
 ---
 
-## 2. Non-Python tools — install under `./.tools/`
+## 2. Non-Python tools — install under `~/.superagent/tools/`
 
-- Any non-Python binary, CLI, helper, or self-contained tool installed to support this project MUST land under `./.tools/` at the repository root. The directory is gitignored.
-- Layout convention: `./.tools/<tool-name>/` (one folder per tool, plus a top-level `bin/` symlink directory if helpful).
+- Any non-Python binary, CLI, helper, or self-contained tool installed to support this project MUST land under the machine-local root at `~/.superagent/tools/` (`$SUPERAGENT_HOME` aware) per `rules/machine-local-home.md`. Binaries inside an iCloud-synced checkout churn the sync queue and are meaningless on another machine.
+- Layout convention: `~/.superagent/tools/<tool-name>/` (one folder per tool, plus a top-level `bin/` symlink directory if helpful).
+- The former repo-root `./.tools/` is deprecated **forward-only**: it stays gitignored as a safety net and pre-existing content is not migrated, but no new tool installs land there.
 - Do NOT install non-Python tools system-wide (`brew install`, `npm install -g`, `cargo install --root /usr/local`, `apt install`, etc.) from inside this project. Doing so silently mutates the host machine and violates Rule #4 below.
 - Document the install command in this rule doc or the project README rather than mutating system state. If the user wants a system-wide install, they will run it themselves.
 
 ---
 
-## 3. Temporary files — `./.tmp/` only
+## 3. Temporary files — `~/.superagent/tmp/` only
 
-- All scratch / temporary files produced by tools, scripts, agents, or interactive sessions MUST go under `./.tmp/` at the repository root. The directory is gitignored.
-- Do NOT write transient files to `/tmp`, `~/`, `$TMPDIR`, OS temp dirs (`TemporaryDirectory()` without an explicit `dir=` pointing inside the project), sibling repo dirs, iCloud paths, or any other path outside the project root.
-- When using `tempfile.TemporaryDirectory` / `tempfile.NamedTemporaryFile` in Python, pass `dir=Path(__file__).resolve().parents[N] / ".tmp"` (resolve N to the repo root) and ensure the directory exists.
-- `./.tmp/` is created lazily on first use; the agent does not pre-create it.
+- All scratch / temporary files produced by tools, scripts, agents, or interactive sessions MUST go under the machine-local transient root at `~/.superagent/tmp/` (`$SUPERAGENT_HOME` aware) per `rules/machine-local-home.md`. The repo lives in iCloud Drive; scratch inside the checkout enters the sync queue and breeds `name 2.ext` conflict copies.
+- Do NOT write transient files to `/tmp`, `$TMPDIR`, OS temp dirs (`TemporaryDirectory()` without an explicit `dir=`), the repo root, sibling repo dirs, or dotfiles in `$HOME` outside `~/.superagent/`.
+- In Python, import `from superagent.tools.home import tmp_dir` and pass `dir=tmp_dir()` to `tempfile.TemporaryDirectory` / `NamedTemporaryFile`; the helper creates the directory lazily.
+- The former repo-root `./.tmp/` is deprecated **forward-only**: it stays gitignored as a safety net and pre-existing content is not migrated, but no new scratch lands there.
+- Atomic-write sibling files (`<file>.tmp` next to the target, renamed into place) are NOT scratch — they stay next to their target by design.
 
 ### Browser automation outputs (browserctl) and MCP tool outputs
 
 Browser automation runs through `superagent/tools/browserctl.py` (the `browserctl` skill) — there is no Playwright MCP anymore.
 
-- **browserctl `snapshot` / `screenshot` `--out`** — bare filenames land in `~/.browserctl/out/<project>/` (machine-local, outside the repo), never the CWD. For a capture that must live inside the repo transiently, pass an explicit `.tmp/<descriptive-name>.<ext>` path. Captures worth keeping move explicitly to their durable home (`Sources/`, `Domains/<…>/Resources/`, `Projects/<…>/Resources/`).
+- **browserctl `snapshot` / `screenshot` `--out`** — bare filenames land in `~/.browserctl/out/<project>/` (machine-local, outside the repo), never the CWD. For a transient capture, pass an explicit `~/.superagent/tmp/<descriptive-name>.<ext>` path. Captures worth keeping move explicitly to their durable home (`Sources/`, `Domains/<…>/Resources/`, `Projects/<…>/Resources/`).
 - **browserctl state (`~/.browserctl/`)** — profiles, registry, logs, and default capture output live at `~/.browserctl/` ($BROWSERCTL_HOME aware). This is a **sanctioned exception** to the scope-discipline rule below: browser profiles must not live inside an iCloud-synced repo, and the home is shared machine-wide across browserctl-carrying frameworks. Everything under it is disposable and reconstructible; browserctl is the only tool that writes there.
-- **Any MCP tool that accepts a `filename` / `output_path` / `save_to`** — MCP servers default their working directory to the project root, so a bare filename lands at the repo root. Prefix with `.tmp/` unless the artifact has an explicit durable home.
+- **Any MCP tool that accepts a `filename` / `output_path` / `save_to`** — MCP servers default their working directory to the project root, so a bare filename lands at the repo root. Pass an absolute `~/.superagent/tmp/` path unless the artifact has an explicit durable home.
 
 ---
 
@@ -70,6 +72,7 @@ Browser automation runs through `superagent/tools/browserctl.py` (the `browserct
 - The agent MUST NOT install software, create files, or modify files outside the project folder unless the user explicitly asks for that specific action.
 - Forbidden write targets by default: the home directory, dotfiles in `$HOME`, `/usr/`, `/opt/`, `/etc/`, system paths, other repos on the same machine, iCloud-synced folders outside this repo, the user's global git config, shell rc files, etc.
 - Read access outside the project is fine. Write access outside is forbidden until the user explicitly authorizes it for the specific path or action.
+- **Sanctioned exceptions**: `~/.superagent/` (the machine-local transient root per `rules/machine-local-home.md`) and `~/.browserctl/` (browserctl state, § 3 above). Both are limited to disposable, reconstructible state; neither widens this rule for any other outside-repo path.
 - When in doubt, refuse and ask — surface the proposed change to the user with the exact path and command, and proceed only after confirmation.
 
 ---
@@ -134,12 +137,12 @@ This rule is enforced at three layers:
 
 ## Enforcement (other rules)
 
-The four rules above (#1 single-venv, #2 tools-under-dot-tools, #3 temp-under-dot-tmp, #4 scope-discipline) have no automatic enforcement yet; violations are caught in review or by the user. Pre-commit hook scope is currently ruff only.
+The four rules above (#1 single-venv, #2 tools-under-superagent-home, #3 temp-under-superagent-home, #4 scope-discipline) have no automatic enforcement yet; violations are caught in review or by the user. Pre-commit hook scope is currently ruff only.
 
 Future work (tracked in `docs/roadmap.md` if escalated):
 - Pre-commit hook that fails on `python3 superagent/tools/` invocations in committed files.
 - `tools/anti_patterns.py` rule that flags direct `python3 …` usage in skill markdown.
-- Self-test that asserts `./.tmp/` is the only writable temp path used by tools.
+- Self-test that asserts `~/.superagent/tmp/` is the only writable temp path used by tools.
 
 ---
 

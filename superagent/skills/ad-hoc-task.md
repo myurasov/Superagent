@@ -117,7 +117,8 @@ Boundaries — route elsewhere when one of these fits better:
   per `rules/development-tooling.md`. Do **not** create a venv inside the
   task folder — the repo usually sits in iCloud; if an isolated env or a
   large intermediate (model download, big log capture) is truly needed,
-  stage it under `./.tmp/` and promote only the keepers into the task
+  stage it under `~/.superagent/tmp/` (per `rules/machine-local-home.md`)
+  and promote only the keepers into the task
   folder.
 - **System setup / remote hosts**: show mutating or destructive commands
   before running them and confirm first — the scope-discipline safety rule

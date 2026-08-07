@@ -70,7 +70,7 @@ one sanctioned write location outside the project root (see
 - **Every profile belongs to a project.** The project id is auto-derived from the git-root
   folder name (this repo → `my-superagent`) or forced with `--project` / `$BROWSERCTL_PROJECT`.
   Two projects never share profiles, ports, or logins — the `~/.browserctl/` home is shared
-  machine-wide across frameworks (Solaris, Co-SA, Superagent) by design.
+  machine-wide across every browserctl-carrying framework on the machine by design.
 - **Profiles start clean.** A missing profile is created as an empty user-data dir on first
   `launch` — no logins inherited from anywhere. The standing profile is `default`.
 - **Ephemeral on demand:** `launch --ephemeral` marks the profile disposable — `stop` deletes it
@@ -146,8 +146,8 @@ with bctl.attach("default") as (pw, browser):
     # downloads: with page.expect_download() as dl: ...; dl.value.save_as(...)
 ```
 
-Run such scripts with `uv run --no-project --with playwright python <script>` from `./.tmp/` —
-never leave them in the repo root. `attach()` disconnects on exit; the browser keeps running.
+Run such scripts with `uv run --no-project --with playwright python <script>` from
+`~/.superagent/tmp/` (per `rules/machine-local-home.md`) — never leave them in the repo root. `attach()` disconnects on exit; the browser keeps running.
 
 For SPA-heavy sites (Gmail, bank portals, utility dashboards, ...) always `page.goto(url,
 wait_until="domcontentloaded")` — such apps often never fire `load` and the default wait times
@@ -182,7 +182,7 @@ re-learn the app's login flow, layout, and quirks:
 3. **Clone/theme only against a closed browser.** `clone` refuses a running source; `Singleton*`
    lock files are never copied (browserctl strips them, and clears stale ones on launch).
 4. **Keep the repo clean.** Snapshots/screenshots default to `~/.browserctl/out/<project>/`;
-   transient captures inside the repo go under `./.tmp/` only.
+   transient captures go under `~/.superagent/tmp/`, never inside the repo.
 5. Run `prune` at natural hygiene points (end of a sweep, `doctor` runs) so ephemeral profiles
    do not accumulate.
 6. `~/.browserctl/` is reconstructible (re-create + re-auth); nothing under it is a source of

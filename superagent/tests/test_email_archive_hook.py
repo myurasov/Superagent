@@ -24,11 +24,11 @@ from superagent.tools.email import archive, archive_hook
 @pytest.fixture
 def ws(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Return a workspace root with `_memory/` pre-created. Routes the
-    hook's `.tmp` log to a tmp path so tests don't litter the framework
-    .tmp directory."""
+    hook's diagnostic log (machine-local root) to a tmp path so tests
+    don't touch the real ~/.superagent/."""
     workspace = tmp_path / "workspace"
     (workspace / "_memory").mkdir(parents=True)
-    monkeypatch.setattr(archive_hook, "LOG_PATH", tmp_path / "hook.log")
+    monkeypatch.setenv("SUPERAGENT_HOME", str(tmp_path / "sa-home"))
     return workspace
 
 
@@ -282,7 +282,7 @@ def test_malformed_stdin_is_silent_noop(
 def test_missing_workspace_is_silent_noop(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setattr(archive_hook, "LOG_PATH", tmp_path / "hook.log")
+    monkeypatch.setenv("SUPERAGENT_HOME", str(tmp_path / "sa-home"))
     envelope = {
         "tool_name": "mcp__gmail__send_email",
         "tool_input": {"to": ["x"], "subject": "S", "body": "B"},
