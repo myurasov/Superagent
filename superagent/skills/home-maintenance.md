@@ -7,7 +7,8 @@ description: >-
 triggers:
   - home maintenance
   - what's due on the house
-  - log <maintenance task>
+  - log a <maintenance task>
+  - log home maintenance
   - schedule home-maintenance
 mcp_required: []
 mcp_optional:

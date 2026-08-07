@@ -5,12 +5,11 @@ description: >-
   "show me everything connected to X" in one cheap query instead of
   scanning multiple entity files.
 triggers:
-  - world
-  - related
-  - show me everything connected to
-  - what is linked to
-  - graph
-  - rebuild graph
+  - world graph
+  - rebuild graph / the graph
+  - show me everything connected to <entity>
+  - what is linked to <entity>
+  - what is related to <entity>
 mcp_required: []
 mcp_optional: []
 cli_required: []

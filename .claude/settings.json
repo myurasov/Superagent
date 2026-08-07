@@ -16,7 +16,15 @@
     "bridge reads the hook envelope from stdin, dispatches to the right",
     "archive.capture_* helper, and always exits 0 (never blocks the",
     "parent tool call). Disable by setting workspace/_memory/config.yaml",
-    "preferences.privacy.archive_emails: false."
+    "preferences.privacy.archive_emails: false.",
+    "",
+    "UserPromptSubmit (second hook) -> Superagent's skill auto-loader.",
+    "Matches the prompt against every skill's frontmatter triggers",
+    "(superagent/skills/ + workspace/_custom/skills/) and injects the",
+    "matching skill (or a compact pointer + step index for long skills)",
+    "deterministically. Claude Code only (Cursor hooks cannot add",
+    "context). Fail-safe: always exits 0. Disable by setting",
+    "workspace/_memory/config.yaml preferences.skill_autoload: false."
   ],
   "hooks": {
     "UserPromptSubmit": [
@@ -25,6 +33,10 @@
           {
             "type": "command",
             "command": "uv run python superagent/tools/log_user_query.py --source claude-code"
+          },
+          {
+            "type": "command",
+            "command": "uv run python -m superagent.tools.skill_loader"
           }
         ]
       }
