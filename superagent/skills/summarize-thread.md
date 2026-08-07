@@ -18,6 +18,13 @@ cli_optional: []
 
 # Superagent summarize-thread skill
 
+> **Bulk reads** (`rules/subagent-bulk-reads.md`): any lookup expected to pull more
+> than ~20k tokens of raw tool results (multi-entity sweeps, whole email thread
+> trees, long histories or archives) runs in a subagent (`Explore` read-only /
+> `general-purpose` if it must write) that returns only the synthesis — named
+> facts, quotes, `file:line` pointers — never raw dumps into the main transcript.
+
+
 > **Pre-flight (email-capture contract — `contracts/email-capture.md`)**:
 > Before any `mcp_user-gmail_read_email` / `mcp_user-gmail_search_emails`
 > call, scan the local archive via `superagent.tools.email.archive.find` or
