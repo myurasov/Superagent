@@ -62,9 +62,9 @@ Run `uv run python -m superagent.tools.ingest._orchestrator setup` to probe ever
 
 These MCPs do not ingest personal-life data into Superagent, but they are useful workspace companions for setup, verification, and debugging.
 
-- **Playwright MCP** - browser automation for live page checks, screenshots, accessibility snapshots, and web smoke tests.
-  - **Install**: add the `playwright` server from `.mcp.json.example` to `.cursor/mcp.json`; it runs `npx -y @playwright/mcp@latest`.
-  - **Probe**: navigate to a known public URL, such as `https://www.google.com`, and confirm the page title or accessibility snapshot returns.
+- **browserctl CLI** (not an MCP) - browser automation for live page checks, screenshots, accessibility snapshots, and web smoke tests. Replaces the former Playwright MCP.
+  - **Install**: nothing to add to MCP config; the tool ships at `superagent/tools/browserctl.py` (see the `browserctl` skill). One-time per machine: `uv run --with playwright playwright install chromium`.
+  - **Probe**: `uv run superagent/tools/browserctl.py launch --profile default --headless --url https://www.google.com` then `snapshot`, and confirm the page title returns; `stop` when done.
 
 ---
 

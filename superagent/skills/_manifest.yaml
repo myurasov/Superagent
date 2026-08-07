@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-07-26T07:14:08-07:00'
-skill_count: 52
+generated_at: '2026-08-07T01:20:23-07:00'
+skill_count: 53
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -342,6 +342,32 @@ skills:
   - _memory/bills.yaml
   - _memory/accounts-index.yaml
   - _memory/transactions.yaml
+  origin: framework
+- name: superagent-browserctl
+  stem: browserctl
+  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/browserctl.md
+  one_line: Drive Chromium through the `browserctl` CLI (`superagent/tools/browserctl.py`) — per-project
+    persistent profiles on stable CDP ports, clean on first use, ephemeral on demand. Replaces the Playwright
+    M
+  triggers:
+  - launch a browser
+  - open the browser
+  - browser profile / new browser profile / ephemeral browser
+  - browserctl
+  - drive the web / browser automation
+  - take a page snapshot / screenshot the page
+  - check this web page / log into <site> for me
+  mcp_required: []
+  mcp_optional: []
+  cli_required:
+  - uv
+  cli_optional:
+  - playwright (Chromium install — one-time `uv run --with playwright playwright install chromium`)
+  lines: 173
+  h2_steps: 7
+  h3_subsections: 0
+  typical_token_cost: 2469
+  typical_files_read: []
   origin: framework
 - name: superagent-daily-update
   stem: daily-update

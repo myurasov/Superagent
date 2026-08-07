@@ -152,6 +152,7 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 | **projects** | List, show, complete, pause, resume, cancel, archive Projects. Per-project burn-down. |
 | **sources** | List, search, fetch (through cache), refresh the Sources/ library. |
 | **ad-hoc-task** | Start / resume an ad-hoc task (investigation, setup, research, engineering scratch with no Domain/Project home) under a dated folder `tasks/<YYYY>/<MM>/<YYYY-MM-DD>-<slug>/` at the repo root — outside `workspace/`. |
+| **browserctl** | Launch and drive Chromium via the `browserctl` CLI — per-project persistent profiles on stable CDP ports, snapshots / screenshots / eval. Replaces the Playwright MCP (Chromium only). Per-web-app driving knowledge accumulates in `workspace/_custom/skills/browserctl-<app>.skill.md`. |
 | **log-event** | One-shot capture: "log this medical visit", "log this car service", "log this home repair" — appends to the right `history.md` and updates indexes. |
 | **health-log** | Log a symptom / med change / vital reading; rolls into `health-records.yaml`. |
 | **vehicle-log** | Log a service / fuel-up / mileage reading; rolls into the vehicle's `history.md`. |

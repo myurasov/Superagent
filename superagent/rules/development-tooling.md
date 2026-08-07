@@ -55,14 +55,13 @@ Tool scripts under `superagent/tools/*.py` use a `uv run`-aware shebang so direc
 - When using `tempfile.TemporaryDirectory` / `tempfile.NamedTemporaryFile` in Python, pass `dir=Path(__file__).resolve().parents[N] / ".tmp"` (resolve N to the repo root) and ensure the directory exists.
 - `./.tmp/` is created lazily on first use; the agent does not pre-create it.
 
-### MCP tool outputs (Playwright, etc.)
+### Browser automation outputs (browserctl) and MCP tool outputs
 
-MCP servers default their working directory to the project root, so a bare filename like `screenshot.png` lands at the repo root — **NOT** in `./.tmp/`. The same rule applies; the burden is on the caller to route the output explicitly.
+Browser automation runs through `superagent/tools/browserctl.py` (the `browserctl` skill) — there is no Playwright MCP anymore.
 
-- **Playwright `browser_take_screenshot`** — always pass `filename: ".tmp/<descriptive-name>.png"`. Never a bare filename.
-- **Playwright `browser_pdf_save`, `browser_evaluate` (`filename` arg), `browser_snapshot` (`filename` arg)** — same: prefix with `.tmp/`.
-- **Any future MCP tool that accepts a `filename` / `output_path` / `save_to`** — prefix with `.tmp/` unless the artifact has an explicit durable home (`Sources/`, `Outbox/`, `Domains/<…>/Resources/`, `Projects/<…>/Resources/`).
-- The `.playwright-mcp/` directory under the project root is the Playwright MCP server's own state dir (snapshots, console logs, profile) — it is gitignored and managed by the MCP itself. **Do not write user-facing artifacts (screenshots, PDFs, evaluate output) into it.** Those go to `.tmp/` like everything else transient.
+- **browserctl `snapshot` / `screenshot` `--out`** — bare filenames land in `~/.browserctl/out/<project>/` (machine-local, outside the repo), never the CWD. For a capture that must live inside the repo transiently, pass an explicit `.tmp/<descriptive-name>.<ext>` path. Captures worth keeping move explicitly to their durable home (`Sources/`, `Domains/<…>/Resources/`, `Projects/<…>/Resources/`).
+- **browserctl state (`~/.browserctl/`)** — profiles, registry, logs, and default capture output live at `~/.browserctl/` ($BROWSERCTL_HOME aware). This is a **sanctioned exception** to the scope-discipline rule below: browser profiles must not live inside an iCloud-synced repo, and the home is shared machine-wide across browserctl-carrying frameworks. Everything under it is disposable and reconstructible; browserctl is the only tool that writes there.
+- **Any MCP tool that accepts a `filename` / `output_path` / `save_to`** — MCP servers default their working directory to the project root, so a bare filename lands at the repo root. Prefix with `.tmp/` unless the artifact has an explicit durable home.
 
 ---
 
@@ -102,7 +101,7 @@ Ruff config lives in the root `pyproject.toml` under `[tool.ruff]`:
 
 - `target-version = "py312"` — mirrors `requires-python` so lint targets the same interpreter as the runtime.
 - `line-length = 100` — the project's chosen wrap width.
-- `extend-exclude` — `.venv`, `.tools`, `.tmp`, `.playwright-*`, and `workspace/` (user data is out of framework-lint scope).
+- `extend-exclude` — `.venv`, `.tools`, `.tmp`, and `workspace/` (user data is out of framework-lint scope).
 - `select = ["E", "F", "W", "I", "UP", "B", "SIM"]` — pycodestyle errors + pyflakes + warnings + isort + pyupgrade + bugbear + flake8-simplify.
 - `ignore = ["E501", "B008", "SIM102", "SIM103", "SIM108"]` — line-length is enforced by the formatter not lint; `Path(...)` defaults in argparse are intentional; the three SIM rules ignored are pure style preferences (nested-if vs collapse, ternary vs if-else).
 - Per-file ignores relax `F811` for `superagent/tests/**` (pytest fixtures register by name).
