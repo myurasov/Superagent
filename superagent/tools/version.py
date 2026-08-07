@@ -278,11 +278,18 @@ def find_chain(
     cursor = fv
     for entry in candidates:
         if entry.from_v != cursor:
-            raise ValueError(
-                f"chain broken at {entry.to_version}: expected from_version "
-                f"{cursor}, got {entry.from_version} (manifest "
-                "out-of-order or missing intermediate migration)"
-            )
+            # A PATCH-sized gap between the cursor and the entry's declared
+            # from_version is fine in either direction: PATCH releases never
+            # carry a migration (per `contracts/versioning.md` § 4 step 8),
+            # so e.g. a 0.7.0 migration declaring from_version 0.6.7 still
+            # chains after a manifest whose last entry landed at 0.6.1.
+            lo, hi = sorted((entry.from_v, cursor))
+            if bump_kind(lo, hi) != "patch":
+                raise ValueError(
+                    f"chain broken at {entry.to_version}: expected from_version "
+                    f"{cursor}, got {entry.from_version} (manifest "
+                    "out-of-order or missing intermediate migration)"
+                )
         chain.append(entry)
         cursor = entry.to_v
 
