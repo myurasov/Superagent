@@ -45,10 +45,8 @@ REQUIRED_MEMORY_TEMPLATES = [
     "world.yaml",
     "decisions.yaml",
     "tags.yaml",
-    "notification-policy.yaml",
-    "outbox-log.yaml",
     "events.yaml",
-    "working-sets.yaml",
+    "outbox-log.yaml",
     "upstream-writes.yaml",
 ]
 
@@ -168,69 +166,6 @@ def test_ref_template_exists(framework_dir: Path) -> None:
         assert field in body, f"ref.md template missing field {field!r}"
 
 
-def test_workflow_templates_present(framework_dir: Path) -> None:
-    """The 5 starter workflow templates ship with a schema reference."""
-    wf_dir = framework_dir / "templates" / "workflows"
-    assert wf_dir.is_dir()
-    expected = {
-        "_schema.yaml", "tax-filing.yaml", "trip-planning.yaml",
-        "annual-health-tuneup.yaml", "job-search.yaml", "appliance-replacement.yaml",
-    }
-    present = {p.name for p in wf_dir.glob("*.yaml")}
-    missing = expected - present
-    assert not missing, f"missing workflow templates: {sorted(missing)}"
-
-
-def test_workflow_templates_parse_with_required_fields(framework_dir: Path) -> None:
-    """Every workflow template parses + carries its required top-level fields."""
-    wf_dir = framework_dir / "templates" / "workflows"
-    for path in sorted(wf_dir.glob("*.yaml")):
-        if path.name == "_schema.yaml":
-            continue
-        with path.open() as fh:
-            data = yaml.safe_load(fh)
-        assert isinstance(data, dict), f"{path.name}: not a mapping"
-        for field in ("schema_version", "id", "name", "goal",
-                      "success_criteria", "seed_tasks"):
-            assert field in data, f"{path.name}: missing field {field!r}"
-
-
-def test_playbooks_present(framework_dir: Path) -> None:
-    """Starter playbooks ship at framework root."""
-    pb_dir = framework_dir / "playbooks"
-    assert pb_dir.is_dir(), "missing superagent/playbooks/"
-    expected = {
-        "_schema.yaml", "start-of-day.yaml", "end-of-week.yaml",
-        "tax-prep-season.yaml", "pre-trip-week.yaml",
-        "health-checkup-quarter.yaml",
-    }
-    present = {p.name for p in pb_dir.glob("*.yaml")}
-    missing = expected - present
-    assert not missing, f"missing playbook(s): {sorted(missing)}"
-
-
-def test_playbooks_parse_with_required_fields(framework_dir: Path) -> None:
-    """Every playbook parses + carries its required top-level fields."""
-    pb_dir = framework_dir / "playbooks"
-    for path in sorted(pb_dir.glob("*.yaml")):
-        if path.name == "_schema.yaml":
-            continue
-        with path.open() as fh:
-            data = yaml.safe_load(fh)
-        assert isinstance(data, dict), f"{path.name}: not a mapping"
-        for field in ("schema_version", "name", "trigger", "steps"):
-            assert field in data, f"{path.name}: missing field {field!r}"
-        assert isinstance(data["steps"], list)
-
-
-def test_notification_policy_seeds_default_rules(framework_dir: Path) -> None:
-    """The notification-policy template must carry default rules."""
-    p = framework_dir / "templates" / "memory" / "notification-policy.yaml"
-    with p.open() as fh:
-        data = yaml.safe_load(fh)
-    assert isinstance(data, dict)
-    defaults = data.get("default_rules") or []
-    assert len(defaults) >= 8, "expected at least 8 seeded default rules"
 
 
 def test_world_template_has_node_and_edge_lists(framework_dir: Path) -> None:

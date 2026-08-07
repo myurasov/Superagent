@@ -109,7 +109,7 @@ Superagent's core operating principle: **know as much as possible, fetch as litt
 
 - Ask first: "what is the minimum local read I need to answer this well?" Answer with that, not more.
 - Default to the local-first read order (`contracts/local-first-read-order.md`): index → cache → narrative → events stream → live source. Step out to live MCPs / CLIs only when the local read is genuinely insufficient AND freshness genuinely matters AND the user's window extends past `last_ingest`.
-- Don't probe data sources, don't enrich entities the user didn't ask about, don't run the daily-update sweep just because you happened to open the workspace. Sweeps run on cadence (per `contracts/update-cadences.md`); ad-hoc requests answer ad-hoc requests.
+- Don't probe data sources, don't enrich entities the user didn't ask about, don't run the daily-update sweep just because you happened to open the workspace. Sweeps run on cadence (per the cadence skills: `whatsup`, `daily-update`, `weekly-review`, `monthly-review`); ad-hoc requests answer ad-hoc requests.
 - The `tools/anti_patterns.py` scanner flags skills that violate the lean-discovery posture (whole-file reads of long files, sequential MCP chains, redundant fetches). The Supertailor's strategic pass surfaces persistent violations.
 
 **2. Retention is opportunistic.** Anything Superagent legitimately encountered while doing its work — a new contact mentioned in an email read for another reason, a phone number on a receipt opened to answer a different question, a new domain implied by a recurring pattern, a new tag worth registering — gets captured to its proper home. The user does not have to surface the same fact twice.

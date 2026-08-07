@@ -18,14 +18,6 @@ contracts:
     slug: ingestion
     title: "Data Ingestion Contract"
     path: contracts/ingestion.md
-  - id: C-03
-    slug: init-flow
-    title: "Init flow"
-    path: contracts/init-flow.md
-  - id: C-04
-    slug: update-cadences
-    title: "Update Cadences"
-    path: contracts/update-cadences.md
   - id: C-05
     slug: task-management
     title: "Task Management (todo skill)"
@@ -42,14 +34,6 @@ contracts:
     slug: surfacing
     title: "Surfacing Contracts"
     path: contracts/surfacing.md
-  - id: C-09
-    slug: memory-persistence
-    title: "Memory Persistence Model"
-    path: contracts/memory-persistence.md
-  - id: C-10
-    slug: workspace-path
-    title: "Workspace Path Configuration"
-    path: contracts/workspace-path.md
   - id: C-11
     slug: custom-overlay
     title: "Custom Overlay Discovery"
@@ -94,10 +78,6 @@ contracts:
     slug: sensitive-tier
     title: "Sensitive Tier Contract"
     path: contracts/sensitive-tier.md
-  - id: C-22
-    slug: hierarchies
-    title: "Hierarchies Contract (sub-domains / sub-projects)"
-    path: contracts/hierarchies.md
   - id: C-23
     slug: tags
     title: "Tags Contract"
@@ -106,18 +86,6 @@ contracts:
     slug: world-graph
     title: "World Graph Contract"
     path: contracts/world-graph.md
-  - id: C-25
-    slug: workflows
-    title: "Workflows Contract"
-    path: contracts/workflows.md
-  - id: C-26
-    slug: playbooks
-    title: "Playbooks Contract"
-    path: contracts/playbooks.md
-  - id: C-27
-    slug: scenarios
-    title: "Scenarios Contract"
-    path: contracts/scenarios.md
   - id: C-28
     slug: decisions
     title: "Decisions Log Contract"
@@ -130,26 +98,6 @@ contracts:
     slug: audit-trail
     title: "Audit Trail Contract"
     path: contracts/audit-trail.md
-  - id: C-31
-    slug: notification-policy
-    title: "Notification Policy Contract"
-    path: contracts/notification-policy.md
-  - id: C-32
-    slug: briefing-cache
-    title: "Briefing Cache Contract"
-    path: contracts/briefing-cache.md
-  - id: C-33
-    slug: session-scratchpad
-    title: "Per-session Scratchpad Contract"
-    path: contracts/session-scratchpad.md
-  - id: C-34
-    slug: working-set
-    title: "Working-set Contract"
-    path: contracts/working-set.md
-  - id: C-35
-    slug: snapshot-diff
-    title: "Snapshot Diff Contract"
-    path: contracts/snapshot-diff.md
   - id: C-36
     slug: outbox-lifecycle
     title: "Outbox Lifecycle Contract"
@@ -178,3 +126,7 @@ contracts:
     slug: email-capture
     title: "Email Capture Contract"
     path: contracts/email-capture.md
+  - id: C-43
+    slug: domain-reflection
+    title: "Domain Reflection (ingestor-refreshed marker blocks)"
+    path: contracts/domain-reflection.md

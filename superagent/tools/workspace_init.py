@@ -251,13 +251,10 @@ def init_internal_dirs(workspace: Path, dry_run: bool, log: list[str]) -> int:
     capture skills + ingestors) and `events/` (events stream, written by
     `tools/log_window.py`).
 
-    Lazy (NOT created here): `_briefings/`, `_artifacts/`, `_session/`,
-    `_telemetry/`, `_checkpoints/`. Each is created by its writer on
+    Reserved (NOT created here): `_briefings/`. Would be created by a writer on
     first use (the writers all `mkdir(parents=True, exist_ok=True)`),
     so an empty directory after init no longer means a feature is
     silently broken — it means the writer hasn't run yet (or for
-    `_telemetry/` and `_checkpoints/`, the writer hasn't shipped at
-    all). Re-add an entry below ONLY when its writer is wired into a
     skill that runs in normal use.
     """
     internal = [

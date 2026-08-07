@@ -6,7 +6,7 @@ Implements superagent/docs/_internal/ideas-better-structure.md item #20. Canonic
 
 **Kinds** (lowercase singular; see `tools/handles.py.KINDS`):
 
-`contact`, `account`, `asset`, `bill`, `subscription`, `appointment`, `important_date`, `document`, `domain`, `project`, `source`, `medication`, `vital`, `task`, `health_visit`, `decision`, `tag`, `event`, `skill`, `workflow`, `playbook`, `scenario`, `other`.
+`contact`, `account`, `asset`, `bill`, `subscription`, `appointment`, `important_date`, `document`, `domain`, `project`, `source`, `medication`, `vital`, `task`, `health_visit`, `decision`, `tag`, `event`, `skill`, `other`.
 
 **Slugs**: lowercase, hyphenated, no punctuation (per `tools/handles.py.slug_for(name)`).
 

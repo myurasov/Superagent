@@ -7,7 +7,7 @@ Lives inside a `Domains/<domain>/` or `Projects/<project>/` folder. Created lazi
 The **process layer**, not the **canonical layer**. Things that:
 
 - You produced or captured for your own working purposes (drafts, sketches, photos-as-references).
-- The agent generated for this domain / project that aren't meant to be sent anywhere (auto-rendered briefings, charts, scenario simulations, scratch summaries).
+- The agent generated for this domain / project that aren't meant to be sent anywhere (auto-rendered briefings, charts, one-off simulations, scratch summaries).
 - You're actively iterating on (drafts of an email you'll send later, worksheets, half-finished checklists).
 - Document state for a moment in time but aren't long-term records (a photo of an HVAC label so you remember the model number once it's transcribed into `info.md` § Key Facts; a before/after photo of a repair).
 

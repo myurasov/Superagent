@@ -65,7 +65,6 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 │   │   └── todo.md                 ← scoped task-view template
 │   ├── tools/                      ← workspace_init, validate, render_status, world, audit, …
 │   │   └── ingest/                 ← _base, _registry, _orchestrator, _stubs, per-source ingestors
-│   ├── playbooks/                  ← starter playbooks (sequences of skills with conditions)
 │   ├── tests/                      ← pytest; runs against templates + tools + skills
 │   └── docs/                       ← this file + faq, data-sources, domain-guide, roadmap
 │       └── _internal/              ← Supertailor-only planning + history
@@ -73,7 +72,6 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 └── workspace/                      ← user data (gitignored; created by init)
     ├── _memory/                    ← YAML indexes (the structured-state vault)
     ├── _custom/                    ← per-user overlay (additive; rules / skills / templates)
-    │   (designed: _memory/_checkpoints/<date>/ daily memory snapshots — see roadmap.md S-27)
     ├── Domains/                    ← per-domain folders (ongoing responsibilities)
     │   └── <Domain>/               ←   info.md / status.md / history.md / rolodex.md / sources.md
     │       └── Resources/          ←     drafts / working files / agent artifacts (lazy)
@@ -121,7 +119,7 @@ The two layers serve different access patterns:
 | `personal-signals.yaml` | self-development feedback (capture + surface) | `personal-signals`, `weekly-review`, Supertailor |
 | `action-signals.yaml` | "this should change" signals (target: tailor / superagent) | every skill (capture); Supertailor (drain) |
 | `supertailor-suggestions.yaml` | Supertailor's framework-improvement backlog | Supertailor, Supercoder |
-| `procedures.yaml` | personal playbooks | `research`, ad-hoc retrieval |
+| `procedures.yaml` | personal procedures | `research`, ad-hoc retrieval |
 | `insights.yaml` | distilled learnings | `research`, ad-hoc retrieval |
 
 **Narrative (markdown in `Domains/<domain>/`)** — when the agent needs to recall context, explain a situation, or write something for a human:
@@ -270,11 +268,10 @@ Built-in multi-user / sync is on the roadmap (LOE-L: "Multi-user vault with last
 | Project templates | 5-file with charter; can be instantiated from a workflow |
 | Sources templates | `.ref.md` template + `Sources/` folder convention with cache |
 | Workflow templates | 5 starter workflows + `_schema.yaml` |
-| Playbooks | 5 starter playbooks + `_schema.yaml` |
 | Skills | ~50 skills documented + indexed in `skills/_manifest.yaml`; long ones carry an auto-generated step index |
 | Contracts | 39 multi-actor contracts under `contracts/`, indexed by `contracts/_manifest.yaml` |
 | Rules | machine-readable rule catalogues (anti-patterns shipped) + `workspace/_custom/rules/` user overlay |
-| Tools | 19 shipped + tested (workspace_init, validate, render_status, world, sources_cache, briefing_cache, log_window, audit, play, scenarios, inbox_triage, anti_patterns, ...) |
+| Tools | ~30 shipped + tested (workspace_init, validate, render_status, world, sources_cache, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, ...) |
 | Ingestor framework | `IngestorBase`, registry of 27 sources, orchestrator CLI, stub fall-back, 2 reference ingestors shipped (`apple_reminders`, `csv`) |
 | World graph | `_memory/world.yaml` derived state; `tools/world.py related <handle>` |
 | Events stream | quarterly-partitioned `_memory/events/<YYYY-Qn>.yaml`; cross-entity timeline queries |

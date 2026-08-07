@@ -14,7 +14,7 @@ When the agent creates, renames, or moves a file or folder anywhere under `works
 
 This applies to:
 
-- Files the agent generates (Sources/, Domains/, Projects/, Outbox/, `_memory/_artifacts/`, anywhere).
+- Files the agent generates (Sources/, Domains/, Projects/, Outbox/, anywhere under `_memory/`).
 - Files the agent renames as part of a move (e.g. filing an `Inbox/` drop with a descriptive name).
 - New folders the agent creates (e.g. a new institution folder under `Sources/Finances/`).
 - Any path component the agent constructs from a template or skill.
@@ -90,9 +90,6 @@ When generating a path from a user-supplied string (e.g. an email subject, a con
 | `_summary.md` | Agent-generated folder summary. Captures OCR / extraction of nearby files so future skills don't re-OCR. |
 | `_meta.yaml` | Cache-row metadata (under `_cache/<hash>/`). |
 | `_toc.yaml` | Cache-row chunk table-of-contents (under `_cache/<hash>/`). |
-| `_artifacts/` | Briefing-cache + skill working-state (under `_memory/`). |
-| `_checkpoints/` | Memory snapshots (under `_memory/`). |
-| `_telemetry/` | Per-turn telemetry (under `_memory/`). |
 | `_custom/` | Per-user overlay (under `workspace/`). |
 
 When slugifying or sweep-renaming, the agent MUST preserve a single leading `_` if the original name began with `_`. Trim only EXCESS leading underscores (`___foo` → `_foo`). The right-side trim of `_` and `-` continues to apply normally.

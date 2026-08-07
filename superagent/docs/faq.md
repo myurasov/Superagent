@@ -141,11 +141,10 @@ Multiple safety nets:
 - **The hard safeguard.** The Supertailor / Supercoder loop has a token-scan that prevents personal data from accidentally leaking into committed framework code, regardless of what the AI thinks.
 - **Plain-text data.** Worst case, you open the file in any editor and fix it manually. There's nothing the agent does that you can't undo.
 
-> **Not yet shipped:** a daily auto-snapshot of `_memory/` to `_memory/_checkpoints/<date>/` is designed (`contracts/snapshot-diff.md`, `roadmap.md` § S-27) but the writer doesn't exist today. If you want a coarse rollback target right now, `cp -R workspace/_memory workspace/_memory.<date>` before risky operations, or sync `workspace/` to a versioning backup (Time Machine / iCloud-Drive history).
 
 ## Why are some skills / ingestors not implemented yet?
 
-The framework ships with ~50 skills documented as markdown instruction sets, ~20 Python tools (workspace_init, validate, render_status, log_user_query, world, sources_cache, briefing_cache, log_window, audit, play, scenarios, inbox_triage, anti_patterns, …), and the ingest base + orchestrator + 2 reference ingestors (`apple_reminders`, `csv`).
+The framework ships with ~49 skills documented as markdown instruction sets, ~30 Python tools (workspace_init, validate, render_status, log_user_query, world, sources_cache, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, …), and the ingest base + orchestrator + 2 reference ingestors (`apple_reminders`, `csv`).
 
 Most of the **per-source ingestors are stubs** that return NEEDS_SETUP from `probe()`. The roadmap (`roadmap.md`) prioritizes which to implement first based on user value: gmail, google_calendar, apple_health, plaid are the top of LOE-S.
 

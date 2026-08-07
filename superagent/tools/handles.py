@@ -35,8 +35,8 @@ KINDS = frozenset({
     "contact", "account", "asset", "bill", "subscription",
     "appointment", "important_date", "document", "domain", "project",
     "source", "medication", "vital", "task", "health_visit",
-    "decision", "tag", "event", "skill", "workflow", "playbook",
-    "scenario", "other",
+    "decision", "tag", "event", "skill",
+    "other",
 })
 
 # Common legacy prefixes some ids carry; the parser folds them into kinds.

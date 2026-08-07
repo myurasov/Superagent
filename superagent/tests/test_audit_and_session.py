@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for `tools/audit.py` and `tools/session_scratch.py`."""
+"""Tests for `tools/audit.py`."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -55,31 +55,4 @@ def test_audit_skips_listed_files(initialized_workspace: Path) -> None:
     assert not history_path(target).exists()
 
 
-def test_session_record_and_check(initialized_workspace: Path, tmp_path: Path) -> None:
-    from superagent.tools.session_scratch import (
-        derive_session_id,
-        is_already_loaded,
-        record_read,
-    )
 
-    sid = derive_session_id()
-    target = tmp_path / "doc.txt"
-    target.write_text("hello world\n")
-    record_read(initialized_workspace, sid, target)
-    assert is_already_loaded(initialized_workspace, sid, target)
-    target.write_text("changed\n")
-    assert not is_already_loaded(initialized_workspace, sid, target)
-
-
-def test_session_list(initialized_workspace: Path) -> None:
-    from superagent.tools.session_scratch import (
-        derive_session_id,
-        list_sessions,
-        record_read,
-    )
-
-    sid = derive_session_id()
-    sample = initialized_workspace / "_memory" / "config.yaml"
-    record_read(initialized_workspace, sid, sample)
-    sessions = list_sessions(initialized_workspace)
-    assert any(s["session_id"] == sid for s in sessions)

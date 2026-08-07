@@ -304,7 +304,7 @@ inspects state and computes chains. Application is the skill's job
 
 ## 6. Integration with other contracts
 
-- **`contracts/init-flow.md`** — `init` writes `workspace/.version`
+- **`skills/init.md`** — `init` writes `workspace/.version`
   matching the current framework version after scaffolding succeeds.
 - **`contracts/local-first-read-order.md`** — workspace-open hook
   in `AGENTS.md` checks `.version` BEFORE step 1 of the read order, so

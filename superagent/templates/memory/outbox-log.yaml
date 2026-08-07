@@ -33,7 +33,6 @@ artifacts:
   #   sealed          — bool; once true, file is immutable.
   #   sealed_hash     — sha256 of the file contents at seal time.
   #   inputs_hash     — sha256 of the source files that produced this artifact
-  #                      (used by briefing-cache invalidation).
   #   ttl_minutes     — How long this artifact stays useful (for caches).
   #   created_at      — ISO 8601.
   #   last_updated    — ISO 8601.

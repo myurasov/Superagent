@@ -28,10 +28,11 @@ EXPECTED_SKILLS = {
     "ingest",
     "personal-signals", "supertailor-review", "doctor", "triage-overdue", "handoff",
     # Added by the second-pass implementation:
-    "inbox-triage", "tags", "decisions", "play", "scenarios",
+    "inbox-triage", "tags",
     "world", "events", "audit",
-    # Project-manager-angle review of personal-life Projects.
-    "pm-review",
+    # Later additions:
+    "migrate", "domain-suggest", "workbooks", "browserctl",
+    "ad-hoc-task", "refresh",
 }
 
 

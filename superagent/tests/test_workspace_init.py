@@ -23,8 +23,8 @@ EXPECTED_MEMORY_FILES = [
     "health-records.yaml", "data-sources.yaml", "ingestion-log.yaml",
     "insights.yaml", "procedures.yaml", "personal-signals.yaml",
     "action-signals.yaml", "supertailor-suggestions.yaml",
-    "world.yaml", "decisions.yaml", "tags.yaml", "notification-policy.yaml",
-    "outbox-log.yaml", "events.yaml", "working-sets.yaml", "upstream-writes.yaml",
+    "world.yaml", "decisions.yaml", "tags.yaml", "events.yaml",
+    "outbox-log.yaml", "upstream-writes.yaml",
     "domain-suggestions.yaml",
 ]
 
@@ -139,7 +139,7 @@ def test_init_creates_eager_memory_subdirs(initialized_workspace: Path) -> None:
 def test_init_does_not_pre_create_lazy_memory_subdirs(
     initialized_workspace: Path,
 ) -> None:
-    """`_briefings/`, `_artifacts/`, `_session/`, `_telemetry/`, `_checkpoints/`
+    """Reserved/retired underscore dirs (`_briefings/` + the 0.8.0-pruned four)
     are LAZY — created on first write by their respective tools (see the
     `init_internal_dirs` docstring in `workspace_init.py`). Pre-scaffolding
     them at init time produces empty directories that look like silently-

@@ -3,7 +3,7 @@
 Tells the cadence and surfacing skills (`whatsup`, `daily-update`,
 `weekly-review`, ad-hoc nudges) when to hold back.
 
-Complements `_memory/notification-policy.yaml` (per `contracts/notification-policy.md`)
+Standalone rule — applies to any surfacing the agent initiates.
 which is the structured, machine-checkable version of the same idea.
 
 ## Hard quiet window

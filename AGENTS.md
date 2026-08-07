@@ -468,7 +468,7 @@ Per `contracts/provenance.md` (item #4):
 Per `contracts/memory-taxonomy.md` (item #9), every YAML file in `_memory/` belongs to one of three shapes:
 
 - **Entity-shape** — long-lived rows; mutate-in-place; cross-referenced by id.
-  Files: `contacts.yaml`, `accounts-index.yaml`, `assets-index.yaml`, `domains-index.yaml`, `projects-index.yaml`, `documents-index.yaml`, `subscriptions.yaml`, `bills.yaml`, `appointments.yaml`, `important-dates.yaml`, `sources-index.yaml`, `tags.yaml`, `world.yaml`, `notification-policy.yaml`.
+  Files: `contacts.yaml`, `accounts-index.yaml`, `assets-index.yaml`, `domains-index.yaml`, `projects-index.yaml`, `documents-index.yaml`, `subscriptions.yaml`, `bills.yaml`, `appointments.yaml`, `important-dates.yaml`, `sources-index.yaml`, `tags.yaml`, `world.yaml`.
 - **Time-shape (append-only)** — each row is an event in time; never rewritten in place.
   Files: `interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml`, `decisions.yaml`, `outbox-log.yaml`, `upstream-writes.yaml`, `supertailor-suggestions.yaml`, `health-records.yaml.{vitals,symptoms,vaccines,results,visits}`.
   AND the partitioned event stream under `_memory/events/<YYYY-Qn>.yaml`.
@@ -581,6 +581,6 @@ The IDE controls how the prompt is structured and which prefixes are cached. Bot
 - **Don't edit `AGENTS.md` / `contracts/` mid-session.** Both IDEs' prompt caches reward a stable prefix; mutating the docs that anchor the prefix forces a full re-cache, paying the long form back to the model on every subsequent turn.
 - **The Supertailor / Supercoder loop's commit-then-restart cycle is well-suited to this.** After the Supertailor proposes a doc change, approve it, let the Supercoder commit, then start a fresh chat session. The new session pays the full prompt cost ONCE; subsequent turns reap the cache savings.
 - **Don't open many framework files mid-session.** Each one bumps the prompt; fewer files = better cache reuse.
-- **For long-running ingestion or scenario sessions**, prefer running them via dedicated tool invocations (each is a stand-alone process) rather than long chat threads.
+- **For long-running ingestion sessions**, prefer running them via dedicated tool invocations (each is a stand-alone process) rather than long chat threads.
 
 If a future Superagent CLI wraps the Anthropic API directly, structure the prompt as: `[stable: AGENTS.md + role files] → [cache_breakpoint] → [per-skill: the active skill + the contracts it cites] → [cache_breakpoint] → [per-turn: user message + tool results]`. That's the BB-2-a path; it requires API-level control that the IDEs don't expose today.
