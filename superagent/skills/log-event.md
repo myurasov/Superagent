@@ -43,6 +43,7 @@ Heuristics:
 | a pet in `contacts.yaml` (role: pet) | **pet care** (see `pet-care.md`) |
 | a bill / payment / charge | **bill** (delegate to `bills mark-paid`) |
 | "talked to <person>" / "had coffee with <person>" / "called <person>" | **interaction** |
+| "log this decision" / "we decided" / "I decided" | **decision** (append a row to `_memory/decisions.yaml` per `contracts/decisions.md` — required: `id`, `ts`, `decision`, `context`, `confidence`, `reversibility`; encouraged: `rationale`, `review_at`; also append to the relevant domain/project `history.md`) |
 | anything else | **generic** (append to relevant domain history) |
 
 If multiple plausible matches, ask the user which sub-flow.
