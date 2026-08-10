@@ -388,7 +388,8 @@ def build_app_bundle(png: str | None = None, icns: str | None = None,
     if icns:
         shutil.copy2(Path(icns).expanduser(), icns_out)
     else:
-        png_path = Path(png).expanduser() if png else _generate_icon_png(color)
+        png_path = (Path(png).expanduser() if png
+                    else _tinted_chrome_png(color) or _generate_icon_png(color))
         _png_to_icns(png_path, icns_out)
 
     plist = bundle / "Contents" / "Info.plist"
@@ -412,22 +413,60 @@ def build_app_bundle(png: str | None = None, icns: str | None = None,
     return bundle
 
 
+def _tinted_chrome_png(color: str) -> Path | None:
+    """The stock Chromium icon, desaturated and tinted `color` (luminance
+    preserved: shadows go to a dark shade of the tint, highlights stay
+    near-white). Returns None when the source icon can't be extracted."""
+    import tempfile
+
+    from PIL import Image, ImageOps
+
+    # Prefer the user's real Chrome icon (no "TEST" ribbon) over the
+    # Playwright Chrome-for-Testing artwork; both top out at 256 px.
+    candidates = [
+        Path("/Applications/Google Chrome.app/Contents/Resources/app.icns"),
+        _playwright_chromium_bundle() / "Contents" / "Resources" / "app.icns",
+    ]
+    src_icns = next((p for p in candidates if p.exists()), None)
+    if src_icns is None:
+        return None
+    with tempfile.TemporaryDirectory() as td:
+        src_png = Path(td) / "src.png"
+        r = subprocess.run(["sips", "-s", "format", "png", str(src_icns),
+                            "--out", str(src_png)], capture_output=True)
+        if r.returncode != 0 or not src_png.exists():
+            return None
+        img = Image.open(src_png).convert("RGBA")
+        alpha = img.getchannel("A")
+        tinted = ImageOps.colorize(ImageOps.grayscale(img),
+                                   black="#03302b", mid=color,
+                                   white="#dcfaf4").convert("RGBA")
+        tinted.putalpha(alpha)
+    out = home() / "app" / "icon-src.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    tinted.save(out)
+    return out
+
+
 def _generate_icon_png(color: str) -> Path:
     from PIL import Image, ImageDraw
 
+    # The COLOR goes into the glyph, not a background plate: macOS 26+ icon
+    # theming (dark / tinted styles) strips a full-bleed background and
+    # re-plates the glyph on its own squircle, so color baked into the plate
+    # renders gray. A colored glyph on transparency survives every style
+    # (macOS supplies a light plate in the default style, dark otherwise).
     size = 1024
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
-    m = size // 10
-    d.rounded_rectangle([m, m, size - m, size - m], radius=size // 5,
-                        fill=color)
-    # A simple browser cue: a ring + horizon line, no text (crisp at 16 px).
-    cx, cy, r = size // 2, size // 2, size // 4
-    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline="white",
-              width=size // 24)
-    d.line([cx - r, cy, cx + r, cy], fill="white", width=size // 32)
-    d.arc([cx - r // 2, cy - r, cx + r // 2, cy + r], 0, 360, fill="white",
-          width=size // 32)
+    # A simple browser cue: a globe (ring + horizon + meridian), no text
+    # (crisp at 16 px). Thick strokes so the glyph carries the color.
+    cx, cy, r = size // 2, size // 2, int(size * 0.34)
+    w = size // 14
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=color, width=w)
+    d.line([cx - r + w // 2, cy, cx + r - w // 2, cy], fill=color, width=w)
+    d.ellipse([cx - r // 2, cy - r, cx + r // 2, cy + r], outline=color,
+              width=int(w * 0.75))
     out = home() / "app" / "icon-src.png"
     out.parent.mkdir(parents=True, exist_ok=True)
     img.save(out)
@@ -437,12 +476,17 @@ def _generate_icon_png(color: str) -> Path:
 def _png_to_icns(png: Path, icns_out: Path) -> None:
     import tempfile
 
+    from PIL import Image
+
+    src_px = Image.open(png).width
     with tempfile.TemporaryDirectory() as td:
         iconset = Path(td) / "icon.iconset"
         iconset.mkdir()
         for pts in (16, 32, 128, 256, 512):
             for scale in (1, 2):
                 px = pts * scale
+                if px > src_px:  # never upscale past the source (blurry)
+                    continue
                 suffix = f"{pts}x{pts}" + ("@2x" if scale == 2 else "")
                 subprocess.run(["sips", "-z", str(px), str(px), str(png),
                                 "--out", str(iconset / f"icon_{suffix}.png")],
