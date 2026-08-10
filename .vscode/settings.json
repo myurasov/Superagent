@@ -14,8 +14,44 @@
         "*.md": "vscode.markdown.preview.editor"
     },
     "explorer.decorations.colors": true,
+    "workbench.colorTheme": "◑ Dusk Office Reef",
+    "duskOffice.rememberWorkspaceTheme": false,
     "workbench.colorCustomizations": {
-        "gitDecoration.ignoredResourceForeground": "#a5e8c2"
-    },
-    "workbench.colorTheme": "◑ Dusk Office Reef"
+        // Backgrounds keep the theme's teal hue, stepped down ~20% from native
+        // (#002830 -> #002028). Most of the contrast gain is on the foreground
+        // side: the theme ships its secondary text at cc/aa alpha (5.7-7.6:1),
+        // which is what reads washed out. These de-mute it to full opacity.
+        "[*Dusk Office Reef*]": {
+            "editor.background": "#002028",
+            "sideBar.background": "#001d24",
+            "activityBar.background": "#001d24",
+            "statusBar.background": "#001d24",
+            "titleBar.activeBackground": "#001d24",
+            "panel.background": "#001820",
+            "terminal.background": "#00191f",
+            "tab.activeBackground": "#001820",
+            "tab.inactiveBackground": "#12272e",
+            "editorGroupHeader.tabsBackground": "#12272e",
+            "foreground": "#eaf2f8",
+            "editor.foreground": "#f2f8fc",
+            "terminal.foreground": "#f2f8fc",
+            "sideBar.foreground": "#e4eef6",
+            "sideBarSectionHeader.foreground": "#cfe0ea",
+            "descriptionForeground": "#bdd0dc",
+            "editorLineNumber.foreground": "#8fa6b3",
+            "editorLineNumber.activeForeground": "#7ad4e0",
+            "tab.activeForeground": "#ffffff",
+            "tab.inactiveForeground": "#b3c6d2",
+            "list.activeSelectionBackground": "#4ab8c855",
+            "list.hoverBackground": "#4ab8c826",
+            "editor.selectionBackground": "#5a8fb066"
+        },
+        "gitDecoration.ignoredResourceForeground": "#f2f8fc",
+        "gitDecoration.untrackedResourceForeground": "#f2f8fc",
+        "gitDecoration.modifiedResourceForeground": "#f2f8fc",
+        "gitDecoration.addedResourceForeground": "#f2f8fc",
+        "gitDecoration.renamedResourceForeground": "#f2f8fc",
+        "gitDecoration.deletedResourceForeground": "#f2f8fc",
+        "gitDecoration.conflictedResourceForeground": "#f2f8fc",
+    }
 }
