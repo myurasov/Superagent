@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-08-10T00:58:34+00:00'
+generated_at: '2026-08-10T01:32:05+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -67,6 +67,13 @@ migrations:
   from_version: 0.8.0
   file: 0.9.0.md
   title: Marker migration for the branded Superagent Browser app bundle
+  breaking: false
+  revertible: true
+  estimated_duration: <1 second
+- to_version: 0.10.0
+  from_version: 0.9.2
+  file: 0.10.0.md
+  title: Marker migration for the private browserctl home + launch hygiene
   breaking: false
   revertible: true
   estimated_duration: <1 second
