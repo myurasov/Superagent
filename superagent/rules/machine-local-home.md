@@ -34,9 +34,10 @@ dir at `~/.superagent/<name>`, referenced by its absolute path, added to
 
 - **The uv venv** stays at the repo-root `./.venv/` (the operative venv `uv
   run` uses) — per `rules/development-tooling.md` § 1.
-- **browserctl state** already has its own machine-local home at
-  `~/.browserctl/` (shared machine-wide across browserctl-carrying
-  frameworks); it does not move under `~/.superagent/`.
+- **browserctl state** lives at `~/.superagent/browserctl/` since 0.10.0
+  (managed by browserctl itself, not by the `home.py` SUBDIRS helper; the
+  pre-0.10.0 machine-shared `~/.browserctl/` is honored via
+  $BROWSERCTL_HOME).
 - **`.pytest_cache/`** stays a plain gitignored repo-root dir — small and
   regenerated on demand.
 
@@ -73,9 +74,9 @@ per-checkout isolation when running multiple checkouts).
 ## Relationship to scope discipline
 
 `rules/development-tooling.md` § 4 forbids writes outside the project folder.
-`~/.superagent/` (like the pre-existing `~/.browserctl/`) is a **sanctioned,
-user-authorized exception**, limited to disposable transient state managed by
-the helper above. It does not widen the rule for any other outside-repo path.
+`~/.superagent/` (including browserctl's `~/.superagent/browserctl/`) is a
+**sanctioned, user-authorized exception**, limited to disposable transient
+state managed by the helper above. It does not widen the rule for any other outside-repo path.
 
 ## Override / user overlay
 

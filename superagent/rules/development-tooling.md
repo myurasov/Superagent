@@ -61,8 +61,8 @@ Tool scripts under `superagent/tools/*.py` use a `uv run`-aware shebang so direc
 
 Browser automation runs through `superagent/tools/browserctl.py` (the `browserctl` skill) — there is no Playwright MCP anymore.
 
-- **browserctl `snapshot` / `screenshot` `--out`** — bare filenames land in `~/.browserctl/out/<project>/` (machine-local, outside the repo), never the CWD. For a transient capture, pass an explicit `~/.superagent/tmp/<descriptive-name>.<ext>` path. Captures worth keeping move explicitly to their durable home (`Sources/`, `Domains/<…>/Resources/`, `Projects/<…>/Resources/`).
-- **browserctl state (`~/.browserctl/`)** — profiles, registry, logs, and default capture output live at `~/.browserctl/` ($BROWSERCTL_HOME aware). This is a **sanctioned exception** to the scope-discipline rule below: browser profiles must not live inside an iCloud-synced repo, and the home is shared machine-wide across browserctl-carrying frameworks. Everything under it is disposable and reconstructible; browserctl is the only tool that writes there.
+- **browserctl `snapshot` / `screenshot` `--out`** — bare filenames land in `~/.superagent/browserctl/out/<project>/` (machine-local, outside the repo), never the CWD. For a transient capture, pass an explicit `~/.superagent/tmp/<descriptive-name>.<ext>` path. Captures worth keeping move explicitly to their durable home (`Sources/`, `Domains/<…>/Resources/`, `Projects/<…>/Resources/`).
+- **browserctl state (`~/.superagent/browserctl/`)** — profiles, registry, logs, the branded app bundle, and default capture output live at `~/.superagent/browserctl/` ($SUPERAGENT_HOME aware; $BROWSERCTL_HOME is the explicit override, e.g. pointing at a legacy `~/.browserctl/`). Superagent-private since 0.10.0 — the previously machine-shared `~/.browserctl/` let one framework's `app_bundle` registry key hijack another framework's launches. Everything under it is disposable and reconstructible; browserctl is the only tool that writes there.
 - **Any MCP tool that accepts a `filename` / `output_path` / `save_to`** — MCP servers default their working directory to the project root, so a bare filename lands at the repo root. Pass an absolute `~/.superagent/tmp/` path unless the artifact has an explicit durable home.
 
 ---
@@ -72,7 +72,7 @@ Browser automation runs through `superagent/tools/browserctl.py` (the `browserct
 - The agent MUST NOT install software, create files, or modify files outside the project folder unless the user explicitly asks for that specific action.
 - Forbidden write targets by default: the home directory, dotfiles in `$HOME`, `/usr/`, `/opt/`, `/etc/`, system paths, other repos on the same machine, iCloud-synced folders outside this repo, the user's global git config, shell rc files, etc.
 - Read access outside the project is fine. Write access outside is forbidden until the user explicitly authorizes it for the specific path or action.
-- **Sanctioned exceptions**: `~/.superagent/` (the machine-local transient root per `rules/machine-local-home.md`) and `~/.browserctl/` (browserctl state, § 3 above). Both are limited to disposable, reconstructible state; neither widens this rule for any other outside-repo path.
+- **Sanctioned exception**: `~/.superagent/` (the machine-local root per `rules/machine-local-home.md`, which also hosts browserctl state at `~/.superagent/browserctl/`, § 3 above). Limited to disposable, reconstructible state; it does not widen this rule for any other outside-repo path. (Pre-0.10.0 installs used the machine-shared `~/.browserctl/`; still honored via $BROWSERCTL_HOME.)
 - When in doubt, refuse and ask — surface the proposed change to the user with the exact path and command, and proceed only after confirmation.
 
 ---
