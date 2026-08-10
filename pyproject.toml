@@ -10,7 +10,7 @@ dependencies = [
     "openpyxl",
     "pypdf>=6.11.0",
     "pdf2image>=1.17.0",
-    "pillow>=12.2.0",
+    "pillow>=12.3.0",
     "pymupdf>=1.27.2.3",
     "google-api-python-client>=2.140",
     "google-auth>=2.30",
