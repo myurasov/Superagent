@@ -396,6 +396,12 @@ def build_app_bundle(png: str | None = None, icns: str | None = None,
                    ("CFBundleIdentifier", "io.superagent.browser")):
         subprocess.run(["plutil", "-replace", k, "-string", val, str(plist)],
                        check=True, capture_output=True)
+    # macOS prefers CFBundleIconName (Assets.car asset catalog) over
+    # CFBundleIconFile, so the replaced app.icns would never show. Drop the
+    # catalog reference and the catalog itself.
+    subprocess.run(["plutil", "-remove", "CFBundleIconName", str(plist)],
+                   capture_output=True)
+    (bundle / "Contents" / "Resources" / "Assets.car").unlink(missing_ok=True)
     subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(bundle)],
                    check=True, capture_output=True)
 
