@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --no-project --script
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["playwright>=1.45"]
+# dependencies = ["playwright>=1.45", "pillow>=10"]
 # ///
 """browserctl - per-project Chromium lifecycle + drive layer (CLI, no MCP).
 
@@ -50,6 +50,8 @@ Lifecycle commands (all take ``--project P``; omitted = auto-derived):
     prune   [--all]                             # delete stopped ephemeral profiles
     remove  --profile <name>                    # delete a profile (must be stopped)
     cdp-url --profile <name>                    # print http://localhost:<port> for attaching
+    icon    [--png F | --icns F] [--color C] [--name "Superagent Browser"]
+                                                # dedicated app bundle: own Dock icon/name
 
 Drive commands (replace the Playwright MCP tools; attach over CDP to a
 running profile and leave the browser open):
@@ -102,7 +104,8 @@ import urllib.request  # noqa: E402
 BASE_PORT = 9400
 DEFAULT_PROFILE = "default"
 # Rotating defaults for new profiles so headed windows are distinguishable.
-PALETTE = ["#2E7D32", "#1565C0", "#6A1B9A", "#E65100", "#00838F", "#AD1457"]
+# Teal first (Superagent's brand color, matching the app icon); rotate after.
+PALETTE = ["#14B8A6", "#2E7D32", "#1565C0", "#6A1B9A", "#E65100", "#AD1457"]
 # The slim state set a `clone` carries over so logins survive (cookie
 # encryption uses the mock keychain's fixed key, so copies decrypt fine).
 # Everything else - caches, Service Worker state, GPU state - is rebuilt.
@@ -301,10 +304,22 @@ def write_theme(project: str, profile: str, hex_color: str) -> None:
 
 
 def chromium_executable() -> str:
-    """Playwright's Chromium binary, cached in the registry after the first
-    resolution (spinning up the Playwright driver just to read the path is
-    slow and noisy on teardown, so it runs once, in a child process)."""
-    cached = load_state().get("chromium_exe")
+    """The launch binary: the custom app bundle when one was built with the
+    ``icon`` command (distinct Dock icon/name vs the user's main Chrome), else
+    Playwright's Chromium - cached in the registry after the first resolution
+    (spinning up the Playwright driver just to read the path is slow and noisy
+    on teardown, so it runs once, in a child process)."""
+    state = load_state()
+    bundle = state.get("app_bundle")
+    if bundle:
+        exe_dir = Path(bundle) / "Contents" / "MacOS"
+        if exe_dir.is_dir():
+            # The binary name varies by Playwright build (Chromium /
+            # Google Chrome for Testing) - take the bundle's executable.
+            for p in sorted(exe_dir.iterdir()):
+                if p.is_file() and os.access(p, os.X_OK):
+                    return str(p)
+    cached = state.get("chromium_exe")
     if cached and Path(cached).exists():
         return cached
     r = subprocess.run(
@@ -325,6 +340,109 @@ def chromium_executable() -> str:
 
     mutate_state(_cache)
     return str(exe)
+
+
+def _playwright_chromium_bundle() -> Path:
+    """The Playwright Chromium .app bundle (resolved via the same child-process
+    trick as chromium_executable, bypassing any app_bundle preference)."""
+    r = subprocess.run(
+        [sys.executable, "-c",
+         "from playwright.sync_api import sync_playwright\n"
+         "with sync_playwright() as pw: print(pw.chromium.executable_path)"],
+        capture_output=True, text=True)
+    exe = Path(r.stdout.strip()) if r.returncode == 0 and r.stdout.strip() else None
+    if exe is None or not exe.exists():
+        raise RuntimeError(
+            "Playwright's Chromium is not installed - run: "
+            "uv run --with playwright playwright install chromium")
+    bundle = exe.parents[2]
+    if bundle.suffix != ".app":
+        raise RuntimeError(f"unexpected Chromium layout: {bundle}")
+    return bundle
+
+
+def build_app_bundle(png: str | None = None, icns: str | None = None,
+                     color: str = "#14B8A6",
+                     name: str = "Superagent Browser") -> Path:
+    """Make a dedicated Chromium app bundle with its own name + Dock icon so
+    browserctl windows are visually distinct from the user's main Chrome.
+
+    APFS clonefile copy (`cp -Rc`) - instant and near-zero extra disk. The
+    icon comes from --icns, --png (converted), or a generated rounded square
+    in `color`. The bundle is ad-hoc re-signed; `launch` prefers it
+    automatically once built (registry key `app_bundle`)."""
+    if sys.platform != "darwin":
+        raise RuntimeError("app bundles are a macOS feature")
+    src_bundle = _playwright_chromium_bundle()
+
+    app_dir = home() / "app"
+    app_dir.mkdir(parents=True, exist_ok=True)
+    bundle = app_dir / f"{name}.app"
+    shutil.rmtree(bundle, ignore_errors=True)
+    r = subprocess.run(["cp", "-Rc", str(src_bundle), str(bundle)],
+                       capture_output=True, text=True)
+    if r.returncode != 0:  # non-APFS fallback
+        subprocess.run(["cp", "-R", str(src_bundle), str(bundle)], check=True)
+
+    icns_out = bundle / "Contents" / "Resources" / "app.icns"
+    if icns:
+        shutil.copy2(Path(icns).expanduser(), icns_out)
+    else:
+        png_path = Path(png).expanduser() if png else _generate_icon_png(color)
+        _png_to_icns(png_path, icns_out)
+
+    plist = bundle / "Contents" / "Info.plist"
+    for k, val in (("CFBundleDisplayName", name), ("CFBundleName", name),
+                   ("CFBundleIdentifier", "io.superagent.browser")):
+        subprocess.run(["plutil", "-replace", k, "-string", val, str(plist)],
+                       check=True, capture_output=True)
+    subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(bundle)],
+                   check=True, capture_output=True)
+
+    def _set(state: dict) -> None:
+        state["app_bundle"] = str(bundle)
+
+    mutate_state(_set)
+    return bundle
+
+
+def _generate_icon_png(color: str) -> Path:
+    from PIL import Image, ImageDraw
+
+    size = 1024
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    m = size // 10
+    d.rounded_rectangle([m, m, size - m, size - m], radius=size // 5,
+                        fill=color)
+    # A simple browser cue: a ring + horizon line, no text (crisp at 16 px).
+    cx, cy, r = size // 2, size // 2, size // 4
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline="white",
+              width=size // 24)
+    d.line([cx - r, cy, cx + r, cy], fill="white", width=size // 32)
+    d.arc([cx - r // 2, cy - r, cx + r // 2, cy + r], 0, 360, fill="white",
+          width=size // 32)
+    out = home() / "app" / "icon-src.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img.save(out)
+    return out
+
+
+def _png_to_icns(png: Path, icns_out: Path) -> None:
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as td:
+        iconset = Path(td) / "icon.iconset"
+        iconset.mkdir()
+        for pts in (16, 32, 128, 256, 512):
+            for scale in (1, 2):
+                px = pts * scale
+                suffix = f"{pts}x{pts}" + ("@2x" if scale == 2 else "")
+                subprocess.run(["sips", "-z", str(px), str(px), str(png),
+                                "--out", str(iconset / f"icon_{suffix}.png")],
+                               check=True, capture_output=True)
+        subprocess.run(["iconutil", "-c", "icns", str(iconset),
+                        "-o", str(icns_out)], check=True, capture_output=True)
 
 
 def port_free(port: int) -> bool:
@@ -852,6 +970,16 @@ def main() -> int:
                        help="print the profile's CDP attach endpoint")
     p.add_argument("--profile", required=True)
 
+    p = sub.add_parser("icon",
+                       help="build the dedicated app bundle (own Dock "
+                            "icon/name for browserctl windows; macOS only)")
+    src = p.add_mutually_exclusive_group()
+    src.add_argument("--png", help="1024px PNG to convert into the icon")
+    src.add_argument("--icns", help="ready-made .icns to use as-is")
+    p.add_argument("--color", default="#14B8A6",
+                   help="fill for the generated icon (default teal)")
+    p.add_argument("--name", default="Superagent Browser", help="app/Dock name")
+
     p = sub.add_parser("tabs", parents=[common], help="list open tabs")
     p.add_argument("--profile", required=True)
 
@@ -979,6 +1107,13 @@ def main() -> int:
 
     if args.cmd == "cdp-url":
         print(cdp_url(args.profile, project))
+        return 0
+
+    if args.cmd == "icon":
+        bundle = build_app_bundle(png=args.png, icns=args.icns,
+                                  color=args.color, name=args.name)
+        print(f"app bundle built: {bundle} - future chromium launches use it "
+              "(relaunch running profiles to pick it up)")
         return 0
 
     if args.cmd == "tabs":

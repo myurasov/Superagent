@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-08-07T03:34:25-07:00'
+generated_at: '2026-08-09T17:56:47-07:00'
 skill_count: 50
 skills:
 - name: superagent-ad-hoc-task
@@ -363,10 +363,10 @@ skills:
   - uv
   cli_optional:
   - playwright (Chromium install — one-time `uv run --with playwright playwright install chromium`)
-  lines: 192
+  lines: 193
   h2_steps: 8
   h3_subsections: 0
-  typical_token_cost: 2629
+  typical_token_cost: 2717
   typical_files_read: []
   origin: framework
 - name: superagent-daily-update
