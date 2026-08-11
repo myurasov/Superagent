@@ -102,7 +102,7 @@ The user provides a path (or has just dropped a file in `Inbox/`). Steps:
 7. **Sensitive?**: default false; flip true for medical, legal, accounts.
 8. **Notes**: free text.
 
-Move / copy the file to the chosen path. (Move from `Inbox/`; copy if from elsewhere.)
+**Move** the file to the chosen path if it comes from `Inbox/` — never copy and leave the original. Copy only if the source is outside `Inbox/`. After moving from `Inbox/`, append a record to `workspace/Inbox/_processed.yaml` with `ts`, `file`, `action: filed`, `destination`, and `note` (include sources-index id once assigned).
 
 Optionally write a sibling `<filename>.ref.md` (Form A from § 15.3) carrying just the metadata:
 

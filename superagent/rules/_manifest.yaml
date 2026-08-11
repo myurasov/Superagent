@@ -94,3 +94,29 @@ files:
     consumed_by:
       - AGENTS.md
     user_overlay: workspace/_custom/rules/tool-usage-corrections.md
+  - path: live-todo.md
+    kind: doc
+    purpose: "workspace/todo.md is the single live master todo view: update it in the same turn whenever any task changes; auto-close stale/done tasks with auto- prefix; always read todo.yaml in full before writing; count-reconcile open tasks to prevent omissions."
+    consumed_by:
+      - AGENTS.md
+      - skills/todo.md
+    user_overlay: workspace/_custom/rules/live-todo.md
+  - path: markdown-formatting.md
+    kind: doc
+    purpose: "No --- horizontal rules; GFM checkboxes with bold-prefix numbering and backslash line breaks; 🚗/👤/🚗 👤 autonomy markers with non-breaking space."
+    consumed_by:
+      - AGENTS.md
+    user_overlay: workspace/_custom/rules/markdown-formatting.md
+  - path: task-ids.md
+    kind: doc
+    purpose: "Task display ID format: TASK-NNN (standalone) or TASK-NNN-X (subtasks A/B/C…); continuously numbered from oldest; no dates; never reassign. Next ID as of 2026-08-10: TASK-056."
+    consumed_by:
+      - AGENTS.md
+      - rules/live-todo.md
+    user_overlay: workspace/_custom/rules/task-ids.md
+  - path: skill-discipline.md
+    kind: doc
+    purpose: "Skills must be read before any action is taken on a task they govern. Prohibits raw file ops that bypass skill protocols. Covers autoloaded skills, trigger-matched skills, and all capture/filing flows."
+    consumed_by:
+      - AGENTS.md
+    user_overlay: workspace/_custom/rules/skill-discipline.md

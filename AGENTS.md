@@ -132,7 +132,14 @@ This file is the model's own memory — distinct from `context.yaml` (operationa
 
 ## Skills
 
-For **any** user question or task, consider whether a **Superagent skill** in `superagent/skills/` **or** `workspace/_custom/skills/` applies; if so, follow that skill's steps and cite it. Custom skills are first-class — invoke them like any framework skill. On same-name collision between framework and custom, run the framework skill first and then apply the custom file as an appendix of additional steps.
+For **any** user question or task, consider whether a **Superagent skill** in `superagent/skills/` **or** `workspace/_custom/skills/` applies; if so, **read the skill file before taking any action** and follow its steps in full. Custom skills are first-class — invoke them like any framework skill. On same-name collision between framework and custom, run the framework skill first and then apply the custom file as an appendix of additional steps.
+
+**Skill discipline — non-negotiable:**
+
+- If the skill autoloader (UserPromptSubmit hook) has injected a skill into the current turn, that skill **must** be read and followed before any file operations, tool calls, or commands are executed. The injection is visible in the hook output at the top of the turn.
+- If a task matches a known skill trigger (filing a source, adding a contact, logging an event, running a browser flow, etc.), read the skill first even if it was not autoloaded. Guessing at the steps and executing raw operations is a violation.
+- **Raw operations that a skill governs are prohibited without first reading that skill.** Example: using `cp`/`mv`/`yaml` edits to import a file instead of following `add-source.md` is a skill bypass and will produce incomplete results (wrong file operation, missing index updates, missing log entries).
+- After reading the skill, cite which skill you are following at the top of your response.
 
 The full skill catalog (machine-readable, with one-liners + triggers) lives in [`superagent/skills/_manifest.yaml`](superagent/skills/_manifest.yaml). Highlights:
 

@@ -37,12 +37,19 @@ are exactly three valid destinations:
 
 - NEVER write remembered content to any path OUTSIDE this installation folder
   (the repository root). In particular, NEVER use:
-  - `~/.claude/projects/<...>/memory/MEMORY.md` or anything under `~/.claude/`
-  - Claude Code's built-in global / project "memory" store
+  - `~/.claude/projects/<...>/memory/MEMORY.md` or ANYTHING under `~/.claude/`
+  - Claude Code's built-in global / project "memory" store (the TodoWrite tool,
+    the auto-memory harness, or any `~/.claude/` path the harness exposes)
   - `~/.cursor/...`, OS temp dirs, home-dir dotfiles, sibling repos, or any
     other "memory" feature the host IDE offers that writes outside this repo.
+- **This applies to ALL agents** — subagents, workflow agents, harness-invoked
+  tools — not just the top-level session. No agent in this installation writes
+  memory outside the workspace.
 - If a host IDE exposes a built-in memory that persists outside this repo, DO
   NOT use it for Superagent state. Route to `_memory` / `_custom` instead.
+- **The SA memory system is the ONLY memory system.** There is no secondary
+  memory store, no fallback to the harness memory, no "also save here." One
+  system, one path: this workspace.
 
 ---
 
