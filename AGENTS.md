@@ -5,6 +5,7 @@
 ## Table of Contents
 
 - [`superagent` workspace](#superagent-workspace)
+  - [Non-Negotiables (Every Harness)](#non-negotiables-every-harness)
   - [How this file is loaded](#how-this-file-is-loaded)
   - [Canonical references](#canonical-references)
   - [Custom overlay — read on every superagent turn](#custom-overlay--read-on-every-superagent-turn)
@@ -33,14 +34,30 @@
   - [File naming conventions](#file-naming-conventions)
   - [Image format policy](#image-format-policy)
   - [Memory-routing guardrail](#memory-routing-guardrail)
-  - [IDE setup (Cursor and Claude Code)](#ide-setup-cursor-and-claude-code)
+  - [Harness setup (Cursor, Claude Code, and other CLIs)](#harness-setup-cursor-claude-code-and-other-clis)
   - [Prompt-cache discipline](#prompt-cache-discipline)
 
 ---
 
-This file is the **canonical always-on instructions** for **Superagent** — a personal-life AI assistant that runs inside Cursor. The framework code lives in the `superagent/` folder; user data lives in the sibling `workspace/` folder. Whenever the user invokes Superagent (or works within `workspace/`), the agent reads this file and follows it in full.
+This file is the **canonical always-on instructions** for **Superagent** — a personal-life AI assistant that runs inside agent harnesses (Cursor, Claude Code, and any other `AGENTS.md`-reading CLI). The framework code lives in the `superagent/` folder; user data lives in the sibling `workspace/` folder. Whenever the user invokes Superagent (or works within `workspace/`), the agent reads this file and follows it in full.
 
 Superagent is designed as a **standalone framework**. It depends on nothing outside the `superagent/` directory and its sibling workspace. It can be extracted into its own repo at any time (see `docs/architecture.md` § "Extracting to a standalone repo").
+
+---
+
+## Non-Negotiables (Every Harness)
+
+Superagent runs under many agent harnesses (Cursor, Claude Code, Codex CLI, and any future `AGENTS.md`-reading CLI). Hooks and other harness conveniences are **optional enhancements** — nothing critical may depend on them. The items below are the floor: they hold on every harness, and every agent reads them here because this file is the one channel every harness loads.
+
+1. **Custom-overlay self-read.** Once per session, before substantive work, read every file in `workspace/_custom/rules/`, plus `workspace/_memory/unboxed.yml` and `workspace/_memory/escalate.yml` (skip silently whatever does not exist yet). These files are small; the read is cheap and works on every harness with zero tooling.
+2. **Skills are contracts.** Read the skill file before acting; never guess steps from the skill name. The catalog is [`superagent/skills/_manifest.yaml`](superagent/skills/_manifest.yaml); the discipline details are in § "Skills" below.
+3. **Denied commands.** Classify first: denied *by name* → the wrapper mechanism in [`superagent/rules/unbox.md`](superagent/rules/unbox.md) (registry `workspace/_memory/unboxed.yml`). Otherwise a real sandbox → climb the ladder in [`superagent/rules/sandbox-ladder.md`](superagent/rules/sandbox-ladder.md). Command classes with a known working escalation live in `workspace/_memory/escalate.yml` — on a match, escalate on the FIRST attempt ([`superagent/rules/run-escalated.md`](superagent/rules/run-escalated.md)).
+4. **Workspace writes.** Workspace data writes go only under `workspace/`; scratch goes to `~/.superagent/tmp/`; `superagent/` is written only per the Framework Artifact Creation Contract; nothing is written outside the repo except the sanctioned machine-local roots.
+5. **Memory routing.** "Remember this" content goes to `workspace/_memory/` or `workspace/_custom/` — never to a host-IDE memory store ([`superagent/rules/memory-routing.md`](superagent/rules/memory-routing.md)).
+6. **No silent upstream writes.** Ingestors and skills never modify upstream sources (email, bank, calendar) without an explicit per-call user confirmation, loudly declared.
+7. **Missing capability ≠ failure.** A harness that lacks a tool changes HOW a step runs, never WHETHER it runs, and never silently. State the fallback being used. Example: without a structured question tool, ask the question in prose and wait for the user's reply — that pause IS the gate.
+
+**Standing posture:** escalation is allowed and encouraged. When a harness offers an escalation path (permission prompt, `required_permissions`, `approval_policy = "on-request"`), use it rather than abandoning the task. Asking the user for one approval beats reporting a task impossible.
 
 ---
 
@@ -411,7 +428,7 @@ Per `docs/superagent/docs/_internal/perf-improvement-ideas.md` QW-3, every Super
 - **For long skills** (`init.md`, `daily-update.md`, `monthly-review.md`, `supertailor-review.md`, `add-source.md`, …), read the YAML frontmatter + the `## Step index` block first; use `Read --offset --limit` against the listed step ranges.
 - **Use the skill manifest**: read `superagent/skills/_manifest.yaml` (cheap, ~5-10 KB) to pick which skill applies, instead of grepping every skill markdown.
 - **Use the events stream + log summaries** instead of full-loading append-only YAML logs: `_memory/<file>.summary.yaml` (the QW-4 summary sibling) tells you whether you need the full log at all; `tools/log_window.py read` pulls just a date range.
-- **BATCH parallel reads / MCP calls** in a single tool-call message rather than chaining them sequentially. Sequential chains are reserved for the cases where step N's output feeds step N+1.
+- **BATCH parallel reads / MCP calls** in a single tool-call message rather than chaining them sequentially. Sequential chains are reserved for the cases where step N's output feeds step N+1. If the harness has no batch mechanism, run the calls back-to-back without pausing for commentary between them.
 - **Never `Read` unbounded memory files whole.** `todo.yaml`, the email archive, the interaction/ingestion logs, `user-queries.jsonl`, signal stores, and `transactions.yaml` are read only through slices, tails (negative `offset`), or their canonical filtering tools — per the decision table in `rules/large-file-reads.md`.
 - **Delegate bulk reads to subagents.** Any lookup expected to pull more than ~20k tokens of raw tool results (and the session continues afterward) runs in a subagent that returns only the synthesis — per `rules/subagent-bulk-reads.md`.
 - **Persist tool-usage corrections.** A first-try tool-invocation error gets its corrected form written back into core docs in the same turn, per `rules/tool-usage-corrections.md`.
@@ -539,11 +556,17 @@ Full policy: [`superagent/rules/memory-routing.md`](superagent/rules/memory-rout
 
 ---
 
-## IDE setup (Cursor and Claude Code)
+## Harness setup (Cursor, Claude Code, and other CLIs)
 
-Superagent targets **Cursor** and **Claude Code** as equal first-class host IDEs. Each loads the same `AGENTS.md` content on every turn — Cursor reads `AGENTS.md` natively at the repo root, Claude Code reads [`CLAUDE.md`](CLAUDE.md) which `@`-imports `AGENTS.md`. The `workspace/_custom/` overlay applies under both IDEs identically; there is no Claude-Code-specific overlay path.
+Superagent runs under **Cursor** and **Claude Code** as first-class hosts, and under any other CLI that reads `AGENTS.md` natively (e.g. Codex CLI) with zero framework changes. Three harness classes exist:
 
-You can switch between the two IDEs interchangeably — IDE detection is environment-driven and runs on every call (no sticky config). The helper at `superagent/tools/ide.py` centralizes the probe:
+- **Cursor** — reads `AGENTS.md` natively at the repo root.
+- **Claude Code** — reads [`CLAUDE.md`](CLAUDE.md), which `@`-imports `AGENTS.md`.
+- **Generic `AGENTS.md`-native CLI** — reads `AGENTS.md` directly; no hooks, no IDE-specific config files. Everything such a CLI needs lives in this file (see "Non-Negotiables (Every Harness)" above).
+
+The `workspace/_custom/` overlay applies identically under every harness; there is no per-harness overlay path.
+
+You can switch between harnesses interchangeably — detection is environment-driven and runs on every call (no sticky config). The helper at `superagent/tools/ide.py` centralizes the probe:
 
 ```bash
 uv run python -m superagent.tools.ide current   # prints "claude-code" / "cursor" / "unknown"
@@ -551,31 +574,31 @@ uv run python -m superagent.tools.ide is-claude # exit 0 iff Claude Code
 uv run python -m superagent.tools.ide is-cursor # exit 0 iff Cursor
 ```
 
-Detection looks at `CLAUDECODE=1` (Claude Code) and any `CURSOR_*` env var (Cursor); when both are present, Claude Code wins. There is intentionally **no** `preferences.ide` override in `_memory/config.yaml` — re-detecting each turn keeps multi-IDE workflows frictionless.
+Detection looks at `CLAUDECODE=1` (Claude Code) and any `CURSOR_*` env var (Cursor); when both are present, Claude Code wins. **`unknown` is a first-class answer** — it is the correct result for generic `AGENTS.md`-native CLIs, which need no detection because they carry no harness-specific wiring. There is intentionally **no** `preferences.ide` override in `_memory/config.yaml` — re-detecting each turn keeps multi-harness workflows frictionless.
 
-| Setup file | Cursor reads | Claude Code reads | Committed? |
-|---|---|---|---|
-| `AGENTS.md` | Yes (native) | Via `CLAUDE.md` `@`-import | Yes |
-| `CLAUDE.md` | No (irrelevant; pure re-export) | Yes (loaded every turn) | Yes |
-| `.cursor/rules/` | Yes | No (skipped via `.claudeignore`) | Yes |
-| `.claudeignore` | No | Yes (gitignore-syntax exclusions) | Yes |
-| `.cursor/hooks.json` | Yes (Cursor hooks) | No | Yes |
-| `.claude/settings.json` | No | Yes (Claude Code hooks) | Yes |
-| `.claude/settings.local.json` | No | Yes (per-machine override) | No (gitignored) |
-| `.cursor/mcp.json.cursor` | No (template only) | No (template only) | Yes |
-| `.cursor/mcp.json` | Yes (runtime; may carry tokens) | No | No (gitignored) |
-| `.mcp.json.claude` | No (template only) | No (template only) | Yes |
-| `.mcp.json` | No | Yes (runtime; may carry tokens) | No (gitignored) |
+| Setup file | Cursor reads | Claude Code reads | Generic CLI reads | Committed? |
+|---|---|---|---|---|
+| `AGENTS.md` | Yes (native) | Via `CLAUDE.md` `@`-import | Yes (native) | Yes |
+| `CLAUDE.md` | No (irrelevant; pure re-export) | Yes (loaded every turn) | No | Yes |
+| `.cursor/rules/` | Yes | No (skipped via `.claudeignore`) | No | Yes |
+| `.claudeignore` | No | Yes (gitignore-syntax exclusions) | No | Yes |
+| `.cursor/hooks.json` | Yes (Cursor hooks) | No | No | Yes |
+| `.claude/settings.json` | No | Yes (Claude Code hooks) | No | Yes |
+| `.claude/settings.local.json` | No | Yes (per-machine override) | No | No (gitignored) |
+| `.cursor/mcp.json.cursor` | No (template only) | No (template only) | No (template only) | Yes |
+| `.cursor/mcp.json` | Yes (runtime; may carry tokens) | No | No | No (gitignored) |
+| `.mcp.json.claude` | No (template only) | No (template only) | No (template only) | Yes |
+| `.mcp.json` | No | Yes (runtime; may carry tokens) | Varies — point the CLI at it if it accepts MCP JSON config | No (gitignored) |
 
-**Recommended wiring** (the `init` skill sets all of these up by default):
+**Recommended wiring** (the `init` skill sets all of these up by default; the first two are hook-based **enhancements** — valuable where the harness supports hooks, absent elsewhere, and nothing critical depends on them):
 
-- **User-prompt logging** (used by the Supertailor for friction analysis). Both IDEs run `uv run python superagent/tools/log_user_query.py` on `UserPromptSubmit`:
+- **User-prompt logging** (used by the Supertailor for friction analysis). Cursor and Claude Code run `uv run python superagent/tools/log_user_query.py` on `UserPromptSubmit`:
   - Cursor: `.cursor/hooks.json` (no `--source` flag; defaults to `cursor`).
   - Claude Code: `.claude/settings.json` (passes `--source claude-code` so the Supertailor can slice by IDE).
-  - Disable in either IDE by setting `_memory/config.yaml.preferences.privacy.log_user_queries: false`; the script reads that flag and exits silently when it's off.
-- **Skill auto-loader** (Claude Code only). A second `UserPromptSubmit` hook runs `uv run python -m superagent.tools.skill_loader`: it matches the prompt against every skill's frontmatter `triggers` (framework + `_custom` overlay) and injects the matching skill deterministically — full body for short skills, a compact pointer + step index for long ones (per the read budget). Cursor's hook API cannot add context, so under Cursor the agent falls back to recognizing triggers via the skill manifest. Fail-safe (always exits 0); disable via `_memory/config.yaml.preferences.skill_autoload: false`.
-- **MCP servers.** Each IDE reads its own runtime file (`.cursor/mcp.json` / `.mcp.json`). Both files start as a regular-file copy of the committed templates (`.cursor/mcp.json.cursor` / `.mcp.json.claude`). The templates are content-identical (Superagent has no per-IDE OAuth client_id constraint); only the destination path differs. **Regular-file copies, not symlinks** — this repo lives in iCloud Drive, and iCloud occasionally rewrites symlinks as placeholders. Edit one file, re-run `init`, and drift between the two is detected and offered for mirror.
-- **Commit-message hook.** Install a `commit-msg` hook at `.githooks/commit-msg` (`git config core.hooksPath .githooks`) that blocks AI-attribution patterns at commit time. The reference implementation lives at `superagent/templates/githooks/commit-msg`. IDE-agnostic.
+  - Disable by setting `_memory/config.yaml.preferences.privacy.log_user_queries: false`; the script reads that flag and exits silently when it's off.
+- **Skill auto-loader** (Claude Code only). A second `UserPromptSubmit` hook runs `uv run python -m superagent.tools.skill_loader`: it matches the prompt against every skill's frontmatter `triggers` (framework + `_custom` overlay) and injects the matching skill deterministically — full body for short skills, a compact pointer + step index for long ones (per the read budget). Cursor's hook API cannot add context, and generic CLIs have no hooks — under those harnesses the agent recognizes triggers via the skill manifest (floor item 2). Fail-safe (always exits 0); disable via `_memory/config.yaml.preferences.skill_autoload: false`.
+- **MCP servers.** Cursor and Claude Code each read their own runtime file (`.cursor/mcp.json` / `.mcp.json`). Both files start as a regular-file copy of the committed templates (`.cursor/mcp.json.cursor` / `.mcp.json.claude`). The templates are content-identical (Superagent has no per-harness OAuth client_id constraint); only the destination path differs. **Regular-file copies, not symlinks** — this repo lives in iCloud Drive, and iCloud occasionally rewrites symlinks as placeholders. Edit one file, re-run `init`, and drift between the two is detected and offered for mirror. A generic CLI that accepts MCP JSON config can be pointed at `.mcp.json` as well.
+- **Commit-message hook.** Install a `commit-msg` hook at `.githooks/commit-msg` (`git config core.hooksPath .githooks`) that blocks AI-attribution patterns at commit time. The reference implementation lives at `superagent/templates/githooks/commit-msg`. Harness-agnostic.
 
 If the repo also hosts other assistant frameworks, route each turn to the right framework based on the request's evident scope rather than auto-injecting Superagent on every turn.
 
