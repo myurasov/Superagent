@@ -40,7 +40,10 @@ results are collectively too large).
    (`interaction-log.yaml`)? → Tail-read with explicit negative `offset`.
 
 Search method and read discipline are orthogonal: this rule governs *not
-loading huge files whole*, not which search tool to use.
+loading huge files whole*, not which search tool to use. A harness without a
+ranged-read tool satisfies the rule with any equivalent mechanism (`sed -n
+'200,260p'`, `awk`, `rg` with context) — the constraint is on bytes loaded
+into context, not on the specific tool.
 
 ## Enforcement
 

@@ -35,6 +35,10 @@ Typical delegate cases:
   large but the capture is a few index rows.
 - Multi-file framework-code investigations.
 
+**Harness without a subagent tool?** Run the sweep in the main session with
+tight slices (grep + ranged reads) and summarize as you go so raw dumps never
+accumulate in the transcript — the rule changes shape, not obligation.
+
 ## When NOT to delegate
 
 - 1–3 known small files, or sliced/grepped reads within the read budget —
