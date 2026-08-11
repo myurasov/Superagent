@@ -173,7 +173,7 @@ If Q3 included specific pain points, also seed `_memory/insights.yaml` with one 
 
 ## 4½. IDE-specific support files (verify presence)
 
-Both **Cursor** and **Claude Code** are first-class host IDEs (see `AGENTS.md` § "IDE setup (Cursor and Claude Code)"). The framework distribution includes four shim files at the repo root, all tracked in git:
+Both **Cursor** and **Claude Code** are first-class host IDEs, and any other `AGENTS.md`-reading CLI works with zero framework changes (see `AGENTS.md` § "Harness setup (Cursor, Claude Code, and other CLIs)"). The framework distribution includes four shim files at the repo root, all tracked in git:
 
 | Path | Purpose |
 |---|---|
@@ -319,7 +319,7 @@ Print a structured summary:
 
 - Workspace created at `<absolute path to workspace>`.
 - Domains: 13 defaults registered (folders materialize on first data write per `contracts/domains-and-assets.md` § 6.4a).
-- Memory files seeded: 13 `_memory/*.yaml`.
+- Memory files seeded: every template in `superagent/templates/memory/` (only files that did not already exist).
 - Data sources enabled: <list, or "none yet (run `ingest --setup` later)">.
 - Pain-point → skill mapping (the user's top 3 pain points, each pointing to the most relevant skill).
 - Recommended next moves:

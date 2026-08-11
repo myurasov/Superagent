@@ -1,0 +1,19 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: registry of command classes known to require escalated
+# execution.
+#
+# Implements: superagent/rules/run-escalated.md.
+#
+# On a class match for the current harness, escalate on the FIRST attempt
+# instead of re-discovering the denial. Read once per session (AGENTS.md
+# "Non-Negotiables" floor item 1). Entity-shape: one row per command class;
+# update `verified` on each confirmed use; remove rows whose class starts
+# working without escalation.
+entries: []
+# - id: esc-2026-08-11-001
+#   class: "defaults write"          # command class (prefix match on argv)
+#   harness: "codex-cli"             # harness class the denial applies to
+#   error_shape: "Operation not permitted (sandbox deny)"
+#   mechanics: "Codex: approval_policy on-request; Cursor: required_permissions; Claude: permission prompt"
+#   verified: 2026-08-11             # last date the escalation was confirmed working
+#   note: "writing a plist outside the sandbox always denies"
