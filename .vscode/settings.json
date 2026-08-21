@@ -14,7 +14,7 @@
         "*.md": "vscode.markdown.preview.editor"
     },
     "explorer.decorations.colors": false,
-    "workbench.colorTheme": "base16-deep-oceanic-next",
+    "workbench.colorTheme": "GrayJack's Nord",
     "workbench.iconTheme": "catppuccin-mocha",
-    "workbench.statusBar.visible": false
+    "workbench.statusBar.visible": false,
 }
