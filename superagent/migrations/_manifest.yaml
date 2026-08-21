@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-08-21T09:47:56+00:00'
+generated_at: '2026-08-21T22:21:44+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -88,6 +88,13 @@ migrations:
   from_version: 0.11.0
   file: 0.12.0.md
   title: Seed the token_economy config block; rename read-discipline rule overlays
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute
+- to_version: 0.13.0
+  from_version: 0.12.0
+  file: 0.13.0.md
+  title: Rename per-web-app browserctl plugins to browserctl.<app>.md
   breaking: false
   revertible: true
   estimated_duration: <1 minute
