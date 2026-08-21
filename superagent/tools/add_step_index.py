@@ -47,7 +47,10 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
-FRONTMATTER_RE = re.compile(r"^(---\s*\n.*?\n---\s*\n)", re.DOTALL)
+# The closing fence matches only trailing spaces/tabs — NOT `\s*`, which
+# would swallow following blank lines into the intro and grow the file by
+# one blank line per re-run (idempotency bug, fixed 0.12.0).
+FRONTMATTER_RE = re.compile(r"^(---[ \t]*\n.*?\n---[ \t]*\n)", re.DOTALL)
 H1_RE = re.compile(r"^(#\s+.+\n)")
 H2_RE = re.compile(r"^(##\s+(.*))$", re.MULTILINE)
 NUMBERED_PREFIX_RE = re.compile(r"^\d+\.?[a-z]?\s")
