@@ -46,12 +46,13 @@ files:
       - AGENTS.md
       - tools/heic_to_jpg.py
     user_overlay: workspace/_custom/rules/image-format-policy.md
-  - path: large-file-reads.md
+  - path: token-economy.md
     kind: doc
-    purpose: "Never Read unbounded memory-resident files whole: per-file decision table (todo.yaml, email archive, logs, events stream, transactions) with allowed vs forbidden read forms, plus a generative rule for any new file."
+    purpose: "Always-on leveled token economy (off|med|full|auto; per-request override economy:/token-economy:): read-budget + batching + cache-stability floor, the unbounded-file decision table (folded from the retired large-file-reads.md), graded measures by level, pacing (input_tokens_per_minute; override asap), and hard floors."
     consumed_by:
       - AGENTS.md
-    user_overlay: workspace/_custom/rules/large-file-reads.md
+      - rules/subagents.md
+    user_overlay: workspace/_custom/rules/token-economy.md
   - path: machine-local-home.md
     kind: doc
     purpose: "Machine-local root ~/.superagent/ ($SUPERAGENT_HOME): high-churn scratch (tmp/) and non-Python tool installs (tools/) live outside the iCloud-synced repo; helper at tools/home.py; sanctioned exception to scope discipline."
@@ -74,9 +75,9 @@ files:
       - AGENTS.md
       - superagent.agent.md
     user_overlay: workspace/_custom/rules/scope-discipline.md
-  - path: subagent-bulk-reads.md
+  - path: subagents.md
     kind: doc
-    purpose: "Any lookup expected to pull >~20k tokens of raw tool results (and the session continues) runs in a subagent that returns only the synthesis; when-NOT-to-delegate list + cost/model tiering."
+    purpose: "What runs outside the main context: the always-on bulk-read floor (>~20k tokens of raw results delegates; ~10k at economy full) plus the leveled delegate-by-default posture (off|auto|quality|cost; per-request override subagents:), task-phrasing contract, tier-matched models, capture-through for delegated live-source reads, and the no-delegation-tool fallback."
     consumed_by:
       - AGENTS.md
       - skills/daily-update.md
@@ -87,7 +88,7 @@ files:
       - skills/summarize-thread.md
       - skills/doctor.md
       - skills/supertailor-review.md
-    user_overlay: workspace/_custom/rules/subagent-bulk-reads.md
+    user_overlay: workspace/_custom/rules/subagents.md
   - path: tool-usage-corrections.md
     kind: doc
     purpose: "First-try tool-usage errors get their corrected form persisted into core docs in the same turn (AGENTS.md one-liner, then governing rule, then skill body, then tool --help), so no future session repeats the guess."

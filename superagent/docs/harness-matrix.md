@@ -39,6 +39,21 @@ deployment defaults change.
 | **balanced** | good reasoning at moderate cost; default session model | Claude Sonnet, GPT-5-mini-class |
 | **fast** | cheap mechanical sweeps (enumerate, filter, extract) | Claude Haiku, GPT-5-nano-class |
 
+### Task class → tier per delegation posture
+
+Consumed by `rules/subagents.md` (postures `cost` / `quality`; the sibling
+frameworks' four-tier ladder is mapped onto Superagent's three tiers). Match
+the delegated task's class, then read the active posture's column:
+
+| Task class | `cost` | `quality` |
+|---|---|---|
+| **Mechanical** (enumerate, filter, extract, verify, apply a specified edit) | fast — read-only agent type for sweeps | balanced |
+| **Moderate synthesis** (summarize a thread, assemble an entity brief from named sources) | balanced | frontier |
+| **Judgment-heavy** (outbound drafts, ambiguous triage, anything acted on directly) | session model, or inline | session model, never below frontier |
+
+In doubt at `cost`, take the cheaper tier; in doubt at `quality`, the
+stronger one.
+
 ## Maintenance
 
 - Add a row when a new harness class is first observed driving the

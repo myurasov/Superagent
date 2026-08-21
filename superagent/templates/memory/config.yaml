@@ -31,6 +31,17 @@ preferences:
   archive_remind: true
   tailor_enabled: true
 
+  # Token economy (see superagent/rules/token-economy.md + rules/subagents.md).
+  # Absent block resolves to these same defaults.
+  token_economy:
+    # Economy level: off | med | full | auto (context-scaled; default).
+    level: auto
+    # Delegation posture: off | auto | quality | cost (auto follows the
+    # resolved economy level).
+    subagents: auto
+    # Pacing budget — integer, or k/m shorthand ("700k", "1m").
+    input_tokens_per_minute: "1m"
+
   # Cadence schedule (when the cadence skills SHOULD run if you let them).
   cadences:
     daily_update: "08:30"

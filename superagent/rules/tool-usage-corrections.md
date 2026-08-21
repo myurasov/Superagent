@@ -22,7 +22,7 @@ in this order:
    helpers), add or extend a compact one-liner in the section that governs
    the tool. AGENTS.md is in context every turn; this is the strongest fix.
 2. **The governing rule or contract** — if the tool already has a canonical
-   rule (`rules/large-file-reads.md`, `contracts/email-capture.md`, …), add
+   rule (`rules/token-economy.md`, `contracts/email-capture.md`, …), add
    or correct the example invocation there.
 3. **The skill body** — if the wrong usage came from a stale example inside a
    skill, fix the skill, re-run `tools/add_step_index.py` on it, and

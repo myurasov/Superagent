@@ -23,7 +23,7 @@
   - [Versioning and migrations](#versioning-and-migrations)
   - [Local task references](#local-task-references)
   - [Knowledge discipline](#knowledge-discipline)
-  - [Read budget (token efficiency)](#read-budget-token-efficiency)
+  - [Token economy (always-on dials)](#token-economy-always-on-dials)
   - [Local-first read order](#local-first-read-order)
   - [Operational handles](#operational-handles)
   - [Visibility and sensitive tier](#visibility-and-sensitive-tier)
@@ -415,25 +415,21 @@ Core operating principle: **know as much as possible, fetch as little as necessa
 
 These two rules cooperate: lean discovery keeps sessions cheap and the workspace sustainable; opportunistic retention keeps the data Superagent does have fresh and growing ambient. **Superagent is a careful note-taker, not a hoarder.**
 
-Boundaries: captured personal data still respects `contracts/privacy.md` + `contracts/sensitive-tier.md`; captures NEVER write upstream sources; retention writes only to `workspace/` (never `superagent/`). Full statement: `superagent/superagent.agent.md` § "Knowledge discipline". The next two sections (§ "Read budget", § "Local-first read order") formalize the discovery side.
+Boundaries: captured personal data still respects `contracts/privacy.md` + `contracts/sensitive-tier.md`; captures NEVER write upstream sources; retention writes only to `workspace/` (never `superagent/`). Full statement: `superagent/superagent.agent.md` § "Knowledge discipline". The next two sections (§ "Token economy", § "Local-first read order") formalize the discovery side.
 
 ---
 
-## Read budget (token efficiency)
+## Token economy (always-on dials)
 
-Per `docs/superagent/docs/_internal/perf-improvement-ideas.md` QW-3, every Superagent skill execution operates under this discipline:
+Two always-on dials, configured in `_memory/config.yaml` under `preferences.token_economy:` (absent block = these defaults). Full rules: [`superagent/rules/token-economy.md`](superagent/rules/token-economy.md) (how much enters context + pacing) and [`superagent/rules/subagents.md`](superagent/rules/subagents.md) (what runs outside the main context).
 
-- **For any file longer than 200 lines, run `Grep` first** to locate the relevant section, then use `Read --offset --limit` to pull only that range. Whole-file reads are reserved for files known to be < 200 lines OR explicitly required (e.g. `_memory/config.yaml`).
-- **Skills that say "read X" implicitly mean "read the relevant section of X"** — agents should treat full reads as the exception.
-- **For long skills** (`init.md`, `daily-update.md`, `monthly-review.md`, `supertailor-review.md`, `add-source.md`, …), read the YAML frontmatter + the `## Step index` block first; use `Read --offset --limit` against the listed step ranges.
-- **Use the skill manifest**: read `superagent/skills/_manifest.yaml` (cheap, ~5-10 KB) to pick which skill applies, instead of grepping every skill markdown.
-- **Use the events stream + log summaries** instead of full-loading append-only YAML logs: `_memory/<file>.summary.yaml` (the QW-4 summary sibling) tells you whether you need the full log at all; `tools/log_window.py read` pulls just a date range.
-- **BATCH parallel reads / MCP calls** in a single tool-call message rather than chaining them sequentially. Sequential chains are reserved for the cases where step N's output feeds step N+1. If the harness has no batch mechanism, run the calls back-to-back without pausing for commentary between them.
-- **Never `Read` unbounded memory files whole.** `todo.yaml`, the email archive, the interaction/ingestion logs, `user-queries.jsonl`, signal stores, and `transactions.yaml` are read only through slices, tails (negative `offset`), or their canonical filtering tools — per the decision table in `rules/large-file-reads.md`.
-- **Delegate bulk reads to subagents.** Any lookup expected to pull more than ~20k tokens of raw tool results (and the session continues afterward) runs in a subagent that returns only the synthesis — per `rules/subagent-bulk-reads.md`.
-- **Persist tool-usage corrections.** A first-try tool-invocation error gets its corrected form written back into core docs in the same turn, per `rules/tool-usage-corrections.md`.
+- **`level: auto`** — economy level, `off | med | full | auto`. `off` = floor only; `med` = standing posture; `full` = budget-crunch bundle. `auto` resolves to `med` and ratchets one-way to `full` when any of: a compaction / summarization marker appears in the transcript; the session has read more than ~10 files or made more than ~30 tool calls; the user says the session is getting long.
+- **`subagents: auto`** — delegation posture, `off | auto | quality | cost`. `auto` follows the resolved economy level (`off`→`off`, `med`→`quality`, `full`→`cost`). The always-on bulk-read floor — oversized lookups in a session that continues afterward run in a subagent returning only the synthesis; thresholds in the rule — holds even at `off`.
+- **`input_tokens_per_minute: "1m"`** — pacing budget (integer or `700k`/`1m` shorthand): keep round-trips/min ≤ budget ÷ current context tokens; level-independent.
 
-The `tools/anti_patterns.py` scanner flags skills that violate these patterns. The Supertailor's strategic pass surfaces persistent violations.
+Per-request overrides, single prompt only: `economy: <level>` (alias `token-economy:`), `subagents: <posture>`, `asap` (pacing off for that request). Acknowledge in one line; write config only on explicit persistence language ("set / remember / from now on").
+
+The always-on floor in `rules/token-economy.md` binds at every level, including `off`: grep-then-slice for any file past 200 lines; never read the unbounded-file decision table's files whole; batch independent tool calls in one message; time-varying fields at the END of always-on files; never re-read your own writes. Tool-usage corrections still persist same-turn per `rules/tool-usage-corrections.md`. The `tools/anti_patterns.py` scanner flags skills that violate these patterns.
 
 ## Local-first read order
 

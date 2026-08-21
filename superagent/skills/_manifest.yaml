@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-08-09T18:32:05-07:00'
+generated_at: '2026-08-21T02:43:31-07:00'
 skill_count: 50
 skills:
 - name: superagent-ad-hoc-task
@@ -18,10 +18,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 174
-  h2_steps: 5
+  lines: 190
+  h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 2076
+  typical_token_cost: 2161
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml
@@ -41,10 +41,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 154
+  lines: 150
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 1249
+  typical_token_cost: 1247
   typical_files_read:
   - _memory/accounts-index.yaml
   - _memory/data-sources.yaml
@@ -65,7 +65,7 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 131
+  lines: 128
   h2_steps: 8
   h3_subsections: 0
   typical_token_cost: 941
@@ -85,7 +85,7 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 178
+  lines: 175
   h2_steps: 8
   h3_subsections: 0
   typical_token_cost: 1630
@@ -106,10 +106,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 121
+  lines: 118
   h2_steps: 8
   h3_subsections: 0
-  typical_token_cost: 864
+  typical_token_cost: 863
   typical_files_read: []
   origin: framework
 - name: superagent-add-contact
@@ -127,7 +127,7 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 147
+  lines: 144
   h2_steps: 7
   h3_subsections: 0
   typical_token_cost: 1105
@@ -147,10 +147,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 124
+  lines: 121
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 1305
+  typical_token_cost: 1304
   typical_files_read:
   - _memory/sources-index.yaml
   origin: framework
@@ -169,10 +169,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 108
-  h2_steps: 5
+  lines: 124
+  h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 913
+  typical_token_cost: 1015
   typical_files_read:
   - _memory/domains-index.yaml
   origin: framework
@@ -214,10 +214,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 226
+  lines: 223
   h2_steps: 8
   h3_subsections: 10
-  typical_token_cost: 1827
+  typical_token_cost: 1826
   typical_files_read:
   - _memory/projects-index.yaml
   - _memory/domains-index.yaml
@@ -240,10 +240,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 247
+  lines: 244
   h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 2989
+  typical_token_cost: 3049
   typical_files_read:
   - Sources/_cache/`
   - _memory/domains-index.yaml
@@ -289,10 +289,10 @@ skills:
   - calendar ingestors (gcal / icloud_calendar / outlook_calendar)
   cli_required: []
   cli_optional: []
-  lines: 100
-  h2_steps: 3
+  lines: 114
+  h2_steps: 4
   h3_subsections: 5
-  typical_token_cost: 1083
+  typical_token_cost: 1150
   typical_files_read:
   - _memory/appointments.yaml
   - _memory/health-records.yaml
@@ -334,7 +334,7 @@ skills:
   - any finance ingestor (plaid / monarch / ynab) — for reconciliation
   cli_required: []
   cli_optional: []
-  lines: 134
+  lines: 133
   h2_steps: 4
   h3_subsections: 5
   typical_token_cost: 1235
@@ -363,10 +363,10 @@ skills:
   - uv
   cli_optional:
   - playwright (Chromium install — one-time `uv run --with playwright playwright install chromium`)
-  lines: 198
-  h2_steps: 8
+  lines: 217
+  h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 2901
+  typical_token_cost: 3262
   typical_files_read: []
   origin: framework
 - name: superagent-daily-update
@@ -385,10 +385,10 @@ skills:
   - any scheduled-cadence ingest source (gmail, gcal, icloud, apple_health, …)
   cli_required: []
   cli_optional: []
-  lines: 328
+  lines: 325
   h2_steps: 26
   h3_subsections: 0
-  typical_token_cost: 3220
+  typical_token_cost: 3229
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/context.yaml
@@ -413,10 +413,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 171
+  lines: 166
   h2_steps: 15
   h3_subsections: 0
-  typical_token_cost: 1586
+  typical_token_cost: 1594
   typical_files_read:
   - _memory/domains-index.yaml
   - Sources/_cache/`;
@@ -439,10 +439,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 188
-  h2_steps: 8
+  lines: 207
+  h2_steps: 9
   h3_subsections: 5
-  typical_token_cost: 1368
+  typical_token_cost: 1494
   typical_files_read:
   - _memory/domain-suggestions.yaml
   - _memory/config.yaml
@@ -464,10 +464,10 @@ skills:
   - email ingestors (for prior-thread context)
   cli_required: []
   cli_optional: []
-  lines: 117
-  h2_steps: 6
+  lines: 134
+  h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 959
+  typical_token_cost: 1056
   typical_files_read: []
   origin: framework
 - name: superagent-events
@@ -533,10 +533,10 @@ skills:
   - email + message ingestors (to find unanswered)
   cli_required: []
   cli_optional: []
-  lines: 146
+  lines: 143
   h2_steps: 9
   h3_subsections: 6
-  typical_token_cost: 1249
+  typical_token_cost: 1258
   typical_files_read:
   - _memory/todo.yaml
   - _memory/appointments.yaml
@@ -556,7 +556,7 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 215
+  lines: 212
   h2_steps: 16
   h3_subsections: 0
   typical_token_cost: 1930
@@ -587,10 +587,10 @@ skills:
   - apple_health / whoop / strava / garmin / oura — auto-ingest vitals
   cli_required: []
   cli_optional: []
-  lines: 170
+  lines: 167
   h2_steps: 5
   h3_subsections: 6
-  typical_token_cost: 1196
+  typical_token_cost: 1195
   typical_files_read:
   - _memory/health-records.yaml
   - Domains/Health/info.md
@@ -614,10 +614,10 @@ skills:
   - home_assistant — could surface filter-due signals from sensor data
   cli_required: []
   cli_optional: []
-  lines: 129
+  lines: 126
   h2_steps: 5
   h3_subsections: 3
-  typical_token_cost: 976
+  typical_token_cost: 975
   typical_files_read:
   - _memory/assets-index.yaml
   - Domains/Home/history.md
@@ -685,10 +685,10 @@ skills:
   - any source documented in docs/data-sources.md
   cli_required: []
   cli_optional: []
-  lines: 159
+  lines: 156
   h2_steps: 5
   h3_subsections: 16
-  typical_token_cost: 1965
+  typical_token_cost: 1964
   typical_files_read:
   - _memory/data-sources.yaml
   - _memory/transactions.yaml
@@ -712,10 +712,10 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 375
+  lines: 367
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 5791
+  typical_token_cost: 5829
   typical_files_read:
   - workspace/_memory/config.yaml
   - _memory/insights.yaml
@@ -766,7 +766,7 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 362
+  lines: 361
   h2_steps: 12
   h3_subsections: 10
   typical_token_cost: 2928
@@ -789,10 +789,10 @@ skills:
   - any scheduled-cadence ingest source
   cli_required: []
   cli_optional: []
-  lines: 233
+  lines: 229
   h2_steps: 23
   h3_subsections: 0
-  typical_token_cost: 2173
+  typical_token_cost: 2182
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/documents-index.yaml
@@ -818,10 +818,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 133
+  lines: 130
   h2_steps: 5
   h3_subsections: 3
-  typical_token_cost: 999
+  typical_token_cost: 998
   typical_files_read:
   - _memory/personal-signals.yaml
   - Domains/Self/history.md
@@ -842,10 +842,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 133
+  lines: 130
   h2_steps: 6
   h3_subsections: 7
-  typical_token_cost: 991
+  typical_token_cost: 990
   typical_files_read:
   - Domains/Pets/status.md
   origin: framework
@@ -868,7 +868,7 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 196
+  lines: 193
   h2_steps: 5
   h3_subsections: 8
   typical_token_cost: 1548
@@ -895,10 +895,10 @@ skills:
   - git
   - uv
   cli_optional: []
-  lines: 264
+  lines: 263
   h2_steps: 12
   h3_subsections: 0
-  typical_token_cost: 2906
+  typical_token_cost: 2905
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/interaction-log.yaml
@@ -922,7 +922,7 @@ skills:
   lines: 126
   h2_steps: 9
   h3_subsections: 7
-  typical_token_cost: 954
+  typical_token_cost: 964
   typical_files_read:
   - _memory/sources-index.yaml
   - Sources/_cache/<*>/_summary.md`
@@ -947,10 +947,10 @@ skills:
   - any source-fetch ingestor (depends on the ref kind)
   cli_required: []
   cli_optional: []
-  lines: 215
+  lines: 216
   h2_steps: 9
   h3_subsections: 7
-  typical_token_cost: 1929
+  typical_token_cost: 1967
   typical_files_read:
   - _memory/sources-index.yaml
   origin: framework
@@ -971,7 +971,7 @@ skills:
   - usage ingestors (Spotify / Strava / Apple Health → updates `last_used`)
   cli_required: []
   cli_optional: []
-  lines: 117
+  lines: 116
   h2_steps: 4
   h3_subsections: 6
   typical_token_cost: 1166
@@ -995,10 +995,10 @@ skills:
   - imessage / whatsapp / signal / slack ingestors
   cli_required: []
   cli_optional: []
-  lines: 98
+  lines: 99
   h2_steps: 7
   h3_subsections: 4
-  typical_token_cost: 714
+  typical_token_cost: 724
   typical_files_read: []
   origin: framework
 - name: superagent-supertailor-review
@@ -1016,10 +1016,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 162
+  lines: 158
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2570
+  typical_token_cost: 2578
   typical_files_read:
   - _memory/supertailor-suggestions.yaml
   - _memory/contacts.yaml
@@ -1044,10 +1044,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 133
+  lines: 130
   h2_steps: 5
   h3_subsections: 6
-  typical_token_cost: 861
+  typical_token_cost: 860
   typical_files_read:
   - _memory/tags.yaml
   origin: framework
@@ -1067,7 +1067,7 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 163
+  lines: 160
   h2_steps: 8
   h3_subsections: 5
   typical_token_cost: 1468
@@ -1112,10 +1112,10 @@ skills:
   - tesla — auto-ingests mileage / charging
   cli_required: []
   cli_optional: []
-  lines: 149
+  lines: 146
   h2_steps: 6
   h3_subsections: 6
-  typical_token_cost: 1152
+  typical_token_cost: 1151
   typical_files_read:
   - Domains/Vehicles/history.md
   - Domains/Vehicles/status.md
@@ -1138,10 +1138,10 @@ skills:
   - any health / fitness ingestor (apple_health / whoop / strava / garmin / oura)
   cli_required: []
   cli_optional: []
-  lines: 223
+  lines: 217
   h2_steps: 18
   h3_subsections: 0
-  typical_token_cost: 1859
+  typical_token_cost: 1867
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md
@@ -1169,10 +1169,10 @@ skills:
   - any scheduled-cadence ingest source
   cli_required: []
   cli_optional: []
-  lines: 159
+  lines: 156
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 1389
+  typical_token_cost: 1388
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
@@ -1202,10 +1202,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 147
-  h2_steps: 9
+  lines: 167
+  h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 1276
+  typical_token_cost: 1407
   typical_files_read:
   - _memory/config.yaml
   - _memory/interaction-log.yaml

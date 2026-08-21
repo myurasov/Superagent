@@ -18,11 +18,12 @@ cli_optional: []
 
 # Superagent summarize-thread skill
 
-> **Bulk reads** (`rules/subagent-bulk-reads.md`): any lookup expected to pull more
-> than ~20k tokens of raw tool results (multi-entity sweeps, whole email thread
-> trees, long histories or archives) runs in a subagent (`Explore` read-only /
-> `general-purpose` if it must write) that returns only the synthesis — named
-> facts, quotes, `file:line` pointers — never raw dumps into the main transcript.
+> **Bulk reads** (`rules/subagents.md`): any lookup expected to pull more than
+> ~20k tokens of raw tool results (~10k once the economy level resolves to `full`;
+> multi-entity sweeps, whole email thread trees, long histories or archives) runs
+> in a subagent (`Explore` read-only / `general-purpose` if it must write) that
+> returns only the synthesis — named facts, quotes, `file:line` pointers — never
+> raw dumps into the main transcript.
 
 
 > **Pre-flight (email-capture contract — `contracts/email-capture.md`)**:
