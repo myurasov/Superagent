@@ -22,6 +22,9 @@ Implements superagent/docs/_internal/perf-improvement-ideas.md § "Anti-patterns
 | AP-8 | warning | Manifest-bypass: "read every skill markdown". | Read `skills/_manifest.yaml` first. |
 | AP-9 | info | Load-then-extract: large file loaded, single fact extracted. | Use Grep / FTS5 first. |
 | AP-10 | info | Entity-side payment-history append without account-side `accounts-index.transactions[]` mirror. | Per `contracts/payment-confirmations.md § 4 step 3a`, append the symmetric account-side row in the same skill section. |
+| AP-11 | warning | Unsliced read of an unbounded-file-table store (todo.yaml, logs, signal stores, transactions, email sidecar). | Slice / tail / grep / canonical tool per `rules/token-economy.md` § Unbounded-file decision table; live-todo write path exempt. |
+| AP-12 | info | Per-file sequential reads where one batched sweep is specified. | One batched shell sweep or one parallel tool-call message per `rules/token-economy.md` § Always-on floor (Batching). |
+| AP-13 | info | Whole-file read of a long file for a single fact (complements AP-9). | Grep first, then `Read --offset --limit` per `rules/token-economy.md` § Always-on floor (Read budget). |
 
 **Adding a pattern**: append a row to `rules/anti-patterns.yaml` with the next AP-N id (never renumber existing rows), then add a row to the table above. Bump `last_updated` in the YAML.
 
