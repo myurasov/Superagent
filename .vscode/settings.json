@@ -14,7 +14,62 @@
         "*.md": "vscode.markdown.preview.editor"
     },
     "explorer.decorations.colors": false,
-    "workbench.colorTheme": "GrayJack's Nord",
+    "workbench.colorTheme": "Mayukai Mirage Gruvbox Darktooth",
     "workbench.iconTheme": "catppuccin-mocha",
     "workbench.statusBar.visible": false,
+    "workbench.colorCustomizations": {
+        "[Solarized Dark]": {
+            "editor.background": "#00212b",
+            "editor.foreground": "#fcffff",
+            "editorLineNumber.foreground": "#6a8389",
+            "editorLineNumber.activeForeground": "#e2ebeb",
+            "editorCursor.foreground": "#ffffff",
+            "editor.lineHighlightBackground": "#0a3744",
+            "editor.selectionBackground": "#2a5a68",
+            "editor.selectionHighlightBackground": "#1d4854",
+            "editorWhitespace.foreground": "#3d5b64",
+            "editorIndentGuide.background1": "#0f3e4a",
+            "editorIndentGuide.activeBackground1": "#3d5b64",
+            "sideBar.background": "#001b22",
+            "sideBar.foreground": "#b4c2c2",
+            "sideBarSectionHeader.background": "#00212b",
+            "activityBar.background": "#001820",
+            "activityBar.foreground": "#e2ebeb",
+            "list.activeSelectionForeground": "#ffffff",
+            "list.inactiveSelectionForeground": "#ccd6d6",
+            "list.hoverForeground": "#ffffff",
+            "tab.activeForeground": "#fffab3",
+            "tab.inactiveForeground": "#8ba0a0",
+            "titleBar.activeForeground": "#e2ebeb",
+            "terminal.background": "#00212b",
+            "terminal.foreground": "#ccd6d6"
+        },
+        "[Mayukai Mirage Gruvbox Darktooth]": {
+            "editor.foreground": "#ffebc6",
+            "editorLineNumber.foreground": "#7c6f64",
+            "editorLineNumber.activeForeground": "#fabd2f",
+            "editorCursor.foreground": "#ffffff",
+            "editorWhitespace.foreground": "#504945",
+            "sideBar.foreground": "#ccc3af",
+            "activityBar.foreground": "#f2e5c8",
+            "list.activeSelectionForeground": "#ffffff",
+            "list.inactiveSelectionForeground": "#f2e5c8",
+            "list.hoverForeground": "#ffffff",
+            "tab.activeForeground": "#00e5ff",
+            "tab.inactiveForeground": "#a89984",
+            "titleBar.activeForeground": "#f2e5c8",
+            "terminal.foreground": "#fbf6ec"
+        }
+    },
+    "editor.tokenColorCustomizations": {
+        "[Solarized Dark]": {
+            "comments": "#7d969d",
+            "variables": "#dbe4e4",
+            "keywords": "#a4c000",
+            "strings": "#3fc7bb",
+            "numbers": "#ea5296",
+            "functions": "#4ba6e8",
+            "types": "#d6a41b"
+        }
+    },
 }
