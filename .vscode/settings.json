@@ -61,15 +61,4 @@
             "terminal.foreground": "#fbf6ec"
         }
     },
-    "editor.tokenColorCustomizations": {
-        "[Solarized Dark]": {
-            "comments": "#7d969d",
-            "variables": "#dbe4e4",
-            "keywords": "#a4c000",
-            "strings": "#3fc7bb",
-            "numbers": "#ea5296",
-            "functions": "#4ba6e8",
-            "types": "#d6a41b"
-        }
-    },
 }
