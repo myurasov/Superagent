@@ -15,6 +15,17 @@ SimpleFin's `/accounts` endpoint:
     `split_access_url` extracts userinfo by regex instead.
   * Window: 90 days max per call. Larger backfills are chunked.
   * Budget: <= 24 requests per day total across this account.
+  * Latency: highly variable. The bridge refreshes institutions
+    server-side while the request is open, so a call that normally
+    returns in a few seconds can take tens of seconds; a connection
+    that needs re-authentication drags out the whole response. Hence
+    the generous `DEFAULT_HTTP_TIMEOUT` and the `--timeout` override.
+
+Every fetch failure — HTTP error, network error, or read timeout — is
+recorded on the RunResult and surfaces in `_memory/ingestion-log.yaml`.
+A refresh that fails must never be silent: a caller reading the log
+later has to be able to tell "no new transactions" apart from "the
+last attempt never completed".
 
 Idempotency: each transaction is keyed by
 `simplefin:<account_id>:<transaction_id>`. Re-runs over the same window
@@ -44,6 +55,8 @@ from ._base import IngestorBase, ProbeResult, ProbeStatus, RunResult, now_iso
 DEFAULT_RECENCY_DAYS = 30
 DEFAULT_BACKFILL_DAYS = 365
 DEFAULT_MAX_ITEMS = 2000
+DEFAULT_HTTP_TIMEOUT = 180  # seconds; see the module docstring on latency.
+PROBE_HTTP_TIMEOUT = 15  # probes ask for balances only and must stay snappy.
 SIMPLEFIN_WINDOW_DAYS = 45  # SimpleFin's recommended soft-cap; >45d windows
 # trigger a warning and may be capped server-side. Docs say 90; the API itself
 # warns at 45 (observed 2026-05-27).
@@ -66,7 +79,15 @@ def basic_auth_header(user: str, password: str) -> str:
     return "Basic " + base64.b64encode(f"{user}:{password}".encode()).decode()
 
 
-def http_get_json(url: str, auth_header: str, timeout: int = 60) -> dict[str, Any]:
+def http_get_json(
+    url: str, auth_header: str, timeout: int = DEFAULT_HTTP_TIMEOUT
+) -> dict[str, Any]:
+    """GET `url` with HTTP Basic auth and decode the JSON body.
+
+    Raises `HTTPError` / `URLError` on protocol and network failures and
+    `TimeoutError` when the read exceeds `timeout` seconds; callers are
+    responsible for recording those rather than letting them propagate.
+    """
     req = Request(
         url,
         method="GET",
@@ -148,7 +169,7 @@ class SimpleFinIngestor(IngestorBase):
             http_get_json(
                 base.rstrip("/") + "/accounts?balances-only=1",
                 basic_auth_header(user, password),
-                timeout=15,
+                timeout=PROBE_HTTP_TIMEOUT,
             )
         except HTTPError as exc:
             return ProbeResult(
@@ -190,6 +211,7 @@ class SimpleFinIngestor(IngestorBase):
         max_items = int(config_row.get("max_items_per_run") or DEFAULT_MAX_ITEMS)
         backfill = bool(config_row.get("backfill"))
         include_pending = bool(config_row.get("include_pending", True))
+        timeout = int(config_row.get("timeout") or DEFAULT_HTTP_TIMEOUT)
 
         now_utc = dt.datetime.now(tz=dt.UTC)
         if backfill:
@@ -225,9 +247,12 @@ class SimpleFinIngestor(IngestorBase):
                 + f"&pending={1 if include_pending else 0}"
             )
             try:
-                data = http_get_json(url, auth_header)
-            except (HTTPError, URLError) as exc:
-                errors.append(f"fetch {since.date()}..{until.date()}: {exc}")
+                data = http_get_json(url, auth_header, timeout=timeout)
+            except (HTTPError, URLError, TimeoutError) as exc:
+                # TimeoutError is neither HTTPError nor URLError; without it a
+                # slow endpoint crashed the run before anything was logged.
+                detail = f"timed out after {timeout}s" if isinstance(exc, TimeoutError) else str(exc)
+                errors.append(f"fetch {since.date()}..{until.date()}: {detail}")
                 continue
             for err in data.get("errors") or []:
                 errors.append(str(err))
@@ -454,6 +479,12 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--no-pending", action="store_true",
                         help="Exclude pending transactions.")
+    parser.add_argument("--timeout", type=int, default=None,
+                        help=(
+                            "Per-request read timeout in seconds "
+                            f"(default {DEFAULT_HTTP_TIMEOUT}). Raise it when the "
+                            "bridge is slow refreshing institutions."
+                        ))
     args = parser.parse_args()
 
     framework = Path(__file__).resolve().parents[2]
@@ -468,6 +499,7 @@ def main() -> int:
         "max_items_per_run": row.get("max_items_per_run", DEFAULT_MAX_ITEMS),
         "backfill": args.backfill,
         "include_pending": not args.no_pending,
+        "timeout": args.timeout,
     }
 
     ingestor = SimpleFinIngestor(workspace)
