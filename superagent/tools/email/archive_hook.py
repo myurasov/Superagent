@@ -127,9 +127,15 @@ def _flatten_mcp_content(value: Any) -> Any:
     """Unwrap MCP `CallToolResult.content` to a usable dict / string.
 
     MCP servers may wrap responses as `{"content": [{"type": "text",
-    "text": "..."}, ...]}`. Pull the text out so downstream parsers can
-    operate on it. If the value isn't wrapped, return as-is.
+    "text": "..."}, ...]}`. Some IDE hook envelopes strip the outer dict
+    and deliver the content array bare. Pull the text out so downstream
+    parsers can operate on it. If the value isn't wrapped, return as-is.
     """
+    if isinstance(value, list) and any(
+        isinstance(part, dict) and isinstance(part.get("text"), str)
+        for part in value
+    ):
+        value = {"content": value}
     if isinstance(value, dict) and "content" in value:
         parts = value.get("content") or []
         if isinstance(parts, list):
