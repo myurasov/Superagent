@@ -113,8 +113,11 @@ h2::before { content: counter(section) ". "; color: var(--accent); font-weight: 
 /* ==========================================================================
    4. PROVENANCE LINE + INLINE TOC
    ========================================================================== */
-.sub { color: var(--ink-2); font-size: var(--fs-sub); margin-bottom: 12pt; }
-.toc { margin: 0 0 -5pt 0; padding: 0; break-inside: avoid; }
+.sub { color: var(--ink-2); font-size: var(--fs-sub); margin-bottom: 8pt; }
+/* Equal white space above and below the TOC: its own symmetric margins set
+   both gaps — the adjacent siblings' margins (.sub 8pt above, table.headline
+   10pt below) are <= these, so they collapse into them. */
+.toc { margin: 10pt 0; padding: 0; break-inside: avoid; }
 .toc-label { display: none; }
 .toc-list {
   margin: 0;
