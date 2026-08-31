@@ -16,6 +16,7 @@ import pytest
 import yaml
 
 from superagent.tools.render_report import (
+    RENDER_SH_NAME,
     STYLE_NAME,
     THEME_NAME,
     check_stale,
@@ -24,6 +25,7 @@ from superagent.tools.render_report import (
     needs_render,
     parse_header_title,
     prepared_line,
+    tune_path,
 )
 
 NOW = dt.datetime(2026, 8, 31, 15, 0, tzinfo=dt.UTC)
@@ -90,20 +92,33 @@ def test_prepared_line_variants():
     )
 
 
-def test_ensure_assets_seeds_refreshes_and_preserves_theme(tmp_path, framework_dir):
+def test_ensure_assets_seeds_refreshes_and_preserves_user_layers(tmp_path, framework_dir):
     workspace = tmp_path / "ws"
-    target = tmp_path / "reports"
-    style, theme = ensure_assets(target, framework_dir, workspace)
-    assert style.is_file() and theme.is_file()
+    source = tmp_path / "reports" / "2026-08-31_demo.html"
+    style, theme, tune = ensure_assets(source, framework_dir, workspace)
+    assert style.is_file() and theme.is_file() and tune.is_file()
+    assert tune.name == "2026-08-31_demo.tune.css"
     template = (framework_dir / "templates" / "reports" / "style.css").read_bytes()
     assert style.read_bytes() == template
+    render_sh = source.parent / RENDER_SH_NAME
+    assert render_sh.is_file()
+    assert render_sh.stat().st_mode & 0o111  # executable
 
-    # Managed layer is refreshed when drifted; user layer is never overwritten.
+    # Managed layers are refreshed when drifted; user layers never overwritten.
     style.write_text("/* drifted */", encoding="utf-8")
+    render_sh.write_text("# drifted", encoding="utf-8")
     theme.write_text(".viz-root { --accent: #123456; }", encoding="utf-8")
-    ensure_assets(target, framework_dir, workspace)
+    tune.write_text("h2 { margin-top: 1em; }", encoding="utf-8")
+    ensure_assets(source, framework_dir, workspace)
     assert style.read_bytes() == template
+    expected_sh = (
+        (framework_dir / "templates" / "reports" / "render.sh")
+        .read_bytes()
+        .replace(b"@@SUPERAGENT_REPO@@", str(framework_dir.parent.resolve()).encode("utf-8"))
+    )
+    assert render_sh.read_bytes() == expected_sh
     assert theme.read_text(encoding="utf-8") == ".viz-root { --accent: #123456; }"
+    assert tune.read_text(encoding="utf-8") == "h2 { margin-top: 1em; }"
 
 
 def test_ensure_assets_uses_custom_overlay_theme(tmp_path, framework_dir):
@@ -111,8 +126,8 @@ def test_ensure_assets_uses_custom_overlay_theme(tmp_path, framework_dir):
     custom = workspace / "_custom" / "templates" / "reports" / "theme.css"
     custom.parent.mkdir(parents=True)
     custom.write_text(".viz-root { --accent: #7c3aed; }", encoding="utf-8")
-    target = tmp_path / "reports"
-    _, theme = ensure_assets(target, framework_dir, workspace)
+    source = tmp_path / "reports" / "r.html"
+    _, theme, _ = ensure_assets(source, framework_dir, workspace)
     assert theme.read_text(encoding="utf-8") == ".viz-root { --accent: #7c3aed; }"
 
 
@@ -237,6 +252,40 @@ def test_guard_flags_entirely_blank_page(tmp_path, capsys):
     assert rc == 1
 
 
+@needs_chromium
+def test_tune_edit_refires_render_and_survives(tmp_path, capsys):
+    html = _write_report_html(tmp_path / "tuned.html")
+    argv = [str(html), "--workspace", str(tmp_path / "ws")]
+    assert main(argv) == 0
+    tune = tune_path(html)
+    assert tune.is_file()  # seeded by the render
+
+    # Hand-tune → --check flags stale → re-render → the delta survives.
+    tune.write_text(".viz-root { --fs-base: 10pt; }", encoding="utf-8")
+    capsys.readouterr()
+    assert main([*argv, "--check"]) == 1
+    assert main(argv) == 0
+    assert "rendered" in capsys.readouterr().out
+    assert tune.read_text(encoding="utf-8") == ".viz-root { --fs-base: 10pt; }"
+
+
+@needs_chromium
+def test_render_sh_rebuilds_standalone(tmp_path):
+    import subprocess
+
+    html = _write_report_html(tmp_path / "shell.html")
+    assert main([str(html), "--workspace", str(tmp_path / "ws")]) == 0
+    render_sh = tmp_path / RENDER_SH_NAME
+    assert render_sh.is_file()
+    pdf = html.with_suffix(".pdf")
+    stamp = pdf.stat().st_mtime_ns
+    result = subprocess.run(
+        ["sh", str(render_sh), "shell"], capture_output=True, text=True, timeout=180
+    )
+    assert result.returncode == 0, result.stderr
+    assert pdf.stat().st_mtime_ns > stamp  # forced rebuild happened
+
+
 def test_subtitle_parsed_with_single_quotes():
     html = "<h1>T<br><span class='h1-subtitle'>Brief — Rev. 3</span></h1>"
     assert parse_header_title(html) == "T — Brief — Rev. 3"
@@ -264,25 +313,35 @@ def test_check_stale_mirrors_render_semantics(tmp_path, framework_dir):
     pdf = tmp_path / "r.pdf"
     style = tmp_path / STYLE_NAME
     theme = tmp_path / THEME_NAME
+    tune = tune_path(html)
+    assert tune.name == "r.tune.css"
 
-    assert check_stale(html, pdf, style, theme, template)  # no PDF yet
+    assert check_stale(html, pdf, style, theme, tune, template)  # no PDF yet
 
     pdf.write_bytes(b"%PDF-fake")
     past = pdf.stat().st_mtime - 60
     os.utime(html, (past, past))
-    # Missing managed siblings → a render would seed them → stale.
-    assert check_stale(html, pdf, style, theme, template)
+    # Missing seeded siblings → a render would (re)create them → stale.
+    assert check_stale(html, pdf, style, theme, tune, template)
     style.write_text("/* base v1 */", encoding="utf-8")
-    assert check_stale(html, pdf, style, theme, template)  # theme still missing
+    assert check_stale(html, pdf, style, theme, tune, template)  # theme missing
     theme.write_text("/* theme */", encoding="utf-8")
-    os.utime(style, (past, past))
-    os.utime(theme, (past, past))
-    assert not check_stale(html, pdf, style, theme, template)  # all synced → fresh
+    assert check_stale(html, pdf, style, theme, tune, template)  # tune missing
+    tune.write_text("/* tune */", encoding="utf-8")
+    for p in (style, theme, tune):
+        os.utime(p, (past, past))
+    assert not check_stale(html, pdf, style, theme, tune, template)  # fresh
+
+    # An edited tune delta re-fires the render…
+    future = pdf.stat().st_mtime + 60
+    os.utime(tune, (future, future))
+    assert check_stale(html, pdf, style, theme, tune, template)
+    os.utime(tune, (past, past))
 
     # Template TOUCH without content change stays fresh (byte compare, not mtime)…
     os.utime(template, None)
-    assert not check_stale(html, pdf, style, theme, template)
+    assert not check_stale(html, pdf, style, theme, tune, template)
     # …but a content drift is stale even with an old mtime.
     template.write_text("/* base v2 */", encoding="utf-8")
     os.utime(template, (past, past))
-    assert check_stale(html, pdf, style, theme, template)
+    assert check_stale(html, pdf, style, theme, tune, template)

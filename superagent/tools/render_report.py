@@ -4,12 +4,16 @@
 """Render report HTML sources to paginated PDF via Chromium print.
 
 The report pipeline (governed by `skills/report.md`): the agent authors a
-self-contained semantic HTML file that links two sibling stylesheets —
+self-contained semantic HTML file that links three sibling stylesheets —
 `report-style.css` (framework-managed copy of `templates/reports/style.css`,
-refreshed on every render) and `report-theme.css` (user-owned token
-overrides, seeded once and never overwritten). This tool prints that HTML to
-a US-Letter PDF using the Chromium bundled with Playwright (already installed
-for browserctl) and owns ALL page furniture:
+refreshed on every render), `report-theme.css` (user-owned token overrides,
+seeded once and never overwritten), and `<stem>.tune.css` (per-report
+hand-tuning delta, seeded once and never overwritten, loaded last so it
+wins). A managed `render.sh` (with a `--live` watch mode) is also kept
+beside the sources, so a report can be hand-tuned and rebuilt standalone.
+This tool prints the HTML to a US-Letter PDF using the Chromium bundled
+with Playwright (already installed for browserctl) and owns ALL page
+furniture:
 
   header page 1     italic "Prepared by <profile.name> <email> on <ts>"
                     (from `_memory/config.yaml`; "Rendered on ..." fallback)
@@ -60,15 +64,28 @@ INSET_PX = round(PAGE_MARGIN_SIDE * 96)
 
 FURNITURE_FONT_DEFAULT = "Helvetica Neue"
 
-# Managed stylesheet names, siblings of each report HTML source.
+# Managed siblings of each report HTML source. `report-style.css` and
+# `render.sh` are framework-managed (refreshed whenever the shipped template
+# drifts); `report-theme.css` (per folder) and `<stem>.tune.css` (per report)
+# are user-owned — seeded once, never overwritten.
 STYLE_NAME = "report-style.css"
 THEME_NAME = "report-theme.css"
+RENDER_SH_NAME = "render.sh"
+TUNE_SUFFIX = ".tune.css"
 
 THEME_STUB = """\
 /* report-theme.css — user-owned token overrides for report styling.
    Seeded once by render_report; never overwritten. Override tokens on
    .viz-root, e.g.:
    .viz-root { --accent: #7c3aed; --font-sans: "Avenir Next", sans-serif; }
+*/
+"""
+
+TUNE_STUB = """\
+/* {name} — per-report tuning delta. Seeded once by render_report; never
+   overwritten. Loaded last, so rules here win over report-style.css and
+   report-theme.css. Use for one-off page-budget tweaks: column widths,
+   spacing, a section forced onto one page, ...
 */
 """
 
@@ -89,6 +106,10 @@ def framework_style(framework: Path) -> Path:
     return framework / "templates" / "reports" / "style.css"
 
 
+def framework_render_sh(framework: Path) -> Path:
+    return framework / "templates" / "reports" / "render.sh"
+
+
 def load_profile(workspace: Path) -> dict:
     """Return the `profile:` block of `_memory/config.yaml` ({} on any failure)."""
     cfg_path = workspace / "_memory" / "config.yaml"
@@ -100,21 +121,43 @@ def load_profile(workspace: Path) -> dict:
     return profile if isinstance(profile, dict) else {}
 
 
-def ensure_assets(directory: Path, framework: Path, workspace: Path) -> tuple[Path, Path]:
-    """Materialize the two managed stylesheets next to a report source.
+def tune_path(source: Path) -> Path:
+    return source.with_name(source.stem + TUNE_SUFFIX)
 
-    `report-style.css` is a copy of the framework template, refreshed
-    whenever the template's bytes differ (framework-managed layer).
-    `report-theme.css` is seeded once — from
-    `workspace/_custom/templates/reports/theme.css` when the user ships one,
-    else from a commented stub — and never overwritten (user-owned layer).
+
+def _copy_managed(src: Path, dst: Path, *, executable: bool = False, repo: Path | None = None) -> None:
+    """Copy a framework-managed file when missing or byte-drifted."""
+    template_bytes = src.read_bytes()
+    if repo is not None:
+        template_bytes = template_bytes.replace(
+            b"@@SUPERAGENT_REPO@@", str(repo.resolve()).encode("utf-8")
+        )
+    if not dst.exists() or dst.read_bytes() != template_bytes:
+        dst.write_bytes(template_bytes)
+    if executable:
+        dst.chmod(dst.stat().st_mode | 0o755)
+
+
+def ensure_assets(source: Path, framework: Path, workspace: Path) -> tuple[Path, Path, Path]:
+    """Materialize the managed siblings of a report HTML source.
+
+    Framework-managed (refreshed whenever the shipped template's bytes
+    differ): `report-style.css` and `render.sh` (the standalone rebuild
+    script, chmod +x). User-owned (seeded once, NEVER overwritten):
+    `report-theme.css` — from `workspace/_custom/templates/reports/theme.css`
+    when the user ships one, else a commented stub — and the per-report
+    `<stem>.tune.css` hand-tuning delta.
     """
+    directory = source.parent
     directory.mkdir(parents=True, exist_ok=True)
-    style_src = framework_style(framework)
     style_dst = directory / STYLE_NAME
-    template_bytes = style_src.read_bytes()
-    if not style_dst.exists() or style_dst.read_bytes() != template_bytes:
-        style_dst.write_bytes(template_bytes)
+    _copy_managed(framework_style(framework), style_dst)
+    _copy_managed(
+        framework_render_sh(framework),
+        directory / RENDER_SH_NAME,
+        executable=True,
+        repo=framework.parent,
+    )
 
     theme_dst = directory / THEME_NAME
     if not theme_dst.exists():
@@ -124,7 +167,11 @@ def ensure_assets(directory: Path, framework: Path, workspace: Path) -> tuple[Pa
             print(f"Using _custom/templates/reports/theme.css (seeded {THEME_NAME})")
         else:
             theme_dst.write_text(THEME_STUB, encoding="utf-8")
-    return style_dst, theme_dst
+
+    tune_dst = tune_path(source)
+    if not tune_dst.exists():
+        tune_dst.write_text(TUNE_STUB.format(name=tune_dst.name), encoding="utf-8")
+    return style_dst, theme_dst, tune_dst
 
 
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -133,6 +180,9 @@ _SUBTITLE_SPAN_RE = re.compile(
     r"<span[^>]*class=[\"']h1-subtitle[\"'][^>]*>(.*?)</span>", re.DOTALL | re.IGNORECASE
 )
 _BR_RE = re.compile(r"<br", re.IGNORECASE)
+_LINK_HREF_RE = re.compile(
+    r"<link[^>]*rel=[\"']stylesheet[\"'][^>]*href=[\"']\./([^\"']+)[\"']", re.IGNORECASE
+)
 
 
 def _strip(fragment: str) -> str:
@@ -233,22 +283,28 @@ def needs_render(html_path: Path, pdf_path: Path, *extra_sources: Path) -> bool:
 
 
 def check_stale(
-    html_path: Path, pdf_path: Path, style: Path, theme: Path, style_template: Path
+    html_path: Path,
+    pdf_path: Path,
+    style: Path,
+    theme: Path,
+    tune: Path,
+    style_template: Path,
 ) -> bool:
     """Predict, without writing, whether a render run would re-render.
 
     Mirrors the render path exactly: `ensure_assets` would (re)write a
     missing or byte-drifted `report-style.css` and seed a missing
-    `report-theme.css` — both with fresh mtimes — so those conditions are
-    stale by definition; otherwise the plain mtime rule decides.
+    `report-theme.css` / `<stem>.tune.css` — all with fresh mtimes — so
+    those conditions are stale by definition; otherwise the plain mtime
+    rule decides.
     """
     if not pdf_path.exists():
         return True
     if not style.exists() or style.read_bytes() != style_template.read_bytes():
         return True
-    if not theme.exists():
+    if not theme.exists() or not tune.exists():
         return True
-    return needs_render(html_path, pdf_path, style, theme)
+    return needs_render(html_path, pdf_path, style, theme, tune)
 
 
 def render_pdf(
@@ -451,9 +507,10 @@ def main(argv: list[str] | None = None) -> int:
         pdf_path = (args.out or source.with_suffix(".pdf")).resolve()
         style = source.parent / STYLE_NAME
         theme = source.parent / THEME_NAME
+        tune = tune_path(source)
 
         if args.check:
-            if check_stale(source, pdf_path, style, theme, style_template):
+            if check_stale(source, pdf_path, style, theme, tune, style_template):
                 print(f"stale  {pdf_path}")
                 stale += 1
             else:
@@ -461,13 +518,13 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         try:
-            ensure_assets(source.parent, framework, workspace)
+            ensure_assets(source, framework, workspace)
         except OSError as exc:
             print(f"error: could not manage stylesheets for {source}: {exc}", file=sys.stderr)
             failures += 1
             continue
 
-        if not args.force and not needs_render(source, pdf_path, style, theme):
+        if not args.force and not needs_render(source, pdf_path, style, theme, tune):
             print(f"fresh  {pdf_path} (skip; --force to re-render)")
             continue
 
@@ -478,6 +535,13 @@ def main(argv: list[str] | None = None) -> int:
                 "the PDF will render unstyled",
                 file=sys.stderr,
             )
+        for linked in _LINK_HREF_RE.findall(html_text):
+            if not (source.parent / linked).exists():
+                print(
+                    f"warning: {source.name} links ./{linked} which does not exist "
+                    "(placeholder not renamed?)",
+                    file=sys.stderr,
+                )
         header_title = (
             args.header_title if args.header_title is not None else parse_header_title(html_text)
         )
