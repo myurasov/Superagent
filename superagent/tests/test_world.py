@@ -78,3 +78,29 @@ def test_stats_reports_counts(initialized_workspace: Path) -> None:
     s = stats(initialized_workspace)
     assert s["node_total"] >= 13  # at least the 13 default domains
     assert "domain" in s["by_node_kind"]
+
+
+def test_query_warns_on_stderr_when_graph_stale(
+    initialized_workspace: Path, capsys,
+) -> None:
+    import datetime as dt
+
+    from superagent.tools.world import (
+        load_world,
+        main,
+        rebuild,
+        save_yaml,
+        world_path,
+    )
+
+    rebuild(initialized_workspace)
+    main(["--workspace", str(initialized_workspace), "related", "domain:health"])
+    assert "last rebuilt" not in capsys.readouterr().err  # fresh: no warning
+
+    data = load_world(initialized_workspace)
+    old = (dt.datetime.now().astimezone() - dt.timedelta(days=45))
+    data["last_rebuild"] = old.isoformat(timespec="seconds")
+    data["last_updated"] = old.isoformat(timespec="seconds")
+    save_yaml(world_path(initialized_workspace), data)
+    main(["--workspace", str(initialized_workspace), "related", "domain:health"])
+    assert "last rebuilt 45 days ago" in capsys.readouterr().err

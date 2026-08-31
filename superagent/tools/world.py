@@ -66,6 +66,44 @@ def load_world(workspace: Path) -> dict[str, Any]:
     return data
 
 
+STALE_AFTER_DAYS = 30
+
+
+def warn_if_stale(workspace: Path) -> None:
+    """Print a one-line stderr warning when the graph is stale (>30 days).
+
+    Freshness comes from the embedded `last_rebuild` timestamp (falling back
+    to `last_updated`, then to the file's mtime). Warning only — queries
+    still answer from the stale graph.
+    """
+    path = world_path(workspace)
+    if not path.exists():
+        return
+    data = load_yaml(path) or {}
+    stamp = data.get("last_rebuild") or data.get("last_updated")
+    when: dt.datetime | None = None
+    if isinstance(stamp, dt.datetime):
+        when = stamp
+    elif isinstance(stamp, str):
+        try:
+            when = dt.datetime.fromisoformat(stamp)
+        except ValueError:
+            when = None
+    if when is None:
+        try:
+            when = dt.datetime.fromtimestamp(path.stat().st_mtime)
+        except OSError:
+            return
+    if when.tzinfo is None:
+        when = when.astimezone()
+    age_days = (dt.datetime.now().astimezone() - when).days
+    if age_days > STALE_AFTER_DAYS:
+        print(f"warn: world.yaml last rebuilt {age_days} days ago "
+              f"(> {STALE_AFTER_DAYS}) — consider "
+              f"'uv run python -m superagent.tools.world rebuild'",
+              file=sys.stderr)
+
+
 def normalize_handle(value: str | None, kind_default: str = "other") -> str | None:
     """Normalize an id-like string to a canonical handle, returning None if empty."""
     if not value or not isinstance(value, str):
@@ -378,6 +416,8 @@ def main(argv: list[str] | None = None) -> int:
     if not (workspace / "_memory").exists():
         print(f"no workspace at {workspace}", file=sys.stderr)
         return 1
+    if args.cmd in ("related", "stats", "validate"):
+        warn_if_stale(workspace)
     if args.cmd == "rebuild":
         data = rebuild(workspace)
         s = stats(workspace)
