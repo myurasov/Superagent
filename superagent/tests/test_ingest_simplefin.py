@@ -277,3 +277,190 @@ def test_split_access_url_handles_a_colon_in_the_password() -> None:
     assert base == "https://bridge.example.com/simplefin"
     assert user == "user"
     assert password == "pa:ss"
+
+
+# ---------------------------------------------------------------------------
+# pending -> posted reconciliation
+#
+# SimpleFin re-issues a pending transaction under a NEW id when it posts, so
+# the stored pending row (date coerced to 1970-01-01 by posted=0) is never
+# deduped away. The reconciliation pass marks it superseded_by its posted
+# twin and copies the real date onto it.
+# ---------------------------------------------------------------------------
+
+
+def _stored_row(external_id: str, **overrides) -> dict:
+    """A transactions.yaml row in the shape `_normalize` emits.
+
+    Defaults describe the orphaned-pending case: pending, date 1970-01-01.
+    """
+    row = {
+        "external_id": external_id,
+        "date": "1970-01-01",
+        "transacted_at": "2026-08-18",
+        "payee": "Coffee Shop",
+        "description": "COFFEE SHOP",
+        "memo": None,
+        "amount": -12.34,
+        "currency": "USD",
+        "category": "uncategorized",
+        "pending": True,
+        "account_id": "acc1",
+        "account_label": "Checking",
+        "institution": "Test Bank",
+        "source": "simplefin",
+        "extra": {},
+    }
+    row.update(overrides)
+    return row
+
+
+def _posted_twin(external_id: str, **overrides) -> dict:
+    """The posted counterpart: same account/amount/payee, a real date."""
+    row = _stored_row(external_id, date="2026-08-20", transacted_at="2026-08-20", pending=False)
+    row.update(overrides)
+    return row
+
+
+def _stage_index(ws: Path, rows: list[dict]) -> Path:
+    path = ws / "_memory" / "transactions.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump({"schema_version": 1, "transactions": rows}))
+    return path
+
+
+def _run_cli(ws: Path, *extra: str) -> int:
+    from superagent.tools.ingest import simplefin
+
+    argv = ["ingest-simplefin", "--workspace", str(ws), *extra]
+    with patch.object(simplefin.sys, "argv", argv):
+        return simplefin.main()
+
+
+def test_run_reconciles_pending_orphan_against_posted_twin(tmp_path: Path) -> None:
+    """End-of-run pass: orphan gets superseded_by + the posted date; counts surface."""
+    from superagent.tools.ingest import simplefin
+    from superagent.tools.ingest.simplefin import SimpleFinIngestor
+
+    ws = tmp_path / "ws"
+    posted_date = simplefin.unix_to_iso_date(1756200000)  # the payload's posted ts
+    _stage_index(ws, [_stored_row("simplefin:acc1:p1", transacted_at=posted_date)])
+    ingestor = _ingestor(ws)
+    with (
+        patch.object(simplefin, "http_get_json", return_value=_accounts_payload()),
+        patch.object(SimpleFinIngestor, "_refresh_domains", return_value=[]),
+    ):
+        result = ingestor.run({"recency_window_days": 5})
+
+    assert result.items_updated == 1
+    assert result.destination_summary["reconciliation"] == {
+        "matched": 1,
+        "ambiguous_skipped": 0,
+        "excluded": 0,
+    }
+    rows = yaml.safe_load((ws / "_memory" / "transactions.yaml").read_text())["transactions"]
+    orphan = next(r for r in rows if r["external_id"] == "simplefin:acc1:p1")
+    assert orphan["superseded_by"] == "simplefin:acc1:t1"
+    assert orphan["date"] == posted_date
+    # No data loss: everything else on the pending row stays intact.
+    assert orphan["pending"] is True
+    assert orphan["amount"] == -12.34
+    assert orphan["payee"] == "Coffee Shop"
+
+
+def test_reconcile_skips_ambiguous_double_match(tmp_path: Path, capsys) -> None:
+    """Two equally-plausible posted twins -> no merge, counted as ambiguous."""
+    ws = tmp_path / "ws"
+    _stage_index(ws, [
+        _stored_row("simplefin:acc1:p1"),
+        _posted_twin("simplefin:acc1:t1"),
+        _posted_twin("simplefin:acc1:t2"),
+    ])
+
+    assert _run_cli(ws, "--reconcile") == 0
+
+    rows = yaml.safe_load((ws / "_memory" / "transactions.yaml").read_text())["transactions"]
+    assert all("superseded_by" not in r for r in rows)
+    assert "reconciled=0 ambiguous_skipped=1 excluded=0" in capsys.readouterr().out
+
+
+def test_reconcile_exclude_flag_holds_a_row_out(tmp_path: Path, capsys) -> None:
+    """--reconcile-exclude keeps a named row untouched even with a clean match."""
+    ws = tmp_path / "ws"
+    _stage_index(ws, [
+        _stored_row("simplefin:acc1:p1"),
+        _posted_twin("simplefin:acc1:t1"),
+    ])
+
+    rc = _run_cli(ws, "--reconcile", "--reconcile-exclude", "simplefin:acc1:p1")
+
+    assert rc == 0
+    rows = yaml.safe_load((ws / "_memory" / "transactions.yaml").read_text())["transactions"]
+    orphan = next(r for r in rows if r["external_id"] == "simplefin:acc1:p1")
+    assert "superseded_by" not in orphan
+    assert orphan["date"] == "1970-01-01"
+    assert "reconciled=0 ambiguous_skipped=0 excluded=1" in capsys.readouterr().out
+
+
+def test_reconcile_is_idempotent(tmp_path: Path, capsys) -> None:
+    """A second pass over an already-reconciled store is a no-op."""
+    ws = tmp_path / "ws"
+    idx = _stage_index(ws, [
+        _stored_row("simplefin:acc1:p1"),
+        _posted_twin("simplefin:acc1:t1"),
+    ])
+
+    assert _run_cli(ws, "--reconcile") == 0
+    after_first = idx.read_text()
+    orphan = next(
+        r for r in yaml.safe_load(after_first)["transactions"]
+        if r["external_id"] == "simplefin:acc1:p1"
+    )
+    assert orphan["superseded_by"] == "simplefin:acc1:t1"
+    assert orphan["date"] == "2026-08-20"
+
+    capsys.readouterr()  # drop the first run's output
+    assert _run_cli(ws, "--reconcile") == 0
+    assert idx.read_text() == after_first
+    assert "reconciled=0" in capsys.readouterr().out
+
+
+def test_reconcile_dry_run_prints_matches_but_writes_nothing(tmp_path: Path, capsys) -> None:
+    ws = tmp_path / "ws"
+    idx = _stage_index(ws, [
+        _stored_row("simplefin:acc1:p1"),
+        _posted_twin("simplefin:acc1:t1"),
+    ])
+    before = idx.read_text()
+    log = ws / "_memory" / "ingestion-log.yaml"
+    log.write_text(yaml.safe_dump({"runs": []}))
+
+    assert _run_cli(ws, "--reconcile-dry-run") == 0
+
+    assert idx.read_text() == before
+    assert yaml.safe_load(log.read_text())["runs"] == []  # no log row either
+    out = capsys.readouterr().out
+    assert "simplefin:acc1:p1 -> simplefin:acc1:t1" in out
+    assert "nothing written" in out
+
+
+def test_reconcile_counts_reach_the_ingestion_log(tmp_path: Path) -> None:
+    """The one-shot repair writes the same summary row the ingest run does."""
+    ws = tmp_path / "ws"
+    _stage_index(ws, [
+        _stored_row("simplefin:acc1:p1"),
+        _posted_twin("simplefin:acc1:t1"),
+    ])
+    log = ws / "_memory" / "ingestion-log.yaml"
+    log.write_text(yaml.safe_dump({"runs": []}))
+
+    assert _run_cli(ws, "--reconcile") == 0
+
+    runs = yaml.safe_load(log.read_text())["runs"]
+    assert len(runs) == 1
+    assert runs[0]["items_updated"] == 1
+    assert runs[0]["destination_summary"]["reconciliation"] == {
+        "matched": 1,
+        "ambiguous_skipped": 0,
+        "excluded": 0,
+    }

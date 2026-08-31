@@ -32,6 +32,16 @@ Idempotency: each transaction is keyed by
 update no rows; only genuinely new rows are appended. Pending transactions
 that later post show up as a *new* row (different upstream id) — that is
 the SimpleFin behavior and matches user-visible bank-statement behavior.
+
+Because the posted twin arrives under a NEW id, the stored pending row
+(whose `posted` was 0, coercing its `date` to 1970-01-01) would otherwise
+stay orphaned forever. A reconciliation pass at the end of every run —
+also runnable standalone via `--reconcile` / `--reconcile-dry-run` — marks
+each such orphan with `superseded_by: <posted external_id>` and copies the
+posted date onto it when a UNIQUE same-account / same-amount / near-date /
+fuzzy-payee posted twin exists. Ambiguous orphans (2+ candidates, or two
+orphans claiming the same posted row) are skipped and counted; specific
+rows can be held out with `--reconcile-exclude <external_id>` (repeatable).
 """
 from __future__ import annotations
 
@@ -60,6 +70,9 @@ PROBE_HTTP_TIMEOUT = 15  # probes ask for balances only and must stay snappy.
 SIMPLEFIN_WINDOW_DAYS = 45  # SimpleFin's recommended soft-cap; >45d windows
 # trigger a warning and may be capped server-side. Docs say 90; the API itself
 # warns at 45 (observed 2026-05-27).
+RECONCILE_ORPHAN_DATE = "1970-01-01"  # what posted=0 coerces to in _normalize.
+RECONCILE_WINDOW_DAYS = 7  # +/- days between orphan transacted_at and twin date.
+RECONCILE_TOKEN_OVERLAP = 0.6  # min shared-token ratio for a fuzzy text match.
 
 
 def split_access_url(access_url: str) -> tuple[str, str, str]:
@@ -294,17 +307,36 @@ class SimpleFinIngestor(IngestorBase):
 
         result.items_inserted = inserted
         result.items_skipped = skipped
+
+        # Reconcile orphaned pending rows against posted twins on the
+        # accounts this run touched (see module docstring). A dry run
+        # plans but never writes.
+        recon_exclude = {str(x) for x in (config_row.get("reconcile_exclude") or [])}
+        account_ids = {a.get("id") for a in accounts_seen if a.get("id")}
+        plan = _plan_reconciliation(
+            index.get("transactions") or [], exclude=recon_exclude, accounts=account_ids
+        )
+        reconciled = 0
+        if not dry_run:
+            reconciled = _apply_reconciliation(index.get("transactions") or [], plan["matches"])
+        result.items_updated = reconciled
+
         result.destination_summary = {
             "transactions": inserted,
             "institutions": sorted({
                 (a.get("org") or {}).get("name", "?") for a in accounts_seen
             }),
             "accounts": len({a.get("id") for a in accounts_seen if a.get("id")}),
+            "reconciliation": {
+                "matched": len(plan["matches"]) if dry_run else reconciled,
+                "ambiguous_skipped": plan["ambiguous"],
+                "excluded": plan["excluded"],
+            },
         }
 
         if dry_run:
             result.notes = (result.notes + f"; dry-run, would insert {inserted}").strip("; ")
-        elif inserted > 0:
+        elif inserted > 0 or reconciled > 0:
             _save_index(idx_path, index)
 
         # Refresh affected Domain marker blocks per
@@ -371,6 +403,150 @@ def _chunk_range(
         chunks.append((cursor, nxt))
         cursor = nxt
     return chunks
+
+
+def _parse_iso_date(value: Any) -> dt.date | None:
+    try:
+        return dt.date.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+
+
+def _norm_text(value: Any) -> str:
+    """Lowercase, strip punctuation to spaces, collapse whitespace."""
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").lower()).strip()
+
+
+def _row_texts(row: dict[str, Any]) -> list[str]:
+    return [t for t in (_norm_text(row.get("payee")), _norm_text(row.get("description"))) if t]
+
+
+def _fuzzy_text_match(a: str, b: str) -> bool:
+    """Normalized substring containment, or conservative token overlap."""
+    if a in b or b in a:
+        return True
+    ta, tb = set(a.split()), set(b.split())
+    common = ta & tb
+    if not common:
+        return False
+    return len(common) / min(len(ta), len(tb)) >= RECONCILE_TOKEN_OVERLAP
+
+
+def _rows_fuzzy_match(pending: dict[str, Any], posted: dict[str, Any]) -> bool:
+    """Any payee/description pairing between the two rows fuzzy-matches."""
+    return any(
+        _fuzzy_text_match(x, y) for x in _row_texts(pending) for y in _row_texts(posted)
+    )
+
+
+def _plan_reconciliation(
+    rows: list[dict[str, Any]],
+    exclude: set[str] | None = None,
+    accounts: set[str] | None = None,
+) -> dict[str, Any]:
+    """Match orphaned pending rows (date 1970-01-01) to their posted twins.
+
+    A pending transaction that later posts arrives under a NEW external_id,
+    so dedupe never retires the stored pending row; with `posted=0` its date
+    coerced to 1970-01-01 and it looks eternally ancient. For each such
+    orphan this finds posted rows on the SAME account with an equal amount,
+    a posted/transacted date within +/-RECONCILE_WINDOW_DAYS of the orphan's
+    transacted_at, and a fuzzy payee/description match. Only a UNIQUE match
+    is proposed; 2+ candidates — or two orphans claiming the same posted
+    row — are skipped as ambiguous. Already-superseded rows are skipped, so
+    the pass is idempotent. `accounts=None` means all accounts.
+
+    Returns `{"matches": [...], "ambiguous": int, "excluded": int}`; the
+    caller applies matches via `_apply_reconciliation` (or just prints them
+    on a dry run).
+    """
+    exclude = exclude or set()
+    matches: list[dict[str, Any]] = []
+    ambiguous = 0
+    excluded = 0
+    posted_rows = [
+        r for r in rows
+        if isinstance(r, dict)
+        and not r.get("pending")
+        and r.get("external_id")
+        and r.get("external_id") not in exclude
+        and r.get("account_id")
+        and r.get("date") != RECONCILE_ORPHAN_DATE
+    ]
+    for row in rows:
+        if not isinstance(row, dict) or not row.get("external_id"):
+            continue
+        if not row.get("pending") or row.get("date") != RECONCILE_ORPHAN_DATE:
+            continue
+        if row.get("superseded_by"):
+            continue  # already reconciled on a prior pass
+        if accounts is not None and row.get("account_id") not in accounts:
+            continue
+        if row["external_id"] in exclude:
+            excluded += 1
+            continue
+        anchor = _parse_iso_date(row.get("transacted_at"))
+        if anchor is None:
+            continue  # nothing to anchor the date window on
+        candidates = []
+        for cand in posted_rows:
+            if cand.get("account_id") != row.get("account_id"):
+                continue
+            try:
+                if abs(float(cand.get("amount")) - float(row.get("amount"))) >= 0.005:
+                    continue
+            except (TypeError, ValueError):
+                continue
+            cand_dates = [
+                d
+                for d in (
+                    _parse_iso_date(cand.get("date")),
+                    _parse_iso_date(cand.get("transacted_at")),
+                )
+                if d is not None
+            ]
+            if not any(abs((d - anchor).days) <= RECONCILE_WINDOW_DAYS for d in cand_dates):
+                continue
+            if not _rows_fuzzy_match(row, cand):
+                continue
+            candidates.append(cand)
+        if len(candidates) == 1:
+            cand = candidates[0]
+            matches.append({
+                "pending_id": row["external_id"],
+                "posted_id": cand["external_id"],
+                "date": cand.get("date"),
+                "amount": row.get("amount"),
+                "pending_payee": row.get("payee") or row.get("description"),
+                "posted_payee": cand.get("payee") or cand.get("description"),
+            })
+        elif len(candidates) > 1:
+            ambiguous += 1
+    # A posted row may supersede at most one pending row; competing claims
+    # are ambiguous too.
+    claims: dict[str, int] = {}
+    for m in matches:
+        claims[m["posted_id"]] = claims.get(m["posted_id"], 0) + 1
+    contested = {pid for pid, n in claims.items() if n > 1}
+    if contested:
+        ambiguous += sum(1 for m in matches if m["posted_id"] in contested)
+        matches = [m for m in matches if m["posted_id"] not in contested]
+    return {"matches": matches, "ambiguous": ambiguous, "excluded": excluded}
+
+
+def _apply_reconciliation(rows: list[dict[str, Any]], matches: list[dict[str, Any]]) -> int:
+    """Mark each matched pending row superseded; fix its date. No data loss."""
+    by_id = {r.get("external_id"): r for r in rows if isinstance(r, dict)}
+    applied = 0
+    for m in matches:
+        row = by_id.get(m["pending_id"])
+        if row is None or row.get("superseded_by"):
+            continue
+        row["superseded_by"] = m["posted_id"]
+        if m.get("date"):
+            row["date"] = m["date"]
+        applied += 1
+    return applied
 
 
 def _load_index(path: Path) -> dict[str, Any]:
@@ -471,6 +647,61 @@ def _update_source_row(
     _save_data_sources(path, data)
 
 
+def _run_reconcile_only(workspace: Path, exclude: set[str], dry_run: bool) -> int:
+    """One-shot repair: reconcile the existing store without fetching.
+
+    `dry_run` prints the proposed matches (pending id -> posted id, amount,
+    payee pair) and writes nothing — no index save, no log row.
+    """
+    started = now_iso()
+    t0 = time.time()
+    idx_path = workspace / SimpleFinIngestor.INDEX_PATH
+    index = _load_index(idx_path)
+    rows = index.get("transactions") or []
+    plan = _plan_reconciliation(rows, exclude=exclude)
+    for m in plan["matches"]:
+        print(
+            f"  {m['pending_id']} -> {m['posted_id']} amount={m['amount']} "
+            f"payee={m['pending_payee']!r} ~ {m['posted_payee']!r}"
+        )
+    if dry_run:
+        print(
+            f"reconcile dry-run: matched={len(plan['matches'])} "
+            f"ambiguous_skipped={plan['ambiguous']} excluded={plan['excluded']} "
+            "(nothing written)"
+        )
+        return 0
+    applied = _apply_reconciliation(rows, plan["matches"])
+    if applied:
+        _save_index(idx_path, index)
+
+    result = RunResult(source="simplefin", started_at=started, finished_at=now_iso())
+    result.items_updated = applied
+    result.destination_summary = {
+        "reconciliation": {
+            "matched": applied,
+            "ambiguous_skipped": plan["ambiguous"],
+            "excluded": plan["excluded"],
+        }
+    }
+    result.notes = "reconcile-only run (no fetch)"
+    result.duration_ms = int((time.time() - t0) * 1000)
+    log_path = workspace / SimpleFinIngestor.INGESTION_LOG_PATH
+    log_data = yaml.safe_load(log_path.read_text()) if log_path.exists() else {"runs": []}
+    if not isinstance(log_data, dict):
+        log_data = {"runs": []}
+    run_id = _next_log_id(log_data)
+    log_row = result.to_log_row(run_id, trigger="manual", window=None)
+    log_row.pop("id", None)
+    _append_ingestion_log(workspace, run_id, log_row)
+
+    print(
+        f"reconciled={applied} ambiguous_skipped={plan['ambiguous']} "
+        f"excluded={plan['excluded']} duration_ms={result.duration_ms}"
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="ingest-simplefin")
     parser.add_argument("--workspace", type=Path, default=None)
@@ -485,10 +716,28 @@ def main() -> int:
                             f"(default {DEFAULT_HTTP_TIMEOUT}). Raise it when the "
                             "bridge is slow refreshing institutions."
                         ))
+    parser.add_argument("--reconcile", action="store_true",
+                        help=(
+                            "Run ONLY the pending->posted reconciliation over the "
+                            "existing store (no fetch)."
+                        ))
+    parser.add_argument("--reconcile-dry-run", action="store_true",
+                        help="Print proposed reconciliation matches without writing.")
+    parser.add_argument("--reconcile-exclude", action="append", default=[],
+                        metavar="EXTERNAL_ID",
+                        help=(
+                            "Hold a specific row out of reconciliation "
+                            "(repeatable)."
+                        ))
     args = parser.parse_args()
 
     framework = Path(__file__).resolve().parents[2]
     workspace = args.workspace or framework.parent / "workspace"
+
+    if args.reconcile or args.reconcile_dry_run:
+        return _run_reconcile_only(
+            workspace, set(args.reconcile_exclude), dry_run=args.reconcile_dry_run
+        )
 
     data_sources = _load_data_sources(workspace / SimpleFinIngestor.DATA_SOURCES_PATH)
     row = _find_source_row(data_sources, "simplefin") or {}
@@ -500,6 +749,7 @@ def main() -> int:
         "backfill": args.backfill,
         "include_pending": not args.no_pending,
         "timeout": args.timeout,
+        "reconcile_exclude": args.reconcile_exclude,
     }
 
     ingestor = SimpleFinIngestor(workspace)
@@ -518,7 +768,8 @@ def main() -> int:
 
     print(
         f"pulled={result.items_pulled} inserted={result.items_inserted} "
-        f"skipped={result.items_skipped} errors={len(result.errors)} "
+        f"updated={result.items_updated} skipped={result.items_skipped} "
+        f"errors={len(result.errors)} "
         f"truncated={result.truncated} duration_ms={result.duration_ms}"
     )
     if result.notes:
@@ -527,6 +778,13 @@ def main() -> int:
         insts = result.destination_summary.get("institutions") or []
         print(f"  institutions: {', '.join(insts)}")
         print(f"  accounts: {result.destination_summary.get('accounts')}")
+        recon = result.destination_summary.get("reconciliation") or {}
+        if recon:
+            print(
+                f"  reconciliation: matched={recon.get('matched', 0)} "
+                f"ambiguous_skipped={recon.get('ambiguous_skipped', 0)} "
+                f"excluded={recon.get('excluded', 0)}"
+            )
     for err in result.errors:
         print(f"  error: {err}", file=sys.stderr)
     return 1 if result.errors else 0
