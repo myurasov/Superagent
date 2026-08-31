@@ -1,0 +1,196 @@
+/* SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+   SPDX-License-Identifier: Apache-2.0
+
+   ==========================================================================
+   Report stylesheet — the framework-managed base for report styling.
+
+   Report HTML sources link this file (copied next to the source as
+   `report-style.css`, refreshed on every render) plus the user-owned
+   `report-theme.css` sibling:
+
+     <link rel="stylesheet" href="./report-style.css">
+     <link rel="stylesheet" href="./report-theme.css">
+
+   Report-specific rules go in a small inline <style> after the links.
+
+   Theming: the TOKENS block below defines the DEFAULT look. Personal
+   identity goes in `report-theme.css` (seeded from
+   `workspace/_custom/templates/reports/theme.css` when present) as token
+   overrides on .viz-root — never edit this managed copy for one report.
+
+   Page margins / headers / footers are NOT here — they are set at print
+   time by `tools/render_report.py`, which owns all page furniture.
+   ========================================================================== */
+
+/* ==========================================================================
+   1. TOKENS — defaults; override in report-theme.css
+   ========================================================================== */
+.viz-root {
+  color-scheme: light;
+
+  /* colors */
+  --page: #ffffff;              /* page background */
+  --ink-1: #111111;             /* primary text */
+  --ink-2: #555555;             /* secondary text (subtitles, keys) */
+  --ink-muted: #888888;         /* footnotes, captions */
+  --ink-heading: #1a1a1a;       /* h2 + table headers */
+  --rule: #cccccc;              /* table borders */
+  --accent: #0f766e;            /* Superagent teal: H1 underline, H2 numbers, links */
+  --th-tint: #f5f5f5;           /* table header background */
+  --hl: #fff176;                /* highlighter-yellow attention rows */
+  --code-tint: #f4f4f4;         /* inline-code background */
+
+  /* fonts */
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+
+  /* font sizes (PDF; base = main body text) */
+  --fs-base: 9pt;               /* p, li — the main PDF font size */
+  --fs-h1: 14.1pt;
+  --fs-h2: 11pt;
+  --fs-sub: 8.5pt;              /* provenance line, table captions */
+  --fs-toc: 8pt;
+  --fs-table: 7.87pt;           /* table cells + diagram key */
+  --fs-small: 7.59pt;           /* code, footnote line, diagram captions */
+
+  /* spacing + line heights */
+  --lh-body: 1.25;
+  --lh-cell: 1.18;
+  --cell-pad: 3pt 4pt;          /* table cell padding */
+  --table-border-w: 0.35pt;
+  --content-width: 7.6in;       /* screen-preview column width */
+}
+
+/* ==========================================================================
+   2. PAGE + BASE TYPOGRAPHY
+   ========================================================================== */
+* { box-sizing: border-box; margin: 0; }
+html { font-size: 9pt; }        /* PDF base; screen preview overrides at the bottom */
+body.viz-root {
+  font-family: var(--font-sans);
+  background: var(--page);
+  color: var(--ink-1);
+  line-height: var(--lh-body);
+  padding: 24px 20px 48px;
+  counter-reset: section;
+}
+main { max-width: var(--content-width); margin: 0 auto; }
+p, li { font-size: var(--fs-base); color: var(--ink-1); }
+section p { margin: 0.35em 0; }
+ul { margin: 0.6em 0 0.6em 2em; padding: 0; }
+li { margin: 0.35em 0; }
+strong, b { color: #000; font-weight: 500; }
+a { color: var(--accent); text-decoration: none; }
+code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-small);
+  background: var(--code-tint);
+  border-radius: 2pt;
+  padding: 0 0.2em;
+}
+
+/* ==========================================================================
+   3. HEADINGS
+   ========================================================================== */
+h1 {
+  font-size: var(--fs-h1);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  margin: 0 0 0.75em 0;
+  padding-bottom: 5pt;
+  border-bottom: 1pt solid var(--accent);
+}
+.h1-subtitle { font-weight: 400; font-size: 0.78em; color: var(--ink-2); }
+h2 {
+  font-size: var(--fs-h2);
+  font-weight: 500;
+  margin: 1.7em 0 0.6em 0;
+  color: var(--ink-heading);
+  counter-increment: section;              /* accent auto-numbering */
+}
+h2::before { content: counter(section) ". "; color: var(--accent); font-weight: 500; }
+
+/* ==========================================================================
+   4. PROVENANCE LINE + INLINE TOC
+   ========================================================================== */
+.sub { color: var(--ink-2); font-size: var(--fs-sub); margin-bottom: 12pt; }
+.toc { margin: 0 0 -5pt 0; padding: 0; break-inside: avoid; }
+.toc-label { display: none; }
+.toc-list {
+  margin: 0;
+  padding: 0 0 0 1em;
+  line-height: 1;
+  display: inline-grid;                    /* N columns via --toc-rows on the OL */
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--toc-rows, 2), auto);
+  grid-auto-columns: max-content;
+  column-gap: 2.2em;
+}
+.toc-list li { margin: 3pt 0; max-width: 3.6in; break-inside: avoid; font-size: var(--fs-toc); }
+.toc-list li::marker { color: #1d1d1d; font-weight: 500; }
+.toc-list a { color: var(--accent); text-decoration: none; }
+
+/* ==========================================================================
+   5. TABLES
+   Cells center by default; add class="lft" to prose/row-label cells and
+   width hints (style="width:N%") to header cells. class="hl" on a <tr>
+   highlights it; table.split may break across pages (header repeats).
+   ========================================================================== */
+table { border-collapse: collapse; width: 100%; font-size: var(--fs-table); margin: 1.1em 0 1.1em 0; }
+table.headline { margin: 10pt 0 4pt; }     /* the top metrics table */
+thead { display: table-header-group; }     /* repeats when a table splits */
+th, td {
+  border: var(--table-border-w) solid var(--rule);
+  padding: var(--cell-pad);
+  vertical-align: middle;
+  text-align: center;
+  line-height: var(--lh-cell);
+}
+th { background: var(--th-tint); font-weight: 500; color: var(--ink-heading); }
+td { font-variant-numeric: tabular-nums; }
+.num { text-align: center; }
+.lft { text-align: left; }  th.lft { text-align: left; }
+.match { font-weight: 500; }               /* emphasized (matching/verdict) values */
+.hl td { background: var(--hl); }          /* attention row */
+caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 500;
+  font-size: var(--fs-sub);
+  color: var(--ink-heading);
+  padding: 0 0 3pt;
+}
+
+/* ==========================================================================
+   6. DIAGRAMS (SVG figures that DO print, unlike data charts)
+   ========================================================================== */
+svg text { font-family: var(--font-sans); }
+.diagram { margin: 10pt 0 4pt; }
+.diagram-caption { font-size: var(--fs-small); color: var(--ink-muted); font-style: italic; text-align: center; margin-top: 3pt; }
+.diagram-key { display: flex; flex-wrap: wrap; gap: 10pt; font-size: var(--fs-table); color: var(--ink-2); margin: 6pt 0 1pt; }
+.diagram-key span { display: inline-flex; align-items: center; gap: 4pt; }
+.sw { width: 7pt; height: 7pt; border-radius: 1.5pt; display: inline-block; }  /* color swatch */
+
+/* ==========================================================================
+   7. SOURCES / FOOTNOTE LINE
+   ========================================================================== */
+.foot { color: var(--ink-muted); font-size: var(--fs-small); font-style: italic; margin-top: 18pt; }
+
+/* ==========================================================================
+   8. PRINT (the PDF)
+   ========================================================================== */
+@media print {
+  main { margin: 0; max-width: none; }     /* body edges = page margins = furniture */
+  body.viz-root { padding: 0; }
+  table { break-inside: avoid; }           /* short tables move whole to next page */
+  table.split { break-inside: auto; }      /* opt-in: may break; thead repeats */
+  tr { break-inside: avoid; }              /* rows stay whole */
+  thead { break-inside: avoid; break-after: avoid; }  /* header never hangs alone */
+  h2 { break-after: avoid; }
+  .diagram, .diagram-key { break-inside: avoid; }
+}
+
+/* ==========================================================================
+   9. SCREEN PREVIEW (browser)
+   ========================================================================== */
+@media screen { html { font-size: 12px; } }

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<!-- SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+     SPDX-License-Identifier: Apache-2.0
+
+     Report scaffold — copy next to your destination, rename to
+     <YYYY-MM-DD>_<slug>.html, and replace every [BRACKETED] placeholder.
+     Structure and content rules: skills/report.md. Render with:
+       uv run python -m superagent.tools.render_report <file>.html
+     The renderer copies ./report-style.css and seeds ./report-theme.css
+     beside this file on first render; do not add headers/footers/attribution
+     in the body — the renderer owns all page furniture. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>[Title] — [Document Type] — Rev. 1</title>
+<link rel="stylesheet" href="./report-style.css">
+<link rel="stylesheet" href="./report-theme.css">
+<style>
+/* report-specific rules only (column widths, a one-off figure size, ...) */
+</style>
+</head>
+<body class="viz-root">
+<main>
+
+<h1>[Title]<br>
+<span class="h1-subtitle">[Document Type] — Rev. 1</span></h1>
+
+<p class="sub">[Provenance one-liner: when this was prepared, what data it
+draws on and as-of dates, what question it answers.]</p>
+
+<div class="toc" style="--toc-rows: 2;">
+  <ol class="toc-list">
+    <li><a href="#s-overview">[Overview]</a></li>
+    <li><a href="#s-details">[Details]</a></li>
+    <li><a href="#s-conclusion">Conclusion</a></li>
+  </ol>
+</div>
+
+<table class="headline">
+  <thead><tr><th style="width:28%">Metric</th><th style="width:22%">Value</th><th>Note</th></tr></thead>
+  <tbody>
+    <tr><td class="lft">[Key metric]</td><td>[value]</td><td class="lft">[context]</td></tr>
+  </tbody>
+</table>
+
+<section>
+<h2 id="s-overview">[Overview]</h2>
+<p>[Body text. H2 numbers are auto-generated — never hardcode them.]</p>
+</section>
+
+<section>
+<h2 id="s-details">[Details]</h2>
+<table>
+  <thead><tr><th class="lft" style="width:30%">Item</th><th>Value</th><th class="lft">Note</th></tr></thead>
+  <tbody>
+    <tr><td class="lft">[row]</td><td>[value]</td><td class="lft">[note]</td></tr>
+  </tbody>
+</table>
+</section>
+
+<section>
+<h2 id="s-conclusion">Conclusion</h2>
+<p>[The verdict in a few plain sentences; close with one sentence that
+summarizes the result and the decision or recommendation.]</p>
+</section>
+
+<p class="foot">Sources: [where the numbers came from].</p>
+
+</main>
+</body>
+</html>
