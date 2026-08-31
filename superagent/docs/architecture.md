@@ -271,7 +271,7 @@ Built-in multi-user / sync is on the roadmap (LOE-L: "Multi-user vault with last
 | Skills | ~50 skills documented + indexed in `skills/_manifest.yaml`; long ones carry an auto-generated step index |
 | Contracts | 39 multi-actor contracts under `contracts/`, indexed by `contracts/_manifest.yaml` |
 | Rules | machine-readable rule catalogues (anti-patterns shipped) + `workspace/_custom/rules/` user overlay |
-| Tools | ~30 shipped + tested (workspace_init, validate, render_status, world, sources_cache, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, ...) |
+| Tools | ~30 shipped + tested (workspace_init, validate, render_status, render_report, world, sources_cache, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, ...) |
 | Ingestor framework | `IngestorBase`, registry of 27 sources, orchestrator CLI, stub fall-back, 2 reference ingestors shipped (`apple_reminders`, `csv`) |
 | World graph | `_memory/world.yaml` derived state; `tools/world.py related <handle>` |
 | Events stream | quarterly-partitioned `_memory/events/<YYYY-Qn>.yaml`; cross-entity timeline queries |

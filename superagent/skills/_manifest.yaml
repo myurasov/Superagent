@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-08-21T15:33:55-07:00'
-skill_count: 50
+generated_at: '2026-08-31T15:20:47-07:00'
+skill_count: 51
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -789,10 +789,10 @@ skills:
   - any scheduled-cadence ingest source
   cli_required: []
   cli_optional: []
-  lines: 229
+  lines: 232
   h2_steps: 23
   h3_subsections: 0
-  typical_token_cost: 2182
+  typical_token_cost: 2216
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/documents-index.yaml
@@ -902,6 +902,34 @@ skills:
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/interaction-log.yaml
+  origin: framework
+- name: superagent-report
+  stem: report
+  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/report.md
+  one_line: Author and render a polished, printable report — HTML source of truth in the shared document
+    style, PDF rendered via Chromium print (tools/render_report.py) with page furniture (byline, running
+    title,
+  triggers:
+  - pdf report
+  - render a report
+  - create a report
+  - findings report
+  - printable report
+  - export to pdf
+  - make a pdf
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional:
+  - 'playwright Chromium (one-time: `uv run playwright install chromium`; already present when browserctl
+    is set up)'
+  lines: 144
+  h2_steps: 5
+  h3_subsections: 0
+  typical_token_cost: 1617
+  typical_files_read:
+  - _memory/outbox-log.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-research
   stem: research
@@ -1138,10 +1166,10 @@ skills:
   - any health / fitness ingestor (apple_health / whoop / strava / garmin / oura)
   cli_required: []
   cli_optional: []
-  lines: 217
+  lines: 220
   h2_steps: 18
   h3_subsections: 0
-  typical_token_cost: 1867
+  typical_token_cost: 1901
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md

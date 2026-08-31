@@ -185,6 +185,7 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 | **expenses** | Categorize and review spending; cross-checks ingested transactions. |
 | **draft-email** | Compose personal email with full context (recipient history, related domain, prior thread). |
 | **summarize-thread** | Condense a long email or message thread into key points and follow-ups. |
+| **report** | Author + render a printable report: HTML source of truth in the shared document style → US-Letter PDF via Chromium print (`tools/render_report.py`), with byline / page numbers / optional watermark. |
 | **follow-up** | Hunt for dropped balls: overdue tasks, unanswered messages, unfulfilled commitments. |
 | **research** | Research a topic across notes, web, knowledge MCPs (Obsidian, Notion). |
 | **ingest** | Run one or more configured ingestors (Gmail, Plaid, Apple Health, etc.). Front-end for `tools/ingest/`. |

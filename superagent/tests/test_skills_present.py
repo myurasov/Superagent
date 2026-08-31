@@ -32,7 +32,7 @@ EXPECTED_SKILLS = {
     "world", "events", "audit",
     # Later additions:
     "migrate", "domain-suggest", "workbooks", "browserctl",
-    "ad-hoc-task", "refresh",
+    "ad-hoc-task", "refresh", "report",
 }
 
 
