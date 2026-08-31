@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-08-31T22:21:57+00:00'
+generated_at: '2026-08-31T23:17:44+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -102,6 +102,14 @@ migrations:
   from_version: 0.13.0
   file: 0.14.0.md
   title: "Report pipeline (HTML -> PDF) \u2014 no workspace-data changes"
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute
+- to_version: 0.15.0
+  from_version: 0.14.0
+  file: 0.15.0.md
+  title: 'Supertailor batch: signal capture, reconciliation, context diet, noSync
+    env'
   breaking: false
   revertible: true
   estimated_duration: <1 minute
