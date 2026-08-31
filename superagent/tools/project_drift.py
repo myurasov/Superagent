@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run python
+#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
 """Project lifecycle drift report — index status vs on-disk activity.

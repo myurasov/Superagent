@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run python
+#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
 """Render report HTML sources to paginated PDF via Chromium print.
@@ -72,6 +72,7 @@ STYLE_NAME = "report-style.css"
 THEME_NAME = "report-theme.css"
 RENDER_SH_NAME = "render.sh"
 TUNE_SUFFIX = ".tune.css"
+REPORT_CONFIG_NAME = "report.yaml"
 
 THEME_STUB = """\
 /* report-theme.css — user-owned token overrides for report styling.
@@ -123,6 +124,26 @@ def load_profile(workspace: Path) -> dict:
 
 def tune_path(source: Path) -> Path:
     return source.with_name(source.stem + TUNE_SUFFIX)
+
+
+def report_config_path(pdf_path: Path) -> Path:
+    return pdf_path.parent / REPORT_CONFIG_NAME
+
+
+def load_report_config(pdf_path: Path) -> dict:
+    """Optional folder-level furniture config next to the output PDF.
+
+    `report.yaml` keys (all optional): `watermark`, `prepared_by`,
+    `furniture_font`. Persistent counterpart of the one-shot CLI flags, so
+    `render.sh` rebuilds keep the same page furniture. Never seeded — the
+    file exists only when the user/agent writes it.
+    """
+    path = report_config_path(pdf_path)
+    try:
+        cfg = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError):
+        return {}
+    return cfg if isinstance(cfg, dict) else {}
 
 
 def _copy_managed(src: Path, dst: Path, *, executable: bool = False, repo: Path | None = None) -> None:
@@ -304,7 +325,7 @@ def check_stale(
         return True
     if not theme.exists() or not tune.exists():
         return True
-    return needs_render(html_path, pdf_path, style, theme, tune)
+    return needs_render(html_path, pdf_path, style, theme, tune, report_config_path(pdf_path))
 
 
 def render_pdf(
@@ -490,11 +511,6 @@ def main(argv: list[str] | None = None) -> int:
 
     profile = {} if args.no_prepared_by else load_profile(workspace)
     now = dt.datetime.now().astimezone()
-    prepared = (
-        prepared_line({}, None, now)
-        if args.no_prepared_by
-        else prepared_line(profile, args.prepared_by, now)
-    )
 
     failures = 0
     stale = 0
@@ -524,9 +540,25 @@ def main(argv: list[str] | None = None) -> int:
             failures += 1
             continue
 
-        if not args.force and not needs_render(source, pdf_path, style, theme, tune):
+        config_file = report_config_path(pdf_path)
+        if not args.force and not needs_render(source, pdf_path, style, theme, tune, config_file):
             print(f"fresh  {pdf_path} (skip; --force to re-render)")
             continue
+
+        # Furniture: one-shot CLI flags win; the folder's report.yaml (next
+        # to the PDF) persists across render.sh rebuilds; then defaults.
+        report_cfg = load_report_config(pdf_path)
+        watermark = args.watermark or str(report_cfg.get("watermark") or "")
+        furniture_font = (
+            args.furniture_font
+            if args.furniture_font != FURNITURE_FONT_DEFAULT
+            else str(report_cfg.get("furniture_font") or FURNITURE_FONT_DEFAULT)
+        )
+        if args.no_prepared_by:
+            prepared = prepared_line({}, None, now)
+        else:
+            byline = args.prepared_by or report_cfg.get("prepared_by")
+            prepared = prepared_line(profile, byline, now)
 
         html_text = source.read_text(encoding="utf-8", errors="replace")
         if STYLE_NAME not in html_text:
@@ -552,8 +584,8 @@ def main(argv: list[str] | None = None) -> int:
                 pdf_path,
                 prepared=prepared,
                 header_title=header_title,
-                watermark=args.watermark,
-                furniture_font=args.furniture_font,
+                watermark=watermark,
+                furniture_font=furniture_font,
             )
         except Exception as exc:  # noqa: BLE001 — every engine failure gets the same triage
             message = str(exc)

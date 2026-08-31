@@ -15,21 +15,21 @@
   "hooks": {
     "UserPromptSubmit": [
       {
-        "command": "uv run python superagent/tools/log_user_query.py"
+        "command": "UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python superagent/tools/log_user_query.py"
       }
     ],
     "PostToolUse": [
       {
         "matcher": "mcp__gmail__send_email",
-        "command": "uv run python -m superagent.tools.email.archive_hook --kind=sent"
+        "command": "UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.email.archive_hook --kind=sent"
       },
       {
         "matcher": "mcp__gmail__read_email",
-        "command": "uv run python -m superagent.tools.email.archive_hook --kind=inbound"
+        "command": "UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.email.archive_hook --kind=inbound"
       },
       {
         "matcher": "mcp__gmail__search_emails",
-        "command": "uv run python -m superagent.tools.email.archive_hook --kind=stubs"
+        "command": "UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.email.archive_hook --kind=stubs"
       }
     ]
   }

@@ -29,13 +29,14 @@ set -euo pipefail
 # Resolve the repo root (this hook may be invoked from a subdirectory).
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
+export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
 
 # Bail gracefully when the project venv is missing — surface the install
 # command instead of failing in a confusing way.
-if [[ ! -x ".venv/bin/python" ]] && ! command -v uv >/dev/null 2>&1; then
+if [[ ! -x ".venv.noSync/bin/python" ]] && ! command -v uv >/dev/null 2>&1; then
   echo "" >&2
   echo "ERROR: pre-commit hook needs uv (or the project venv) to run ruff." >&2
-  echo "Run \`uv sync\` to create .venv, or install uv from https://docs.astral.sh/uv/." >&2
+  echo "Run \`uv sync\` to create .venv.noSync, or install uv from https://docs.astral.sh/uv/." >&2
   echo "" >&2
   exit 1
 fi

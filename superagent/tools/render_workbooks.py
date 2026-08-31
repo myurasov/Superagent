@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run python
+#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
 """Lazy per-domain (and per-entity) `.xlsx` workbook projections.
 
 Implements the design in `workspace/Outbox/drafts/2026-05-12-tabular-projections-proposal.md`

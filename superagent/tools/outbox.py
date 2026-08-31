@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run python
+#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
 """Lazy `Outbox/` sub-directory materialization + empty-subdir purge.
 
 Per the lazy-Outbox contract (`contracts/outbox-lifecycle.md` § "Lazy

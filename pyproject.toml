@@ -25,6 +25,7 @@ dev = [
 
 [tool.uv]
 default-groups = ["dev"]
+cache-dir = ".tmp.noSync/uv-cache"
 
 [tool.pytest.ini_options]
 testpaths = ["superagent/tests"]
@@ -36,8 +37,12 @@ target-version = "py312"
 line-length = 100
 extend-exclude = [
     ".venv",
+    ".venv.noSync",
     ".tools",
     ".tmp",
+    ".tmp.noSync",
+    ".playwright-mcp",
+    ".playwright-superagent",
     "workspace",  # user data; out of scope for framework lint
 ]
 

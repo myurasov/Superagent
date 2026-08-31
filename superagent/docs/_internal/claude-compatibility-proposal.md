@@ -158,7 +158,7 @@ Reference content:
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python superagent/tools/log_user_query.py"
+            "command": "export UV_PROJECT_ENVIRONMENT=\"${PWD}/.venv.noSync\" && uv run python superagent/tools/log_user_query.py"
           }
         ]
       }
@@ -282,7 +282,7 @@ from superagent.tools.ide import detect, IDE
 ide = detect()  # IDE.CLAUDE_CODE | IDE.CURSOR | IDE.UNKNOWN
 ```
 
-The CLI sub-command `uv run python -m superagent.tools.ide current` prints the detected name. Useful for shell snippets and for the `init` skill's branching logic.
+The CLI sub-command `export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync" && uv run python -m superagent.tools.ide current` prints the detected name. Useful for shell snippets and for the `init` skill's branching logic.
 
 **Why a helper instead of inline checks.** A single library function keeps the detection logic in one place. When Anthropic / Cursor change their env var conventions, we fix one file.
 
@@ -405,7 +405,7 @@ Migration body (~80 lines): summarizes the release content; lists pre-flight che
 
 **Note about runtime files.** The migration does NOT touch `.cursor/mcp.json` or `.mcp.json` even if a previous workspace had `.cursor/mcp.json` as a symlink (legacy state). Detection + offer-to-replace lives in the `init` re-run path (step 12¾), not in the migration — because `init` is interactive and the migration must run unattended-safe.
 
-After the migration runs, register it in `superagent/migrations/_manifest.yaml` via `uv run python -m superagent.tools.version refresh-manifest`.
+After the migration runs, register it in `superagent/migrations/_manifest.yaml` via `export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync" && uv run python -m superagent.tools.version refresh-manifest`.
 
 ---
 
@@ -438,7 +438,7 @@ LOE-S overall (under a day end-to-end). Breakdown:
 | Roadmap entry | 1 edit | XS |
 | Tests | `tests/test_ide.py`, smoke checks for `init` step idempotency | S |
 | `pyproject.toml` version bump | 1 edit | XS |
-| Lint pass (`uv run ruff check superagent/`) | — | XS |
+| Lint pass (`export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync" && uv run ruff check superagent/`) | — | XS |
 | Commit hygiene + AI-attribution scrub | — | XS |
 
 **Total**: roughly half a day of focused work. The Supercoder can implement this from a single approved Supertailor brief.
@@ -460,7 +460,7 @@ Things the Supertailor's brief should resolve before handing to the Supercoder:
 
 ## Implementation order
 
-If approved, the Supercoder should land this in roughly this sequence (each item is a separate commit; all pass `uv run ruff check superagent/` before commit):
+If approved, the Supercoder should land this in roughly this sequence (each item is a separate commit; all pass `export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync" && uv run ruff check superagent/` before commit):
 
 1. `tools/ide.py` + `tests/test_ide.py` (foundational; nothing else depends on it but it's the cleanest place to start).
 2. `CLAUDE.md`, `.claude/settings.json`, `.claudeignore` (the three new top-level files; trivial to write; verifies the rest of the proposal in practice).

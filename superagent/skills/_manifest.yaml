@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-08-31T16:06:35-07:00'
-skill_count: 58
+generated_at: '2026-08-31T16:15:17-07:00'
+skill_count: 53
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -977,10 +977,10 @@ skills:
   cli_optional:
   - 'playwright Chromium (one-time: `uv run playwright install chromium`; already present when browserctl
     is set up)'
-  lines: 163
+  lines: 169
   h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 1806
+  typical_token_cost: 1891
   typical_files_read:
   - _memory/outbox-log.yaml
   - _memory/interaction-log.yaml
@@ -1314,116 +1314,3 @@ skills:
   typical_token_cost: 641
   typical_files_read: []
   origin: framework
-- name: browserctl.amazon
-  stem: browserctl.amazon
-  path: workspace/_custom/skills/browserctl.amazon.md
-  one_line: 'Drive Amazon.com through browserctl — product search, spec verification, Prime/delivery checks,
-    and add-to-cart. Cart building only: this plugin never checks out, never places an order, and never
-    clic'
-  triggers:
-  - amazon
-  - log into amazon
-  - add to my amazon cart
-  - put this in my cart
-  - amazon cart
-  - order parts from amazon
-  - buy this on amazon
-  - price this on amazon
-  mcp_required: []
-  mcp_optional: []
-  cli_required: []
-  cli_optional: []
-  lines: 313
-  h2_steps: 12
-  h3_subsections: 0
-  typical_token_cost: 4081
-  typical_files_read:
-  - _memory/interaction-log.yaml
-  origin: custom
-- name: browserctl.fidelity
-  stem: browserctl.fidelity
-  path: workspace/_custom/skills/browserctl.fidelity.md
-  one_line: Drive Fidelity NetBenefits (workplaceservices.fidelity.com) and the retail portfolio surface
-    (digital.fidelity.com) through browserctl — 401(k) plan balance/sources/contribution reads and BrokerageLin
-  triggers:
-  - fidelity
-  - netbenefits
-  - check my 401k
-  - brokeragelink
-  mcp_required: []
-  mcp_optional: []
-  cli_required: []
-  cli_optional: []
-  lines: 103
-  h2_steps: 8
-  h3_subsections: 0
-  typical_token_cost: 1172
-  typical_files_read: []
-  origin: custom
-- name: browserctl.irs
-  stem: browserctl.irs
-  path: workspace/_custom/skills/browserctl.irs.md
-  one_line: Drive IRS Online Account (sa.www4.irs.gov/ola/) through browserctl — ID.me login, payment
-    activity, balances, notices and letters, the account transcript API, and authenticated PDF downloads.
-    Read-onl
-  triggers:
-  - irs online account
-  - log into irs
-  - check irs
-  - irs transcripts
-  - irs notices
-  mcp_required: []
-  mcp_optional: []
-  cli_required: []
-  cli_optional: []
-  lines: 65
-  h2_steps: 6
-  h3_subsections: 0
-  typical_token_cost: 1244
-  typical_files_read: []
-  origin: custom
-- name: browserctl.myftb
-  stem: browserctl.myftb
-  path: workspace/_custom/skills/browserctl.myftb.md
-  one_line: Drive the California FTB MyFTB portal (webapp.ftb.ca.gov/myftb) through browserctl — Auth0/SAML
-    login, Web Pay payment form, payment history. Read-mostly; payment submission always stops at Review
-    for
-  triggers:
-  - myftb
-  - log into ftb
-  - check ftb
-  - ftb web pay
-  - california tax payment
-  mcp_required: []
-  mcp_optional: []
-  cli_required: []
-  cli_optional: []
-  lines: 101
-  h2_steps: 9
-  h3_subsections: 1
-  typical_token_cost: 1078
-  typical_files_read:
-  - Projects/tax-2026/status.md
-  origin: custom
-- name: browserctl.schwab
-  stem: browserctl.schwab
-  path: workspace/_custom/skills/browserctl.schwab.md
-  one_line: Drive the Charles Schwab client portal (client.schwab.com) through browserctl — balance reads
-    across brokerage/IRA/checking accounts and the Transfer Funds form. Transfers are filled but NEVER
-    submitt
-  triggers:
-  - schwab
-  - log into schwab
-  - check schwab
-  - schwab balance
-  - schwab transfer
-  mcp_required: []
-  mcp_optional: []
-  cli_required: []
-  cli_optional: []
-  lines: 80
-  h2_steps: 7
-  h3_subsections: 0
-  typical_token_cost: 1490
-  typical_files_read: []
-  origin: custom

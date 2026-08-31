@@ -1,4 +1,4 @@
-#!/usr/bin/env -S uv run python
+#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
 """HEIC -> sRGB JPG conversion for Superagent imports.
 
 Per `superagent/rules/image-format-policy.md`, Superagent never lands a

@@ -10,6 +10,10 @@ tasks/
 __dev/
 __workspace-*/
 
+# ignore all .noSync/ directories and files
+**/*.noSync/
+**/*.noSync/**
+
 # Python
 *.pyc
 *.pyo

@@ -10,32 +10,39 @@ The four rules are non-negotiable defaults; surface a request to the user before
 
 ## 1. Python tooling — single shared `uv` venv at the repo root
 
-- ALL Python-based tools in this repository (under `superagent/tools/`, `superagent/tests/`, anywhere else) MUST use the single shared `uv` virtual environment at the repository root: `./.venv/`.
+- ALL Python-based tools in this repository (under `superagent/tools/`, `superagent/tests/`, anywhere else) MUST use the single shared `uv` virtual environment at the repository root: `./.venv.noSync/`.
+- Before the first `uv` call in every new shell process, export `UV_PROJECT_ENVIRONMENT` from the repository root:
+  ```bash
+  export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
+  ```
+  Do not rely on a previous shell, activation, or implicit uv default. IDE hooks, git hooks, and direct tool-script shebangs carry the same setting themselves.
 - ALL Python tools MUST be invoked through `uv run`, e.g.:
   - `uv run python superagent/tools/foo.py`
   - `uv run python -m superagent.tools.sources_index refresh`
   - `uv run pytest`
   - `uv run ruff check superagent/`
-- Do NOT call `python3 …` or `python …` directly. Do NOT activate the venv with `source .venv/bin/activate`; rely on `uv run`.
+- Do NOT call `python3 …` or `python …` directly. Do NOT activate the venv with `source .venv.noSync/bin/activate`; rely on the export plus `uv run`.
 - Do NOT create per-tool venvs (`pipx`, `venv` in subdirs, `poetry env use`, `conda env`). One repo, one venv.
 - Dependencies are declared in the root `pyproject.toml` and locked in `uv.lock`. Both files are committed; `uv.lock` is the source of truth for reproducible installs.
+- uv's package cache lives at `./.tmp.noSync/uv-cache/` via `[tool.uv].cache-dir` in `pyproject.toml`. This cache is not a second environment.
 
 ### Common commands
 
 ```bash
-uv sync                      # create / refresh ./.venv from pyproject + uv.lock
+export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
+uv sync                      # create / refresh ./.venv.noSync from pyproject + uv.lock
 uv sync --upgrade            # refresh lock against latest compatible versions
 uv add <package>             # add a runtime dependency to pyproject + lock
 uv add --dev <package>       # add a dev-only dependency
 uv remove <package>          # drop a dependency
 uv run python <script>.py    # run a script in the venv
 uv run pytest -q             # run the test suite
-uv lock                      # regenerate uv.lock without touching .venv
+uv lock                      # regenerate uv.lock without touching .venv.noSync
 ```
 
 ### Direct execution of Python tool scripts
 
-Tool scripts under `superagent/tools/*.py` use a `uv run`-aware shebang so direct execution (`./superagent/tools/foo.py`) routes through the shared venv automatically. If a platform rejects the `-S` form of `env`, fall back to `uv run python <path>` and treat direct execution as unsupported on that platform.
+Tool scripts under `superagent/tools/*.py` use a `uv run`-aware shebang that sets `UV_PROJECT_ENVIRONMENT=.venv.noSync`; uv resolves that relative value from the project root without exposing a space-containing `${PWD}` to shebang tokenization. Direct execution (`./superagent/tools/foo.py`) therefore routes through the shared venv automatically when launched from the repository root. If a platform rejects the `-S` form of `env`, export the absolute variable explicitly, fall back to `uv run python <path>`, and treat direct execution as unsupported on that platform.
 
 ---
 
@@ -84,17 +91,19 @@ Every commit to the framework tree (`superagent/`) MUST pass `uv run ruff check 
 ### The rule
 
 ```bash
+export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
 uv run ruff check superagent/             # report
 uv run ruff check --fix superagent/       # auto-fix the easy ones
 ```
 
 Workflow before any commit:
 
-1. Run `uv run ruff check superagent/`.
-2. If clean, proceed to commit.
-3. If errors, run `uv run ruff check --fix superagent/` to auto-fix what ruff can. Re-run step 1.
-4. For remaining issues (the manual ones), edit the affected files and fix. Re-run step 1.
-5. Loop until clean. THEN commit.
+1. Export `UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"`.
+2. Run `uv run ruff check superagent/`.
+3. If clean, proceed to commit.
+4. If errors, run `uv run ruff check --fix superagent/` to auto-fix what ruff can. Re-run step 2.
+5. For remaining issues (the manual ones), edit the affected files and fix. Re-run step 2.
+6. Loop until clean. THEN commit.
 
 The agent must not stage-and-commit until the project is lint-clean. This applies to every commit, including documentation-only and test-only commits — the run is cheap (sub-second on this codebase) and the enforcement boundary stays simple.
 
@@ -104,7 +113,7 @@ Ruff config lives in the root `pyproject.toml` under `[tool.ruff]`:
 
 - `target-version = "py312"` — mirrors `requires-python` so lint targets the same interpreter as the runtime.
 - `line-length = 100` — the project's chosen wrap width.
-- `extend-exclude` — `.venv`, `.tools`, `.tmp`, and `workspace/` (user data is out of framework-lint scope).
+- `extend-exclude` — `.venv.noSync`, legacy `.venv`, `.tools`, `.tmp.noSync`, `.tmp`, `.playwright-*`, and `workspace/` (user data is out of framework-lint scope).
 - `select = ["E", "F", "W", "I", "UP", "B", "SIM"]` — pycodestyle errors + pyflakes + warnings + isort + pyupgrade + bugbear + flake8-simplify.
 - `ignore = ["E501", "B008", "SIM102", "SIM103", "SIM108"]` — line-length is enforced by the formatter not lint; `Path(...)` defaults in argparse are intentional; the three SIM rules ignored are pure style preferences (nested-if vs collapse, ternary vs if-else).
 - Per-file ignores relax `F811` for `superagent/tests/**` (pytest fixtures register by name).

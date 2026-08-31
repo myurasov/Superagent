@@ -270,6 +270,25 @@ def test_tune_edit_refires_render_and_survives(tmp_path, capsys):
 
 
 @needs_chromium
+def test_report_yaml_watermark_persists_across_rebuilds(tmp_path):
+    html = _write_report_html(tmp_path / "wm.html")
+    (tmp_path / "report.yaml").write_text("watermark: STICKY MARK\n", encoding="utf-8")
+    assert main([str(html), "--workspace", str(tmp_path / "ws")]) == 0
+    import fitz
+
+    footer_left = fitz.Rect(0, 750, 306, 792)
+    with fitz.open(str(html.with_suffix(".pdf"))) as doc:
+        assert _band_ink(_band_pixmap(doc[0], footer_left)) > 50  # watermark ink
+
+    # Editing report.yaml re-fires the render (it shapes the output)…
+    (tmp_path / "report.yaml").write_text("watermark: ''\n", encoding="utf-8")
+    assert main([str(html), "--workspace", str(tmp_path / "ws"), "--check"]) == 1
+    assert main([str(html), "--workspace", str(tmp_path / "ws")]) == 0
+    with fitz.open(str(html.with_suffix(".pdf"))) as doc:
+        assert _band_ink(_band_pixmap(doc[0], footer_left)) == 0  # watermark gone
+
+
+@needs_chromium
 def test_render_sh_rebuilds_standalone(tmp_path):
     import subprocess
 

@@ -379,6 +379,7 @@ Run this immediately after each commit, or as a batch right before `git push`. N
 Every commit MUST pass `uv run ruff check superagent/` before it lands (per `superagent/rules/development-tooling.md` § "Lint before commit"). Workflow:
 
 ```bash
+export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
 uv run ruff check superagent/                 # report
 uv run ruff check --fix superagent/           # auto-fix the easy ones
 # fix any remaining issues by hand
@@ -513,7 +514,7 @@ Tools enforce the shape — `tools/audit.py.record_change()` writes to `<file>.h
 
 Full policy: [`superagent/rules/development-tooling.md`](superagent/rules/development-tooling.md). Four non-negotiable defaults for any contributor (human or agent):
 
-- **Python** — one shared `uv` venv at `./.venv/`. ALWAYS invoke through `uv run` (e.g. `uv run python superagent/tools/foo.py`, `uv run python -m superagent.tools.sources_index refresh`, `uv run pytest`). NEVER call `python3 …` directly; NEVER create per-tool venvs. Dependencies live in root `pyproject.toml`; lockfile is `uv.lock` (committed).
+- **Python** — one shared `uv` venv at `./.venv.noSync/` (kept out of iCloud sync; the legacy `./.venv/` is deprecated forward-only). Before the first `uv` call in EVERY new shell process, run `export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"` from the repository root; automated hooks and tool shebangs carry the same setting themselves. ALWAYS invoke Python through `uv run` (e.g. `uv run python superagent/tools/foo.py`, `uv run python -m superagent.tools.sources_index refresh`, `uv run pytest`). NEVER call `python3 …` directly; NEVER create per-tool venvs. Dependencies live in root `pyproject.toml`; lockfile is `uv.lock` (committed). uv's package cache lives at `./.tmp.noSync/uv-cache/` via `[tool.uv].cache-dir` — the `.noSync` suffix keeps both the venv and the cache out of iCloud sync while staying project-local.
 - **Non-Python tools** — install under the machine-local root `~/.superagent/tools/` (one folder per tool) per `superagent/rules/machine-local-home.md`; the former `./.tools/` is deprecated forward-only. NEVER install system-wide (`brew install`, `npm -g`, `cargo install --root /usr/local`, etc.) from inside this project.
 - **Temporary files** — write to the machine-local transient root `~/.superagent/tmp/` (`$SUPERAGENT_HOME` aware; helper `uv run python -m superagent.tools.home`) per `superagent/rules/machine-local-home.md`. The repo lives in iCloud Drive, so scratch NEVER goes inside the checkout (the former `./.tmp/` is deprecated forward-only), nor to `/tmp`, `$TMPDIR`, OS temp dirs, or sibling repos.
 - **Scope discipline (safety rule)** — the agent MUST NOT install software, create files, or modify files outside this project folder unless the user explicitly authorizes that specific action. Read access outside is fine; write access outside is forbidden by default — refuse and ask first. Sanctioned exception: `~/.superagent/` (disposable machine-local state only; includes browserctl state at `~/.superagent/browserctl/`).
@@ -567,6 +568,7 @@ The `workspace/_custom/` overlay applies identically under every harness; there 
 You can switch between harnesses interchangeably — detection is environment-driven and runs on every call (no sticky config). The helper at `superagent/tools/ide.py` centralizes the probe:
 
 ```bash
+export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
 uv run python -m superagent.tools.ide current   # prints "claude-code" / "cursor" / "unknown"
 uv run python -m superagent.tools.ide is-claude # exit 0 iff Claude Code
 uv run python -m superagent.tools.ide is-cursor # exit 0 iff Cursor
