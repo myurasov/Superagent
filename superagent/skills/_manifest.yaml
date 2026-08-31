@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-08-31T15:20:47-07:00'
-skill_count: 51
+generated_at: '2026-08-31T16:06:35-07:00'
+skill_count: 58
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -318,6 +318,31 @@ skills:
   typical_token_cost: 598
   typical_files_read: []
   origin: framework
+- name: superagent-baton
+  stem: baton
+  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/baton.md
+  one_line: 'Assemble a compact, paste-ready prompt that hands the CURRENT work off to another (or new)
+    agent session: what/why, state now, exact file paths, next steps, gotchas. Session continuity, not
+    estate pla'
+  triggers:
+  - hand this off
+  - prompt for another session
+  - continue in a new session
+  - handoff prompt
+  - baton
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 90
+  h2_steps: 4
+  h3_subsections: 0
+  typical_token_cost: 725
+  typical_files_read:
+  - _memory/config.yaml
+  - _memory/todo.yaml
+  - _memory/interaction-log.yaml
+  origin: framework
 - name: superagent-bills
   stem: bills
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/bills.md
@@ -363,11 +388,12 @@ skills:
   - uv
   cli_optional:
   - playwright (Chromium install — one-time `uv run --with playwright playwright install chromium`)
-  lines: 271
+  lines: 273
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 4075
-  typical_files_read: []
+  typical_token_cost: 4169
+  typical_files_read:
+  - _memory/action-signals.yaml
   origin: framework
 - name: superagent-daily-update
   stem: daily-update
@@ -385,10 +411,10 @@ skills:
   - any scheduled-cadence ingest source (gmail, gcal, icloud, apple_health, …)
   cli_required: []
   cli_optional: []
-  lines: 325
-  h2_steps: 26
+  lines: 333
+  h2_steps: 27
   h3_subsections: 0
-  typical_token_cost: 3229
+  typical_token_cost: 3478
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/context.yaml
@@ -413,10 +439,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 166
-  h2_steps: 15
+  lines: 192
+  h2_steps: 18
   h3_subsections: 0
-  typical_token_cost: 1594
+  typical_token_cost: 1897
   typical_files_read:
   - _memory/domains-index.yaml
   - Sources/_cache/`;
@@ -464,10 +490,34 @@ skills:
   - email ingestors (for prior-thread context)
   cli_required: []
   cli_optional: []
-  lines: 134
+  lines: 136
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 1056
+  typical_token_cost: 1118
+  typical_files_read:
+  - _memory/action-signals.yaml
+  origin: framework
+- name: superagent-email-refresh
+  stem: email-refresh
+  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/email-refresh.md
+  one_line: 'Topic-scoped reply check: "did they respond?" for the email thread(s) behind the current
+    task. Scans the local email archive first, live-fetches only the strictly-newer slice, then surfaces
+    what chang'
+  triggers:
+  - any replies
+  - check for new email on this
+  - did they respond
+  - check replies
+  - new email on this topic
+  mcp_required: []
+  mcp_optional:
+  - gmail
+  cli_required: []
+  cli_optional: []
+  lines: 86
+  h2_steps: 6
+  h3_subsections: 2
+  typical_token_cost: 803
   typical_files_read: []
   origin: framework
 - name: superagent-events
@@ -680,15 +730,17 @@ skills:
   - sync from <source>
   - run ingest
   - set up data sources
+  - refresh my data / pull new data
+  - refresh email / transactions
   mcp_required: []
   mcp_optional:
   - any source documented in docs/data-sources.md
   cli_required: []
   cli_optional: []
-  lines: 156
+  lines: 158
   h2_steps: 5
   h3_subsections: 16
-  typical_token_cost: 1964
+  typical_token_cost: 1982
   typical_files_read:
   - _memory/data-sources.yaml
   - _memory/transactions.yaml
@@ -884,6 +936,8 @@ skills:
   triggers:
   - update superagent
   - superagent refresh / refresh superagent
+  - framework refresh / refresh the framework
+  - update the framework / pull the framework
   - pull the latest superagent
   - get the newest superagent version
   - upgrade the framework
@@ -895,10 +949,10 @@ skills:
   - git
   - uv
   cli_optional: []
-  lines: 263
+  lines: 273
   h2_steps: 12
   h3_subsections: 0
-  typical_token_cost: 2905
+  typical_token_cost: 3050
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/interaction-log.yaml
@@ -923,10 +977,10 @@ skills:
   cli_optional:
   - 'playwright Chromium (one-time: `uv run playwright install chromium`; already present when browserctl
     is set up)'
-  lines: 144
+  lines: 163
   h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 1617
+  typical_token_cost: 1806
   typical_files_read:
   - _memory/outbox-log.yaml
   - _memory/interaction-log.yaml
@@ -1044,10 +1098,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 158
+  lines: 160
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2578
+  typical_token_cost: 2697
   typical_files_read:
   - _memory/supertailor-suggestions.yaml
   - _memory/contacts.yaml
@@ -1095,13 +1149,14 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 160
+  lines: 161
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 1468
+  typical_token_cost: 1527
   typical_files_read:
   - workspace/_memory/config.yaml
   - workspace/_memory/todo.yaml
+  - _memory/action-signals.yaml
   origin: framework
 - name: superagent-triage-overdue
   stem: triage-overdue
@@ -1166,10 +1221,10 @@ skills:
   - any health / fitness ingestor (apple_health / whoop / strava / garmin / oura)
   cli_required: []
   cli_optional: []
-  lines: 220
-  h2_steps: 18
+  lines: 232
+  h2_steps: 19
   h3_subsections: 0
-  typical_token_cost: 1901
+  typical_token_cost: 2094
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md
@@ -1197,10 +1252,10 @@ skills:
   - any scheduled-cadence ingest source
   cli_required: []
   cli_optional: []
-  lines: 156
+  lines: 158
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 1388
+  typical_token_cost: 1526
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
@@ -1259,3 +1314,116 @@ skills:
   typical_token_cost: 641
   typical_files_read: []
   origin: framework
+- name: browserctl.amazon
+  stem: browserctl.amazon
+  path: workspace/_custom/skills/browserctl.amazon.md
+  one_line: 'Drive Amazon.com through browserctl — product search, spec verification, Prime/delivery checks,
+    and add-to-cart. Cart building only: this plugin never checks out, never places an order, and never
+    clic'
+  triggers:
+  - amazon
+  - log into amazon
+  - add to my amazon cart
+  - put this in my cart
+  - amazon cart
+  - order parts from amazon
+  - buy this on amazon
+  - price this on amazon
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 313
+  h2_steps: 12
+  h3_subsections: 0
+  typical_token_cost: 4081
+  typical_files_read:
+  - _memory/interaction-log.yaml
+  origin: custom
+- name: browserctl.fidelity
+  stem: browserctl.fidelity
+  path: workspace/_custom/skills/browserctl.fidelity.md
+  one_line: Drive Fidelity NetBenefits (workplaceservices.fidelity.com) and the retail portfolio surface
+    (digital.fidelity.com) through browserctl — 401(k) plan balance/sources/contribution reads and BrokerageLin
+  triggers:
+  - fidelity
+  - netbenefits
+  - check my 401k
+  - brokeragelink
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 103
+  h2_steps: 8
+  h3_subsections: 0
+  typical_token_cost: 1172
+  typical_files_read: []
+  origin: custom
+- name: browserctl.irs
+  stem: browserctl.irs
+  path: workspace/_custom/skills/browserctl.irs.md
+  one_line: Drive IRS Online Account (sa.www4.irs.gov/ola/) through browserctl — ID.me login, payment
+    activity, balances, notices and letters, the account transcript API, and authenticated PDF downloads.
+    Read-onl
+  triggers:
+  - irs online account
+  - log into irs
+  - check irs
+  - irs transcripts
+  - irs notices
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 65
+  h2_steps: 6
+  h3_subsections: 0
+  typical_token_cost: 1244
+  typical_files_read: []
+  origin: custom
+- name: browserctl.myftb
+  stem: browserctl.myftb
+  path: workspace/_custom/skills/browserctl.myftb.md
+  one_line: Drive the California FTB MyFTB portal (webapp.ftb.ca.gov/myftb) through browserctl — Auth0/SAML
+    login, Web Pay payment form, payment history. Read-mostly; payment submission always stops at Review
+    for
+  triggers:
+  - myftb
+  - log into ftb
+  - check ftb
+  - ftb web pay
+  - california tax payment
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 101
+  h2_steps: 9
+  h3_subsections: 1
+  typical_token_cost: 1078
+  typical_files_read:
+  - Projects/tax-2026/status.md
+  origin: custom
+- name: browserctl.schwab
+  stem: browserctl.schwab
+  path: workspace/_custom/skills/browserctl.schwab.md
+  one_line: Drive the Charles Schwab client portal (client.schwab.com) through browserctl — balance reads
+    across brokerage/IRA/checking accounts and the Transfer Funds form. Transfers are filled but NEVER
+    submitt
+  triggers:
+  - schwab
+  - log into schwab
+  - check schwab
+  - schwab balance
+  - schwab transfer
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 80
+  h2_steps: 7
+  h3_subsections: 0
+  typical_token_cost: 1490
+  typical_files_read: []
+  origin: custom
