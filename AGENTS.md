@@ -141,6 +141,7 @@ When the agent first opens (or first acts in) `workspace/` in a session:
 - **Update `model-context.yaml` before session end** (or when significant learnings occur) with:
   - New domain knowledge discovered.
   - User corrections or preferences expressed.
+  - Any user corrections/critiques/wishes from this session appended to `action-signals.yaml` (session-end sweep per `contracts/capture.md`).
   - A brief session summary appended to `sessions` (keep last 10; drop oldest).
 
 This file is the model's own memory — distinct from `context.yaml` (operational state) and `config.yaml` (profile / preferences).

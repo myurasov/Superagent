@@ -30,6 +30,10 @@ Ambient signals are captured silently with a one-line tag at the end of the repl
 
 Update skills (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`) and `supertailor-review` surface **split unprocessed counts** ("N Supertailor signals + M Superagent workspace actions pending").
 
+### 7.2a Session-end sweep
+
+Ambient capture gets a backstop: **before a session closes** — the same moment `model-context.yaml` is updated per `AGENTS.md` § "Model context (cross-session memory)" — sweep the session for any user correction, critique, wish, or frustration that was expressed but not already captured, and append each as a row to `_memory/action-signals.yaml` using the existing kinds (`correction`, `artifact-critique`, `artifact-rework`, `wish`, `frustration`). Self-development items route to `_memory/personal-signals.yaml` instead (§ 7.1). A session that ends with an uncaptured correction is a capture-adherence failure, not a judgment call.
+
 ### 7.3 Auto-capture from ingested data
 
 Some signals come from ingestion, not chat. Examples and where they go:
