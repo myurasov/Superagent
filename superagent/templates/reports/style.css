@@ -120,13 +120,16 @@ h2::before { content: counter(section) ". "; color: var(--accent); font-weight: 
   margin: 0;
   padding: 0 0 0 1em;
   line-height: 1;
-  display: inline-grid;                    /* N columns via --toc-rows on the OL */
+  display: grid;                           /* block-level: spans the full content width */
   grid-auto-flow: column;
   grid-template-rows: repeat(var(--toc-rows, 2), auto);
-  grid-auto-columns: max-content;
-  column-gap: 2.2em;
+  grid-auto-columns: 1fr;                  /* columns share the width equally */
+  column-gap: 1.5em;
 }
-.toc-list li { margin: 3pt 0; max-width: 3.6in; break-inside: avoid; font-size: var(--fs-toc); }
+/* Entries stay on ONE line by convention (skills/report.md: keep section
+   titles short / shorten the anchor text). nowrap makes a violation visibly
+   overflow instead of silently wrapping, so the eyeball pass catches it. */
+.toc-list li { margin: 3pt 0; break-inside: avoid; font-size: var(--fs-toc); white-space: nowrap; }
 .toc-list li::marker { color: #1d1d1d; font-weight: 500; }
 .toc-list a { color: var(--accent); text-decoration: none; }
 

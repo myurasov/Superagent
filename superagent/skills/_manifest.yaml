@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-08-31T16:15:17-07:00'
+generated_at: '2026-08-31T16:19:57-07:00'
 skill_count: 53
 skills:
 - name: superagent-ad-hoc-task
@@ -977,10 +977,10 @@ skills:
   cli_optional:
   - 'playwright Chromium (one-time: `uv run playwright install chromium`; already present when browserctl
     is set up)'
-  lines: 169
+  lines: 173
   h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 1891
+  typical_token_cost: 1974
   typical_files_read:
   - _memory/outbox-log.yaml
   - _memory/interaction-log.yaml
