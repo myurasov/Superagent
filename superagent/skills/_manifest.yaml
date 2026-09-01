@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-08-31T16:19:57-07:00'
+generated_at: '2026-08-31T17:19:52-07:00'
 skill_count: 53
 skills:
 - name: superagent-ad-hoc-task
@@ -439,10 +439,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 192
-  h2_steps: 18
+  lines: 211
+  h2_steps: 19
   h3_subsections: 0
-  typical_token_cost: 1897
+  typical_token_cost: 2139
   typical_files_read:
   - _memory/domains-index.yaml
   - Sources/_cache/`;
@@ -523,8 +523,9 @@ skills:
 - name: superagent-events
   stem: events
   path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/events.md
-  one_line: Read or append events in the unified time-stream. Time-partitioned storage (`_memory/events/<YYYY-Qn>.yaml`)
-    so reads are O(log n). The source of truth for cross-entity timelines; per-entity history.m
+  one_line: Read the unified time-stream. Time-partitioned storage (`_memory/events/<YYYY-Qn>.yaml`) so
+    reads are O(log n). A DERIVED VIEW rebuilt wholesale from interaction-log.yaml + Domain/Project history.md
+    b
   triggers:
   - events
   - timeline
@@ -535,11 +536,12 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 87
-  h2_steps: 3
+  lines: 117
+  h2_steps: 4
   h3_subsections: 4
-  typical_token_cost: 732
+  typical_token_cost: 946
   typical_files_read:
+  - _memory/interaction-log.yaml
   - _memory/events.yaml
   origin: framework
 - name: superagent-expenses
@@ -1221,10 +1223,10 @@ skills:
   - any health / fitness ingestor (apple_health / whoop / strava / garmin / oura)
   cli_required: []
   cli_optional: []
-  lines: 232
+  lines: 235
   h2_steps: 19
   h3_subsections: 0
-  typical_token_cost: 2094
+  typical_token_cost: 2133
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md

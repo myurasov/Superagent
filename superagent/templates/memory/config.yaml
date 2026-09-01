@@ -141,11 +141,10 @@ preferences:
   events:
     # Time partitioning. Quarterly default; monthly for high-volume workspaces.
     partition: "quarterly"   # quarterly | monthly | yearly
-    # Mirror entity-history-md writes into the events stream automatically.
-    auto_mirror_history_md: true
-    # Mirror interaction-log writes into the events stream automatically.
-    auto_mirror_interaction_log: true
-    # Per-skill event-emission opt-out (rare).
+    # derived | off — partitions are rebuilt from interaction-log + history.md
+    # by tools/events_derive.py; per-write mirroring is retired.
+    mode: "derived"
+    # Event kinds excluded from derivation (rare).
     skip_kinds: []
 
   # Audit trail (see contracts/audit-trail.md / item #17).

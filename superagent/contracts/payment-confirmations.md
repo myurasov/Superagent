@@ -125,7 +125,7 @@ Every save MUST trigger the following side-effects, in order:
    - `related` — list of operational handles touched
    - `destination_class` — `sources` | `project_resources`
 
-5. **Mirror to the events stream** (per `contracts/events-stream.md`) — `auto_mirror_history_md: true` handles this when the entity's `history.md` is updated; explicit mirror is only needed when the save did not write to any `history.md`.
+5. **Events stream** (per `contracts/events-stream.md`) — no explicit mirror: the events stream is a derived view, so the `history.md` / `interaction-log.yaml` entry written above materializes as an event on the next `tools/events_derive.py rebuild`. When the save wrote to neither, add an `interaction-log.yaml` entry so the payment reaches the timeline.
 
 6. **Provenance** — write the `provenance` block on the saved artifact's frontmatter (or sidecar `.ref.md`) per `contracts/provenance.md`. For ingestor-sourced confirmations, also include the `ingestion_log_row` reference.
 

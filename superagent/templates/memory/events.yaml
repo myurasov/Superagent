@@ -5,17 +5,16 @@
 #
 # This file is the SCHEMA reference for the events stream. The actual events
 # are stored in `_memory/events/<YYYY-Qn>.yaml` (quarterly partitions, per
-# the time-windowed-views contract — superagent/docs/_internal/perf-improvement-ideas.md MI-2). The
-# CURRENT quarter's file is the live writer; older quarters are read-only.
+# the time-windowed-views contract — superagent/docs/_internal/perf-improvement-ideas.md MI-2).
 #
-# Every cross-entity event (interaction, ingest run, status flip, decision,
-# audit-trail entry, completed task, captured signal, source access, etc.)
-# is written here as a row. Per-entity history.md / per-entity history fields
-# remain as denormalized projections of this stream.
+# The events stream is a DERIVED VIEW (contracts/events-stream.md): the
+# partitions are rebuilt wholesale by `tools/events_derive.py rebuild` from
+# the two sources of truth — `_memory/interaction-log.yaml` + Domain/Project
+# `history.md` H4 entries. Nothing appends to partitions per-write; rows
+# flagged `legacy: true` are frozen byte-verbatim across rebuilds.
 #
-# Shape: event-shape (append-only, partitioned). The writer is
-# `tools/events.py append`. Readers use `tools/log_window.py` for ranged
-# queries.
+# Shape: derived (partitioned). The producer is `tools/events_derive.py`.
+# Readers use `tools/log_window.py` for ranged queries.
 #
 # Bootstrap: when this template is copied to _memory/events.yaml, treat it as
 # an INDEX over the events/ directory rather than the data file. The data
@@ -24,7 +23,7 @@
 schema_version: 1
 generated_at: null
 
-# Per-quarter partition index — maintained by tools/events.py
+# Per-quarter partition index — maintained by tools/events_derive.py
 partitions:
   # Each partition:
   #   quarter         — "YYYY-Qn" (e.g. "2026-Q2").

@@ -136,7 +136,9 @@ def update_index(workspace: Path) -> None:
         return
     partitions: list[dict[str, Any]] = []
     for path in sorted(root.glob("*.yaml")):
-        rows = load_partition(workspace, path.stem)
+        meta = load_yaml(path)
+        meta = meta if isinstance(meta, dict) else {}
+        rows = [r for r in (meta.get("events") or []) if isinstance(r, dict)]
         timestamps: list[dt.datetime] = []
         by_kind: dict[str, int] = {}
         for r in rows:
@@ -145,14 +147,21 @@ def update_index(workspace: Path) -> None:
                 timestamps.append(ts)
             kind = r.get("kind") or "other"
             by_kind[kind] = by_kind.get(kind, 0) + 1
-        partitions.append({
+        entry: dict[str, Any] = {
             "quarter": path.stem,
             "path": f"_memory/events/{path.name}",
             "first_event_at": min(timestamps).isoformat() if timestamps else None,
             "last_event_at": max(timestamps).isoformat() if timestamps else None,
             "event_count": len(rows),
             "by_kind": by_kind,
-        })
+        }
+        # Preserve derived-view metadata (managed by tools/events_derive.py)
+        # so a stats/rebuild-index run does not clobber it.
+        if meta.get("derived") is True:
+            entry["legacy_rows"] = sum(
+                1 for r in rows if r.get("legacy") is True)
+            entry["derived"] = True
+        partitions.append(entry)
     idx_path = index_path(workspace)
     existing = load_yaml(idx_path) or {}
     existing["schema_version"] = 1
