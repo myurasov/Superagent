@@ -14,9 +14,9 @@
         "*.md": "vscode.markdown.preview.editor"
     },
     "explorer.decorations.colors": false,
-    "workbench.colorTheme": "Mayukai Mirage Gruvbox Darktooth",
+    "workbench.colorTheme": "Solarized Dark",
     "workbench.iconTheme": "catppuccin-mocha",
-    "workbench.statusBar.visible": false,
+    "workbench.statusBar.visible": true,
     "workbench.colorCustomizations": {
         "[Solarized Dark]": {
             "editor.background": "#00212b",
@@ -45,7 +45,7 @@
             "terminal.foreground": "#ccd6d6"
         },
         "[Mayukai Mirage Gruvbox Darktooth]": {
-            "editor.foreground": "#ffebc6",
+            "editor.foreground": "#fff7e9",
             "editorLineNumber.foreground": "#7c6f64",
             "editorLineNumber.activeForeground": "#fabd2f",
             "editorCursor.foreground": "#ffffff",
