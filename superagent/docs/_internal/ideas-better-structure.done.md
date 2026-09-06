@@ -57,7 +57,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Contract: `procedures.md` § 37 "Inbox Triage Contract".
 - Tests: `tests/test_inbox_and_anti_patterns.py::test_classify_*`, `test_record_decision_writes_log`, `test_stale_items`.
 - Pattern learning: after 3+ files matching the same pattern, the skill offers to auto-apply.
-- Decision log: `Inbox/_processed.yaml`.
+- Decision log: `_memory/inbox-log.yaml` (moved from `Inbox/_processed.yaml` in 0.17.0).
 - Pre-classification by extension + keyword (taxes, medical, vehicles, warranties, legal, identity, pets, education).
 
 ### #6 — Differential snapshots + change-detection ✓

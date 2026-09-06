@@ -5,8 +5,8 @@ description: >-
   a destination under `Sources/<category>/` (the user can always override;
   layout under Sources/ is user-defined per `contracts/sources.md`), and
   ask the user per file: file / discard / leave / defer. Records every
-  decision in
-  `Inbox/_processed.yaml` so the agent learns the user's filing patterns.
+  decision in `_memory/inbox-log.yaml` (append-only) so the agent learns
+  the user's filing patterns.
 triggers:
   - inbox triage
   - drain inbox
@@ -66,9 +66,11 @@ After each decision, record it:
 uv run python -m superagent.tools.inbox_triage record --file <name> --action <filed|discarded|left|deferred> --destination <path> --note "<optional>"
 ```
 
+The log is `_memory/inbox-log.yaml` (time-shape, append-only; moved from `Inbox/_processed.yaml` in 0.17.0). Always append through the `record` command — never hand-edit YAML rows into it. The command refuses to write while the legacy `Inbox/_processed.yaml` still exists (run `migrate`) or when the existing log does not parse (repair it by hand first).
+
 ## 4. Pattern learning
 
-After processing the batch, scan `Inbox/_processed.yaml` for repeated `(filename-pattern, category, destination)` patterns. If the user has `filed` 3+ files matching the same pattern (e.g. `Verizon*.pdf` → `Sources/home/utilities/verizon/`), surface:
+After processing the batch, scan `_memory/inbox-log.yaml` for repeated `(filename-pattern, category, destination)` patterns. If the user has `filed` 3+ files matching the same pattern (e.g. `Verizon*.pdf` → `Sources/home/utilities/verizon/`), surface:
 
 > "I notice you've filed Verizon PDFs to `home/utilities/verizon/` 4 times. Want to auto-file matching files next time? (yes / always-ask)"
 

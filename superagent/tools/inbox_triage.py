@@ -9,7 +9,8 @@ Walks files in `workspace/Inbox/`, classifies them by
 extension + filename heuristics, and proposes a destination under
 `Sources/<category>/` (the user can override; layout is user-defined per
 contracts/sources.md \u00a7 15.1). Records every triage decision in
-`Inbox/_processed.yaml` so the agent learns the user's filing patterns.
+`_memory/inbox-log.yaml` (append-only, time-shape) so the agent learns the
+user's filing patterns.
 
 This module does the *classification* part. Actual file moves and
 `add-source` invocations happen via the `inbox-triage` skill, which
@@ -142,17 +143,46 @@ def stale_items(workspace: Path, days: int = 14) -> list[Path]:
     return [p for p in list_inbox(workspace) if p.stat().st_mtime < cutoff]
 
 
-def record_decision(workspace: Path, decision: dict[str, Any]) -> None:
-    inbox = workspace / "Inbox"
-    if not inbox.exists():
-        return
-    log_path = inbox / "_processed.yaml"
-    data = load_yaml(log_path) or {"schema_version": 1, "decisions": []}
+# Decision log: one append-only row per triage decision (time-shape per
+# contracts/memory-taxonomy.md). Lived at `Inbox/_processed.yaml` before
+# 0.17.0; the `migrate` skill moves it.
+LOG_REL = Path("_memory") / "inbox-log.yaml"
+LEGACY_LOG_REL = Path("Inbox") / "_processed.yaml"
+
+
+def inbox_log_path(workspace: Path) -> Path:
+    return workspace / LOG_REL
+
+
+def record_decision(workspace: Path, decision: dict[str, Any]) -> Path:
+    """Append one decision row to `_memory/inbox-log.yaml`; return the log path.
+
+    Raises ValueError instead of clobbering when the workspace still carries
+    the pre-0.17.0 `Inbox/_processed.yaml`, or when the existing log does not
+    parse -- either would otherwise be silently replaced by a one-row file.
+    """
+    log_path = inbox_log_path(workspace)
+    legacy = workspace / LEGACY_LOG_REL
+    if legacy.exists() and not log_path.exists():
+        raise ValueError(
+            f"legacy decision log {legacy} has not been moved to {log_path}; "
+            "run the `migrate` skill first")
+    if log_path.exists():
+        data = load_yaml(log_path)
+        if not isinstance(data, dict) or not isinstance(data.get("decisions") or [], list):
+            raise ValueError(
+                f"{log_path} exists but is not a well-formed decision log "
+                "(mapping with a `decisions` list); repair it by hand -- refusing to overwrite")
+        if data.get("decisions") is None:
+            data["decisions"] = []
+    else:
+        data = {"schema_version": 1, "decisions": []}
     data.setdefault("decisions", []).append({
         "ts": now_iso(),
         **decision,
     })
     save_yaml(log_path, data)
+    return log_path
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -180,7 +210,7 @@ def main(argv: list[str] | None = None) -> int:
     framework = Path(__file__).resolve().parent.parent
     workspace = args.workspace or framework.parent / "workspace"
     inbox = workspace / "Inbox"
-    if not inbox.exists():
+    if args.cmd in ("list", "stale", "classify") and not inbox.exists():
         print(f"no Inbox at {inbox}", file=sys.stderr)
         return 1
     if args.cmd == "list":
@@ -207,13 +237,17 @@ def main(argv: list[str] | None = None) -> int:
                       f"{r['confidence']:<8}{r['suggested_path']}")
         return 0
     if args.cmd == "record":
-        record_decision(workspace, {
-            "file": args.file,
-            "action": args.action,
-            "destination": args.destination,
-            "note": args.note,
-        })
-        print(f"recorded {args.action} for {args.file}")
+        try:
+            log_path = record_decision(workspace, {
+                "file": args.file,
+                "action": args.action,
+                "destination": args.destination,
+                "note": args.note,
+            })
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+        print(f"recorded {args.action} for {args.file} in {log_path}")
         return 0
     return 2
 

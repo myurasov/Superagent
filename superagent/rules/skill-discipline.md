@@ -20,7 +20,7 @@ A skill applies when any of the following is true:
 ## What is prohibited
 
 - **Skill bypass:** executing raw file ops (`cp`, `mv`, `grep`, direct yaml edits) for a task that a skill covers, without first reading that skill.
-- **Partial follow:** reading only part of a skill and ignoring steps that seem minor (e.g. reading the file-move step but skipping `_processed.yaml`).
+- **Partial follow:** reading only part of a skill and ignoring steps that seem minor (e.g. reading the file-move step but skipping the `_memory/inbox-log.yaml` record).
 - **Assumption-driven execution:** assuming you know the skill's steps from memory or prior context. Skills evolve; always read the current file.
 
 ## Why this matters

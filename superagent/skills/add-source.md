@@ -99,7 +99,7 @@ The user provides a path (or has just dropped a file in `Inbox/`). Steps:
 7. **Sensitive?**: default false; flip true for medical, legal, accounts.
 8. **Notes**: free text.
 
-**Move** the file to the chosen path if it comes from `Inbox/` — never copy and leave the original. Copy only if the source is outside `Inbox/`. After moving from `Inbox/`, append a record to `workspace/Inbox/_processed.yaml` with `ts`, `file`, `action: filed`, `destination`, and `note` (include sources-index id once assigned).
+**Move** the file to the chosen path if it comes from `Inbox/` — never copy and leave the original. Copy only if the source is outside `Inbox/`. After moving from `Inbox/`, record the decision in `workspace/_memory/inbox-log.yaml` via `uv run python -m superagent.tools.inbox_triage record --file <inbox filename> --action filed --destination <path> --note "<note>"` (never hand-append YAML rows; include the sources-index id in the note once assigned).
 
 Optionally write a sibling `<filename>.ref.md` (Form A from § 15.3) carrying just the metadata:
 

@@ -132,7 +132,7 @@ Today `Inbox/` is a free-for-all the user manually drains. There's no triage flo
 - Ask the user for each: file / discard / leave.
 - Fully reversible (everything moved goes through `add-source` so it's indexed).
 
-Plus an `Inbox/_processed.yaml` log that records every triage decision so the agent learns the user's filing patterns ("you always file Verizon receipts under `home/utilities/verizon/`").
+Plus a decision log (`_memory/inbox-log.yaml`; lived at `Inbox/_processed.yaml` before 0.17.0) that records every triage decision so the agent learns the user's filing patterns ("you always file Verizon receipts under `home/utilities/verizon/`").
 
 **Trade-off**: needs OCR for images / scans. Roadmap M-06 already covers this.
 

@@ -42,13 +42,48 @@ def test_record_decision_writes_log(initialized_workspace: Path) -> None:
         "destination": "Sources/taxes/test.pdf",
         "note": "first triage",
     })
-    log = initialized_workspace / "Inbox" / "_processed.yaml"
+    log = initialized_workspace / "_memory" / "inbox-log.yaml"
     assert log.exists()
+    assert not (initialized_workspace / "Inbox" / "_processed.yaml").exists()
     data = yaml.safe_load(log.read_text())
     decisions = data.get("decisions") or []
     assert len(decisions) >= 1
     assert decisions[-1]["file"] == "test.pdf"
     assert decisions[-1]["action"] == "filed"
+
+
+def test_record_decision_refuses_unparseable_log(initialized_workspace: Path) -> None:
+    """A corrupt existing log is never silently replaced by a one-row file."""
+    import pytest
+
+    from superagent.tools.inbox_triage import inbox_log_path, record_decision
+
+    log = inbox_log_path(initialized_workspace)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    corrupt = "schema_version: 1\ndecisions: [\n"
+    log.write_text(corrupt)
+    with pytest.raises(ValueError, match="refusing to overwrite"):
+        record_decision(initialized_workspace, {"file": "a.pdf", "action": "filed"})
+    assert log.read_text() == corrupt
+
+
+def test_record_decision_refuses_unmigrated_legacy_log(initialized_workspace: Path) -> None:
+    """A pre-0.17.0 `Inbox/_processed.yaml` must be migrated, not forked."""
+    import pytest
+
+    from superagent.tools.inbox_triage import (
+        LEGACY_LOG_REL,
+        inbox_log_path,
+        record_decision,
+    )
+
+    legacy = initialized_workspace / LEGACY_LOG_REL
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text("schema_version: 1\ndecisions: []\n")
+    with pytest.raises(ValueError, match="migrate"):
+        record_decision(initialized_workspace, {"file": "a.pdf", "action": "filed"})
+    assert not inbox_log_path(initialized_workspace).exists()
+    assert legacy.read_text() == "schema_version: 1\ndecisions: []\n"
 
 
 def test_stale_items(initialized_workspace: Path) -> None:
