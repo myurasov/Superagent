@@ -5,8 +5,7 @@
 ╚════██║██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗██╔══██║██║   ██║██╔══╝  ██║╚██╗██║   ██║
 ███████║╚██████╔╝██║     ███████╗██║  ██║██║  ██║╚██████╔╝███████╗██║ ╚████║   ██║
 ╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝
-
-      your personal-life chief of staff  ·  local  ·  private  ·  AI-native
+        Your friendly AI daily driver //  Local  //  Private  // Secure
 ```
 
 > Bills, health, home, family, finances, vehicles, pets, hobbies, important dates.
