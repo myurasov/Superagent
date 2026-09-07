@@ -11,8 +11,14 @@ Task display IDs in `workspace/todo.md` follow the format `TASK-NNN` for standal
 
 ## Relationship to todo.yaml
 
-The internal `todo.yaml` IDs (`task-YYYYMMDD-NNN`) remain as stable internal keys and are NOT changed. `TASK-NNN` is the display ID shown in `workspace/todo.md` and used in conversation. The mapping is maintained implicitly by creation order.
+The internal `todo.yaml` IDs (`task-YYYYMMDD-NNN`) remain as stable internal keys and are NOT changed. `TASK-NNN` is the display ID shown in `workspace/todo.md` and used in conversation. The mapping is maintained implicitly by creation order. The render itself is governed by `rules/live-todo.md`.
 
-## Current state
+## Deriving the next ID
 
-As of 2026-08-10 the highest assigned display ID is TASK-055. Next new task is TASK-056.
+The counter lives in the workspace, never in this rule. At write time:
+
+1. Scan `workspace/todo.md` and `_memory/todo.yaml` for every `TASK-NNN` present (open, done, cancelled, and "Recently done" rows all count — IDs are never reassigned, so retired numbers stay taken).
+2. Take the highest `NNN` and add one. Subtask letters (`-A`, `-B`, …) do not advance the counter.
+3. If no `TASK-NNN` exists anywhere yet, start at `TASK-001`.
+
+Never record "the current highest ID" in a framework file — it is workspace state and goes stale the day it is written. A household that wants a different numbering scheme overrides this rule at `workspace/_custom/rules/task-ids.md`.

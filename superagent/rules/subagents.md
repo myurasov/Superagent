@@ -136,6 +136,34 @@ carries:
 If a task cannot be phrased this way, split it until it can — or keep it
 inline only when judgment is genuinely inseparable from the reading.
 
+## Delegated work: ETA and check-ins
+
+The task contract above is what the subagent gets; this is what the **user**
+gets. A background or delegated task with no stated duration turns into a
+stream of "how long?" / "is it done yet?" prompts, each of which re-sends the
+whole context. Harness-agnostic; applies equally to the checkpointed-inline
+fallback.
+
+1. **State the ETA up front.** When dispatching, give the expected wall-clock
+   range ("~5–10 minutes") and when the next check happens. Every later
+   check-in restates what is done, what is still running, and the revised
+   remaining time — never a bare "still working".
+2. **Check-in cadence follows `rules/token-economy.md` § Pacing.** Use
+   background monitors with filtered output and space out checks; shorten
+   the interval only on an explicit user request, treated like the
+   per-request `asap` override — for that task only, no config write. Where
+   the harness supports scheduled wake-ups, pick the shortest interval that
+   stays inside the pacing budget, not the shortest possible.
+3. **One overrun notice, not a drip.** When a task passes roughly **2x** the
+   stated estimate, send a single status line — still-running items,
+   revised estimate, whether to keep waiting or narrow the task — then go
+   quiet until the next scheduled check or a completion notification.
+4. **"Is it done yet?" is answered from the last observation.** Reply with a
+   concrete remaining-time estimate plus the completed / still-running lists
+   from the most recent task notification or monitor output. Re-check live
+   only when that observation is older than the check-in interval stated in
+   (1); never start a per-question polling loop.
+
 ## Model tiering
 
 Rules speak in abstract tiers — Superagent uses three (**frontier /

@@ -31,7 +31,7 @@ Update `workspace/todo.md` **in the same turn** — never deferred — whenever 
 
 ## Format
 
-Group by priority (P0 → P1 → P2 → P3), then by project/domain within each group. Each row: checkbox, autonomy marker, task ID, bold title, brief description, due date, project tag.
+Group by priority (P0 → P1 → P2 → P3), then by project/domain within each group. Each row: checkbox, autonomy marker, task ID, bold title, brief description, due date, project tag. Checkbox and autonomy-marker syntax follows `rules/markdown-formatting.md`; the display task ID (`TASK-NNN` / `TASK-NNN-X`) and how to derive the next one follow `rules/task-ids.md`.
 
 **Task descriptions:** every task must include a one-line plain-English explanation in italics after the title and an em dash. Spell out abbreviations, name the portal or phone number, and state the concrete outcome. No jargon without definition. Keep it to one clause; do not write paragraphs. Format:
 
@@ -40,11 +40,11 @@ Group by priority (P0 → P1 → P2 → P3), then by project/domain within each 
 ```
 
 Examples:
-- ✓ `**Submit CA OTPA** — _California's once-per-lifetime penalty waiver; file Form 2918 on ftb.ca.gov/myftb after 2024 CA return is accepted_`
-- ✗ `**Submit CA OTPA** Form 2918 / MyFTB on 2024 (after 2024 CA filed)` ← not italic, jargon unexplained
+- ✓ `**Submit penalty-waiver request** — _one-time first-offense waiver; file Form X via the tax agency's online portal after the return is accepted_`
+- ✗ `**Submit PWR** Form X / portal (after return filed)` ← not italic, jargon unexplained
 - ✗ three-sentence explanation ← too long
 
-Add a `_Last updated_` timestamp at the top on every write, including time in the user's timezone (Pacific — PDT in summer, PST in winter). Format: `YYYY-MM-DD HH:MM AM/PM PDT/PST`. Get the current time with `TZ="America/Los_Angeles" date "+%Y-%m-%d %I:%M %p %Z"`.
+Add a `_Last updated_` timestamp at the top on every write, including time in the user's timezone — the IANA zone in `_memory/config.yaml` `preferences.timezone` (fall back to the system local zone when it is blank). Format: `YYYY-MM-DD HH:MM AM/PM <TZ abbrev>`. Get the current time with `TZ="<preferences.timezone>" date "+%Y-%m-%d %I:%M %p %Z"`.
 
 ## Source of truth
 

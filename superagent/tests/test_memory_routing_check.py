@@ -18,9 +18,9 @@ from superagent.tools.memory_routing_check import (
 
 def test_claude_project_slug_replaces_non_alphanumerics() -> None:
     slug = claude_project_slug(
-        Path("/Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent")
+        Path("/Users/someone/Library/Mobile Documents/com~apple~CloudDocs/MY-Repo")
     )
-    assert slug == "-Users-misha-Library-Mobile-Documents-com-apple-CloudDocs-MY-Superagent"
+    assert slug == "-Users-someone-Library-Mobile-Documents-com-apple-CloudDocs-MY-Repo"
 
 
 def test_candidate_roots_are_repo_scoped(tmp_path: Path) -> None:

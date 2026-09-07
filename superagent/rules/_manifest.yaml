@@ -77,7 +77,7 @@ files:
     user_overlay: workspace/_custom/rules/scope-discipline.md
   - path: subagents.md
     kind: doc
-    purpose: "What runs outside the main context: the always-on bulk-read floor (>~20k tokens of raw results delegates; ~10k at economy full) plus the leveled delegate-by-default posture (off|auto|quality|cost; per-request override subagents:), task-phrasing contract, tier-matched models, capture-through for delegated live-source reads, and the no-delegation-tool fallback."
+    purpose: "What runs outside the main context: the always-on bulk-read floor (>~20k tokens of raw results delegates; ~10k at economy full) plus the leveled delegate-by-default posture (off|auto|quality|cost; per-request override subagents:), task-phrasing contract, ETA + check-in reporting for delegated background work, tier-matched models, capture-through for delegated live-source reads, and the no-delegation-tool fallback."
     consumed_by:
       - AGENTS.md
       - skills/daily-update.md
@@ -97,29 +97,31 @@ files:
     user_overlay: workspace/_custom/rules/tool-usage-corrections.md
   - path: live-todo.md
     kind: doc
-    purpose: "workspace/todo.md is the single live master todo view: update it in the same turn whenever any task changes; auto-close stale/done tasks with auto- prefix; always read todo.yaml in full before writing; count-reconcile open tasks to prevent omissions."
+    purpose: "workspace/todo.md is the single live master todo view: update it in the same turn whenever any task changes; auto-close stale/done tasks with auto- prefix; always read todo.yaml in full before writing; count-reconcile open tasks to prevent omissions; Last-updated stamp in config.preferences.timezone."
     consumed_by:
-      - AGENTS.md
-      - skills/todo.md
+      - rules/task-ids.md
+      - rules/token-economy.md
+      - rules/anti-patterns.yaml
+      - contracts/anti-patterns.md
     user_overlay: workspace/_custom/rules/live-todo.md
   - path: markdown-formatting.md
     kind: doc
     purpose: "No --- horizontal rules; GFM checkboxes with bold-prefix numbering and backslash line breaks; 🚗/👤/🚗 👤 autonomy markers with non-breaking space."
     consumed_by:
-      - AGENTS.md
+      - rules/live-todo.md
     user_overlay: workspace/_custom/rules/markdown-formatting.md
   - path: task-ids.md
     kind: doc
-    purpose: "Task display ID format: TASK-NNN (standalone) or TASK-NNN-X (subtasks A/B/C…); continuously numbered from oldest; no dates; never reassign. Next ID as of 2026-08-10: TASK-056."
+    purpose: "Task display ID format: TASK-NNN (standalone) or TASK-NNN-X (subtasks A/B/C…); continuously numbered from oldest; no dates; never reassign. Next ID is derived at write time from the highest TASK-NNN present in the workspace — never recorded in a framework file."
     consumed_by:
-      - AGENTS.md
       - rules/live-todo.md
     user_overlay: workspace/_custom/rules/task-ids.md
   - path: skill-discipline.md
     kind: doc
     purpose: "Skills must be read before any action is taken on a task they govern. Prohibits raw file ops that bypass skill protocols. Covers autoloaded skills, trigger-matched skills, and all capture/filing flows."
-    consumed_by:
-      - AGENTS.md
+    # AGENTS.md § Skills inlines this rule ("Skill discipline — non-negotiable")
+    # but does not yet cite the file by path; no in-repo consumer links here.
+    consumed_by: []
     user_overlay: workspace/_custom/rules/skill-discipline.md
   - path: unbox.md
     kind: doc
