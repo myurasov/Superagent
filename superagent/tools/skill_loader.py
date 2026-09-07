@@ -208,17 +208,24 @@ def _any_match(triggers: list[str], prompt: str) -> bool:
 
 # Markers identifying a synthetic (harness-generated) turn rather than a human
 # prompt. Such turns freely quote skill names, so matching them over-fires.
-_SYNTHETIC_MARKERS = (
+# Shared with ``tools/log_user_query.py``, which tags rows that START with one
+# of these so Supertailor friction analysis can drop them; keep the tuple here
+# (stdlib-only module, no import cycle) as the single source of truth.
+SYNTHETIC_MARKERS = (
     "[SYSTEM NOTIFICATION",
     "<task-notification>",
     "<system-reminder>",
     "<command-name>",
     "<local-command-stdout>",
+    "<cross-session-message",
+    "Fallback heartbeat:",
 )
+_SYNTHETIC_MARKERS = SYNTHETIC_MARKERS  # backwards-compatible alias
 
 
 def is_synthetic_prompt(prompt: str) -> bool:
-    return any(m in prompt for m in _SYNTHETIC_MARKERS)
+    """True when the prompt contains any harness-generated marker (substring match)."""
+    return any(m in prompt for m in SYNTHETIC_MARKERS)
 
 
 def match_skills(prompt: str, skills: list[dict]) -> list[dict]:

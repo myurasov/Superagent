@@ -115,6 +115,28 @@ def test_match_skills_and_synthetic_skip() -> None:
     ) == []
 
 
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        '<cross-session-message from="uds:/tmp/x.sock" from-name="peer">daily update done</cross-session-message>',
+        "Fallback heartbeat: 1 of 4 reviewers still pending; bills due check later",
+        "[SYSTEM NOTIFICATION] daily update",
+        "<system-reminder>bills due</system-reminder>",
+        "<command-name>daily update</command-name>",
+        "<local-command-stdout>bills due</local-command-stdout>",
+    ],
+)
+def test_synthetic_markers_suppress_matching(prompt: str) -> None:
+    from superagent.tools.skill_loader import SYNTHETIC_MARKERS, is_synthetic_prompt, match_skills
+
+    skills = [_skill("superagent-daily-update", ["daily update"], "b"),
+              _skill("superagent-bills", ["bills due"], "b")]
+    assert is_synthetic_prompt(prompt)
+    assert match_skills(prompt, skills) == []
+    assert "<cross-session-message" in SYNTHETIC_MARKERS
+    assert "Fallback heartbeat:" in SYNTHETIC_MARKERS
+
+
 # --- parsing real skill files --------------------------------------------
 
 def test_discover_real_skills_and_match(framework_dir: Path) -> None:

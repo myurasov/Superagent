@@ -3,13 +3,21 @@
 # SPDX-License-Identifier: Apache-2.0
 """Log every user prompt to `_memory/user-queries.jsonl`.
 
-Wired as a `UserPromptSubmit` hook in Cursor (`.cursor/hooks.json`). The
-Supertailor reads this log during the strategic pass to spot friction
-patterns (clusters of similar queries that aren't being answered well by
-an existing skill).
+Wired as a `beforeSubmitPrompt` hook in Cursor (`.cursor/hooks.json`;
+`--source` defaults to `cursor`) and as a `UserPromptSubmit` hook in Claude
+Code (`.claude/settings.json`, `--source claude-code`). The Supertailor reads
+this log during the strategic pass to spot friction patterns (clusters of
+similar queries that aren't being answered well by an existing skill).
 
-Reads the prompt from stdin (the way Cursor invokes hooks).
+Reads the prompt from stdin (the way both harnesses invoke hooks).
 Append-only; one JSON object per line; never blocks the prompt.
+
+Harness noise: a leading `<ide_opened_file>...</ide_opened_file>` wrapper is
+stripped so only the user's own text is logged. Rows whose (stripped) prompt
+starts with a harness-generated marker (`<task-notification>`,
+`<cross-session-message`, `Fallback heartbeat:`, ... — the shared
+`skill_loader.SYNTHETIC_MARKERS` tuple) are still written but tagged
+`"synthetic": true`; friction analysis skips tagged rows.
 
 Privacy: the log is gitignored (lives under `workspace/`).
 Disable via `_memory/config.yaml.preferences.privacy.log_user_queries: false`.
@@ -32,8 +40,33 @@ from typing import Any
 
 import yaml
 
+try:
+    from superagent.tools.skill_loader import SYNTHETIC_MARKERS
+except ModuleNotFoundError:
+    # The hooks run this file as a script (`uv run python superagent/tools/log_user_query.py`),
+    # where only the script's own directory is on sys.path. Put the repo root there so the
+    # shared marker tuple stays single-sourced in skill_loader instead of being duplicated.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from superagent.tools.skill_loader import SYNTHETIC_MARKERS
+
 REDACTED_PASSWORD = "[REDACTED:password]"
 REDACTED_TOKEN = "[REDACTED:token]"
+
+# Leading IDE-context wrapper(s) Claude Code prepends when the user has a file
+# open; the user's real prompt follows the closing tag.
+_IDE_OPENED_FILE_RE = re.compile(
+    r"\A(?:\s*<ide_opened_file>.*?</ide_opened_file>)+\s*", re.DOTALL
+)
+
+
+def strip_ide_wrapper(text: str) -> str:
+    """Drop a leading `<ide_opened_file>...</ide_opened_file>` block, keep the rest."""
+    return _IDE_OPENED_FILE_RE.sub("", text, count=1)
+
+
+def is_synthetic_row(text: str) -> bool:
+    """True when the prompt STARTS with a harness marker (a quoted marker mid-prose is not synthetic)."""
+    return text.lstrip().startswith(SYNTHETIC_MARKERS)
 
 # (c) URLs: the secret path segment after /claim/ (e.g. SimpleFin claim URLs)
 # and the value of any `token=` / `*_token=` query parameter.
@@ -167,7 +200,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def read_prompt() -> dict[str, Any]:
     """Read the prompt payload from stdin.
 
-    Cursor pipes a JSON object on stdin describing the UserPromptSubmit
+    The harness pipes a JSON object on stdin describing the prompt-submit
     event. Format may evolve; we capture the raw text and any structured
     fields we can.
     """
@@ -197,6 +230,8 @@ def main(argv: list[str] | None = None) -> int:
     prompt_text = payload.get("prompt", "") or payload.get("text", "")
     if not isinstance(prompt_text, str):
         prompt_text = str(prompt_text)
+    prompt_text = strip_ide_wrapper(prompt_text)
+    synthetic = is_synthetic_row(prompt_text)
     try:
         prompt_text = redact(prompt_text)
     except Exception:
@@ -213,6 +248,8 @@ def main(argv: list[str] | None = None) -> int:
         "prompt": prompt_text,
         "length": len(prompt_text),
     }
+    if synthetic:
+        entry["synthetic"] = True
     if "session_id" in payload:
         entry["session_id"] = payload["session_id"]
     if "cwd" in payload:
