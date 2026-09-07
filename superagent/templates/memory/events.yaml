@@ -92,3 +92,21 @@ event_schema_example:
     bills_due_today: 2
     appointments_today: 1
   tags: ["cadence"]
+
+# Derivation bookkeeping — written by tools/events_derive.py on every rebuild.
+# Drives the mtime-lazy skip and the `check` staleness probe; a null
+# `derived_at` means "never derived" and both a rebuild and a check treat it
+# as stale. Time-varying, so it sits last.
+#   derived_at           — ISO 8601; bumps ONLY when partition content
+#                          actually changed (content hash), so a rebuild over
+#                          unchanged sources stays byte-identical
+#                          (contracts/events-stream.md § Determinism).
+#   content_hash         — sha256 over all partition files, in quarter order.
+#   sources_max_mtime    — Highest mtime seen across the derivation sources.
+#   sources_fingerprint  — Digest of the source inventory (catches a source
+#                          file added or removed without an mtime bump).
+derive_state:
+  derived_at: null
+  content_hash: null
+  sources_max_mtime: 0
+  sources_fingerprint: null
