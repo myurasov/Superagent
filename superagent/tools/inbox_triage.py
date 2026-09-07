@@ -158,12 +158,15 @@ def record_decision(workspace: Path, decision: dict[str, Any]) -> Path:
     """Append one decision row to `_memory/inbox-log.yaml`; return the log path.
 
     Raises ValueError instead of clobbering when the workspace still carries
-    the pre-0.17.0 `Inbox/_processed.yaml`, or when the existing log does not
-    parse -- either would otherwise be silently replaced by a one-row file.
+    the pre-0.17.0 `Inbox/_processed.yaml` (regardless of whether the new log
+    already exists -- writing would fork the two files and block the
+    `migrate` pre-flight, which requires them byte-identical), or when the
+    existing log does not parse -- either would otherwise be silently
+    replaced by a one-row file.
     """
     log_path = inbox_log_path(workspace)
     legacy = workspace / LEGACY_LOG_REL
-    if legacy.exists() and not log_path.exists():
+    if legacy.exists():
         raise ValueError(
             f"legacy decision log {legacy} has not been moved to {log_path}; "
             "run the `migrate` skill first")

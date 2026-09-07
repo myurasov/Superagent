@@ -74,6 +74,8 @@ Keyed by Gmail `message.id`:
 
 The dedup pivot is the in-memory map built from the sidecar at call time; no separate state file.
 
+`_index.yaml.counts` is a derived cache, not a second source of truth: `_messages.jsonl` is authoritative, and `uv run python -m superagent.tools.email.archive stats` (`archive.recount()`) rebuilds the counters from the sidecar whenever they drift.
+
 ## 5. Attachment policy
 
 The default is **metadata-only**: the per-message JSON keeps every `payload.parts[*]` entry (with `filename`, `mimeType`, `size`, and Gmail `attachmentId`), but the bytes are not pulled.

@@ -33,6 +33,14 @@ CLI (`--raw` — stdin is the MCP response itself, no envelope):
 because the agent pipes the response it already has in context. Capture
 is idempotent, so running it after a hook already fired is a no-op.
 
+`--raw` is agent-invoked, not harness-invoked, so it is the ONE place the
+bridge is allowed to be loud: `--raw --kind=sent` with a missing,
+malformed, or non-object `--request-json` prints a one-line warning to
+stderr and exits 2 WITHOUT archiving (Gmail's send response carries no
+To/Subject/body, so the record would be content-less and `archive find`
+would still report it as present). Fix the JSON and re-run. Hook-envelope
+paths stay silent and always exit 0.
+
 Set `SUPERAGENT_EMAIL_HOOK_DEBUG=1` to dump each received envelope to the
 log — the way to discover a harness's payload shape, since these schemas
 are version-specific and thinly documented. Off by default: envelopes
@@ -82,9 +90,18 @@ import yaml
 
 from superagent.tools.email import archive
 
-EXIT_OK = 0  # always; we never block the parent tool call.
+EXIT_OK = 0  # hook paths: always; we never block the parent tool call.
+EXIT_USAGE = 2  # `--raw` only: the agent passed unusable arguments.
 
 FRAMEWORK_ROOT = Path(__file__).resolve().parents[3]
+
+
+class RawUsageError(Exception):
+    """Caller error on the agent-invoked `--raw` path (never raised for hooks).
+
+    Deliberately NOT a ValueError subclass so the envelope-read guard in
+    `main` cannot swallow it into a silent exit 0.
+    """
 
 
 def _log_path() -> Path:
@@ -171,6 +188,11 @@ def _raw_envelope(args: argparse.Namespace) -> dict[str, Any]:
     shapes the Gmail MCP produces, so the only work here is presenting the
     payload the way the dispatchers expect. Capture is idempotent, so
     running this after a hook already fired is a safe no-op.
+
+    Raises `RawUsageError` for `--kind=sent` when `--request-json` is
+    missing, malformed, or not a JSON object: the send response alone
+    yields a content-less record, and this path has a caller who can fix
+    the invocation, unlike a harness hook.
     """
     raw = sys.stdin.read()
     if not raw.strip():
@@ -181,11 +203,34 @@ def _raw_envelope(args: argparse.Namespace) -> dict[str, Any]:
         "tool_name": f"raw:{args.kind}",
         "tool_response": raw,
     }
+    sent = args.kind == "sent"
     if args.request_json:
         try:
-            envelope["tool_input"] = json.loads(args.request_json)
+            request = json.loads(args.request_json)
         except json.JSONDecodeError as exc:
             _log(f"{args.kind}: --request-json is not valid JSON: {exc}")
+            if sent:
+                raise RawUsageError(
+                    f"--request-json is not valid JSON ({exc}); the sent record "
+                    "would have no To/Subject/body -- fix the JSON and re-run"
+                ) from exc
+        else:
+            if sent and not isinstance(request, dict):
+                _log(
+                    f"{args.kind}: --request-json is not a JSON object "
+                    f"({type(request).__name__})"
+                )
+                raise RawUsageError(
+                    "--request-json must be a JSON object of send_email "
+                    f"arguments, got {type(request).__name__} -- fix and re-run"
+                )
+            envelope["tool_input"] = request
+    elif sent:
+        _log("sent: --raw without --request-json; refusing content-less capture")
+        raise RawUsageError(
+            "--kind=sent --raw needs --request-json '{\"to\":[...],\"subject\":"
+            "...,\"body\":...}'; Gmail's send response has no body -- re-run with it"
+        )
     return envelope
 
 
@@ -655,6 +700,11 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_OK
     try:
         envelope = _raw_envelope(args) if args.raw else _read_envelope()
+    except RawUsageError as exc:
+        # Agent-invoked path: be loud, do not archive. Hooks never get here.
+        _log(f"{args.kind}: refused --raw capture: {exc}")
+        print(f"archive_hook: {args.kind}: {exc}", file=sys.stderr)
+        return EXIT_USAGE
     except (OSError, ValueError) as exc:
         _log(f"{args.kind}: stdin read failed: {exc}")
         return EXIT_OK

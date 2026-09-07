@@ -124,6 +124,132 @@ def test_index_counts_bump(ws: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# stats / recount: the sidecar is truth, _index.yaml is a cache
+# ---------------------------------------------------------------------------
+
+
+def _index_path(ws: Path) -> Path:
+    return ws / "_memory" / "email" / "_index.yaml"
+
+
+def _seed_three(ws: Path) -> None:
+    """Two full records (one inbound, one outbound) plus one inbound stub."""
+    archive.capture_inbound(_gmail_raw("rc-in"), workspace=ws)
+    archive.capture_inbound(_gmail_raw("rc-out", labels=["SENT"]), workspace=ws)
+    archive.maybe_capture_stubs(
+        [{"id": "rc-stub", "subject": "Stub", "from": "s@example.com"}], workspace=ws
+    )
+
+
+def test_stats_matches_cache_when_in_sync(ws: Path) -> None:
+    _seed_three(ws)
+    before = _index_path(ws).read_text()
+    result = archive.recount(workspace=ws)
+    assert result.drifted is False
+    assert result.index["counts"] == {
+        "total": 3, "full": 2, "stubs": 1, "inbound": 2, "outbound": 1,
+        "attachments_saved": 0,
+    }
+    assert result.cached_counts == result.index["counts"]
+    # No drift -> the cache file is left untouched.
+    assert _index_path(ws).read_text() == before
+
+
+def test_stats_derives_from_sidecar_and_repairs_drifted_cache(ws: Path) -> None:
+    """Simulate a lost update (concurrent hook + fallback captures): the
+    cache under-counts, the sidecar is right, `stats` reports the sidecar
+    and rewrites the cache."""
+    _seed_three(ws)
+    index = yaml.safe_load(_index_path(ws).read_text())
+    first_capture = index["first_capture"]
+    index["counts"].update({"total": 1, "full": 0, "inbound": 0, "outbound": 5})
+    _index_path(ws).write_text(yaml.safe_dump(index, sort_keys=False))
+
+    result = archive.recount(workspace=ws)
+    assert result.drifted is True
+    assert result.cached_counts["total"] == 1
+    assert result.cached_counts["outbound"] == 5
+    data = archive.stats(workspace=ws)
+    assert data["counts"] == {
+        "total": 3, "full": 2, "stubs": 1, "inbound": 2, "outbound": 1,
+        "attachments_saved": 0,
+    }
+    # The file now agrees with the sidecar and kept its timestamps / mode.
+    repaired = yaml.safe_load(_index_path(ws).read_text())
+    assert repaired["counts"] == data["counts"]
+    assert repaired["first_capture"] == first_capture
+    assert repaired["attachments"] == "metadata"
+    assert repaired["schema_version"] == archive.SCHEMA_VERSION
+
+
+def test_stats_reflects_direction_flip_on_updated_row(ws: Path) -> None:
+    """`_bump_counts` never re-tallies direction on an "updated" row; the
+    recount does (latest row per id wins)."""
+    archive.capture_inbound(_gmail_raw("flip", labels=["INBOX"]), workspace=ws)
+    result = archive.capture_inbound(_gmail_raw("flip", labels=["SENT"]), workspace=ws)
+    assert result.action == "updated"
+    cached = yaml.safe_load(_index_path(ws).read_text())["counts"]
+    assert (cached["inbound"], cached["outbound"]) == (1, 0)  # stale cache
+    counts = archive.stats(workspace=ws)["counts"]
+    assert (counts["inbound"], counts["outbound"]) == (0, 1)
+    assert counts["total"] == 1
+
+
+def test_stats_counts_attachments_from_latest_rows(ws: Path) -> None:
+    raw = _gmail_raw(
+        "att-count",
+        attachments=[{
+            "filename": "receipt.pdf",
+            "mimeType": "application/pdf",
+            "body": {"attachmentId": "A1", "size": 3},
+        }],
+    )
+    archive.capture_inbound(raw, workspace=ws)
+    archive.save_attachment(
+        "att-count", "A1", "receipt.pdf", b"PDF", "user_request", workspace=ws
+    )
+    assert archive.stats(workspace=ws)["counts"]["attachments_saved"] == 1
+    # Corrupt the cache; the recount restores it from the sidecar rows.
+    index = yaml.safe_load(_index_path(ws).read_text())
+    index["counts"]["attachments_saved"] = 9
+    _index_path(ws).write_text(yaml.safe_dump(index, sort_keys=False))
+    assert archive.stats(workspace=ws)["counts"]["attachments_saved"] == 1
+
+
+def test_stats_seeds_timestamps_when_cache_has_none(ws: Path) -> None:
+    _seed_three(ws)
+    index = yaml.safe_load(_index_path(ws).read_text())
+    index["first_capture"] = None
+    index["last_capture"] = None
+    index["counts"]["total"] = 0
+    _index_path(ws).write_text(yaml.safe_dump(index, sort_keys=False))
+    data = archive.stats(workspace=ws)
+    rows = archive._read_sidecar(ws)
+    assert data["first_capture"] == min(r.captured_at for r in rows)
+    assert data["last_capture"] == max(r.captured_at for r in rows)
+
+
+def test_stats_on_unused_archive_returns_defaults_without_writing(ws: Path) -> None:
+    data = archive.stats(workspace=ws)
+    assert data["counts"]["total"] == 0
+    assert data["first_capture"] is None
+    assert not (ws / "_memory" / "email").exists()
+
+
+def test_stats_cli_reports_repair(ws: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _seed_three(ws)
+    index = yaml.safe_load(_index_path(ws).read_text())
+    index["counts"]["total"] = 1
+    _index_path(ws).write_text(yaml.safe_dump(index, sort_keys=False))
+    assert archive.main(["--workspace", str(ws), "stats"]) == 0
+    out = capsys.readouterr().out
+    assert "total              3  (cache said 1)" in out
+    assert "index_cache: repaired from sidecar" in out
+    assert archive.main(["--workspace", str(ws), "stats"]) == 0
+    assert "index_cache: in sync" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
 # Idempotency
 # ---------------------------------------------------------------------------
 

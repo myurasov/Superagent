@@ -28,7 +28,17 @@ Public API:
                     reason, *, workspace=None) -> AttachmentResult
     find(message_id, *, workspace=None) -> SidecarRecord | None
     find_by_query(*, workspace=None, **filters) -> list[SidecarRecord]
+    recount(*, workspace=None) -> RecountResult
+    stats(*, workspace=None) -> dict
     receipt_heuristic(subject, sender) -> bool
+
+Truth vs cache: `_messages.jsonl` is the source of truth. The counters in
+`_index.yaml` are a per-call incremental cache that can drift (lock-free
+read-modify-write across concurrent hook + fallback captures; direction
+flips on "updated" rows). `recount()` derives the counts from the sidecar
+(latest row per id) and rewrites the cache when it disagrees; `stats()`
+always goes through it, so `archive stats` both reports truth and repairs
+the file.
 
 CLI:
     uv run python -m superagent.tools.email.archive find <message-id>
@@ -39,6 +49,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import dataclasses as dc
 import datetime as dt
 import hashlib
@@ -46,6 +57,7 @@ import json
 import os
 import re
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -172,6 +184,15 @@ class AttachmentResult:
     sha256: str
     reason: str
     note: str = ""
+
+
+@dc.dataclass(frozen=True)
+class RecountResult:
+    """Outcome of one `recount()`: the truth, and whether the cache lied."""
+
+    index: dict[str, Any]  # full `_index.yaml` contents with derived counts
+    drifted: bool  # True when the cached counts disagreed with the sidecar
+    cached_counts: dict[str, int]  # what `_index.yaml` said before the recount
 
 
 # ---------------------------------------------------------------------------
@@ -386,16 +407,15 @@ def _ensure_email_layout(workspace: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _read_sidecar(workspace: Path) -> list[SidecarRecord]:
-    """Read the sidecar with **latest-wins** dedup on `id`.
+def _iter_sidecar_rows(workspace: Path) -> Iterator[dict[str, Any]]:
+    """Yield every parseable sidecar row (with an `id`) in file order.
 
-    Returns rows in capture order (earliest first), one per unique id.
+    Malformed lines and rows without an id are skipped silently -- the
+    sidecar is append-only and a torn write must never poison the reads.
     """
     path = _sidecar_path(workspace)
     if not path.exists():
-        return []
-    by_id: dict[str, SidecarRecord] = {}
-    order: list[str] = []
+        return
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
@@ -404,9 +424,20 @@ def _read_sidecar(workspace: Path) -> list[SidecarRecord]:
             obj = json.loads(line)
         except json.JSONDecodeError:
             continue
-        mid = obj.get("id")
-        if not mid:
+        if not isinstance(obj, dict) or not obj.get("id"):
             continue
+        yield obj
+
+
+def _read_sidecar(workspace: Path) -> list[SidecarRecord]:
+    """Read the sidecar with **latest-wins** dedup on `id`.
+
+    Returns rows in capture order (earliest first), one per unique id.
+    """
+    by_id: dict[str, SidecarRecord] = {}
+    order: list[str] = []
+    for obj in _iter_sidecar_rows(workspace):
+        mid = obj["id"]
         if mid not in by_id:
             order.append(mid)
         by_id[mid] = SidecarRecord.from_json(obj)
@@ -415,19 +446,9 @@ def _read_sidecar(workspace: Path) -> list[SidecarRecord]:
 
 def _existing_record(workspace: Path, message_id: str) -> SidecarRecord | None:
     """Return the most recent sidecar row for `message_id`, or None."""
-    path = _sidecar_path(workspace)
-    if not path.exists():
-        return None
     latest: SidecarRecord | None = None
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            obj = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if obj.get("id") == message_id:
+    for obj in _iter_sidecar_rows(workspace):
+        if obj["id"] == message_id:
             latest = SidecarRecord.from_json(obj)
     return latest
 
@@ -547,6 +568,13 @@ def _bump_counts(
     record: SidecarRecord,
     captured_at: str,
 ) -> None:
+    """Incrementally advance the `_index.yaml` counter cache for one capture.
+
+    This is a cheap per-call approximation, not the truth: it is a lock-free
+    read-modify-write (concurrent hook + fallback captures can lose an
+    increment) and it does not re-tally direction on "updated" rows.
+    `recount()` rebuilds the counts from the sidecar whenever they drift.
+    """
     index = _load_index(workspace)
     counts = index["counts"]
     if action == "created":
@@ -1119,10 +1147,78 @@ def find_by_query(
     return matches
 
 
-def stats(*, workspace: Path | str | None = None) -> dict[str, Any]:
-    """Return the live `_index.yaml` contents (or defaults if missing)."""
+def _derive_counts(workspace: Path) -> tuple[dict[str, int], str | None, str | None]:
+    """Compute the counters from the sidecar (latest row per id wins).
+
+    Returns `(counts, earliest_captured_at, latest_captured_at)`; the two
+    timestamps span EVERY row (including superseded ones) so they can seed
+    `first_capture` / `last_capture` when the cache never recorded them.
+    """
+    latest: dict[str, dict[str, Any]] = {}
+    earliest: str | None = None
+    newest: str | None = None
+    for obj in _iter_sidecar_rows(workspace):
+        latest[obj["id"]] = obj
+        at = obj.get("captured_at")
+        if isinstance(at, str) and at:
+            earliest = at if earliest is None or at < earliest else earliest
+            newest = at if newest is None or at > newest else newest
+    counts = dict(_default_index()["counts"])
+    for obj in latest.values():
+        counts["total"] += 1
+        if obj.get("kind", "stub") == "full":
+            counts["full"] += 1
+        else:
+            counts["stubs"] += 1
+        if obj.get("direction", "in") == "out":
+            counts["outbound"] += 1
+        else:
+            counts["inbound"] += 1
+        with contextlib.suppress(TypeError, ValueError):
+            counts["attachments_saved"] += int(obj.get("attachments_saved") or 0)
+    return counts, earliest, newest
+
+
+def recount(*, workspace: Path | str | None = None) -> RecountResult:
+    """Derive the counters from `_messages.jsonl` and repair `_index.yaml`.
+
+    The sidecar is the contract-designated truth; `_index.yaml.counts` is a
+    cache that `_bump_counts` advances incrementally and that can drift
+    (lost updates across concurrent captures, direction flips on "updated"
+    rows). This recomputes total / full / stubs / inbound / outbound /
+    attachments_saved from the latest row per id and rewrites the index
+    only when the cached values disagree. `first_capture` / `last_capture`
+    and the `attachments` mode are preserved from the cache (a `noop`
+    capture legitimately advances `last_capture` without a sidecar row);
+    they are seeded from the sidecar only when the cache has none.
+
+    When the archive has never been used (no sidecar on disk) nothing is
+    written and the defaults are returned.
+    """
     ws = _resolve_workspace(workspace)
-    return _load_index(ws)
+    index = _load_index(ws)
+    cached = dict(index["counts"])
+    if not _sidecar_path(ws).exists():
+        return RecountResult(index=index, drifted=False, cached_counts=cached)
+    derived, earliest, newest = _derive_counts(ws)
+    drifted = any(int(cached.get(k, 0)) != v for k, v in derived.items())
+    index["counts"] = derived
+    if index.get("first_capture") is None and earliest is not None:
+        index["first_capture"] = earliest
+    if index.get("last_capture") is None and newest is not None:
+        index["last_capture"] = newest
+    if drifted:
+        _save_index(ws, index)
+    return RecountResult(index=index, drifted=drifted, cached_counts=cached)
+
+
+def stats(*, workspace: Path | str | None = None) -> dict[str, Any]:
+    """Return `_index.yaml` contents with counts derived from the sidecar.
+
+    Goes through `recount()`, so reading stats also repairs a drifted
+    cache. Returns the defaults when the archive has never been used.
+    """
+    return recount(workspace=workspace).index
 
 
 # ---------------------------------------------------------------------------
@@ -1172,15 +1268,22 @@ def _cmd_query(args: argparse.Namespace) -> int:
 
 
 def _cmd_stats(args: argparse.Namespace) -> int:
-    data = stats(workspace=args.workspace)
+    result = recount(workspace=args.workspace)
+    data = result.index
     counts = data.get("counts") or {}
     print(f"workspace: {_resolve_workspace(args.workspace)}")
     print(f"attachments_mode: {data.get('attachments')}")
     print(f"first_capture: {data.get('first_capture')}")
     print(f"last_capture:  {data.get('last_capture')}")
-    print("counts:")
+    print("counts (derived from _messages.jsonl):")
     for k in ("total", "full", "stubs", "inbound", "outbound", "attachments_saved"):
-        print(f"  {k:<18} {counts.get(k, 0)}")
+        line = f"  {k:<18} {counts.get(k, 0)}"
+        if result.drifted and result.cached_counts.get(k, 0) != counts.get(k, 0):
+            line += f"  (cache said {result.cached_counts.get(k, 0)})"
+        print(line)
+    print(
+        "index_cache: repaired from sidecar" if result.drifted else "index_cache: in sync"
+    )
     return 0
 
 
@@ -1212,7 +1315,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_query.add_argument("--limit", type=int, default=20)
     p_query.set_defaults(func=_cmd_query)
 
-    p_stats = sub.add_parser("stats", help="Print the `_index.yaml` counters.")
+    p_stats = sub.add_parser(
+        "stats",
+        help=(
+            "Print the archive counters, derived from `_messages.jsonl`; "
+            "rewrites the `_index.yaml` cache when it has drifted."
+        ),
+    )
     p_stats.set_defaults(func=_cmd_stats)
 
     return parser

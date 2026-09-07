@@ -22,8 +22,9 @@ Architecture
   transport. This avoids requiring a Cursor-managed MCP server during
   cron-like runs.
 - **Chat-time ad-hoc (separate):** the gongrzhe MCP server (configured
-  in `~/.cursor/mcp.json` as `gmail`) handles interactive queries from
-  the agent during a Cursor chat. Both share the same OAuth grant.
+  as `gmail` in the project-level `.cursor/mcp.json` under Cursor or
+  `.mcp.json` under Claude Code) handles interactive queries from the
+  agent during a chat. Both share the same OAuth grant.
 
 Read-only at the SKILL layer
 ----------------------------

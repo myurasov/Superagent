@@ -566,7 +566,7 @@ def test_raw_stubs_without_envelope(
 
 
 def test_raw_sent_uses_request_json_for_body(
-    monkeypatch: pytest.MonkeyPatch, ws: Path
+    monkeypatch: pytest.MonkeyPatch, ws: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Gmail's send response is minimal, so `--request-json` carries the body."""
     code = _run_argv(
@@ -579,11 +579,127 @@ def test_raw_sent_uses_request_json_for_body(
         "Email sent successfully with ID: raw-sent",
     )
     assert code == 0
+    assert capsys.readouterr().err == ""
     record = archive.find("raw-sent", workspace=ws)
     assert record is not None
     assert record.direction == "out"
     assert record.subject == "Raw sent"
     assert "dest@example.com" in record.to
+
+
+def _hook_log_text() -> str:
+    """The machine-local diagnostic log (routed under tmp by the `ws` fixture)."""
+    path = archive_hook._log_path()
+    return path.read_text(encoding="utf-8") if path.exists() else ""
+
+
+def test_raw_sent_malformed_request_json_refuses_loudly(
+    monkeypatch: pytest.MonkeyPatch, ws: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`--raw` is agent-invoked: a bad `--request-json` must not silently
+    archive a content-less sent record that `archive find` then vouches for."""
+    code = _run_argv(
+        monkeypatch,
+        [
+            "--kind", "sent", "--raw", "--workspace", str(ws),
+            "--request-json", "{bad",
+        ],
+        "Email sent successfully with ID: raw-sent-bad-json",
+    )
+    assert code == archive_hook.EXIT_USAGE == 2
+    err = capsys.readouterr().err
+    assert "not valid JSON" in err
+    assert "re-run" in err
+    assert archive.find("raw-sent-bad-json", workspace=ws) is None
+    assert archive.stats(workspace=ws)["counts"]["total"] == 0
+    assert "not valid JSON" in _hook_log_text()
+
+
+def test_raw_sent_missing_request_json_refuses_loudly(
+    monkeypatch: pytest.MonkeyPatch, ws: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Omitting the flag produces the same content-less record; same refusal."""
+    code = _run_argv(
+        monkeypatch,
+        ["--kind", "sent", "--raw", "--workspace", str(ws)],
+        "Email sent successfully with ID: raw-sent-no-json",
+    )
+    assert code == 2
+    assert "--request-json" in capsys.readouterr().err
+    assert archive.find("raw-sent-no-json", workspace=ws) is None
+
+
+def test_raw_sent_non_object_request_json_refuses_loudly(
+    monkeypatch: pytest.MonkeyPatch, ws: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code = _run_argv(
+        monkeypatch,
+        [
+            "--kind", "sent", "--raw", "--workspace", str(ws),
+            "--request-json", "[1, 2]",
+        ],
+        "Email sent successfully with ID: raw-sent-list",
+    )
+    assert code == 2
+    assert "JSON object" in capsys.readouterr().err
+    assert archive.find("raw-sent-list", workspace=ws) is None
+
+
+def test_raw_inbound_ignores_malformed_request_json(
+    monkeypatch: pytest.MonkeyPatch, ws: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`--request-json` only matters for sent; other kinds log and proceed."""
+    code = _run_argv(
+        monkeypatch,
+        [
+            "--kind", "inbound", "--raw", "--workspace", str(ws),
+            "--request-json", "{bad",
+        ],
+        _read_text("raw-inbound-badreq"),
+    )
+    assert code == 0
+    assert capsys.readouterr().err == ""
+    assert archive.find("raw-inbound-badreq", workspace=ws) is not None
+    assert "not valid JSON" in _hook_log_text()
+
+
+def test_hook_sent_without_tool_input_stays_silent(
+    monkeypatch: pytest.MonkeyPatch, ws: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The refusal is `--raw`-only: a harness envelope lacking tool_input
+    must never block the parent tool call or write to stderr."""
+    envelope = {"tool_response": "Email sent successfully with ID: hook-no-input"}
+    assert _run(monkeypatch, kind="sent", envelope=envelope, workspace=ws) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_debug_env_dumps_envelope_and_still_captures(
+    monkeypatch: pytest.MonkeyPatch, ws: Path
+) -> None:
+    """`SUPERAGENT_EMAIL_HOOK_DEBUG=1` writes two `debug:` lines per envelope."""
+    monkeypatch.setenv("SUPERAGENT_EMAIL_HOOK_DEBUG", "1")
+    envelope = {
+        "hook_event_name": "afterMCPExecution",
+        "tool_name": "read_email",
+        "mcp_server_name": "gmail",
+        "result_json": _mcp_result_json(_read_text("debug-dump")),
+    }
+    assert _run(monkeypatch, kind="auto", envelope=envelope, workspace=ws) == 0
+    debug_lines = [ln for ln in _hook_log_text().splitlines() if "  debug: " in ln]
+    assert len(debug_lines) == 2
+    assert "event='afterMCPExecution'" in debug_lines[0]
+    assert "keys=" in debug_lines[0]
+    assert "envelope=" in debug_lines[1]
+    assert archive.find("debug-dump", workspace=ws) is not None
+
+
+def test_debug_off_by_default_writes_no_dump(
+    monkeypatch: pytest.MonkeyPatch, ws: Path
+) -> None:
+    monkeypatch.delenv("SUPERAGENT_EMAIL_HOOK_DEBUG", raising=False)
+    envelope = {"tool_name": "mcp__gmail__read_email", "tool_response": _read_text("no-debug")}
+    assert _run(monkeypatch, kind="auto", envelope=envelope, workspace=ws) == 0
+    assert "debug:" not in _hook_log_text()
 
 
 def test_raw_is_idempotent_after_a_hook_capture(
@@ -659,4 +775,41 @@ def test_extract_response_prefers_claude_then_cursor_keys() -> None:
     assert archive_hook._extract_response({"tool_response": "a"}) == "a"
     assert archive_hook._extract_response({"result_json": '{"b": 1}'}) == {"b": 1}
     assert archive_hook._extract_response({"tool_output": '{"c": 2}'}) == {"c": 2}
+    # Generic fallbacks for harnesses with no documented envelope.
+    assert archive_hook._extract_response({"response": '{"d": 3}'}) == {"d": 3}
+    assert archive_hook._extract_response({"output": "e"}) == "e"
     assert archive_hook._extract_response({"unrelated": "x"}) is None
+
+
+def test_extract_response_precedence_when_several_keys_present() -> None:
+    """Claude Code's key wins over Cursor's, which wins over the generics."""
+    envelope = {
+        "output": "generic",
+        "response": "generic2",
+        "tool_output": "cursor-post",
+        "result_json": "cursor-after",
+        "tool_response": "claude",
+    }
+    assert archive_hook._extract_response(envelope) == "claude"
+    del envelope["tool_response"]
+    assert archive_hook._extract_response(envelope) == "cursor-after"
+    del envelope["result_json"]
+    assert archive_hook._extract_response(envelope) == "cursor-post"
+    del envelope["tool_output"]
+    assert archive_hook._extract_response(envelope) == "generic2"
+    del envelope["response"]
+    assert archive_hook._extract_response(envelope) == "generic"
+
+
+def test_wrong_server_only_rejects_a_named_non_gmail_server() -> None:
+    """Absent / empty / non-string `mcp_server_name` means "cannot tell": pass."""
+    assert archive_hook._wrong_server({}) is False
+    assert archive_hook._wrong_server({"mcp_server_name": ""}) is False
+    assert archive_hook._wrong_server({"mcp_server_name": None}) is False
+    assert archive_hook._wrong_server({"mcp_server_name": 42}) is False
+    assert archive_hook._wrong_server({"mcp_server_name": ["gmail"]}) is False
+    # Any server whose key mentions gmail (case-insensitive) passes.
+    assert archive_hook._wrong_server({"mcp_server_name": "gmail"}) is False
+    assert archive_hook._wrong_server({"mcp_server_name": "Gmail-Personal"}) is False
+    # A named server that is not Gmail is rejected.
+    assert archive_hook._wrong_server({"mcp_server_name": "other"}) is True

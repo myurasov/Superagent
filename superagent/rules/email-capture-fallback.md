@@ -74,6 +74,10 @@ uv run python -m superagent.tools.email.archive_hook --kind=sent --raw \
 RESPONSE
 ```
 
+`--kind=sent --raw` exits 2 with a one-line stderr message and archives
+nothing when `--request-json` is missing or malformed (not a JSON object) —
+fix the JSON and re-run.
+
 Use a quoted heredoc (`<<'RESPONSE'`) so the shell does not interpolate `$`,
 backticks, or quotes inside the message body.
 
