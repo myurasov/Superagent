@@ -100,12 +100,14 @@ Outbound scrubbing (per `contracts/outbound-surface.md`) treats anything pulled 
 
 ## 8. Helpers + hook wiring
 
-### 8.1 IDE-level wiring (canonical path)
+### 8.1 IDE-level wiring (optional enhancement, per harness)
 
-Both Claude Code and Cursor expose a `PostToolUse` hook surface; the framework wires three matchers against the Gmail MCP tool names so that capture is a side-effect of the tool call, not a separate agent step:
+Where a harness exposes a tool-call hook, capture runs as a side-effect of the tool call rather than as a separate agent step. **The two harnesses share no field names, no event names, and no matcher syntax** — each gets its own wiring, and neither is a mirror of the other. Nothing critical depends on either (see § 8.3).
+
+**Claude Code** — `PostToolUse`, three matchers against the Gmail MCP tool names. A matcher keeps the hook off every unrelated tool call:
 
 ```jsonc
-// .claude/settings.json  (and .cursor/hooks.json mirrors the same matchers)
+// .claude/settings.json
 {
   "hooks": {
     "PostToolUse": [
@@ -122,6 +124,29 @@ Both Claude Code and Cursor expose a `PostToolUse` hook surface; the framework w
   }
 }
 ```
+
+**Cursor** — `afterMCPExecution`, ONE entry, no matcher, `--kind=auto`:
+
+```jsonc
+// .cursor/hooks.json
+{
+  "version": 1,
+  "hooks": {
+    "afterMCPExecution": [
+      { "command": "uv run python -m superagent.tools.email.archive_hook --kind=auto" }
+    ]
+  }
+}
+```
+
+Four Cursor-specific facts, each of which independently breaks a config copied from the Claude side:
+
+- Cursor does **not** accept Claude Code's `PascalCase` event names in `.cursor/hooks.json`; it maps `PostToolUse` -> `postToolUse` and `UserPromptSubmit` -> `beforeSubmitPrompt` only when reading Claude's own `.claude/settings.json`. A `.cursor/hooks.json` written with Claude's names loads **nothing, silently**.
+- `afterMCPExecution` takes no matcher, so `--kind=auto` resolves the capture path from the envelope's `tool_name` and filters on `mcp_server_name` script-side. This is strictly better than Cursor's `postToolUse` matcher target (`MCP:<tool_name>`), which omits the server name and so cannot tell two servers exposing the same tool apart.
+- The response arrives as a **JSON-stringified** `result_json` (or `tool_output` on `postToolUse`), not the live object Claude Code passes as `tool_response`.
+- `afterMCPExecution` does not run in cloud agents.
+
+This divergence is exactly why § 8.3 exists: the Cursor wiring in this repository was inert from the day it was written until 2026-09-06, and nothing surfaced an error.
 
 The bridge at `superagent/tools/email/archive_hook.py`:
 
@@ -154,6 +179,20 @@ uv run python -m superagent.tools.email.archive find <message-id>
 uv run python -m superagent.tools.email.archive query [--from PAT] [--subject PAT] [--since DATE] [--until DATE] [--limit N]
 uv run python -m superagent.tools.email.archive stats
 ```
+
+### 8.3 No-hook fallback (the actual floor)
+
+Hooks are an **optimization**, not the mechanism. The binding rule is `rules/email-capture-fallback.md`: after every successful Gmail MCP call the agent pipes the response straight into the bridge, on every harness, unconditionally.
+
+```bash
+uv run python -m superagent.tools.email.archive_hook --kind=inbound --raw <<'RESPONSE'
+<the read_email response verbatim>
+RESPONSE
+```
+
+`--raw` means "stdin is the tool response itself, not a hook envelope", so it needs no harness support whatsoever. `--kind=stubs` and `--kind=sent` (the latter with `--request-json` to preserve the body) cover the other two triggers.
+
+The agent does **not** branch on whether a hook exists or whether one already fired. Capture is idempotent per § 4, so a redundant call reports `existing` / `upgraded` and writes no duplicate row. Verify with `archive find <message-id>` before declaring an email-touching task complete.
 
 ## 9. Relationship to the Gmail ingestor
 
