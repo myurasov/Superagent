@@ -24,7 +24,7 @@
 # Users may add their own anti-patterns at workspace/_custom/rules/anti-patterns.yaml
 # (same schema). The scanner concatenates framework + user lists, in that order.
 schema_version: 1
-last_updated: "2026-08-21"
+last_updated: "2026-09-06"
 rules:
   - id: AP-1
     severity: warning
@@ -116,3 +116,24 @@ rules:
     pattern: '(?<!never )(?<!never `)(?<!not )(?<!n''t )(?<!avoid )(?<!avoid `)(?<!blindly )\b(?:read|load|open)\b[^\n]{0,60}\b(?:whole|entire|in full)\b[^\n]{0,120}\b(?:to|and)\s+(?:find|check|confirm|verify|extract|get|locate)\b[^\n]{0,50}\b(?:one|a single|the)\b'
     flags: [IGNORECASE]
     mitigation: "Grep first to locate the relevant section, then `Read --offset --limit` against the matching range — whole-file reads are for known-small files or files whose full content the task genuinely needs."
+
+  - id: AP-14
+    severity: warning
+    description: "Reading every partition of the events stream (`_memory/events/<YYYY-Qn>.yaml`) for a timeline question — see rules/token-economy.md § Unbounded-file decision table (events row). Verb-anchored on purpose: bare path mentions and `log_window` citations are not hits."
+    pattern: '(?<!never )(?<!never `)(?<!not )(?<!n''t )(?<!avoid )(?<!avoid `)(?<!blindly )(?:\b(?:read|load|open|scan)\b[^.\n]{0,60}\b(?:every|all|each)\s+(?:the\s+)?(?:(?:[^.,;\n]|\.(?=[a-z0-9])){0,40}?\s)?partitions?\b|\b(?:read|load|open|scan)\b[^.,;\n]{0,40}\b(?:whole|entire|all of|every)\b[^.,;\n]{0,40}\bevents/|\bfor each\b[^.,;\n]{0,30}\bpartitions?\b[^.\n]{0,40}\b(?:read|load|open)\b)'
+    flags: [IGNORECASE]
+    mitigation: "Route through `uv run python -m superagent.tools.log_window read --since <date>` (loads only the partitions the window touches) per the events row of the decision table in rules/token-economy.md."
+
+  - id: AP-15
+    severity: warning
+    description: "Whole-file read of a Domain / Project `history.md` (multi-year, unbounded) for a single-event question — see rules/token-economy.md § Unbounded-file decision table (history.md row). Comma / semicolon / dot bound the gap so 'read info.md in full, then append to history.md' is not a hit."
+    pattern: '(?<!never )(?<!never `)(?<!not )(?<!n''t )(?<!avoid )(?<!avoid `)(?<!blindly )(?:\b(?:read|load|open)\b[^.,;\n]{0,60}\b(?:whole|entire|in full|full|complete|all of)\b[^.,;\n]{0,60}\bhistory\.md\b|\b(?:read|load|open)\b[^.,;\n]{0,60}\bhistory\.md\b[^.,;\n]{0,60}\b(?:whole|entire|in full|fully|completely|top to bottom|end to end)\b)'
+    flags: [IGNORECASE]
+    mitigation: "Grep `history.md` for the entity / date, then `Read --offset --limit` the matching slice; use a tail read for the recent window. Whole-file reads are for short, young histories only."
+
+  - id: AP-16
+    severity: warning
+    description: "Re-reading your own write to confirm it landed (re-read / read back / read again / read the file you just wrote + confirm | verify | check) — see rules/token-economy.md § Always-on floor ('Never re-read your own writes'). 'as confirmation' and a bare 're-read' after a normalizing tool run are not hits."
+    pattern: '(?<!never )(?<!never `)(?<!not )(?<!n''t )(?<!avoid )(?<!avoid `)(?:\b(?:re-?read|re-?open)\b(?:[^.\n]|\.(?=[a-z0-9])){0,40}\b(?:to\s+)?(?:confirm|verify|check|validate|double-check|make sure)\b|\bread\b\s+(?:it|them|the (?:file|result|output|row|entry))?\s*back\b(?:[^.\n]|\.(?=[a-z0-9])){0,40}\b(?:to\s+)?(?:confirm|verify|check|validate|double-check|make sure)\b|\bread\b(?:[^.\n]|\.(?=[a-z0-9])){0,30}\bagain\b(?:[^.\n]|\.(?=[a-z0-9])){0,40}\b(?:to\s+)?(?:confirm|verify|check|validate|double-check|make sure)\b|\b(?:read|open|cat)\b(?:[^.\n]|\.(?=[a-z0-9])){0,40}\b(?:you|we)\s+just\s+(?:wrote|edited|created|saved|appended|updated)\b)'
+    flags: [IGNORECASE]
+    mitigation: "The Edit / Write tool result already proves the change landed — reuse the evidence in context instead of re-fetching the file. Verify with a count or exit code (`grep -c`, `yaml.safe_load` in a tool) only when the write's correctness is genuinely in doubt."

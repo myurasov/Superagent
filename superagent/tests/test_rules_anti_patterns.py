@@ -103,6 +103,31 @@ def test_token_economy_anti_patterns_fire_on_violations() -> None:
             "Load the entire document and check the expiration date.",
             "Read info.md in full to confirm the account number.",
         ],
+        # 0.18.0 — the three decision-table / floor items AP-11 did not cover.
+        "AP-14": [
+            "Read every partition under `_memory/events/` to answer the timeline question.",
+            "Load all quarterly partitions and merge the rows before filtering.",
+            "Scan each partition of the event stream for the vet visit.",
+            "Read all the `_memory/events/` partitions, then sort by date.",
+            "Read all `_memory/events/2026-Q1.yaml`-style partitions into one list.",
+            "Open the entire `_memory/events/` directory and merge the files.",
+            "For each partition under `_memory/events/`, read it and merge the rows.",
+        ],
+        "AP-15": [
+            "Read the whole `Domains/Health/history.md` to find the last vet visit.",
+            "Load `history.md` in full before answering.",
+            "Open the entire history.md and scan for the date.",
+            "Read the full `Projects/<slug>/history.md` and summarize it.",
+            "Read `Domains/Home/history.md` top to bottom for the roof repair date.",
+        ],
+        "AP-16": [
+            "Re-read `_memory/config.yaml` to confirm the edit landed.",
+            "After writing, read the file back to verify the YAML parses.",
+            "Read `status.md` again to check that the RAG flag flipped.",
+            "Open the file you just wrote and confirm the edit landed.",
+            "Re-open `todo.yaml` and make sure the new row is present.",
+            "read it back to double-check the frontmatter",
+        ],
     }
     for rid, texts in cases.items():
         pattern = _pattern_by_id(rid)
@@ -146,6 +171,47 @@ def test_token_economy_anti_patterns_spare_sanctioned_prose() -> None:
             "never load the entire file to check the one field",
             "Don't read the whole doc to find the answer — grep it.",
         ],
+        # 0.18.0 — sanctioned phrasings lifted from the shipped corpus
+        # (events.md, weekly-review.md, ad-hoc-task.md, rules/subagents.md,
+        # rules/token-economy.md, init.md, sources.md, supertailor-review.md).
+        "AP-14": [
+            "Use `uv run python -m superagent.tools.log_window read --since <date>` "
+            "(loads only the partitions the window touches).",
+            "Never read every partition for a timeline question.",
+            "`events stats` -- partition counts; useful after rotation or import.",
+            "Do NOT append to partitions directly.",
+            "list the current and previous month's partitions (`tasks/<YYYY>/<MM>/`)",
+            "Rebuild the derived partitions (mtime-lazy; cheap when nothing changed).",
+            "sweeps, old `events/<YYYY-Qn>.yaml` partitions, long `history.md` files).",
+            "(`_memory/events/<YYYY-Qn>.yaml`, per `contracts/events-stream.md`) "
+            "are both derived data.",
+            "Don't read all partitions — `log_window` loads only the window.",
+            "Read the current partition only; older quarters stay on disk.",
+        ],
+        "AP-15": [
+            "Read its `history.md` last entry date; a stale date means the domain is dormant.",
+            "Grep `history.md` for the entity, then `Read --offset --limit` the matching slice.",
+            "never read the whole history.md for a single date",
+            "Read `info.md` in full, then append the event to `history.md`.",
+            "Append an H4 entry to `history.md` with the full ISO date.",
+            "Capture as personal-signal AND as an H4 entry in the just-completed `history.md`.",
+            "Don't read the entire history.md — tail the last 20 lines.",
+            "Read `history.md`; append the entry. The full row goes at the top.",
+        ],
+        "AP-16": [
+            "Read back the script's stdout to the user as confirmation; surface any errors.",
+            "normalize the ref file (`tools/sources_normalize.py apply --mode ask <path>`), "
+            "then re-read.",
+            "Never re-read your own writes — the Edit result already proves the change landed.",
+            "Don't read the file back to verify; the Write result is proof.",
+            "Same skill re-reads same files multiple times in a session",
+            "redirect to a log under `~/.superagent/tmp/`, read back a filtered slice "
+            "(guardrails below).",
+            "Re-run the scanner to confirm the corpus is clean.",
+            "Read the rendered report to check the layout.",
+            "never re-open those files unless editing them.",
+            "Read the file the user just created and check its frontmatter.",
+        ],
     }
     for rid, texts in cases.items():
         pattern = _pattern_by_id(rid)
@@ -156,14 +222,48 @@ def test_token_economy_anti_patterns_spare_sanctioned_prose() -> None:
 def test_token_economy_anti_patterns_clean_on_shipped_skills(
     framework_dir: Path,
 ) -> None:
-    """The shipped skill corpus must be clean of AP-11/12/13 hits."""
+    """The shipped skill corpus must be clean of AP-11..AP-16 hits."""
     from superagent.tools.anti_patterns import scan_dir
 
     by_file = scan_dir(framework_dir / "skills")
-    new_ids = {"AP-11", "AP-12", "AP-13"}
+    new_ids = {"AP-11", "AP-12", "AP-13", "AP-14", "AP-15", "AP-16"}
     offenders = {
         fname: [h for h in hits if h["pattern"] in new_ids]
         for fname, hits in by_file.items()
     }
     offenders = {k: v for k, v in offenders.items() if v}
     assert not offenders, f"new anti-patterns fire on shipped skills: {offenders}"
+
+
+def test_floor_anti_patterns_clean_on_shipped_rules(framework_dir: Path) -> None:
+    """AP-14/15/16 must also be clean on `rules/` — that is where the floor
+    prohibitions are *stated* (`rules/token-economy.md`, `rules/subagents.md`),
+    so a rule that fired on its own prohibition prose would be useless.
+
+    Scoped to the 0.18.0 ids only: the older AP-11 / AP-13 already fire on
+    sanctioned rule prose (`rules/live-todo.md`'s mandatory full read, the
+    per-message-shard row of the decision table) and were never held to the
+    rules corpus."""
+    from superagent.tools.anti_patterns import scan_dir
+
+    floor_ids = {"AP-14", "AP-15", "AP-16"}
+    offenders = {
+        fname: [h for h in hits if h["pattern"] in floor_ids]
+        for fname, hits in scan_dir(framework_dir / "rules").items()
+    }
+    offenders = {k: v for k, v in offenders.items() if v}
+    assert not offenders, f"floor anti-patterns fire on shipped rules: {offenders}"
+
+
+def test_new_token_economy_rules_are_warnings_with_floor_citations() -> None:
+    """AP-14/15/16 ship as `warning` and each cites rules/token-economy.md."""
+    from superagent.tools.anti_patterns import MITIGATIONS, PATTERNS
+
+    by_id = {pid: (sev, desc) for pid, sev, desc, _ in PATTERNS}
+    for rid in ("AP-14", "AP-15", "AP-16"):
+        severity, description = by_id[rid]
+        assert severity == "warning", f"{rid} must be a warning, got {severity!r}"
+        assert "rules/token-economy.md" in description, (
+            f"{rid} description must cite the floor / decision-table source"
+        )
+        assert MITIGATIONS[rid].strip(), f"{rid} needs a non-empty mitigation"

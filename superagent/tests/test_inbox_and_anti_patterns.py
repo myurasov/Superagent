@@ -139,3 +139,30 @@ def test_anti_patterns_catches_synthetic_violation(tmp_path: Path) -> None:
     assert any(h["pattern"] == "AP-1" for h in hits), (
         f"AP-1 should fire on synthetic violation, got: {hits}"
     )
+
+
+def test_record_decision_refuses_when_both_legacy_and_new_logs_exist(
+    initialized_workspace: Path,
+) -> None:
+    """The refusal is unconditional: a leftover `Inbox/_processed.yaml` blocks
+    writes even after `_memory/inbox-log.yaml` exists, so the two files never
+    fork (the 0.17.0 migration pre-flight requires them byte-identical)."""
+    import pytest
+
+    from superagent.tools.inbox_triage import (
+        LEGACY_LOG_REL,
+        inbox_log_path,
+        record_decision,
+    )
+
+    body = "schema_version: 1\ndecisions: []\n"
+    legacy = initialized_workspace / LEGACY_LOG_REL
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text(body)
+    log = inbox_log_path(initialized_workspace)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    log.write_text(body)
+    with pytest.raises(ValueError, match="migrate"):
+        record_decision(initialized_workspace, {"file": "a.pdf", "action": "filed"})
+    assert legacy.read_text() == body
+    assert log.read_text() == body
