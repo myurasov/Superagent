@@ -133,7 +133,33 @@ class IngestorBase(abc.ABC):
 
     @abc.abstractmethod
     def probe(self) -> ProbeResult:
-        """Lightweight presence check. Must not perform heavy reads."""
+        """Lightweight presence check. Must not perform heavy reads.
+
+        Answer "could `run()` work right now?" from a cheap signal — a file
+        exists, a CLI is on PATH, a credential row is present. Never pull
+        data here; the orchestrator probes every registered source on
+        `init`, so a slow probe slows first-run for everyone.
+
+        Example (a source backed by a local database file)::
+
+            def probe(self) -> ProbeResult:
+                db = Path.home() / ".examplesync" / "example.db"
+                if not db.exists():
+                    return ProbeResult(
+                        source=self.source,
+                        status=ProbeStatus.NOT_DETECTED,
+                        setup_hint="Install ExampleSync and run it once.",
+                    )
+                return ProbeResult(
+                    source=self.source,
+                    status=ProbeStatus.AVAILABLE,
+                    detail=f"db found at {db}",
+                )
+
+        Use `NEEDS_SETUP` when the tool is present but unconfigured,
+        `AUTH_EXPIRED` when a stored credential is rejected, and
+        `PERMISSION_DENIED` when the OS blocks the read.
+        """
 
     def reauth(self) -> bool:
         """Re-authenticate the source. Default: no-op (always returns True)."""
@@ -146,6 +172,43 @@ class IngestorBase(abc.ABC):
         `config_row` is the row from `_memory/data-sources.yaml` for this source.
         On `dry_run`, the ingestor MUST NOT write any files; it should return
         a RunResult with `notes="dry-run; would have inserted N items"`.
+
+        Example (the shape every shipped ingestor follows)::
+
+            def run(self, config_row, dry_run=False) -> RunResult:
+                started = now_iso()
+                t0 = time.time()
+                result = RunResult(
+                    source=self.source, started_at=started, finished_at=started
+                )
+                days = int(config_row.get("recency_window_days") or 30)
+                since = dt.date.today() - dt.timedelta(days=days)
+
+                rows = [self._normalize(r) for r in self._fetch(since)]
+                result.items_pulled = len(rows)
+
+                index_path = self.workspace / "_memory" / "example-index.yaml"
+                index = self._load_index(index_path)
+                known = {r["external_id"] for r in index["items"]}
+                new_rows = [r for r in rows if r["external_id"] not in known]
+                result.items_inserted = len(new_rows)
+                result.items_skipped = len(rows) - len(new_rows)
+
+                if dry_run:
+                    result.notes = f"dry-run; would have inserted {len(new_rows)} items"
+                else:
+                    index["items"].extend(new_rows)
+                    self._save_index(index_path, index)
+                    result.errors.extend(self._refresh_domains())
+
+                result.finished_at = now_iso()
+                result.duration_ms = int((time.time() - t0) * 1000)
+                return result
+
+        Key every row by a stable `external_id` so re-runs over the same
+        window insert nothing (idempotency per `contracts/ingestion.md`);
+        record fetch failures on `result.errors` rather than raising, so a
+        failed refresh still reaches `ingestion-log.yaml`.
         """
 
     def __repr__(self) -> str:

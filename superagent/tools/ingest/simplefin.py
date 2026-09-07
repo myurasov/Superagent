@@ -38,10 +38,21 @@ Because the posted twin arrives under a NEW id, the stored pending row
 stay orphaned forever. A reconciliation pass at the end of every run —
 also runnable standalone via `--reconcile` / `--reconcile-dry-run` — marks
 each such orphan with `superseded_by: <posted external_id>` and copies the
-posted date onto it when a UNIQUE same-account / same-amount / near-date /
-fuzzy-payee posted twin exists. Ambiguous orphans (2+ candidates, or two
-orphans claiming the same posted row) are skipped and counted; specific
-rows can be held out with `--reconcile-exclude <external_id>` (repeatable).
+posted date onto it when a UNIQUE same-account / near-amount / near-date /
+fuzzy-payee posted twin exists. "Near-amount" allows a small absolute delta
+(`RECONCILE_AMOUNT_TOLERANCE`, card tips and rounding) — never a percentage.
+Ambiguous orphans (2+ candidates, or two orphans claiming the same posted
+row) are skipped, counted, and listed by external_id in the run summary;
+specific rows can be held out with `--reconcile-exclude <external_id>`
+(repeatable).
+
+Orphans that never find a twin do not linger unmarked either. A second,
+additive pass (`mark_stale_pending`) flags every still-orphaned pending row
+whose `transacted_at` is older than `stale_pending_days` (default
+`DEFAULT_STALE_PENDING_DAYS`; per-source override on the data-sources row)
+with `stale_pending: true`. The row is kept verbatim — the flag only tells
+window-based consumers (`reconcile_transactions`, expense totals) to skip
+it, the same way they skip `superseded_by` rows.
 """
 from __future__ import annotations
 
@@ -73,6 +84,8 @@ SIMPLEFIN_WINDOW_DAYS = 45  # SimpleFin's recommended soft-cap; >45d windows
 RECONCILE_ORPHAN_DATE = "1970-01-01"  # what posted=0 coerces to in _normalize.
 RECONCILE_WINDOW_DAYS = 7  # +/- days between orphan transacted_at and twin date.
 RECONCILE_TOKEN_OVERLAP = 0.6  # min shared-token ratio for a fuzzy text match.
+RECONCILE_AMOUNT_TOLERANCE = 1.00  # max absolute amount delta (same sign) for a twin.
+DEFAULT_STALE_PENDING_DAYS = 14  # orphan age (by transacted_at) before stale_pending.
 
 
 def split_access_url(access_url: str) -> tuple[str, str, str]:
@@ -313,13 +326,22 @@ class SimpleFinIngestor(IngestorBase):
         # plans but never writes.
         recon_exclude = {str(x) for x in (config_row.get("reconcile_exclude") or [])}
         account_ids = {a.get("id") for a in accounts_seen if a.get("id")}
-        plan = _plan_reconciliation(
-            index.get("transactions") or [], exclude=recon_exclude, accounts=account_ids
-        )
+        stored_rows = index.get("transactions") or []
+        plan = _plan_reconciliation(stored_rows, exclude=recon_exclude, accounts=account_ids)
         reconciled = 0
         if not dry_run:
-            reconciled = _apply_reconciliation(index.get("transactions") or [], plan["matches"])
-        result.items_updated = reconciled
+            reconciled = _apply_reconciliation(stored_rows, plan["matches"])
+
+        # Retire orphans that never found a twin: flag (never drop) pending
+        # rows older than `stale_pending_days` so window-based consumers
+        # skip them. Runs AFTER reconciliation so a fresh twin wins.
+        stale_days = int(config_row.get("stale_pending_days") or DEFAULT_STALE_PENDING_DAYS)
+        stale_rows = _stale_pending_candidates(stored_rows, days=stale_days)
+        stale_ids = [r["external_id"] for r in stale_rows]
+        stale_marked = 0
+        if not dry_run:
+            stale_marked = mark_stale_pending(stored_rows, days=stale_days)
+        result.items_updated = reconciled + stale_marked
 
         result.destination_summary = {
             "transactions": inserted,
@@ -327,16 +349,17 @@ class SimpleFinIngestor(IngestorBase):
                 (a.get("org") or {}).get("name", "?") for a in accounts_seen
             }),
             "accounts": len({a.get("id") for a in accounts_seen if a.get("id")}),
-            "reconciliation": {
-                "matched": len(plan["matches"]) if dry_run else reconciled,
-                "ambiguous_skipped": plan["ambiguous"],
-                "excluded": plan["excluded"],
-            },
+            "reconciliation": _reconciliation_summary(
+                plan,
+                matched=len(plan["matches"]) if dry_run else reconciled,
+                stale_marked=len(stale_ids) if dry_run else stale_marked,
+                stale_ids=stale_ids,
+            ),
         }
 
         if dry_run:
             result.notes = (result.notes + f"; dry-run, would insert {inserted}").strip("; ")
-        elif inserted > 0 or reconciled > 0:
+        elif inserted > 0 or reconciled > 0 or stale_marked > 0:
             _save_index(idx_path, index)
 
         # Refresh affected Domain marker blocks per
@@ -405,10 +428,31 @@ def _chunk_range(
     return chunks
 
 
+def _today() -> dt.date:
+    """Local calendar date; a seam so tests and migrations can pin 'now'."""
+    return dt.date.today()
+
+
 def _parse_iso_date(value: Any) -> dt.date | None:
+    """Coerce an ISO date OR datetime (string or object) to a `date`.
+
+    YAML may hand back `date` / `datetime` objects for unquoted scalars, and
+    `transacted_at` may carry a time component; all collapse to the day.
+    """
+    if isinstance(value, dt.datetime):
+        return value.date()
+    if isinstance(value, dt.date):
+        return value
+    if value is None:
+        return None
+    text = str(value).strip()
     try:
-        return dt.date.fromisoformat(str(value))
-    except (TypeError, ValueError):
+        return dt.date.fromisoformat(text)
+    except ValueError:
+        pass
+    try:
+        return dt.datetime.fromisoformat(text.replace("Z", "+00:00")).date()
+    except ValueError:
         return None
 
 
@@ -449,21 +493,24 @@ def _plan_reconciliation(
     A pending transaction that later posts arrives under a NEW external_id,
     so dedupe never retires the stored pending row; with `posted=0` its date
     coerced to 1970-01-01 and it looks eternally ancient. For each such
-    orphan this finds posted rows on the SAME account with an equal amount,
-    a posted/transacted date within +/-RECONCILE_WINDOW_DAYS of the orphan's
-    transacted_at, and a fuzzy payee/description match. Only a UNIQUE match
-    is proposed; 2+ candidates — or two orphans claiming the same posted
-    row — are skipped as ambiguous. Already-superseded rows are skipped, so
-    the pass is idempotent. `accounts=None` means all accounts.
+    orphan this finds posted rows on the SAME account with a same-sign amount
+    within RECONCILE_AMOUNT_TOLERANCE (absolute — card tips, never a
+    percentage), a posted/transacted date within +/-RECONCILE_WINDOW_DAYS of
+    the orphan's transacted_at, and a fuzzy payee/description match. Only a
+    UNIQUE match is proposed; 2+ candidates — or two orphans claiming the
+    same posted row — are skipped as ambiguous. Already-superseded rows are
+    skipped, so the pass is idempotent. `accounts=None` means all accounts.
 
-    Returns `{"matches": [...], "ambiguous": int, "excluded": int}`; the
+    Returns `{"matches": [...], "ambiguous": int, "excluded": int,
+    "ambiguous_ids": [...], "excluded_ids": [...]}` — the id lists name the
+    skipped orphans so the user can act via `--reconcile-exclude`. The
     caller applies matches via `_apply_reconciliation` (or just prints them
     on a dry run).
     """
     exclude = exclude or set()
     matches: list[dict[str, Any]] = []
-    ambiguous = 0
-    excluded = 0
+    ambiguous_ids: list[str] = []
+    excluded_ids: list[str] = []
     posted_rows = [
         r for r in rows
         if isinstance(r, dict)
@@ -483,7 +530,7 @@ def _plan_reconciliation(
         if accounts is not None and row.get("account_id") not in accounts:
             continue
         if row["external_id"] in exclude:
-            excluded += 1
+            excluded_ids.append(row["external_id"])
             continue
         anchor = _parse_iso_date(row.get("transacted_at"))
         if anchor is None:
@@ -492,10 +539,7 @@ def _plan_reconciliation(
         for cand in posted_rows:
             if cand.get("account_id") != row.get("account_id"):
                 continue
-            try:
-                if abs(float(cand.get("amount")) - float(row.get("amount"))) >= 0.005:
-                    continue
-            except (TypeError, ValueError):
+            if not _amounts_near(row.get("amount"), cand.get("amount")):
                 continue
             cand_dates = [
                 d
@@ -521,7 +565,7 @@ def _plan_reconciliation(
                 "posted_payee": cand.get("payee") or cand.get("description"),
             })
         elif len(candidates) > 1:
-            ambiguous += 1
+            ambiguous_ids.append(row["external_id"])
     # A posted row may supersede at most one pending row; competing claims
     # are ambiguous too.
     claims: dict[str, int] = {}
@@ -529,13 +573,39 @@ def _plan_reconciliation(
         claims[m["posted_id"]] = claims.get(m["posted_id"], 0) + 1
     contested = {pid for pid, n in claims.items() if n > 1}
     if contested:
-        ambiguous += sum(1 for m in matches if m["posted_id"] in contested)
+        ambiguous_ids.extend(m["pending_id"] for m in matches if m["posted_id"] in contested)
         matches = [m for m in matches if m["posted_id"] not in contested]
-    return {"matches": matches, "ambiguous": ambiguous, "excluded": excluded}
+    return {
+        "matches": matches,
+        "ambiguous": len(ambiguous_ids),
+        "excluded": len(excluded_ids),
+        "ambiguous_ids": ambiguous_ids,
+        "excluded_ids": excluded_ids,
+    }
+
+
+def _amounts_near(pending_amount: Any, posted_amount: Any) -> bool:
+    """True when both amounts share a sign and differ by <= the tolerance.
+
+    Absolute, not percentage: a posted card charge may exceed its pending
+    authorization by a tip or a rounding cent, but a 25% drift on a busy
+    account is far more often a different visit to the same merchant.
+    """
+    try:
+        a, b = float(pending_amount), float(posted_amount)
+    except (TypeError, ValueError):
+        return False
+    if a and b and (a < 0) != (b < 0):
+        return False
+    return abs(a - b) <= RECONCILE_AMOUNT_TOLERANCE + 1e-9
 
 
 def _apply_reconciliation(rows: list[dict[str, Any]], matches: list[dict[str, Any]]) -> int:
-    """Mark each matched pending row superseded; fix its date. No data loss."""
+    """Mark each matched pending row superseded; fix its date. No data loss.
+
+    A row that was flagged `stale_pending` on an earlier pass and only now
+    finds its twin loses the flag: it is no longer an orphan.
+    """
     by_id = {r.get("external_id"): r for r in rows if isinstance(r, dict)}
     applied = 0
     for m in matches:
@@ -545,8 +615,72 @@ def _apply_reconciliation(rows: list[dict[str, Any]], matches: list[dict[str, An
         row["superseded_by"] = m["posted_id"]
         if m.get("date"):
             row["date"] = m["date"]
+        row.pop("stale_pending", None)
         applied += 1
     return applied
+
+
+def _stale_pending_candidates(
+    rows: list[dict[str, Any]], *, days: int = DEFAULT_STALE_PENDING_DAYS,
+    today: dt.date | None = None,
+) -> list[dict[str, Any]]:
+    """Return the orphan rows `mark_stale_pending` WOULD flag (no mutation).
+
+    An orphan qualifies when it is `pending`, still carries the coerced
+    RECONCILE_ORPHAN_DATE, has no `superseded_by`, is not already flagged,
+    and its `transacted_at` is strictly older than `days` days before
+    `today`. Rows without a parseable `transacted_at` are left alone.
+    """
+    today = today or _today()
+    cutoff = today - dt.timedelta(days=days)
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        if not isinstance(row, dict) or not row.get("external_id"):
+            continue
+        if not row.get("pending") or row.get("date") != RECONCILE_ORPHAN_DATE:
+            continue
+        if row.get("superseded_by") or row.get("stale_pending"):
+            continue
+        anchor = _parse_iso_date(row.get("transacted_at"))
+        if anchor is None or anchor >= cutoff:
+            continue
+        out.append(row)
+    return out
+
+
+def mark_stale_pending(
+    rows: list[dict[str, Any]], *, days: int = DEFAULT_STALE_PENDING_DAYS,
+    today: dt.date | None = None,
+) -> int:
+    """Flag long-orphaned pending rows with `stale_pending: true`; return count.
+
+    Additive and information-preserving: the row stays in the store verbatim
+    apart from the new flag, so consumers that window by `date` can skip it
+    explicitly (like `superseded_by`) instead of silently losing it to the
+    1970 date. Idempotent — already-flagged rows are not re-counted — and it
+    never touches a row that carries `superseded_by`. `days` is the
+    per-source `stale_pending_days` (default DEFAULT_STALE_PENDING_DAYS);
+    `today` is injectable for tests and migrations.
+    """
+    candidates = _stale_pending_candidates(rows, days=days, today=today)
+    for row in candidates:
+        row["stale_pending"] = True
+    return len(candidates)
+
+
+def _reconciliation_summary(
+    plan: dict[str, Any], *, matched: int, stale_marked: int, stale_ids: list[str],
+) -> dict[str, Any]:
+    """Build the `reconciliation` block of a run's destination_summary."""
+    return {
+        "matched": matched,
+        "ambiguous_skipped": plan["ambiguous"],
+        "excluded": plan["excluded"],
+        "ambiguous_ids": list(plan.get("ambiguous_ids") or []),
+        "excluded_ids": list(plan.get("excluded_ids") or []),
+        "stale_marked": stale_marked,
+        "stale_ids": list(stale_ids),
+    }
 
 
 def _load_index(path: Path) -> dict[str, Any]:
@@ -651,38 +785,51 @@ def _run_reconcile_only(workspace: Path, exclude: set[str], dry_run: bool) -> in
     """One-shot repair: reconcile the existing store without fetching.
 
     `dry_run` prints the proposed matches (pending id -> posted id, amount,
-    payee pair) and writes nothing — no index save, no log row.
+    payee pair), the ambiguous orphans it skipped, and the orphans it would
+    flag `stale_pending`, then writes nothing — no index save, no log row.
+    The stale threshold honours `stale_pending_days` on the data-sources row.
     """
     started = now_iso()
     t0 = time.time()
     idx_path = workspace / SimpleFinIngestor.INDEX_PATH
     index = _load_index(idx_path)
     rows = index.get("transactions") or []
+    source_row = _find_source_row(
+        _load_data_sources(workspace / SimpleFinIngestor.DATA_SOURCES_PATH), "simplefin"
+    ) or {}
+    stale_days = int(source_row.get("stale_pending_days") or DEFAULT_STALE_PENDING_DAYS)
+
     plan = _plan_reconciliation(rows, exclude=exclude)
     for m in plan["matches"]:
         print(
             f"  {m['pending_id']} -> {m['posted_id']} amount={m['amount']} "
             f"payee={m['pending_payee']!r} ~ {m['posted_payee']!r}"
         )
+    _print_skipped_ids(plan["ambiguous_ids"], plan["excluded_ids"])
     if dry_run:
+        stale_ids = [r["external_id"] for r in _stale_pending_candidates(rows, days=stale_days)]
+        for sid in stale_ids:
+            print(f"  stale: {sid} (would mark stale_pending; older than {stale_days}d)")
         print(
             f"reconcile dry-run: matched={len(plan['matches'])} "
             f"ambiguous_skipped={plan['ambiguous']} excluded={plan['excluded']} "
-            "(nothing written)"
+            f"stale_marked={len(stale_ids)} (nothing written)"
         )
         return 0
     applied = _apply_reconciliation(rows, plan["matches"])
-    if applied:
+    stale_ids = [r["external_id"] for r in _stale_pending_candidates(rows, days=stale_days)]
+    stale_marked = mark_stale_pending(rows, days=stale_days)
+    for sid in stale_ids:
+        print(f"  stale: {sid} (marked stale_pending; older than {stale_days}d)")
+    if applied or stale_marked:
         _save_index(idx_path, index)
 
     result = RunResult(source="simplefin", started_at=started, finished_at=now_iso())
-    result.items_updated = applied
+    result.items_updated = applied + stale_marked
     result.destination_summary = {
-        "reconciliation": {
-            "matched": applied,
-            "ambiguous_skipped": plan["ambiguous"],
-            "excluded": plan["excluded"],
-        }
+        "reconciliation": _reconciliation_summary(
+            plan, matched=applied, stale_marked=stale_marked, stale_ids=stale_ids
+        )
     }
     result.notes = "reconcile-only run (no fetch)"
     result.duration_ms = int((time.time() - t0) * 1000)
@@ -697,9 +844,18 @@ def _run_reconcile_only(workspace: Path, exclude: set[str], dry_run: bool) -> in
 
     print(
         f"reconciled={applied} ambiguous_skipped={plan['ambiguous']} "
-        f"excluded={plan['excluded']} duration_ms={result.duration_ms}"
+        f"excluded={plan['excluded']} stale_marked={stale_marked} "
+        f"duration_ms={result.duration_ms}"
     )
     return 0
+
+
+def _print_skipped_ids(ambiguous_ids: list[str], excluded_ids: list[str]) -> None:
+    """List the orphans reconciliation skipped so the user can act on them."""
+    for aid in ambiguous_ids:
+        print(f"  ambiguous: {aid} (2+ candidate twins; hold out with --reconcile-exclude)")
+    for eid in excluded_ids:
+        print(f"  excluded: {eid} (held out by --reconcile-exclude)")
 
 
 def main() -> int:
@@ -750,6 +906,7 @@ def main() -> int:
         "include_pending": not args.no_pending,
         "timeout": args.timeout,
         "reconcile_exclude": args.reconcile_exclude,
+        "stale_pending_days": row.get("stale_pending_days"),
     }
 
     ingestor = SimpleFinIngestor(workspace)
@@ -783,8 +940,12 @@ def main() -> int:
             print(
                 f"  reconciliation: matched={recon.get('matched', 0)} "
                 f"ambiguous_skipped={recon.get('ambiguous_skipped', 0)} "
-                f"excluded={recon.get('excluded', 0)}"
+                f"excluded={recon.get('excluded', 0)} "
+                f"stale_marked={recon.get('stale_marked', 0)}"
             )
+            _print_skipped_ids(recon.get("ambiguous_ids") or [], recon.get("excluded_ids") or [])
+            for sid in recon.get("stale_ids") or []:
+                print(f"  stale: {sid} (marked stale_pending)")
     for err in result.errors:
         print(f"  error: {err}", file=sys.stderr)
     return 1 if result.errors else 0

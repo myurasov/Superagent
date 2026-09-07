@@ -92,8 +92,23 @@ def load_accounts(workspace: Path) -> dict[str, Account]:
     return out
 
 
+def is_retired(row: dict[str, Any]) -> bool:
+    """True for rows the SimpleFin ingestor has retired from live totals.
+
+    `superseded_by` marks a pending row whose posted twin arrived under a new
+    id; `stale_pending` marks an orphaned pending row that never found a twin
+    within `stale_pending_days`. Both are kept in the store for audit but
+    must not count as spend, match a bill, or seed a recurring candidate.
+    """
+    return bool(row.get("superseded_by")) or bool(row.get("stale_pending"))
+
+
 def load_transactions(workspace: Path, accounts: dict[str, Account]) -> list[Txn]:
-    """Map SimpleFin account_id -> account_slug; build a list of Txn dataclasses."""
+    """Map SimpleFin account_id -> account_slug; build a list of Txn dataclasses.
+
+    Rows flagged `superseded_by` or `stale_pending` are skipped (see
+    `is_retired`), as are rows without a parseable ISO `date`.
+    """
     sf_to_slug: dict[str, str] = {}
     for slug, acc in accounts.items():
         if acc.simplefin_id:
@@ -101,7 +116,7 @@ def load_transactions(workspace: Path, accounts: dict[str, Account]) -> list[Txn
     data = _load(workspace / "_memory" / "transactions.yaml")
     out: list[Txn] = []
     for row in data.get("transactions") or []:
-        if not isinstance(row, dict):
+        if not isinstance(row, dict) or is_retired(row):
             continue
         date_str = row.get("date") or ""
         try:

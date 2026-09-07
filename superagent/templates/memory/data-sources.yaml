@@ -16,7 +16,7 @@ sources:
   #   id                — Slug matching the ingestor filename
   #                        (gmail, google_calendar, icloud_calendar,
   #                         apple_reminders, apple_notes, apple_health,
-  #                         plaid, monarch, ynab, csv, strava, whoop, garmin,
+  #                         plaid, simplefin, monarch, ynab, csv, strava, whoop, garmin,
   #                         oura, fitbit, home_assistant, smartthings, tesla,
   #                         imessage, obsidian, notion, photos, gmaps_timeline,
   #                         outlook, slack, etc.)
@@ -27,6 +27,9 @@ sources:
   #                        Honors config.preferences.ingestion_schedule.<id> override.
   #   recency_window_days  — On first run (no last_ingest), how many days back to pull.
   #   backfill_window_days — Optional larger window for explicit `ingest --backfill`.
+  #   stale_pending_days   — Optional; simplefin only. Age in days (by transacted_at)
+  #                          after which a pending transaction with no posted twin is
+  #                          flagged `stale_pending: true` (default 14).
   #   max_items_per_run    — Hard cap per run (truncates if exceeded).
   #   writes_upstream      — bool. Most sources are read-only; flip true ONLY for
   #                          ingestors that must write back to upstream
@@ -63,6 +66,7 @@ sources:
     schedule: ""
     recency_window_days: 30
     backfill_window_days: 365
+    # stale_pending_days: 14   # simplefin only — see docs/data-sources.md § simplefin
     max_items_per_run: 200
     writes_upstream: false
     auth: null
