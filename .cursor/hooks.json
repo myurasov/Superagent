@@ -1,35 +1,39 @@
 {
   "_comment": [
-    "Cursor agent hooks.",
+    "Cursor agent hooks. Cursor-NATIVE event names only.",
     "",
-    "UserPromptSubmit -> Superagent's user-query logger (feeds the",
-    "Supertailor's friction analysis). Disable via",
+    "Cursor does not understand Claude Code's event names (UserPromptSubmit,",
+    "PostToolUse) in this file -- it maps those only when reading Claude's own",
+    ".claude/settings.json. A .cursor/hooks.json using them loads nothing at",
+    "all, silently. See .claude/settings.json for the Claude Code mirror,",
+    "which keeps the Claude-side names and matchers.",
+    "",
+    "beforeSubmitPrompt -> Superagent's user-query logger (feeds the",
+    "Supertailor's friction analysis). Cursor sends the prompt under the",
+    "`prompt` key, which is what the script already reads. Disable via",
     "workspace/_memory/config.yaml preferences.privacy.log_user_queries: false.",
     "",
-    "PostToolUse -> Superagent's email archive bridge. Every Gmail MCP",
+    "afterMCPExecution -> Superagent's email archive bridge. Every Gmail MCP",
     "tool call is captured to workspace/_memory/email/ per",
-    "contracts/email-capture.md. The bridge always exits 0 and never",
-    "blocks the parent tool call. Disable via workspace/_memory/config.yaml",
-    "preferences.privacy.archive_emails: false. Mirrors .claude/settings.json."
+    "contracts/email-capture.md. Deliberately registered with NO matcher:",
+    "afterMCPExecution is not in Cursor's documented matcher list, and",
+    "Cursor's matcher target for MCP tools (MCP:<tool_name>) carries no",
+    "server name, so it cannot distinguish two servers exposing the same",
+    "tool. --kind=auto does the filtering script-side instead, on",
+    "mcp_server_name + tool_name. The bridge always exits 0 and never blocks",
+    "the parent tool call. Disable via workspace/_memory/config.yaml",
+    "preferences.privacy.archive_emails: false."
   ],
+  "version": 1,
   "hooks": {
-    "UserPromptSubmit": [
+    "beforeSubmitPrompt": [
       {
         "command": "UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python superagent/tools/log_user_query.py"
       }
     ],
-    "PostToolUse": [
+    "afterMCPExecution": [
       {
-        "matcher": "mcp__gmail__send_email",
-        "command": "UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.email.archive_hook --kind=sent"
-      },
-      {
-        "matcher": "mcp__gmail__read_email",
-        "command": "UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.email.archive_hook --kind=inbound"
-      },
-      {
-        "matcher": "mcp__gmail__search_emails",
-        "command": "UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.email.archive_hook --kind=stubs"
+        "command": "UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.email.archive_hook --kind=auto"
       }
     ]
   }
