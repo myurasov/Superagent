@@ -145,3 +145,11 @@ files:
       - AGENTS.md
       - rules/sandbox-ladder.md
     user_overlay: workspace/_custom/rules/run-escalated.md
+  - path: email-capture-fallback.md
+    kind: doc
+    purpose: "Capture-on-touch holds without hooks: after every Gmail MCP call run archive_hook --raw unconditionally (capture is idempotent, so never detect whether a hook fired); verification via archive find; per-harness hook matrix; how to diagnose an inert hook."
+    consumed_by:
+      - AGENTS.md
+      - contracts/email-capture.md
+      - tools/email/archive_hook.py
+    user_overlay: workspace/_custom/rules/email-capture-fallback.md
