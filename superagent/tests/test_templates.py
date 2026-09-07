@@ -195,3 +195,106 @@ def test_supercoder_agent_md_is_single_purpose(framework_dir: Path) -> None:
     assert "Mode 2" not in body
     assert "project-build" not in body.lower()
     assert "code-projects" not in body
+
+
+def test_supercoder_agent_md_points_at_real_migration_mechanism(framework_dir: Path) -> None:
+    """Schema-bump guidance names the shipped migration files, not phantom tools."""
+    body = (framework_dir / "supercoder.agent.md").read_text()
+    assert "tools/migrate.py" not in body, "no such tool; migrations are markdown files"
+    assert "test_migrations" not in body, "no such test module; coverage lives in test_version.py"
+    assert "superagent/migrations/<to_version>.md" in body
+    assert "tests/test_version.py" in body
+    assert "refresh-manifest" in body
+
+
+def _load_config_template(framework_dir: Path) -> dict:
+    with (framework_dir / "templates" / "memory" / "config.yaml").open() as fh:
+        return yaml.safe_load(fh)
+
+
+def test_config_template_registers_simplefin(framework_dir: Path) -> None:
+    """The shipped finance ingestor appears in both catalogue blocks."""
+    cfg = _load_config_template(framework_dir)
+    finance = cfg["data_sources_configured"]["finance"]
+    assert finance.get("simplefin") is False, "simplefin must be catalogued (off by default)"
+    schedule = cfg["preferences"]["ingestion_schedule"]
+    assert schedule.get("simplefin") == "weekly"
+
+
+def test_config_template_declares_outbox_drafts_stale_days(framework_dir: Path) -> None:
+    """contracts/outbox-lifecycle.md keys stale-draft surfacing on this setting."""
+    cfg = _load_config_template(framework_dir)
+    assert cfg["preferences"]["outbox"]["drafts_stale_days"] == 14
+
+
+def test_config_template_sensitive_comment_does_not_overclaim(framework_dir: Path) -> None:
+    """auto_route_files is declared but not enforced; the comment must say so."""
+    body = (framework_dir / "templates" / "memory" / "config.yaml").read_text()
+    assert "auto_route_files" in body
+    assert "NOT yet enforced" in body
+    assert "Files routed to sensitive/ by default" not in body
+
+
+def test_browserctl_app_template_starts_with_frontmatter(framework_dir: Path) -> None:
+    """A verbatim copy must parse for skill_loader / build_skill_manifest.
+
+    Both parsers reject any file whose first bytes are not the ``---`` fence,
+    so the template's guidance comment has to live BELOW the frontmatter.
+    """
+    text = (framework_dir / "templates" / "browserctl.app.md").read_text()
+    assert text.startswith("---\n"), "template must open with the frontmatter fence"
+    match = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.DOTALL)
+    assert match, "frontmatter fence not closed"
+    fm = yaml.safe_load(match.group(1))
+    assert isinstance(fm, dict)
+    for key in ("name", "description", "triggers", "extends"):
+        assert key in fm, f"frontmatter missing {key}"
+    assert fm["extends"] == "superagent-browserctl"
+    assert "DELETE THIS ENTIRE COMMENT BLOCK" in text
+
+
+def test_ingestion_log_template_has_no_phantom_rotation_tool(framework_dir: Path) -> None:
+    """No rotate-logs tool ships; the header must not promise one."""
+    body = (framework_dir / "templates" / "memory" / "ingestion-log.yaml").read_text()
+    assert "rotate-logs" not in body
+    assert "rotate_logs" not in body
+    assert "No automatic rotation" in body
+
+
+def test_inbox_readme_names_real_scaffold_module(framework_dir: Path) -> None:
+    """The scaffold tool is workspace_init.py (underscore), not workspace-init.py."""
+    body = (framework_dir / "templates" / "folder-readmes" / "Inbox.md").read_text()
+    assert "workspace-init.py" not in body
+    assert "workspace_init" in body
+
+
+def test_domain_history_template_documents_opt_in_auto_blocks(framework_dir: Path) -> None:
+    """history.md explains render_domain marker blocks without shipping a marker pair."""
+    body = (framework_dir / "templates" / "domains" / "history.md").read_text()
+    assert "auto:<slug>:start" in body
+    assert "render_domain" in body
+    assert "domain-reflection.md" in body
+    # Markers are opt-in per contracts/domain-reflection.md; the template
+    # must NOT carry a live pair (render_domain would flag it as stale).
+    assert "<!-- auto:" not in body
+
+
+def test_contracts_have_no_dangling_docs_pointers(framework_dir: Path) -> None:
+    """Contracts must not defer to docs pages that were never written."""
+    contracts = framework_dir / "contracts"
+    assert "docs/custom-overlay.md" not in (contracts / "custom-overlay.md").read_text()
+    assert "docs/outbound-surfaces.md" not in (contracts / "outbound-surface.md").read_text()
+    assert not (framework_dir / "docs" / "custom-overlay.md").exists()
+    assert not (framework_dir / "docs" / "outbound-surfaces.md").exists()
+
+
+def test_sensitive_tier_contract_describes_shipped_behaviour(framework_dir: Path) -> None:
+    """The contract must not claim an auto-route move or a tier-aware validate.py."""
+    body = (framework_dir / "contracts" / "sensitive-tier.md").read_text()
+    assert "not tier-aware" in body
+    assert "NOT yet enforced" in body
+    assert "are physically moved to the sensitive subdir at init" not in body
+    assert "schema check is sensitive-tier-aware" not in body
+    assert "S-33" in body
+    roadmap = (framework_dir / "docs" / "roadmap.md").read_text()
+    assert "| S-33 |" in roadmap

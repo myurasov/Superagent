@@ -32,6 +32,18 @@
   Skills auto-update specific named sections only (the maintenance sync
   contract is in contracts/domains-and-assets.md). Hand-edits are respected — skills MUST
   diff and merge, not blindly clobber.
+
+  Optional auto-managed blocks (per contracts/domain-reflection.md):
+    - A pair of HTML-comment markers `auto:<slug>:start` / `auto:<slug>:end`
+      (e.g. slug `accounts-summary`, `recurring-commitments`) may be placed
+      inside a section. (Spelled without comment delimiters here so this
+      header comment does not close early; the contract shows the exact
+      literal form.)
+    - `uv run python -m superagent.tools.render_domain` regenerates ONLY the
+      text between the markers and never touches anything outside them.
+      Hand edits inside the markers are clobbered on the next render.
+    - The block is opt-in: insert the marker pair to enable it, remove the
+      pair to disable it. This template deliberately ships without one.
 -->
 
 ---

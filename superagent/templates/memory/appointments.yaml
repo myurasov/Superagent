@@ -7,7 +7,8 @@
 # Calendar ingestors (gcal, icloud-cal, outlook-cal) push items here when their
 # heuristic decides a calendar event is "appointment-shaped" (single-attendee
 # external location with a known provider in contacts.yaml, or matches one of
-# the appointment-pattern regexes documented in tools/ingest/_patterns.yaml).
+# the appointment-pattern regexes in tools/ingest/_patterns.yaml — planned;
+# that file ships with the first calendar ingestor).
 
 schema_version: 1
 

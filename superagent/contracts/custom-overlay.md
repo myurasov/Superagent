@@ -2,7 +2,7 @@
 
 <!-- Migrated from `procedures.md § 11`. Citation form: `contracts/custom-overlay.md`. -->
 
-Per `AGENTS.md` § "Custom overlay". The full reference is in `docs/custom-overlay.md`. Summary:
+Per `AGENTS.md` § "Custom overlay — read on every superagent turn" (the authoritative four-step merge rule, loaded on every turn). This contract is the citable summary; there is no separate `docs/` page. Summary:
 
 - Overlay lives at `workspace/_custom/`.
 - Subdirectories: `rules/`, `skills/`, `agents/`, `templates/`, `tools/`.

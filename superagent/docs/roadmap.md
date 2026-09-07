@@ -99,14 +99,14 @@ The "while you're in the workspace anyway" tier.
 
 | ID | What | Why | Done when |
 |---|---|---|---|
-| XS-01 | Add a "snapshot now" CLI option to `tools/render_status.py`. | Lets the user force a re-render after manual edits to `todo.yaml`. | `--all-scopes` flag works; tests cover it. |
+| XS-01 | ~~Add a "snapshot now" CLI option to `tools/render_status.py`.~~ **Moot** — the tool has no mtime / staleness skip; `uv run python -m superagent.tools.render_status` with no `--scope` already re-renders workspace + every affected domain / project scope (see `--scope` help: "Default: regenerate all affected scopes."). |  |  |
 | XS-02 | Detect macOS dark / light theme in `whatsup` opening line. | Tiny polish — agent greets you "good morning" or "good evening" appropriately. | Greeting varies by local hour (already correct) and by `defaults read -g AppleInterfaceStyle`. |
-| XS-03 | Add `--days` flag to `appointments` skill. | Easier to ask "appointments next 30 days" instead of seeing only 14. | Skill respects `--days N`. |
-| XS-04 | Auto-detect timezone in `init` from `date +%Z`. | Saves the user typing it. | `config.profile.timezone` populated automatically. |
+| XS-03 | ~~Add `--days` flag to `appointments` skill.~~ **DONE in 0.1.0** — shipped as `--upcoming-days N` / `--all` (appointments.md § List step 5). Residue: flag name differs from `important-dates.md` (`--days N`); adding `--days N` as an alias is optional polish. |  |  |
+| XS-04 | ~~Auto-detect timezone in `init` from `date +%Z`.~~ **DONE** — init.md § 4 populates `profile.timezone` from the system. Remaining work: the documented hint (`date +%Z`) yields an abbreviation such as `PDT`, while `config.yaml` expects an IANA name (`America/Los_Angeles`); switch the hint to an IANA-yielding command (`readlink /etc/localtime \| sed 's\|.*/zoneinfo/\|\|'`, or `timedatectl show -p Timezone --value` on systemd hosts). |  |  |
 | XS-05 | Add a "weekly digest" template to `Outbox/`. | One markdown file per week, rendered by `weekly-review`, easy to print or paste anywhere. | Template + render path. |
 | XS-06 | Implement `triage-overdue --priority Px` filter. | Burn through one priority bucket at a time. | Skill respects the flag. |
 | XS-07 | Add a `--dry-run` flag to every `add-*` skill. | Confirm what would be captured before committing. | All `add-*` skills support `--dry-run`. |
-| XS-08 | Color the `daily-update` overdue block when stdout is a TTY. | Tiny visual nudge. | ANSI red on TTY; plain on file redirect. |
+| XS-08 | ~~Color the `daily-update` overdue block when stdout is a TTY.~~ **N/A** — the briefing is agent-rendered chat markdown; there is no stdout / TTY to colourise. Revisit only if a Superagent CLI (`AGENTS.md` § Prompt-cache discipline, BB-2-a) ships. |  |  |
 | XS-09 | Add a "what's new" section to `weekly-review` for newly-discovered ingestor capabilities. | The user notices when a stub becomes real. | Section appears when any source's `description` changed since last weekly-review. |
 | XS-10 | Add docstring examples to `IngestorBase`. | Makes adding a new ingestor faster. | Each abstract method has a working example in its docstring. |
 
@@ -145,7 +145,7 @@ The "implement one ingestor" tier — the bulk of where Superagent grows.
 |---|---|---|---|
 | S-21 | Auto-detect package shipments from email; new `packages.yaml` index + skill. | "Did the X arrive yet?" is a frequent micro-question. | New ingestor pass + index + skill + daily-update integration. |
 | S-22 | Auto-detect "trial ends in N days" from email + create P1 task. | Trial-conversion is the #1 forgotten subscription. | Heuristic in gmail ingestor + task auto-creation. |
-| S-23 | Auto-detect new recurring charges in transactions; weekly-review prompt. | Catches forgotten subscriptions. | Heuristic in finance ingestors + weekly-review surface. |
+| S-23 | ~~Auto-detect new recurring charges in transactions; weekly-review prompt.~~ **DONE in 0.6.0** — `tools/reconcile_transactions.py detect_recurring_candidates` (3 hits / 180-day window; runs in the reconciler rather than inside each ingestor) + weekly-review § 2 Bookkeeper pass surfaces "Recurring-charge candidates". |  |  |
 | S-24 | Vehicle mileage threshold → auto next-service task. | Tesla ingestor first; expandable to other vehicle MCPs. | Threshold check + task creation. |
 | S-25 | "Sleep < 6h for 5 consecutive nights" → personal-signal capture. | Catches creeping sleep debt. | Pattern detection in apple_health / whoop / oura ingestor. |
 | S-26 | Bank balance < threshold → P0 task + alert. | Avoids overdraft. | Threshold field in accounts-index; check after every plaid / monarch ingest. |
@@ -155,11 +155,12 @@ The "implement one ingestor" tier — the bulk of where Superagent grows.
 | ID | What | Why | Done when |
 |---|---|---|---|
 | S-27 | Add `_memory/_checkpoints/<date>/` daily auto-snapshot of `_memory/`. | Roll back any "agent did something I didn't want" mishap. | Snapshot on first agent action of each day; 14-day rolling retention. |
-| S-28 | Implement the `migrations/` framework + `tools/migrate.py`. | Any future schema bump needs a clean upgrade path. | Migration registry + per-version migrators + tests. |
+| S-28 | ~~Implement the `migrations/` framework + `tools/migrate.py`.~~ **DONE in 0.2.0** — shipped as the `migrate` skill + `tools/version.py` + `superagent/migrations/<ver>.md` registered in `migrations/_manifest.yaml` (no separate `tools/migrate.py`; the skill is the sole entry point). |  |  |
 | S-29 | Add `tools/export.py` (one-shot full workspace JSON export). | For backup, for moving machines, for "I want to inspect everything". | One-file export; round-trip test. |
 | S-30 | Add `tools/import.py` (round-trip with export). | For restore, for moving machines. | One-file import; round-trip test passes. |
 | S-31 | Implement `_memory/expense-categories.yaml` user-rules support (manual override of ingestor categorization). | Plaid's auto-category is rarely 100% right for a person's mental model. | Rules file + apply at read time + persist user corrections. |
 | S-32 | Polish `daily-update` based on actual usage (per Supertailor's first strategic pass after a month of use). | Most user-facing surface; gets the most refinement. | Supertailor surface improvements implemented. |
+| S-33 | Enforce the sensitive tier: physically relocate `config.preferences.sensitive.auto_route_files` into `<sensitive.path>/` at init (or first creation) with a symlink left at the `_memory/` top-level path, and make `tools/validate.py` resolve those files through `sensitive.path`. | `contracts/sensitive-tier.md` declares the keys but nothing consumes them today; the flagged files sit at `_memory/` top level and validate is not tier-aware. | Move + symlink is idempotent and covered by a migration; `validate.py` passes against both the in-workspace and relocated layouts; tests cover both. |
 
 ## LOE-M — a few days each
 

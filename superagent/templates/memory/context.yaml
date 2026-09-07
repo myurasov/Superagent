@@ -36,7 +36,7 @@ last_runs:
   monthly_review: null
   tailor_review: null
   doctor: null
-  ingest_full: null
+  ingest_full: null   # most recent completed `ingest <source> --backfill` run
 
 # When context was last refreshed (ISO 8601).
 last_check: null

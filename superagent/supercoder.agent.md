@@ -89,7 +89,7 @@ Skills live in `superagent/skills/<name>.md` with frontmatter (`name`, `descript
 
 ### Memory templates
 
-Templates under `superagent/templates/memory/` carry a `# [Do not change manually — managed by Superagent]` banner, a comment block describing the file's role and schema-version contract, `schema_version: <int>` first, `last_updated: null`, and one fully-commented example row showing every field. Schema bumps require a `tools/migrate.py` step + a test in `tests/test_migrations.py`.
+Templates under `superagent/templates/memory/` carry a `# [Do not change manually — managed by Superagent]` banner, a comment block describing the file's role and schema-version contract, `schema_version: <int>` first, `last_updated: null`, and one fully-commented example row showing every field. Schema bumps require a migration file `superagent/migrations/<to_version>.md` (copy `_template.md`; rules in `contracts/versioning.md` § 3.2 "Migration authoring rules"; optional idempotent helpers live at `superagent/migrations/<to_version>/migrate.py` / `revert.py`), then `uv run python -m superagent.tools.version refresh-manifest` to re-register it in `_manifest.yaml`, a `docs/roadmap.md` entry, and test coverage in `tests/test_version.py` for any version / manifest logic touched.
 
 ---
 

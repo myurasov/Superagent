@@ -6,10 +6,11 @@ Planning + history docs for the **Supertailor** (Superagent's strategic-improvem
 
 | File | Purpose |
 |---|---|
-| `ideas-better-structure.md` | Open backlog of structural improvements the Supertailor can pull from. |
-| `ideas-better-structure.done.md` | Implemented entries from the above; kept for institutional memory. |
-| `perf-improvement-ideas.md` | Open backlog of token-efficiency / latency / cache-hit improvements. |
-| `perf-improvement-ideas.done.md` | Implemented perf entries; same purpose as above. |
+| `ideas-better-structure.md` | Full catalogue of 25 structural-improvement options. Kept whole by design — `supertailor-review` hygiene check 8 expects § 1-25 + Selection guide to be present. Implementation status lives in the `.done.md` sibling. |
+| `ideas-better-structure.done.md` | Implementation log: which catalogue entries shipped and where their artifacts live. Entries are never moved out of the catalogue; kept for institutional memory. |
+| `perf-improvement-ideas.md` | Full catalogue of token-efficiency / latency / cache-hit options, tiered Quick wins / Medium investments / Big bets. Kept whole (hygiene check 8 expects the tiers). Implementation status lives in the `.done.md` sibling. |
+| `perf-improvement-ideas.done.md` | Implementation log for the perf catalogue; same purpose as above. |
+| `claude-compatibility-proposal.md` | Design + implementation plan for first-class Claude Code support; shipped in 0.5.0 (see roadmap § Released). Kept as design history. |
 
 ## Why these are separate
 

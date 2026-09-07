@@ -1,20 +1,3 @@
-<!--
-Template for a per-web-app browserctl plugin. Copy to
-workspace/_custom/skills/browserctl.<app>.md the first time Superagent
-successfully drives a recurring web app, and fill in what was actually
-learned. These files are user-specific (they name providers/accounts) and
-NEVER live under superagent/. No credentials — vault_ref only.
-
-Structure is interchange-compatible with the sibling `co-sa` framework's
-browserctl plugins: same filename pattern, same frontmatter keys, same
-section spine. Moving a plugin between frameworks should require rewriting
-only the tool path prefix and repo-relative links.
-
-KEEP IT LIVE: per the browserctl skill Step 5a, whenever a documented flow
-breaks or a better path is found while driving the site, update this file in
-the SAME turn — dated bullet in Pitfalls Log, plus an in-place edit of any
-procedure that changed.
--->
 ---
 name: browserctl.<app>
 description: >-
@@ -31,6 +14,32 @@ profile: <profile name>
 entry_url: <https://...>
 port: <CDP port from `browserctl status --json`>
 ---
+
+<!--
+TEMPLATE NOTES — DELETE THIS ENTIRE COMMENT BLOCK when copying.
+
+The copied file MUST begin with the `---` frontmatter fence at byte 0. Both
+skill_loader (Claude Code autoload) and build_skill_manifest (skill catalog)
+reject any file whose first characters are not `---`, silently. That is why
+these notes sit BELOW the frontmatter rather than above it: a verbatim copy
+still parses, and removing this block is a cleanup, not a prerequisite.
+
+Template for a per-web-app browserctl plugin. Copy to
+workspace/_custom/skills/browserctl.<app>.md the first time Superagent
+successfully drives a recurring web app, and fill in what was actually
+learned. These files are user-specific (they name providers/accounts) and
+NEVER live under superagent/. No credentials — vault_ref only.
+
+Structure is interchange-compatible with the sibling `co-sa` framework's
+browserctl plugins: same filename pattern, same frontmatter keys, same
+section spine. Moving a plugin between frameworks should require rewriting
+only the tool path prefix and repo-relative links.
+
+KEEP IT LIVE: per the browserctl skill Step 5a, whenever a documented flow
+breaks or a better path is found while driving the site, update this file in
+the SAME turn — dated bullet in Pitfalls Log, plus an in-place edit of any
+procedure that changed.
+-->
 
 # <App> via browserctl
 

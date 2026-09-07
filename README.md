@@ -30,7 +30,7 @@
 
 ## What it is
 
-**Superagent** turns Cursor's AI assistant into the chief of staff a wealthy person would hire — minus the salary, the trust trade-off, and the cloud account. It runs as a folder you open in Cursor: a vault for everything that runs your life, plus the discipline to surface what needs your attention before you have to ask.
+**Superagent** turns your coding agent — Cursor, Claude Code, or any `AGENTS.md`-reading CLI — into the chief of staff a wealthy person would hire — minus the salary, the trust trade-off, and the cloud account. It runs as a folder you open in that agent: a vault for everything that runs your life, plus the discipline to surface what needs your attention before you have to ask.
 
 **Quick-start works in 5 minutes** with zero data-source setup. Heavy ingestion (years of email, banks, health, smart home) is opt-in, deferred, and reversible.
 
@@ -45,14 +45,14 @@ The bet: AI is finally good enough to take the administrative load of modern lif
 
 ## Get started in 5 minutes
 
-1. **Open this folder in Cursor.**
-2. In chat:
+1. **Open this folder in Cursor, Claude Code, or any `AGENTS.md`-reading CLI.** (Cursor reads `AGENTS.md` natively; Claude Code reads `CLAUDE.md`, which imports it; generic CLIs read `AGENTS.md` directly — see `AGENTS.md` § "Harness setup".)
+2. In chat (works the same in every harness):
 
    ```
    Follow AGENTS.md and run init.
    ```
 
-3. The agent reads `AGENTS.md`, finds `superagent/skills/init.md`, asks 3 orientation questions (your name, household, what hurts most today), scaffolds `workspace/`, and walks through one capture skill that matches your top pain point.
+3. The agent reads `AGENTS.md`, finds `superagent/skills/init.md`, asks 4 orientation questions (your name and email, household, what hurts most today, how far back spreadsheet exports should reach), scaffolds `workspace/`, and walks through one capture skill that matches your top pain point.
 
 After init, the five commands you'll use most:
 
@@ -80,11 +80,11 @@ Capabilities grouped by intent. Full skill list (~50) lives at `superagent/skill
 
 ## Data sources
 
-Quick-start works with **zero** ingestion. Catalog of 27 supported sources, opt-in:
+Quick-start works with **zero** ingestion. Catalog of 28 supported sources, opt-in (four ingestors shipped today: Gmail metadata, SimpleFIN, Apple Reminders, generic CSV; the rest are probe-only stubs):
 
 - Email + calendar — Gmail, iCloud, Outlook, Google Calendar
 - Reminders + notes — Apple Reminders / Notes, Obsidian, Notion
-- Finance — Plaid, Monarch, YNAB, generic CSV
+- Finance — SimpleFIN (shipped), Plaid, Monarch, YNAB, generic CSV
 - Health + wearables — Apple Health, WHOOP, Strava, Garmin, Oura, Fitbit
 - Smart home + vehicles — Home Assistant, SmartThings, Tesla
 - Communications — iMessage, Slack
@@ -108,14 +108,14 @@ The long version: [`superagent/docs/faq.md`](superagent/docs/faq.md) and [`super
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | Canonical operating rules — what the agent reads on every Superagent turn |
 | [`superagent/docs/architecture.md`](superagent/docs/architecture.md) | Mental model, repo layout, dual-agent loop, current build status |
-| [`superagent/docs/data-sources.md`](superagent/docs/data-sources.md) | Per-source install + probe + caveats (27 sources cataloged) |
+| [`superagent/docs/data-sources.md`](superagent/docs/data-sources.md) | Per-source install + probe + caveats (28 sources cataloged) |
 | [`superagent/docs/domain-guide.md`](superagent/docs/domain-guide.md) | Per-domain practical guide |
 | [`superagent/docs/faq.md`](superagent/docs/faq.md) | Naming, comparisons, security, multi-user, mobile, what-ifs |
 | [`superagent/docs/roadmap.md`](superagent/docs/roadmap.md) | T-shirt-sized backlog, re-prioritized continuously by the Supertailor |
 
 ## Roadmap
 
-T-shirt-sized (XS/S/M/L/XL) with rationale and "done when" criteria. Headline near-term work: implement the highest-leverage ingestors (gmail, google_calendar, apple_health, plaid) and wire the auto-capture rules they enable. Full plan: [`superagent/docs/roadmap.md`](superagent/docs/roadmap.md).
+T-shirt-sized (XS/S/M/L/XL) with rationale and "done when" criteria. Headline near-term work: implement the remaining highest-leverage ingestors (google_calendar, apple_health; gmail metadata and SimpleFIN already ship, so Plaid is no longer the finance path) and wire the auto-capture rules they enable. Full plan: [`superagent/docs/roadmap.md`](superagent/docs/roadmap.md).
 
 ## Contributing
 

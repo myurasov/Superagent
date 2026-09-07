@@ -121,7 +121,7 @@ prevent.
 
 `superagent/tools/domain_detector.py` walks these signals on demand (CLI:
 `uv run python -m superagent.tools.domain_detector run`) and on schedule
-(monthly-review § 7d). It surfaces clusters that:
+(monthly-review § 7b). It surfaces clusters that:
 
 - **Off-domain tags** — a tag in `_memory/tags.yaml` used across ≥ N entities
   (default N=5) that doesn't map to any registered domain id, name, or its
@@ -163,7 +163,7 @@ again. A user who said "not now" is asked again after the deferral window
 Two surfacing paths:
 
 1. **Periodic** (highest confidence, low noise) — `monthly-review` calls
-   `domain-suggest --run-detector` after Domain hygiene (§ 7d in
+   `domain-suggest --run-detector` after Domain hygiene (§ 7b in
    `monthly-review.md`). The skill renders a short "I noticed …" block per
    candidate (max 3) and asks the user via `AskQuestion` with three
    options: **yes** (route to `add-domain`), **not now** (defer 90d),

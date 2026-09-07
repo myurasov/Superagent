@@ -72,15 +72,22 @@ These MCPs do not ingest personal-life data into Superagent, but they are useful
 
 ### gmail
 
-- **Maturity**: MVP (metadata-only ingest; downstream classification skills TBD).
-- **Kind**: API for the headless ingestor; chat-time tool surface is MCP. Both share one OAuth grant.
+- **Status**: two paths exist; only one is live.
+  - **ACTIVE — capture-on-touch archive** at `workspace/_memory/email/`, governed by [`contracts/email-capture.md`](../contracts/email-capture.md). Every email the agent reads (`read_email`), sends (`send_email`), or lists (`search_emails`) through the Gmail MCP is mirrored locally as a side-effect of normal work — full per-message JSON for read/sent, metadata stubs for search hits — plus the append-only sidecar `_messages.jsonl` (truth) and the `_index.yaml` counter cache. The bridge is `superagent/tools/email/archive_hook.py`: wired as a tool-call hook where the harness has one (Cursor `afterMCPExecution` with `--kind=auto`; Claude Code `PostToolUse` with three `mcp__gmail__<tool>` matchers — see the contract § 8.1), and invoked by the agent directly with `--raw` on every harness per the hook-free floor in [`rules/email-capture-fallback.md`](../rules/email-capture-fallback.md). Read-side: skills scan the archive first (`archive.find` / `find_by_query`) and only go live for the strictly-newer slice.
+  - **DORMANT — headless ingestor** `tools/ingest/gmail.py`. Bulk fetch is OFF per `AGENTS.md` § "Local archives — email"; the ingestor is not registered in any current workspace's `data-sources.yaml` and only runs if you explicitly re-enable it (see "Re-enabling the dormant ingestor" below). The two paths write to different places and can coexist.
+  - **Verify the active path**: `uv run python -m superagent.tools.email.archive stats` prints counts derived from `_messages.jsonl` (and repairs the `_index.yaml` cache if it drifted); `... archive find <message-id>` confirms a single capture.
+- **Maturity**: archive — shipped (`superagent/tools/email/archive.py`, `archive_hook.py`); ingestor — MVP, dormant (metadata-only; downstream classification skills TBD).
+- **Kind**: MCP for the chat-time tool surface (and therefore for the archive, which captures MCP responses); API for the headless ingestor. Both share one OAuth grant.
 - **Underlying tools**:
-  - **Headless ingest** (`tools/ingest/gmail.py`) talks to Google's Gmail API directly via `google-api-python-client`, reusing OAuth tokens that the chat MCP saved at `~/.gmail-mcp/credentials.json`.
-  - **Chat-time ad-hoc** (Cursor): the [`@gongrzhe/server-gmail-autoauth-mcp`](https://github.com/GongRzhe/Gmail-MCP-Server) server exposes 19 Gmail tools (list_emails, search_emails, get_email, modify_email, send_email, ...) for interactive use during a chat. Configured in `~/.cursor/mcp.json`.
-- **Ingests** (MVP): message metadata only — id, threadId, subject, from, to, cc, date, snippet, label_ids, size_estimate. **No body fetch in MVP**; classifiers that need the body land later.
+  - **Chat-time MCP** (every harness): the [`@gongrzhe/server-gmail-autoauth-mcp`](https://github.com/GongRzhe/Gmail-MCP-Server) server exposes 19 Gmail tools (search_emails, read_email, modify_email, send_email, ...) for interactive use during a chat. Configured in the repo-local `.cursor/mcp.json` (Cursor) / `.mcp.json` (Claude Code); see step 4 below.
+  - **Headless ingest** (dormant; `tools/ingest/gmail.py`) talks to Google's Gmail API directly via `google-api-python-client`, reusing the OAuth tokens the chat MCP saved at `~/.gmail-mcp/credentials.json`.
+- **Ingests**:
+  - Archive (active): whatever the agent touches — full message (headers, body, labels, attachment metadata) on read/sent; id / subject / from / date / snippet stubs on search. Attachments are metadata-only unless the user asks, the message looks like a receipt, or the bytes are the task's primary data (contract § 5).
+  - Ingestor (dormant, MVP): message metadata only — id, threadId, subject, from, to, cc, date, snippet, label_ids, size_estimate. No body fetch.
 - **Writes to**:
-  - `_memory/_gmail/<YYYY-MM>.jsonl` — one JSON object per line, sharded by month based on Gmail's `internalDate`. Idempotent: each message id is appended exactly once across all shards.
-- **Future writes** (separate skills, not in this ingestor):
+  - Archive (active): `_memory/email/<YYYY>/<MM>/<DD>/<YYYY-MM-DD>_<in|out>_<from_slug>_<subject_slug>_<hash8>.json`, `_memory/email/_messages.jsonl`, `_memory/email/_index.yaml`, and lazily `_memory/email/attachments/`.
+  - Ingestor (only when explicitly re-enabled): `_memory/_gmail/<YYYY-MM>.jsonl` — one JSON object per line, sharded by month based on Gmail's `internalDate`. Idempotent: each message id is appended exactly once across all shards.
+- **Future writes** (separate skills, reading the archive; not in either capture path):
   - `_memory/contacts.yaml` — auto-fill from senders not yet in contacts.
   - `_memory/bills.yaml` — detect "your statement is ready" / "amount due" patterns.
   - `_memory/subscriptions.yaml` — detect "Welcome to <service>" / "your subscription has renewed".
@@ -99,7 +106,7 @@ These MCPs do not ingest personal-life data into Superagent, but they are useful
      npx -y @gongrzhe/server-gmail-autoauth-mcp auth
      # tokens land at ~/.gmail-mcp/credentials.json
      ```
-  4. **Wire the MCP into Cursor** at `~/.cursor/mcp.json`, then `Cmd+Q` and reopen Cursor:
+  4. **Wire the MCP into the harness.** Each harness reads its own repo-local runtime file — `.cursor/mcp.json` (Cursor) / `.mcp.json` (Claude Code) — both regular-file copies of the committed templates `.cursor/mcp.json.cursor` / `.mcp.json.claude` (per `AGENTS.md` § "Harness setup"; `init` creates them and detects drift). The server key must be `gmail` (the archive's `--kind=auto` discriminates on it). Then fully quit and reopen the harness:
      ```json
      {
        "mcpServers": {
@@ -107,21 +114,23 @@ These MCPs do not ingest personal-life data into Superagent, but they are useful
        }
      }
      ```
-     Verify: `gmail` shows green/connected with 19 tools in the MCP panel; smoke-test in a fresh chat ("list my 3 most recent emails").
-- **Scopes granted**: `gmail.modify` + `gmail.settings.basic`. The MCP requests these (not configurable). The ingestor uses ONLY the read subset (`messages.list`, `messages.get`); the framework's "no remote write" rule (`AGENTS.md` § "Privacy and data location") enforces this at the skill level. Future skills that need actual modify capability must declare `writes_upstream: true` on the `data-sources.yaml` row + ask per-call confirmation per the same rule.
+     Verify: `gmail` shows connected with 19 tools; smoke-test in a fresh chat ("list my 3 most recent emails"), then `uv run python -m superagent.tools.email.archive stats` should show the stubs that search just captured.
+  5. **Hook wiring for the archive** (optional enhancement): `init` writes the Cursor `afterMCPExecution` entry to `.cursor/hooks.json` and the Claude Code `PostToolUse` matchers to `.claude/settings.json` per `contracts/email-capture.md` § 8.1. Nothing depends on them — the agent runs `archive_hook --raw` after every Gmail call regardless (`rules/email-capture-fallback.md`).
+- **Scopes granted**: `gmail.modify` + `gmail.settings.basic`. The MCP requests these (not configurable). The archive only mirrors responses the agent already received and never calls Gmail itself; the ingestor uses ONLY the read subset (`messages.list`, `messages.get`); the framework's "no remote write" rule (`AGENTS.md` § "Privacy and data location") enforces read-only at the skill level. Future skills that need actual modify capability must declare `writes_upstream: true` on the `data-sources.yaml` row + ask per-call confirmation per the same rule.
 - **Probe**: `users().getProfile(userId="me")` — minimal authenticated API call; returns the connected mailbox address.
   ```bash
   uv run python -m superagent.tools.ingest.gmail --probe
   ```
-- **First-run flow** (after the install above + the `0.3.0` migration that adds the `data-sources.yaml` row):
-  1. Edit `workspace/_memory/data-sources.yaml` → set `gmail.enabled: true`.
+- **Re-enabling the dormant ingestor** (explicit opt-in; not part of any default flow):
+  1. Add or enable a `gmail` row in `workspace/_memory/data-sources.yaml` (`enabled: true`; current workspaces carry no such row).
   2. Dry-run: `uv run python -m superagent.tools.ingest.gmail --dry-run` (no writes; reports counts).
-  3. Real run: `uv run python -m superagent.tools.ingest.gmail` (appends to `_memory/_gmail/<YYYY-MM>.jsonl`).
+  3. Real run: `uv run python -m superagent.tools.ingest.gmail` (appends to `_memory/_gmail/<YYYY-MM>.jsonl`; separate from the archive).
 - **Caveats**:
+  - The archive grows only by side-effect of work the agent does; it is not a backfill. `archive find <message-id>` proves a record exists, not that it has content — a stderr warning from `archive_hook --raw --kind=sent` (missing / malformed `--request-json`) means the capture was refused and must be re-run.
   - Gmail's API quota is huge (1B units/day per project) — `max_items_per_run` (default 200) is for cron-friendliness, not quota.
-  - First-time `npx -y` for the MCP downloads ~30 MB of npm packages; pre-install globally (step 2 above) to skip this on every Cursor cold start.
+  - First-time `npx -y` for the MCP downloads ~30 MB of npm packages; pre-install globally (step 2 above) to skip this on every harness cold start.
   - Token refresh happens in-memory on the ingestor side (it doesn't write back to `~/.gmail-mcp/credentials.json`). Refresh tokens last indefinitely unless the user revokes via [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
-  - If the Cursor MCP smoke test fails, the headless ingestor will too — both share the same OAuth grant.
+  - If the MCP smoke test fails in your harness, the headless ingestor will too — both share the same OAuth grant.
 
 ### icloud-mail
 
@@ -150,7 +159,7 @@ These MCPs do not ingest personal-life data into Superagent, but they are useful
 - **Underlying tool**: same Google Workspace MCP as `gmail`.
 - **Ingests**: events from primary + opted-in calendars.
 - **Writes to**:
-  - `_memory/appointments.yaml` — when the event matches the appointment-shape heuristic (single attendee at an external location, OR a known provider in `contacts.yaml`, OR matches one of the appointment-pattern regexes in `tools/ingest/_patterns.yaml`).
+  - `_memory/appointments.yaml` — when the event matches the appointment-shape heuristic (single attendee at an external location, OR a known provider in `contacts.yaml`, OR matches one of the appointment-pattern regexes in `tools/ingest/_patterns.yaml` — planned; that file does not exist yet and ships with the first calendar ingestor).
   - `Domains/<inferred>/history.md` — for substantive events.
 - **Install**: same MCP as gmail; ensure `calendar.readonly` scope.
 - **Probe**: `list_events maxResults=1`.
@@ -244,6 +253,7 @@ These MCPs do not ingest personal-life data into Superagent, but they are useful
 - **Probe**: `uv run python -m superagent.tools.ingest.simplefin --dry-run` returns ≥ 1 account.
 - **Run**: `uv run python -m superagent.tools.ingest.simplefin` (incremental delta with 3-day overlap), or `--backfill` for the full `backfill_window_days` (default 365). `--no-pending` to exclude not-yet-posted charges.
 - **Reconciliation**: `uv run python -m superagent.tools.reconcile_transactions [--days N] [--json]` — surfaces matched / missed bills and recurring-charge candidates not yet tracked in `bills.yaml` / `subscriptions.yaml`. The `weekly-review` skill calls this from its Bookkeeper pass.
+- **Pending → posted matching**: every run pairs each stored pending row with its later posted twin (same account, same sign, absolute amount delta ≤ $1.00, within the reconcile date window) and marks the pending row `superseded_by: <posted external_id>`. A pending row still orphaned after `stale_pending_days` (per-source key on the `simplefin` row in `_memory/data-sources.yaml`; default 14, measured from `transacted_at`) is flagged `stale_pending: true`. Both flags keep the row verbatim for audit; `reconcile_transactions` skips `superseded_by` and `stale_pending` rows so neither double-counts against bills.
 - **Caveats**:
   - Per-day budget: SimpleFin allows ≤ 24 requests/day per account.
   - Per-call window: ≤ 45 days (warning) / 90 days (hard cap). The ingestor auto-chunks larger windows.

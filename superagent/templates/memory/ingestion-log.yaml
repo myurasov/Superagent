@@ -6,8 +6,9 @@
 
 schema_version: 1
 
-# Append-only. Old rows are rotated by `tools/rotate-logs.py` (default keep
-# last 365 entries; configurable in config.yaml).
+# Append-only. No automatic rotation exists today (the yearly rotation in
+# tools/audit.py covers only `.history.jsonl` files and skips this one);
+# rows accumulate until an explicit manual archive.
 runs:
   # Each run:
   #   id                — Stable id "ingest-<YYYYMMDD>-<NNN>".

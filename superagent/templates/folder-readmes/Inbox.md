@@ -31,4 +31,4 @@ Source documents NEVER end up under `Domains/<X>/` directly — they go to `Sour
 
 - Anything in `Inbox/` for **more than ~14 days** is flagged by the `doctor` skill as a candidate to file or discard.
 - The agent may proactively offer to drain `Inbox/` during `daily-update` or `weekly-review` if files have been sitting unattended.
-- This README is scaffolded by `workspace-init.py`. Edit it freely — it will not be overwritten on subsequent inits.
+- This README is scaffolded by `workspace_init.py` (`uv run python -m superagent.tools.workspace_init`). Edit it freely — it will not be overwritten on subsequent inits.

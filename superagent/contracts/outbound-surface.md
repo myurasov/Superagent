@@ -9,4 +9,4 @@ Whenever a skill is about to generate an artifact that the user will hand-carry 
 3. **PII compression**: include only the PII the recipient needs. Don't include the full insurance policy number when only the carrier name is required for the question.
 4. **File destination**: if no destination was specified, default to `workspace/Outbox/` (which is gitignored).
 
-The full pipeline (and which steps each outbound skill owns) is in `docs/outbound-surfaces.md`.
+The four steps above are the whole pipeline. Each outbound skill cites this contract and states which steps it runs (e.g. `skills/draft-email.md` § 4 "Run the outbound scrub pipeline").

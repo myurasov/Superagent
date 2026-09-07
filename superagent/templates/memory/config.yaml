@@ -58,6 +58,7 @@ preferences:
     apple_reminders: "daily"
     apple_notes: "weekly"
     apple_health: "daily"
+    simplefin: "weekly"
     plaid: "weekly"
     monarch: "weekly"
     strava: "daily"
@@ -180,7 +181,9 @@ preferences:
     # Override to point at an encrypted disk image / external mount:
     #   path: "/Volumes/SuperagentVault/_memory/sensitive"
     path: null              # null = workspace/_memory/sensitive
-    # Files routed to sensitive/ by default (additive to per-row sensitive flag).
+    # Files intended for the sensitive tier (additive to per-row sensitive flag).
+    # Routing is NOT yet enforced: these files stay at `_memory/` top level
+    # unless the user relocates them; see contracts/sensitive-tier.md.
     auto_route_files:
       - "health-records.yaml"
       - "accounts-index.yaml"
@@ -276,6 +279,7 @@ data_sources_configured:
     obsidian: false
     notion: false
   finance:
+    simplefin: false             # SimpleFIN Bridge (shipped; see docs/data-sources.md § simplefin)
     plaid: false
     monarch: false
     ynab: false

@@ -22,7 +22,7 @@ This doc is **diagnostic + catalogue**, not a roadmap. The Supertailor's strateg
     - [MI-1. Per-session scratchpad / dedupe](#mi-1-per-session-scratchpad--dedupe)
     - [MI-2. Time-partitioned interaction log + events stream](#mi-2-time-partitioned-interaction-log--events-stream)
     - [MI-3. Embedded full-text search (SQLite FTS5)](#mi-3-embedded-full-text-search-sqlite-fts5)
-    - [MI-4. Range-aware `add-toc.py`](#mi-4-range-aware-add-tocpy)
+    - [MI-4. Range-aware `add_step_index.py`](#mi-4-range-aware-add_step_indexpy)
     - [MI-5. Skill-output write-back caching](#mi-5-skill-output-write-back-caching)
   - [Big bets — M / L](#big-bets--m--l)
     - [BB-1. Embeddings for semantic retrieval](#bb-1-embeddings-for-semantic-retrieval)
