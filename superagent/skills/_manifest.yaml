@@ -1,10 +1,10 @@
 schema_version: 1
-generated_at: '2026-08-31T17:19:52-07:00'
-skill_count: 53
+generated_at: '2026-09-06T23:37:50-07:00'
+skill_count: 54
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/ad-hoc-task.md
+  path: superagent/skills/ad-hoc-task.md
   one_line: Start or resume an ad-hoc task — engineering scratch, system setup, investigation, or research
     that is not (yet) a tracked Project and has no Domain home — under a dated folder `tasks/<YYYY>/<MM>/<YYY
   triggers:
@@ -21,16 +21,15 @@ skills:
   lines: 190
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 2161
+  typical_token_cost: 2162
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml
-  - workspace/_memory/config.yaml
-  - workspace/_memory/interaction-log.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-account
   stem: add-account
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-account.md
+  path: superagent/skills/add-account.md
   one_line: Register a financial / utility / subscription account in `accounts-index.yaml`. Captures last-4
     only; full credentials live in your password manager and are referenced by `vault_ref`.
   triggers:
@@ -41,18 +40,19 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 150
+  lines: 154
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 1247
+  typical_token_cost: 1322
   typical_files_read:
   - _memory/accounts-index.yaml
   - _memory/data-sources.yaml
   - Domains/Finances/history.md
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-appointment
   stem: add-appointment
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-appointment.md
+  path: superagent/skills/add-appointment.md
   one_line: 'Register an appointment (doctor, dentist, vet, mechanic, hairdresser, school event, in-person
     meeting, telehealth call) in `appointments.yaml`. Auto-creates a P1 prep task if the appointment has
     prep '
@@ -65,15 +65,16 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 128
+  lines: 129
   h2_steps: 8
   h3_subsections: 0
-  typical_token_cost: 941
-  typical_files_read: []
+  typical_token_cost: 973
+  typical_files_read:
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-asset
   stem: add-asset
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-asset.md
+  path: superagent/skills/add-asset.md
   one_line: Register a physical asset (vehicle, appliance, electronics, jewelry, instrument, tool, collectible)
     — bootstrap a row in `assets-index.yaml`, optionally create per-asset Sources sub-folder for vault-g
   triggers:
@@ -85,17 +86,18 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 175
+  lines: 176
   h2_steps: 8
   h3_subsections: 0
-  typical_token_cost: 1630
+  typical_token_cost: 1691
   typical_files_read:
   - _memory/assets-index.yaml
   - _memory/bills.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-bill
   stem: add-bill
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-bill.md
+  path: superagent/skills/add-bill.md
   one_line: Register a recurring or one-shot bill in `bills.yaml`. Captures cadence, amount, due day,
     account links. Compute `next_due` immediately so daily-update / whatsup pick it up on the next run.
   triggers:
@@ -106,15 +108,16 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 118
+  lines: 120
   h2_steps: 8
   h3_subsections: 0
-  typical_token_cost: 863
-  typical_files_read: []
+  typical_token_cost: 909
+  typical_files_read:
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-contact
   stem: add-contact
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-contact.md
+  path: superagent/skills/add-contact.md
   one_line: Register a person in `contacts.yaml` and add them to the relevant domain rolodex(es). Use
     for family, friends, professionals, providers, vendors, neighbours, anyone you want Superagent to
     know about.
@@ -127,16 +130,17 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 144
+  lines: 145
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 1105
+  typical_token_cost: 1143
   typical_files_read:
   - _memory/contacts.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-document
   stem: add-document
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-document.md
+  path: superagent/skills/add-document.md
   one_line: Register an important document (passport, license, deed, will, insurance policy, warranty,
     etc.) in `documents-index.yaml`. Tracks expiration dates for surfacing.
   triggers:
@@ -147,16 +151,17 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 121
+  lines: 122
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 1304
+  typical_token_cost: 1335
   typical_files_read:
   - _memory/sources-index.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-domain
   stem: add-domain
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-domain.md
+  path: superagent/skills/add-domain.md
   one_line: Register a new life domain (e.g. Boat, Cabin, Estate, Volunteer) beyond the 13 defaults seeded
     by init. Appends a row to `_memory/domains-index.yaml`. Per `contracts/domains-and-assets.md` § 6.4a,
     the
@@ -169,16 +174,17 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 124
+  lines: 125
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 1015
+  typical_token_cost: 1046
   typical_files_read:
   - _memory/domains-index.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-important-date
   stem: add-important-date
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-important-date.md
+  path: superagent/skills/add-important-date.md
   one_line: Register a recurring date (birthday, anniversary, observance, deadline, document expiration)
     in `important-dates.yaml`. Recurrence-aware; surfaces per the lookahead window in config.
   triggers:
@@ -190,15 +196,16 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 89
+  lines: 91
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 718
-  typical_files_read: []
+  typical_token_cost: 765
+  typical_files_read:
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-project
   stem: add-project
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-project.md
+  path: superagent/skills/add-project.md
   one_line: Bootstrap a new Project — a time-bounded effort with a clear goal and target date. Collects
     the 5-question charter (name, goal, scope, target date, related domains) before creating the folder
     + 4 file
@@ -214,18 +221,19 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 223
+  lines: 228
   h2_steps: 8
   h3_subsections: 10
-  typical_token_cost: 1826
+  typical_token_cost: 2139
   typical_files_read:
   - _memory/projects-index.yaml
   - _memory/domains-index.yaml
   - _memory/contacts.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-source
   stem: add-source
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-source.md
+  path: superagent/skills/add-source.md
   one_line: Add a document or a `.ref.md` / `.ref.txt` reference to `Sources/`. The user picks (or accepts
     a suggestion for) where the file goes — there is no enforced subfolder layout. The agent runs `sources_in
   triggers:
@@ -240,22 +248,23 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 244
+  lines: 247
   h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 3049
+  typical_token_cost: 3149
   typical_files_read:
-  - Sources/_cache/`
   - _memory/domains-index.yaml
   - _memory/projects-index.yaml
   - _memory/context.yaml
+  - _memory/inbox-log.yaml
   - _memory/sources-index.yaml
   - _memory/assets-index.yaml
   - _memory/accounts-index.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-subscription
   stem: add-subscription
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/add-subscription.md
+  path: superagent/skills/add-subscription.md
   one_line: Register a recurring subscription (streaming, software, gym, donation, app sub) in `subscriptions.yaml`.
     Used heavily by monthly-review's audit pass.
   triggers:
@@ -267,15 +276,16 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 94
+  lines: 96
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 683
-  typical_files_read: []
+  typical_token_cost: 729
+  typical_files_read:
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-appointments
   stem: appointments
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/appointments.md
+  path: superagent/skills/appointments.md
   one_line: List upcoming appointments, prep for one (assemble briefing context), mark complete (with
     outcome + follow-ups), reschedule, cancel.
   triggers:
@@ -292,18 +302,18 @@ skills:
   lines: 114
   h2_steps: 4
   h3_subsections: 5
-  typical_token_cost: 1150
+  typical_token_cost: 1151
   typical_files_read:
   - _memory/appointments.yaml
   - _memory/health-records.yaml
   origin: framework
 - name: superagent-audit
   stem: audit
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/audit.md
+  path: superagent/skills/audit.md
   one_line: Read the per-row audit history of any entity. Backed by sibling `<file>.history.jsonl` append-only
     logs maintained by the audit-trail contract (contracts/memory-taxonomy.md).
   triggers:
-  - audit
+  - audit trail
   - audit history
   - when did X change
   - history of
@@ -312,15 +322,16 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 80
+  lines: 83
   h2_steps: 4
   h3_subsections: 2
-  typical_token_cost: 598
-  typical_files_read: []
+  typical_token_cost: 666
+  typical_files_read:
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-baton
   stem: baton
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/baton.md
+  path: superagent/skills/baton.md
   one_line: 'Assemble a compact, paste-ready prompt that hands the CURRENT work off to another (or new)
     agent session: what/why, state now, exact file paths, next steps, gotchas. Session continuity, not
     estate pla'
@@ -329,15 +340,24 @@ skills:
   - prompt for another session
   - continue in a new session
   - handoff prompt
+  - prompt to start a new session / prompt to start new session
+  - prompt to kick start a session / kick start a session
+  - prompt to continue
+  - prompt to another session / prompt to another agent
+  - prompt for another agent / prompt for another <adj> agent
+  - prompt for another <adj> <adj> agent
+  - prompt to another <X> session
+  - plain text prompt / compact prompt
+  - in a new session
   - baton
   mcp_required: []
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 90
-  h2_steps: 4
+  lines: 116
+  h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 725
+  typical_token_cost: 955
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml
@@ -345,7 +365,7 @@ skills:
   origin: framework
 - name: superagent-bills
   stem: bills
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/bills.md
+  path: superagent/skills/bills.md
   one_line: List, mark-paid, and reconcile bills. Cross-checks ingested transactions against `bills.yaml.history[]`
     to flag missing payments and duplicate charges.
   triggers:
@@ -356,21 +376,22 @@ skills:
   - any bills due this week
   mcp_required: []
   mcp_optional:
-  - any finance ingestor (plaid / monarch / ynab) — for reconciliation
+  - any finance ingestor (simplefin / plaid / monarch / ynab / csv) — for reconciliation
   cli_required: []
   cli_optional: []
-  lines: 133
+  lines: 157
   h2_steps: 4
   h3_subsections: 5
-  typical_token_cost: 1235
+  typical_token_cost: 1831
   typical_files_read:
   - _memory/bills.yaml
   - _memory/accounts-index.yaml
   - _memory/transactions.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-browserctl
   stem: browserctl
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/browserctl.md
+  path: superagent/skills/browserctl.md
   one_line: Drive Chromium through the `browserctl` CLI (`superagent/tools/browserctl.py`) — per-project
     persistent profiles on stable CDP ports, clean on first use, ephemeral on demand. Replaces the Playwright
     M
@@ -382,22 +403,23 @@ skills:
   - drive the web / browser automation
   - take a page snapshot / screenshot the page
   - check this web page / log into <site> for me
+  - logged in / i logged in, continue (login handback)
   mcp_required: []
   mcp_optional: []
   cli_required:
   - uv
   cli_optional:
   - playwright (Chromium install — one-time `uv run --with playwright playwright install chromium`)
-  lines: 273
+  lines: 302
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 4169
+  typical_token_cost: 4738
   typical_files_read:
   - _memory/action-signals.yaml
   origin: framework
 - name: superagent-daily-update
   stem: daily-update
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/daily-update.md
+  path: superagent/skills/daily-update.md
   one_line: 'Daily briefing: run scheduled ingestors, then aggregate today''s calendar, bills due, appointments,
     important dates, P0/P1 tasks, health signals, inbox highlights, and anything notable from ingest sour'
   triggers:
@@ -406,18 +428,21 @@ skills:
   - what's today look like
   - daily standup
   - daily check
+  - update now
+  - do update
+  - run an update
   mcp_required: []
   mcp_optional:
   - any scheduled-cadence ingest source (gmail, gcal, icloud, apple_health, …)
   cli_required: []
   cli_optional: []
-  lines: 333
+  lines: 348
   h2_steps: 27
   h3_subsections: 0
-  typical_token_cost: 3478
+  typical_token_cost: 4027
   typical_files_read:
-  - workspace/_memory/config.yaml
-  - workspace/_memory/context.yaml
+  - _memory/config.yaml
+  - _memory/context.yaml
   - _memory/data-sources.yaml
   - _memory/appointments.yaml
   - _memory/bills.yaml
@@ -427,11 +452,14 @@ skills:
   origin: framework
 - name: superagent-doctor
   stem: doctor
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/doctor.md
+  path: superagent/skills/doctor.md
   one_line: Workspace data hygiene — stale domains, duplicate contacts, near-duplicate todos, simplification
     candidates, broken cross-references, expired documents not yet renewed. Distinct from `supertailor-revi
   triggers:
-  - doctor
+  - run the doctor / run doctor
+  - workspace doctor
+  - superagent doctor
+  - data hygiene check
   - workspace hygiene
   - clean up workspace
   - data hygiene
@@ -439,19 +467,21 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 211
-  h2_steps: 19
+  lines: 229
+  h2_steps: 20
   h3_subsections: 0
-  typical_token_cost: 2139
+  typical_token_cost: 2478
   typical_files_read:
   - _memory/domains-index.yaml
-  - Sources/_cache/`;
   - _memory/action-signals.yaml
   - _memory/world.yaml
+  - _memory/model-context.yaml
+  - _memory/context.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-domain-suggest
   stem: domain-suggest
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/domain-suggest.md
+  path: superagent/skills/domain-suggest.md
   one_line: 'Detection-driven domain suggestions per `contracts/domains-and-assets.md` § 6.4b. Walks workspace
     signals (off-domain tags, contact-role clusters, off-domain project clusters, source folder clusters) '
   triggers:
@@ -465,10 +495,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 207
+  lines: 208
   h2_steps: 9
   h3_subsections: 5
-  typical_token_cost: 1494
+  typical_token_cost: 1536
   typical_files_read:
   - _memory/domain-suggestions.yaml
   - _memory/config.yaml
@@ -477,7 +507,7 @@ skills:
   origin: framework
 - name: superagent-draft-email
   stem: draft-email
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/draft-email.md
+  path: superagent/skills/draft-email.md
   one_line: 'Compose a personal email with full context (recipient history, related domain, prior thread).
     Writes the draft to `Outbox/emails/`. Read-only against email sources unless `writes_upstream: true`
     for t'
@@ -490,16 +520,17 @@ skills:
   - email ingestors (for prior-thread context)
   cli_required: []
   cli_optional: []
-  lines: 136
+  lines: 137
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 1118
+  typical_token_cost: 1156
   typical_files_read:
   - _memory/action-signals.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-email-refresh
   stem: email-refresh
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/email-refresh.md
+  path: superagent/skills/email-refresh.md
   one_line: 'Topic-scoped reply check: "did they respond?" for the email thread(s) behind the current
     task. Scans the local email archive first, live-fetches only the strictly-newer slice, then surfaces
     what chang'
@@ -514,21 +545,23 @@ skills:
   - gmail
   cli_required: []
   cli_optional: []
-  lines: 86
+  lines: 87
   h2_steps: 6
   h3_subsections: 2
-  typical_token_cost: 803
-  typical_files_read: []
+  typical_token_cost: 841
+  typical_files_read:
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-events
   stem: events
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/events.md
+  path: superagent/skills/events.md
   one_line: Read the unified time-stream. Time-partitioned storage (`_memory/events/<YYYY-Qn>.yaml`) so
     reads are O(log n). A DERIVED VIEW rebuilt wholesale from interaction-log.yaml + Domain/Project history.md
     b
   triggers:
   - events
-  - timeline
+  - events timeline / show timeline / show me the timeline / my timeline
+  - timeline for / timeline of
   - what happened on
   - log an event
   - log event
@@ -536,17 +569,17 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 117
+  lines: 119
   h2_steps: 4
   h3_subsections: 4
-  typical_token_cost: 946
+  typical_token_cost: 984
   typical_files_read:
   - _memory/interaction-log.yaml
   - _memory/events.yaml
   origin: framework
 - name: superagent-expenses
   stem: expenses
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/expenses.md
+  path: superagent/skills/expenses.md
   one_line: Categorize and review spending. Reads ingested transactions; renders by category, by merchant,
     by domain. Spots anomalies vs trailing average. Cross-references against `bills.yaml` + `subscriptions.ya
   triggers:
@@ -555,15 +588,20 @@ skills:
   - spending by category
   - where did my money go
   - expense audit
+  - was I charged
+  - did <merchant> charge me / did they charge me
+  - card activity
+  - did the payment post / did it post
+  - check my transactions
   mcp_required: []
   mcp_optional:
-  - finance ingestors (plaid / monarch / ynab / csv) — required for any data
+  - finance ingestors (simplefin / plaid / monarch / ynab / csv) — required for any data
   cli_required: []
   cli_optional: []
-  lines: 93
-  h2_steps: 4
-  h3_subsections: 6
-  typical_token_cost: 947
+  lines: 124
+  h2_steps: 5
+  h3_subsections: 7
+  typical_token_cost: 1445
   typical_files_read:
   - _memory/accounts-index.yaml
   - _memory/transactions.yaml
@@ -571,7 +609,7 @@ skills:
   origin: framework
 - name: superagent-follow-up
   stem: follow-up
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/follow-up.md
+  path: superagent/skills/follow-up.md
   one_line: 'Hunt for dropped balls: overdue tasks, unanswered messages, unfulfilled commitments, stale
     appointments waiting on confirmation. Surfaces a prioritized list with suggested next actions.'
   triggers:
@@ -588,14 +626,15 @@ skills:
   lines: 143
   h2_steps: 9
   h3_subsections: 6
-  typical_token_cost: 1258
+  typical_token_cost: 1280
   typical_files_read:
   - _memory/todo.yaml
   - _memory/appointments.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-handoff
   stem: handoff
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/handoff.md
+  path: superagent/skills/handoff.md
   one_line: Generate the "if I get hit by a bus" packet — a single readable document that an executor
     / spouse / trusted person could use to take over your affairs. Includes account list, document locations,
     bene
@@ -608,10 +647,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 212
+  lines: 205
   h2_steps: 16
   h3_subsections: 0
-  typical_token_cost: 1930
+  typical_token_cost: 1898
   typical_files_read:
   - _memory/config.yaml
   - _memory/contacts.yaml
@@ -624,7 +663,7 @@ skills:
   origin: framework
 - name: superagent-health-log
   stem: health-log
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/health-log.md
+  path: superagent/skills/health-log.md
   one_line: Log a health event — symptom, vital reading, medication change, visit, vaccination, lab result.
     Appends to the right list in `health-records.yaml` and updates the Health domain.
   triggers:
@@ -639,10 +678,10 @@ skills:
   - apple_health / whoop / strava / garmin / oura — auto-ingest vitals
   cli_required: []
   cli_optional: []
-  lines: 167
+  lines: 175
   h2_steps: 5
   h3_subsections: 6
-  typical_token_cost: 1195
+  typical_token_cost: 1370
   typical_files_read:
   - _memory/health-records.yaml
   - Domains/Health/info.md
@@ -652,13 +691,15 @@ skills:
   origin: framework
 - name: superagent-home-maintenance
   stem: home-maintenance
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/home-maintenance.md
+  path: superagent/skills/home-maintenance.md
   one_line: Track home-care schedule — HVAC service, filter changes, gutter cleaning, pest control, smoke-detector
     batteries, water-heater drain, etc. Surfaces what's due, logs completion, computes next due dates
   triggers:
   - home maintenance
   - what's due on the house
-  - log a <maintenance task>
+  - log a filter change / gutter cleaning / HVAC service / pest control
+  - log a home repair / home repair
+  - log <task> on the house
   - log home maintenance
   - schedule home-maintenance
   mcp_required: []
@@ -666,10 +707,10 @@ skills:
   - home_assistant — could surface filter-due signals from sensor data
   cli_required: []
   cli_optional: []
-  lines: 126
+  lines: 130
   h2_steps: 5
   h3_subsections: 3
-  typical_token_cost: 975
+  typical_token_cost: 1038
   typical_files_read:
   - _memory/assets-index.yaml
   - Domains/Home/history.md
@@ -677,7 +718,7 @@ skills:
   origin: framework
 - name: superagent-important-dates
   stem: important-dates
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/important-dates.md
+  path: superagent/skills/important-dates.md
   one_line: List upcoming important dates, draft a greeting, suggest a gift, mark a date acknowledged,
     retire a date.
   triggers:
@@ -700,7 +741,7 @@ skills:
   origin: framework
 - name: superagent-inbox-triage
   stem: inbox-triage
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/inbox-triage.md
+  path: superagent/skills/inbox-triage.md
   one_line: Walk every file in `Inbox/`, classify it by extension + filename, propose a destination under
     `Sources/<category>/` (the user can always override; layout under Sources/ is user-defined per `contracts/
   triggers:
@@ -713,17 +754,19 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 96
+  lines: 99
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 983
+  typical_token_cost: 1105
   typical_files_read:
   - _memory/sources-index.yaml
+  - _memory/inbox-log.yaml
   - _memory/inbox-rules.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-ingest
   stem: ingest
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/ingest.md
+  path: superagent/skills/ingest.md
   one_line: The data-ingestion front-end. Probes for available sources, lets the user enable / disable
     each, runs ingestors on demand or per cadence, and surfaces the per-source last_run summary. The orchestrator
   triggers:
@@ -739,12 +782,13 @@ skills:
   - any source documented in docs/data-sources.md
   cli_required: []
   cli_optional: []
-  lines: 158
+  lines: 160
   h2_steps: 5
   h3_subsections: 16
-  typical_token_cost: 1982
+  typical_token_cost: 2123
   typical_files_read:
   - _memory/data-sources.yaml
+  - _memory/context.yaml
   - _memory/transactions.yaml
   - Domains/Hobbies/history.md
   - Domains/Home/history.md
@@ -752,7 +796,7 @@ skills:
   origin: framework
 - name: superagent-init
   stem: init
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/init.md
+  path: superagent/skills/init.md
   one_line: 'First-run initialization for the Superagent personal-life assistant after cloning: short
     orientation questionnaire, scaffold workspace/ with the Domains/ directory (per-domain folders are
     LAZY per con'
@@ -766,20 +810,19 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 367
+  lines: 370
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 5829
+  typical_token_cost: 6094
   typical_files_read:
-  - workspace/_memory/config.yaml
-  - _memory/insights.yaml
   - _memory/config.yaml
+  - _memory/insights.yaml
   - _memory/interaction-log.yaml
-  - workspace/_memory/data-sources.yaml
+  - _memory/data-sources.yaml
   origin: framework
 - name: superagent-log-event
   stem: log-event
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/log-event.md
+  path: superagent/skills/log-event.md
   one_line: 'One-shot capture: "log this medical visit", "log this car service", "log this home repair",
     "log this conversation with <person>". Routes the event to the right `Domains/<domain>/history.md`,
     updates '
@@ -792,17 +835,17 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 88
+  lines: 95
   h2_steps: 4
   h3_subsections: 0
-  typical_token_cost: 940
+  typical_token_cost: 1069
   typical_files_read:
   - _memory/decisions.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-migrate
   stem: migrate
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/migrate.md
+  path: superagent/skills/migrate.md
   one_line: Migrate a workspace from its currently-recorded Superagent version (workspace/.version, defaults
     to 0.1.0 when absent) to the framework's current version. Computes the chain via tools/version.py,
     appl
@@ -823,13 +866,13 @@ skills:
   lines: 361
   h2_steps: 12
   h3_subsections: 10
-  typical_token_cost: 2928
+  typical_token_cost: 2924
   typical_files_read:
-  - workspace/_memory/interaction-log.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-monthly-review
   stem: monthly-review
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/monthly-review.md
+  path: superagent/skills/monthly-review.md
   one_line: 'Monthly heavy pass: subscription audit (cancel candidates), document expirations in next
     90 days, vehicle / home maintenance windows in next 60 days, financial month recap, health overdue
     items, domai'
@@ -843,10 +886,10 @@ skills:
   - any scheduled-cadence ingest source
   cli_required: []
   cli_optional: []
-  lines: 232
+  lines: 224
   h2_steps: 23
   h3_subsections: 0
-  typical_token_cost: 2216
+  typical_token_cost: 2141
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/documents-index.yaml
@@ -855,11 +898,11 @@ skills:
   - _memory/todo.yaml
   - _memory/projects-index.yaml
   - _memory/sources-index.yaml
-  - Sources/_cache/`
+  - _memory/decisions.yaml
   origin: framework
 - name: superagent-personal-signals
   stem: personal-signals
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/personal-signals.md
+  path: superagent/skills/personal-signals.md
   one_line: Capture personal signals (self-reflection, family feedback, patterns Superagent noticed) silently
     as the user works; surface growth themes on request. Per the Personal Signal Capture Contract in contr
   triggers:
@@ -872,17 +915,18 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 130
+  lines: 131
   h2_steps: 5
   h3_subsections: 3
-  typical_token_cost: 998
+  typical_token_cost: 1034
   typical_files_read:
   - _memory/personal-signals.yaml
   - Domains/Self/history.md
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-pet-care
   stem: pet-care
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/pet-care.md
+  path: superagent/skills/pet-care.md
   one_line: 'Track per-pet vet schedule, vaccinations, medications, food, grooming, boarding, weight.
     Cousin to `health-log` but pet-shaped — pets live in `contacts.yaml` (role: pet) and have a per-pet
     folder unde'
@@ -899,13 +943,13 @@ skills:
   lines: 130
   h2_steps: 6
   h3_subsections: 7
-  typical_token_cost: 990
+  typical_token_cost: 991
   typical_files_read:
   - Domains/Pets/status.md
   origin: framework
 - name: superagent-projects
   stem: projects
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/projects.md
+  path: superagent/skills/projects.md
   one_line: List, show, complete, pause, resume, cancel, or archive Projects. Per-project burn-down. Drives
     the Projects lifecycle per contracts/projects.md.
   triggers:
@@ -922,16 +966,17 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 193
+  lines: 196
   h2_steps: 5
   h3_subsections: 8
-  typical_token_cost: 1548
+  typical_token_cost: 1756
   typical_files_read:
   - _memory/projects-index.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-refresh
   stem: refresh
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/refresh.md
+  path: superagent/skills/refresh.md
   one_line: 'Update a Superagent installation to the newest framework version: fetch the latest framework
     from git, show the user what''s new, fast-forward the checkout, re-sync dependencies (uv sync) and
     git hooks'
@@ -954,14 +999,40 @@ skills:
   lines: 273
   h2_steps: 12
   h3_subsections: 0
-  typical_token_cost: 3050
+  typical_token_cost: 3051
   typical_files_read:
-  - workspace/_memory/config.yaml
-  - workspace/_memory/interaction-log.yaml
+  - _memory/config.yaml
+  - _memory/interaction-log.yaml
+  origin: framework
+- name: superagent-release
+  stem: release
+  path: superagent/skills/release.md
+  one_line: 'Cut a Superagent framework release, maintainer-side: green-gate the tree (ruff, pytest, validate,
+    anti-patterns, step index, skill manifest, memory routing), decide the semver bump per contracts/versi'
+  triggers:
+  - cut a release
+  - release the framework
+  - ship a release
+  - bump the version
+  - tag a release
+  - make a release
+  mcp_required: []
+  mcp_optional: []
+  cli_required:
+  - git
+  - uv
+  cli_optional:
+  - gh (only for an optional GitHub release page after the tag is pushed)
+  lines: 230
+  h2_steps: 14
+  h3_subsections: 0
+  typical_token_cost: 2398
+  typical_files_read:
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-report
   stem: report
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/report.md
+  path: superagent/skills/report.md
   one_line: Author and render a polished, printable report — HTML source of truth in the shared document
     style, PDF rendered via Chromium print (tools/render_report.py) with page furniture (byline, running
     title,
@@ -989,7 +1060,7 @@ skills:
   origin: framework
 - name: superagent-research
   stem: research
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/research.md
+  path: superagent/skills/research.md
   one_line: Research a topic across local notes, ingested email / messages, web, and any knowledge MCPs
     (Obsidian / Notion). Synthesizes a structured brief.
   triggers:
@@ -1006,18 +1077,21 @@ skills:
   lines: 126
   h2_steps: 9
   h3_subsections: 7
-  typical_token_cost: 964
+  typical_token_cost: 993
   typical_files_read:
   - _memory/sources-index.yaml
-  - Sources/_cache/<*>/_summary.md`
+  - Sources/_cache/<*>/_summary.md
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-sources
   stem: sources
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/sources.md
+  path: superagent/skills/sources.md
   one_line: List, search, fetch (through cache), refresh, and inspect entries in `Sources/`. The user-facing
     front-end to the user-curated reference library + agent-managed cache (contracts/sources.md).
   triggers:
-  - sources
+  - my sources
+  - what sources do we have / what sources do I have
+  - sources on <topic> / sources about <topic>
   - list sources
   - search sources
   - what's in Sources
@@ -1031,16 +1105,17 @@ skills:
   - any source-fetch ingestor (depends on the ref kind)
   cli_required: []
   cli_optional: []
-  lines: 216
+  lines: 221
   h2_steps: 9
   h3_subsections: 7
-  typical_token_cost: 1967
+  typical_token_cost: 2060
   typical_files_read:
   - _memory/sources-index.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-subscriptions
   stem: subscriptions
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/subscriptions.md
+  path: superagent/skills/subscriptions.md
   one_line: List, audit, log-use, cancel, and analyze subscriptions. The audit pass flags candidates not
     used in `config.surfacing.subscription_unused_days`, surfaces total annualized cost, and offers cancellatio
   triggers:
@@ -1058,7 +1133,7 @@ skills:
   lines: 116
   h2_steps: 4
   h3_subsections: 6
-  typical_token_cost: 1166
+  typical_token_cost: 1167
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/accounts-index.yaml
@@ -1066,7 +1141,7 @@ skills:
   origin: framework
 - name: superagent-summarize-thread
   stem: summarize-thread
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/summarize-thread.md
+  path: superagent/skills/summarize-thread.md
   one_line: Condense a long email or message thread into key points, decisions, action items. Reads from
     local email / message mirror; falls through to live source for the strictly-newer slice.
   triggers:
@@ -1079,15 +1154,16 @@ skills:
   - imessage / whatsapp / signal / slack ingestors
   cli_required: []
   cli_optional: []
-  lines: 99
-  h2_steps: 7
+  lines: 117
+  h2_steps: 8
   h3_subsections: 4
-  typical_token_cost: 724
-  typical_files_read: []
+  typical_token_cost: 847
+  typical_files_read:
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-supertailor-review
   stem: supertailor-review
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/supertailor-review.md
+  path: superagent/skills/supertailor-review.md
   one_line: Run the Supertailor's two-pass review (hygiene + strategic). Hygiene applies mechanical reversible
     repairs to the workspace. Strategic surfaces ranked framework-improvement suggestions and writes them
   triggers:
@@ -1100,10 +1176,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 160
+  lines: 162
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2697
+  typical_token_cost: 2827
   typical_files_read:
   - _memory/supertailor-suggestions.yaml
   - _memory/contacts.yaml
@@ -1114,12 +1190,17 @@ skills:
   origin: framework
 - name: superagent-tags
   stem: tags
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/tags.md
+  path: superagent/skills/tags.md
   one_line: List, search, rename, merge tags across every YAML index. Backed by `_memory/tags.yaml` (canonical
     taxonomy + aliases + usage counts). Surfaces cross-cutting categorization (tax-deductible, must-do-qu
   triggers:
-  - tags
-  - list tags
+  - list tags / list all tags
+  - show tags / show all tags / show me the tags
+  - what tags exist / which tags
+  - tag this as / tag this <entity> as / tag it as
+  - tagged with
+  - entity tags / workspace tags
+  - tag taxonomy
   - what is tagged
   - rename tag
   - merge tags
@@ -1128,16 +1209,17 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 130
+  lines: 142
   h2_steps: 5
   h3_subsections: 6
-  typical_token_cost: 860
+  typical_token_cost: 1066
   typical_files_read:
   - _memory/tags.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-todo
   stem: todo
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/todo.md
+  path: superagent/skills/todo.md
   one_line: 'Manage the Superagent task list in `_memory/todo.yaml`: add, list, complete, update tasks.
     P0-P3 priority rules with overdue awareness; auto-syncs the workspace `todo.md` and per-domain `status.md`
     on'
@@ -1151,18 +1233,19 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 161
+  lines: 162
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 1527
+  typical_token_cost: 1570
   typical_files_read:
-  - workspace/_memory/config.yaml
-  - workspace/_memory/todo.yaml
+  - _memory/config.yaml
+  - _memory/todo.yaml
   - _memory/action-signals.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-triage-overdue
   stem: triage-overdue
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/triage-overdue.md
+  path: superagent/skills/triage-overdue.md
   one_line: 'Force a decision on every overdue task. For each: done | reschedule | drop | delegate. Runs
     in a tight loop until the queue is empty.'
   triggers:
@@ -1173,20 +1256,23 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 77
+  lines: 83
   h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 570
+  typical_token_cost: 743
   typical_files_read:
   - _memory/todo.yaml
+  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-vehicle-log
   stem: vehicle-log
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/vehicle-log.md
+  path: superagent/skills/vehicle-log.md
   one_line: Log a vehicle event — service, fuel-up, mileage reading, repair, accident, registration /
     inspection / insurance renewal. Updates `assets-index.yaml` for the vehicle and appends to `Domains/Vehicles/h
   triggers:
   - log a service / oil change / tire rotation
+  - log a <vehicle> service / oil change
+  - car service / car repair
   - log fuel
   - log mileage
   - log a repair on <vehicle>
@@ -1197,17 +1283,18 @@ skills:
   - tesla — auto-ingests mileage / charging
   cli_required: []
   cli_optional: []
-  lines: 146
+  lines: 153
   h2_steps: 6
   h3_subsections: 6
-  typical_token_cost: 1151
+  typical_token_cost: 1336
   typical_files_read:
   - Domains/Vehicles/history.md
+  - _memory/interaction-log.yaml
   - Domains/Vehicles/status.md
   origin: framework
 - name: superagent-weekly-review
   stem: weekly-review
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/weekly-review.md
+  path: superagent/skills/weekly-review.md
   one_line: 'End-of-week wrap: spend by category vs budget for the trailing 7 days, fitness summary, what
     got done, what slipped, what''s coming in the next 14 days. Captures one or two reflection notes into
     `Domai'
@@ -1223,10 +1310,10 @@ skills:
   - any health / fitness ingestor (apple_health / whoop / strava / garmin / oura)
   cli_required: []
   cli_optional: []
-  lines: 235
-  h2_steps: 19
+  lines: 252
+  h2_steps: 21
   h3_subsections: 0
-  typical_token_cost: 2133
+  typical_token_cost: 2498
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md
@@ -1239,7 +1326,7 @@ skills:
   origin: framework
 - name: superagent-whatsup
   stem: whatsup
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/whatsup.md
+  path: superagent/skills/whatsup.md
   one_line: 'Quick delta since last_check: bills due, today''s appointments, important dates, P0/P1 tasks
     overdue, anything else needing attention. Updates context.last_check. Designed to be the user''s first
     comman'
@@ -1249,15 +1336,19 @@ skills:
   - catch me up
   - quick status
   - what should I know
+  - what's next / whats next
+  - what are the next steps
+  - what are my top tasks / top tasks to complete
+  - steps for today
   mcp_required: []
   mcp_optional:
   - any scheduled-cadence ingest source
   cli_required: []
   cli_optional: []
-  lines: 158
+  lines: 167
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 1526
+  typical_token_cost: 1786
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
@@ -1270,7 +1361,7 @@ skills:
   origin: framework
 - name: superagent-workbooks
   stem: workbooks
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/workbooks.md
+  path: superagent/skills/workbooks.md
   one_line: Render lazy per-domain (and per-entity) `.xlsx` projections of the structured YAML data —
     Bills / Subscriptions / Accounts / Vehicles / Pets / etc. — for human-friendly review in Excel, Numbers,
     or Go
@@ -1287,17 +1378,17 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 167
+  lines: 168
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 1407
+  typical_token_cost: 1469
   typical_files_read:
   - _memory/config.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-world
   stem: world
-  path: /Users/misha/Library/Mobile Documents/com~apple~CloudDocs/MY-Superagent/superagent/skills/world.md
+  path: superagent/skills/world.md
   one_line: Query and rebuild the world graph (`_memory/world.yaml`). Answers "show me everything connected
     to X" in one cheap query instead of scanning multiple entity files.
   triggers:
@@ -1310,9 +1401,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 89
+  lines: 91
   h2_steps: 4
   h3_subsections: 7
-  typical_token_cost: 641
-  typical_files_read: []
+  typical_token_cost: 694
+  typical_files_read:
+  - _memory/interaction-log.yaml
   origin: framework
