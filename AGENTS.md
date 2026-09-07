@@ -82,7 +82,7 @@ If this repository also hosts other AI-assistant frameworks (work assistants, pr
 - **Operational contracts** (init, cadences, data-ingestion, capture / surfacing patterns, autonomy, memory taxonomy, ...): browse [`superagent/contracts/`](superagent/contracts/) — one markdown file per contract, indexed by `superagent/contracts/_manifest.yaml`. Skills cite a specific contract as `contracts/<slug>.md`.
 - **Supertailor (framework hygiene + improvement)**: read and follow [`superagent/supertailor.agent.md`](superagent/supertailor.agent.md).
 - **Supercoder (implementation)**: read and follow [`superagent/supercoder.agent.md`](superagent/supercoder.agent.md).
-- **Custom overlay** (per-user extensions): see § "Custom overlay" below; full reference in [`superagent/docs/custom-overlay.md`](superagent/docs/custom-overlay.md).
+- **Custom overlay** (per-user extensions): see § "Custom overlay" below; contract in [`superagent/contracts/custom-overlay.md`](superagent/contracts/custom-overlay.md).
 
 ---
 
@@ -124,7 +124,7 @@ When the agent first opens (or first acts in) `workspace/` in a session:
 1. Check whether **`workspace/_memory/config.yaml`** exists.
 2. **If it does not exist**, suggest running the **init** skill (`superagent/skills/init.md`) before relying on Superagent memory or paths.
 3. **If it exists**, run `uv run python -m superagent.tools.version check`. If the framework version is **ahead** of `workspace/.version` by a MINOR or MAJOR step, suggest the **migrate** skill BEFORE any other skill writes data (a stale workspace queried with new schemas can corrupt). PATCH-only deltas are silently advanced by `migrate`. See § "Versioning and migrations".
-4. Read **`workspace/_memory/context.yaml`** and inspect **`last_check`**. If `last_check` is **more than 24 hours ago** (or null / stale), suggest running the **whatsup** or **daily-update** skill to refresh.
+4. Read **`workspace/_memory/context.yaml`** and inspect **`last_check`**. If `last_check` is **more than 24 hours ago** (or null / stale), suggest running the **whatsup** or **daily-update** skill to refresh. Skip the suggestion when `refresh_suggested` already equals today's date; after making it, set `refresh_suggested` to today (`YYYY-MM-DD`) so the nag fires at most once per calendar day across session restarts.
 
 ---
 
@@ -195,6 +195,7 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 | **supertailor-review** | Framework hygiene + strategic improvement; produces ranked suggestions in `supertailor-suggestions.yaml`. |
 | **migrate** | Apply or revert framework version migrations on the workspace (chained, one version at a time, revertible). Sole entry point per `contracts/versioning.md`. |
 | **refresh** | Update the framework from git: fetch, show what's new (roadmap Released delta + migration preview), confirm, `git pull --ff-only`, `uv sync` + hooks re-assert, then dispatch into `migrate` for the workspace-data leg. Consumer-side; never pushes or commits. |
+| **release** | Cut a framework release: gate (ruff / pytest / validate / manifests), pick the semver bump per `contracts/versioning.md`, author or verify the migration, bump pyproject + lockfile, roadmap Released row, commit, annotated tag, push. Maintainer-side counterpart of `refresh`. |
 | **handoff** | Generate the "if I get hit by a bus" packet — account list, document locations, executor instructions. |
 
 ---
@@ -581,8 +582,7 @@ Detection looks at `CLAUDECODE=1` (Claude Code) and any `CURSOR_*` env var (Curs
 |---|---|---|---|---|
 | `AGENTS.md` | Yes (native) | Via `CLAUDE.md` `@`-import | Yes (native) | Yes |
 | `CLAUDE.md` | No (irrelevant; pure re-export) | Yes (loaded every turn) | No | Yes |
-| `.cursor/rules/` | Yes | No (skipped via `.claudeignore`) | No | Yes |
-| `.claudeignore` | No | Yes (gitignore-syntax exclusions) | No | Yes |
+| `.claudeignore` | No | Yes (gitignore-syntax exclusions; skips `.cursor/` and `workspace/`) | No | Yes |
 | `.cursor/hooks.json` | Yes (Cursor hooks) | No | No | Yes |
 | `.claude/settings.json` | No | Yes (Claude Code hooks) | No | Yes |
 | `.claude/settings.local.json` | No | Yes (per-machine override) | No | No (gitignored) |
@@ -606,7 +606,7 @@ If the repo also hosts other assistant frameworks, route each turn to the right 
 
 ## Prompt-cache discipline
 
-Per `docs/superagent/docs/_internal/perf-improvement-ideas.md` BB-2-b — practical guidance for both Cursor and Claude Code today:
+Per `superagent/docs/_internal/perf-improvement-ideas.md` § BB-2 (b) — practical guidance for both Cursor and Claude Code today:
 
 The IDE controls how the prompt is structured and which prefixes are cached. Both Cursor and Claude Code reward a stable prefix; the framework helps by keeping `AGENTS.md` SHORT and STABLE, and by keeping each `contracts/<name>.md` self-contained — avoiding edits during a session that would invalidate the cache for downstream turns.
 

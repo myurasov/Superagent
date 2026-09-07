@@ -19,6 +19,12 @@ self-identifies its row; no code detection beyond `tools/ide.py`
 | Ranged file reads | Yes (`Read --offset --limit`) | Yes | Shell equivalents (`sed -n`) | Assume shell |
 | MCP config file | `.cursor/mcp.json` | `.mcp.json` | TOML config (own format) | Varies |
 
+Per-file wiring (which harness reads which setup file, and whether it is
+committed) is tabulated in `AGENTS.md` § "Harness setup". The committed
+`.cursor/` tree holds only `hooks.json` and the `mcp.json.cursor` template —
+there is no `.cursor/rules/` shim, since Cursor reads `AGENTS.md` natively.
+`.claudeignore` keeps `.cursor/` and `workspace/` out of Claude Code's context.
+
 ## Known sandbox quirks
 
 | Quirk | Harness | Evidence | Workaround |
