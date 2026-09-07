@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-09-06T23:37:50-07:00'
+generated_at: '2026-09-07T00:51:51-07:00'
 skill_count: 54
 skills:
 - name: superagent-ad-hoc-task
@@ -782,10 +782,10 @@ skills:
   - any source documented in docs/data-sources.md
   cli_required: []
   cli_optional: []
-  lines: 160
+  lines: 168
   h2_steps: 5
   h3_subsections: 16
-  typical_token_cost: 2123
+  typical_token_cost: 2346
   typical_files_read:
   - _memory/data-sources.yaml
   - _memory/context.yaml
@@ -793,6 +793,7 @@ skills:
   - Domains/Hobbies/history.md
   - Domains/Home/history.md
   - Domains/Vehicles/history.md
+  - _memory/action-signals.yaml
   origin: framework
 - name: superagent-init
   stem: init
