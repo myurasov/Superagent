@@ -268,6 +268,50 @@ def test_archived_projects_are_nodes_tagged_archived(
     assert validate(initialized_workspace) == []
 
 
+# --- project `parent` names a project, not a domain ------------------------
+
+
+def test_project_parent_resolves_to_umbrella_project(
+    initialized_workspace: Path,
+) -> None:
+    """`parent` on a projects-index row is a project id (per the template).
+
+    The child is listed BEFORE its umbrella so resolution cannot depend on row
+    order; an archived umbrella must resolve too; a parent that matches no
+    project id still falls back to `domain:<slug>`; domains-index is untouched.
+    """
+    from superagent.tools.world import rebuild, validate
+
+    _append_rows(initialized_workspace, "projects-index.yaml", "projects", [
+        {"id": "reno-plumbing", "name": "Reno: plumbing", "status": "active",
+         "parent": "house-reno"},
+        {"id": "house-reno", "name": "House reno", "status": "active", "parent": None},
+        {"id": "garden-beds", "name": "Garden beds", "status": "active",
+         "parent": "home"},                            # no such project -> domain
+    ])
+    _append_rows(initialized_workspace, "projects-index.yaml", "archived", [
+        {"id": "old-move", "name": "Old move", "status": "archived"},
+        {"id": "old-move-packing", "name": "Old move: packing", "status": "archived",
+         "parent": "old-move"},
+    ])
+    _append_rows(initialized_workspace, "domains-index.yaml", "domains", [
+        {"id": "home-garage", "name": "Garage", "parent": "home"},
+    ])
+
+    data = rebuild(initialized_workspace)
+    lives_under = {(e["from"], e["to"]) for e in _edges(data, kind="lives_under")}
+    assert lives_under == {
+        ("project:reno-plumbing", "project:house-reno"),
+        ("project:old-move-packing", "project:old-move"),
+        ("project:garden-beds", "domain:home"),
+        ("domain:home-garage", "domain:home"),
+    }
+    node_ids = {n["id"] for n in data["nodes"]}
+    assert "domain:house-reno" not in node_ids
+    assert "domain:old-move" not in node_ids
+    assert validate(initialized_workspace) == []
+
+
 # --- accounts-index linked_accounts / linked_assets -----------------------
 
 

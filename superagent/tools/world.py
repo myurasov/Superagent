@@ -163,6 +163,10 @@ def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dic
     nodes: dict[str, dict[str, Any]] = {}
     edges: list[dict[str, Any]] = []
     skipped_contact_refs: dict[str, int] = defaultdict(int)
+    # A project's `parent` names a parent PROJECT (templates/memory/projects-index.yaml),
+    # not a domain. Pre-collect every project id so a child row resolves its umbrella
+    # regardless of row order; `_kind_for_field` keeps `domain` as the fallback.
+    project_ids = _project_ids(memory)
 
     def add_node(handle: str, kind: str, path: str, label: str = "",
                  tags: list[str] | None = None) -> None:
@@ -200,6 +204,9 @@ def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dic
         target_kind = _kind_for_field(field)
         if field == "for_member" and is_for_member_sentinel(value):
             return None
+        if (field == "parent" and fname == "projects-index.yaml"
+                and isinstance(value, str) and value.strip() in project_ids):
+            return f"project:{value.strip()}"
         if target_kind == "contact":
             target = normalize_contact_ref(value)
             if target is None and isinstance(value, str) and value.strip():
@@ -319,6 +326,19 @@ def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dic
     return list(nodes.values()), edges
 
 
+def _project_ids(memory: Path) -> set[str]:
+    """Every project id in projects-index.yaml, live (`projects`) and `archived`."""
+    data = load_yaml(memory / "projects-index.yaml") or {}
+    if not isinstance(data, dict):
+        return set()
+    return {
+        str(row["id"])
+        for list_key in ("projects", "archived")
+        for row in (data.get(list_key) or [])
+        if isinstance(row, dict) and row.get("id")
+    }
+
+
 def _kind_for_field(field: str) -> str:
     """Heuristic: which entity kind does this cross-reference field point at?"""
     return {
@@ -335,7 +355,7 @@ def _kind_for_field(field: str) -> str:
         "pharmacy": "contact",
         "prescribed_by": "contact",
         "ordered_by": "contact",
-        "parent": "domain",  # works for both domains and projects
+        "parent": "domain",  # domains-index; projects-index resolves project ids first
         "workflow": "workflow",
         "for_member": "contact",
     }.get(field, "other")
