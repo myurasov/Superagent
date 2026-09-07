@@ -1,6 +1,6 @@
 [project]
 name = "superagent"
-version = "0.17.2"
+version = "0.18.0"
 description = "Superagent — life AI assistant. Local-first. Self-improving."
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
@@ -9,7 +9,6 @@ dependencies = [
     "pyyaml",
     "openpyxl",
     "pypdf>=6.11.0",
-    "pdf2image>=1.17.0",
     "pillow>=12.2.0",
     "pymupdf>=1.27.2.3",
     "google-api-python-client>=2.140",
@@ -30,6 +29,13 @@ cache-dir = ".tmp.noSync/uv-cache"
 [tool.pytest.ini_options]
 testpaths = ["superagent/tests"]
 pythonpath = ["."]
+# pymupdf's SWIG bindings emit "builtin type SwigPyObject has no __module__
+# attribute" on import under Python 3.13; upstream noise, not ours.
+filterwarnings = [
+    "ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
+]
 
 [tool.ruff]
 # Mirror pyproject's requires-python so ruff lints against the same target.
