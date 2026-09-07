@@ -82,8 +82,10 @@ If a skill doesn't (legacy / oversight), the next `world rebuild` corrects the g
 ## 3. Logging
 
 ```yaml
-- timestamp: <now>
-  type: skill_run
-  subject: "world (<sub-action>)"
+- id: "<ilog-YYYY-MM-DD-NNN>"   # uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml
+  ts: "<ISO 8601 datetime with offset>"
+  skill: "world"
+  action: "<sub-action>"   # e.g. related, rebuild, path — snake_case
   summary: "Queried/rebuilt graph: <result-summary>"
+  action_items: []
 ```

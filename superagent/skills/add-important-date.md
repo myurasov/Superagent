@@ -82,8 +82,10 @@ Lookahead: <lookahead_days> days.
 ## 6. Logging
 
 ```yaml
-- timestamp: <now>
-  type: skill_run
-  subject: "add-important-date"
+- id: "<ilog-YYYY-MM-DD-NNN>"   # uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml
+  ts: "<ISO 8601 datetime with offset>"
+  skill: "add-important-date"
+  action: "add_important_date"
   summary: "Added <kind> date <Title> (<recurrence>); next on <date>."
+  action_items: []
 ```

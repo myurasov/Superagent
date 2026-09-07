@@ -56,18 +56,25 @@ For **interaction**:
 
 1. Resolve the contact (offer `add-contact` if missing).
 2. Ask: when, summary, action items.
-3. Append to `_memory/interaction-log.yaml`:
+3. Append to `_memory/interaction-log.yaml` in the canonical row shape
+   (`templates/memory/interaction-log.yaml` is normative — never the retired
+   `timestamp` / `type` / `subject` / `participants` keys). Name the contact
+   in `summary`; there is no `participants` field.
    ```yaml
-   - timestamp: <when>
-     type: meeting | call | note (per user)
-     subject: "<short>"
-     participants: ["<contact name>"]
-     summary: "<text>"
-     related_domain: <inferred from contact's primary related_domain>
+   - id: "<ilog-YYYY-MM-DD-NNN via uv run python -m superagent.tools.next_id --kind ilog --file _memory/interaction-log.yaml>"
+     ts: "<when — ISO 8601 datetime with offset>"
+     skill: "log-event"
+     action: "<meeting|call|note> with <contact name>"
+     summary: "<what was discussed / decided with <contact name>>"
+     related_domain: <inferred from contact's primary related_domain, or null>
+     related_project: null
+     related_asset: null
+     related_account: null
      action_items: <list>
+     ingestion_log_ref: null
    ```
 4. For each action item, create a P2 task in `todo.yaml`.
-5. Update `Domains/<related_domain>/rolodex.md` row for the contact: `Last contacted` ← timestamp.
+5. Update `Domains/<related_domain>/rolodex.md` row for the contact: `Last contacted` ← `ts`.
 6. Optionally append to `Domains/<related_domain>/history.md` if the interaction was substantive.
 
 For **generic**:

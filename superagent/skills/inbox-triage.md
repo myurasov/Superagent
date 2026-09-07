@@ -90,9 +90,10 @@ Inbox now contains <remaining count> files.
 Append to `interaction-log.yaml`:
 
 ```yaml
-- timestamp: <now>
-  type: skill_run
-  subject: "inbox-triage"
+- id: "<uv run python -m superagent.tools.next_id --kind ilog --file _memory/interaction-log.yaml>"
+  ts: <now ISO 8601 with offset>
+  skill: "inbox-triage"
+  action: "triage_inbox"
   summary: "Triaged N files: X filed, Y discarded, Z left."
   related_domain: null
 ```

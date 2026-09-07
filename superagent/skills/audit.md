@@ -5,7 +5,9 @@ description: >-
   `<file>.history.jsonl` append-only logs maintained by the audit-trail
   contract (contracts/memory-taxonomy.md).
 triggers:
-  - audit
+  # No bare "audit" — "audit the git tags" / "audit the subscriptions" must
+  # NOT load this skill; audit-trail phrases only.
+  - audit trail
   - audit history
   - when did X change
   - history of
@@ -73,8 +75,9 @@ When `config.preferences.audit.rotate_yearly` is true, `doctor` rotates each `<f
 ## 4. Logging
 
 ```yaml
-- timestamp: <now>
-  type: skill_run
-  subject: "audit (history)"
+- id: "<ilog-YYYY-MM-DD-NNN via uv run python -m superagent.tools.next_id --kind ilog --file _memory/interaction-log.yaml>"
+  ts: "<ISO 8601 datetime with offset>"
+  skill: "audit"
+  action: "show_history"
   summary: "Showed audit history of <file>:<row>"
 ```

@@ -77,9 +77,10 @@ Say so explicitly, anchored to the boundary:
 ## 6. Logging
 
 ```yaml
-- timestamp: <now>
-  type: skill_run
-  subject: "email-refresh"
+- id: "<ilog-YYYY-MM-DD-NNN via uv run python -m superagent.tools.next_id --kind ilog --file _memory/interaction-log.yaml>"
+  ts: "<ISO 8601 datetime with offset>"
+  skill: "email-refresh"
+  action: "check_replies"
   summary: "Checked replies on <topic>: <N> new, <M> next steps suggested."
   related_domain: <inferred>
   action_items: <list or []>

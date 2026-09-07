@@ -57,7 +57,7 @@ Repairs proposed by the hygiene pass are mechanical and reversible. The Supertai
 
 Pattern detection on usage data to surface friction and capability gaps:
 
-- **Friction patterns.** From `user-queries.jsonl`: clusters of similar queries the user keeps asking → candidate for a new skill or a new surfacing rule. From `action-signals.yaml` (kind: frustration, wish, correction): every `target: tailor` row that is still `status: captured`.
+- **Friction patterns.** From `user-queries.jsonl`: clusters of similar queries the user keeps asking → candidate for a new skill or a new surfacing rule. Skip rows tagged `synthetic: true` (harness-generated turns — task notifications, heartbeats — not the user's own words). From `action-signals.yaml` (kind: frustration, wish, correction): every `target: tailor` row that is still `status: captured`.
 - **Skill utilization.** Skills that have not run in 30 days → either the user doesn't need them (candidate for deprecation) or doesn't know about them (candidate for a discovery nudge in the relevant cadence skill).
 - **Domain utilization.** Domains with no `history.md` entry in 12 months → archive candidate. Domains with > 50 `history.md` entries / month → maybe should be split into sub-domains.
 - **Ingestor utilization.** Sources that ingest regularly but whose data is never queried → candidate for `capture_mode: manual` or disable. Sources NOT configured but for which the user keeps asking questions → candidate to recommend setup. ("You ask about your weekly mileage often. Want to set up the Strava ingestor?")

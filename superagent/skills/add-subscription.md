@@ -85,10 +85,12 @@ Trial ends: <date or "n/a">.
 ## 6. Logging
 
 ```yaml
-- timestamp: <now>
-  type: skill_run
-  subject: "add-subscription"
+- id: "<ilog-YYYY-MM-DD-NNN>"   # uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml
+  ts: "<ISO 8601 datetime with offset>"
+  skill: "add-subscription"
+  action: "add_subscription"
   summary: "Added subscription <Name> (<amount> {cadence})."
   related_domain: "finance"
   related_account: <account-id>
+  action_items: []
 ```
