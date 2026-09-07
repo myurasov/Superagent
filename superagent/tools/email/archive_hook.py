@@ -1,13 +1,12 @@
 #!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
-"""PostToolUse hook bridge for Gmail MCP -> local email archive.
+"""Tool-call hook bridge for Gmail MCP -> local email archive.
 
-Wires the `mcp__gmail__send_email` / `mcp__gmail__read_email` /
-`mcp__gmail__search_emails` tool calls to the capture helpers in
-`superagent.tools.email.archive`. Backs `contracts/email-capture.md`'s
-"capture-on-touch" rule under IDEs that expose tool-call hooks
-(Claude Code's `PostToolUse`; Cursor's equivalent).
+Wires the Gmail MCP's `send_email` / `read_email` / `search_emails` calls
+to the capture helpers in `superagent.tools.email.archive`. Backs
+`contracts/email-capture.md`'s "capture-on-touch" rule under any harness
+that exposes tool-call hooks.
 
 Reads a JSON payload from stdin (the IDE's hook envelope), dispatches
 to one capture function, and exits silently. The hook NEVER blocks the
@@ -19,19 +18,50 @@ Privacy gate: `_memory/config.yaml.preferences.privacy.archive_emails`
 defaults to true; setting it false disables capture entirely (the
 hook reads the flag and exits silently when off).
 
-CLI:
+CLI (hook-driven — stdin is the harness's hook envelope):
     uv run python -m superagent.tools.email.archive_hook --kind=sent
     uv run python -m superagent.tools.email.archive_hook --kind=inbound
     uv run python -m superagent.tools.email.archive_hook --kind=stubs
+    uv run python -m superagent.tools.email.archive_hook --kind=auto
 
-Stdin envelope (Claude Code / Cursor PostToolUse shape):
+CLI (`--raw` — stdin is the MCP response itself, no envelope):
+    ... | uv run python -m superagent.tools.email.archive_hook --kind=inbound --raw
+
+`--raw` is the harness-independent path required by
+`rules/email-capture-fallback.md`: a harness with no tool-call hooks
+(generic AGENTS.md CLIs) still satisfies the capture-on-touch contract
+because the agent pipes the response it already has in context. Capture
+is idempotent, so running it after a hook already fired is a no-op.
+
+Set `SUPERAGENT_EMAIL_HOOK_DEBUG=1` to dump each received envelope to the
+log — the way to discover a harness's payload shape, since these schemas
+are version-specific and thinly documented. Off by default: envelopes
+carry message bodies.
+
+The two harnesses disagree on every field name, so the bridge accepts
+both. Claude Code `PostToolUse` (one hook per tool, selected by matcher
+`mcp__gmail__<tool>`):
+
     {
       "tool_name": "mcp__gmail__send_email",
       "tool_input": {...kwargs passed to the MCP tool...},
-      "tool_response": <MCP response: dict, MCP-wrapped content array,
-                        or plain text - the bridge handles all three>,
+      "tool_response": <dict, MCP content array, or plain text>,
       "session_id": "...", "cwd": "...", ... (other fields ignored)
     }
+
+Cursor `afterMCPExecution` (ONE hook, no matcher, `--kind=auto`):
+
+    {
+      "tool_name": "read_email",
+      "tool_input": "<JSON string of params>",
+      "mcp_server_name": "gmail",
+      "result_json": "<JSON string of the tool response>",
+      "duration": 1234
+    }
+
+Cursor's `postToolUse` is also accepted (`tool_output` instead of
+`result_json`, `tool_name` in `MCP:<tool>` form) for harnesses or cloud
+agents where `afterMCPExecution` is unavailable.
 
 The hook tolerates schema drift: missing fields are treated as empty;
 unexpected types are coerced when feasible and skipped otherwise.
@@ -41,6 +71,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import sys
 import traceback
@@ -111,15 +142,65 @@ def _read_envelope() -> dict[str, Any]:
     return payload
 
 
+def _maybe_json(value: Any) -> Any:
+    """Parse `value` when it is a JSON-encoded string; else return it as-is.
+
+    Cursor hands the payload over as a JSON-stringified string
+    (`tool_output` on `postToolUse`, `result_json` on `afterMCPExecution`)
+    where Claude Code hands over a live object. The gongrzhe Gmail MCP's
+    own payload is plain text, so a string that does not start with `{`
+    or `[` is returned untouched.
+    """
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    if not stripped.startswith(("{", "[")):
+        return value
+    try:
+        return json.loads(stripped)
+    except json.JSONDecodeError:
+        return value
+
+
+def _raw_envelope(args: argparse.Namespace) -> dict[str, Any]:
+    """Wrap a bare tool response from stdin in a synthetic hook envelope.
+
+    Backs `--raw`, the harness-independent capture path used when no
+    tool-call hook exists (generic AGENTS.md CLIs) or when a hook is
+    suspected inert. Every downstream parser already accepts the response
+    shapes the Gmail MCP produces, so the only work here is presenting the
+    payload the way the dispatchers expect. Capture is idempotent, so
+    running this after a hook already fired is a safe no-op.
+    """
+    raw = sys.stdin.read()
+    if not raw.strip():
+        _log(f"{args.kind}: --raw got empty stdin; skipping capture")
+        return {}
+    envelope: dict[str, Any] = {
+        "hook_event_name": "raw",
+        "tool_name": f"raw:{args.kind}",
+        "tool_response": raw,
+    }
+    if args.request_json:
+        try:
+            envelope["tool_input"] = json.loads(args.request_json)
+        except json.JSONDecodeError as exc:
+            _log(f"{args.kind}: --request-json is not valid JSON: {exc}")
+    return envelope
+
+
 def _extract_response(envelope: dict[str, Any]) -> Any:
     """Pull the tool's response payload out of the IDE envelope.
 
     Hook envelopes vary across IDEs and versions; accept any of:
-      tool_response, tool_output, response, output.
+      tool_response  (Claude Code PostToolUse)
+      result_json    (Cursor afterMCPExecution -- JSON string)
+      tool_output    (Cursor postToolUse -- JSON string)
+      response / output (generic fallbacks)
     """
-    for key in ("tool_response", "tool_output", "response", "output"):
+    for key in ("tool_response", "result_json", "tool_output", "response", "output"):
         if key in envelope:
-            return envelope[key]
+            return _maybe_json(envelope[key])
     return None
 
 
@@ -410,7 +491,7 @@ def _coerce_search_response(response: Any) -> list[dict[str, Any]]:
 
 
 def _dispatch_sent(envelope: dict[str, Any], workspace: Path) -> int:
-    request = envelope.get("tool_input") or {}
+    request = _maybe_json(envelope.get("tool_input")) or {}
     if not isinstance(request, dict):
         _log(f"sent: tool_input not a dict ({type(request).__name__})")
         return EXIT_OK
@@ -465,6 +546,49 @@ _DISPATCH = {
     "stubs": _dispatch_stubs,
 }
 
+# Gmail MCP tool leaf name -> capture path. Matched as a substring of the
+# envelope's `tool_name`, because each harness decorates the leaf
+# differently: Claude Code sends `mcp__gmail__read_email`, Cursor sends
+# `read_email` on `afterMCPExecution` and `MCP:read_email` on
+# `postToolUse`. Longest key first so `search_emails` cannot be shadowed.
+_TOOL_NAME_KINDS: tuple[tuple[str, str], ...] = (
+    ("search_emails", "stubs"),
+    ("send_email", "sent"),
+    ("read_email", "inbound"),
+)
+
+
+def _infer_kind(envelope: dict[str, Any]) -> str | None:
+    """Resolve the capture path from the envelope's tool name.
+
+    Used by `--kind=auto`, which lets a single hook registration cover all
+    three Gmail tools. Cursor's `afterMCPExecution` takes no matcher, so
+    the filtering that Claude Code does with three matchers happens here
+    instead. Returns None when the call is not a Gmail capture trigger.
+    """
+    tool_name = envelope.get("tool_name")
+    if not isinstance(tool_name, str) or not tool_name:
+        return None
+    for leaf, kind in _TOOL_NAME_KINDS:
+        if leaf in tool_name:
+            return kind
+    return None
+
+
+def _wrong_server(envelope: dict[str, Any]) -> bool:
+    """True when the envelope names an MCP server that is not Gmail.
+
+    `afterMCPExecution` fires for EVERY MCP server, and a non-Gmail server
+    is free to expose its own `read_email`. `mcp_server_name` is the
+    server's key in `mcp.json`, so it is the authoritative discriminator.
+    Absent (Claude Code, Cursor `postToolUse`) means "cannot tell" and is
+    treated as a pass -- the tool-name match already narrowed it.
+    """
+    server = envelope.get("mcp_server_name")
+    if not isinstance(server, str) or not server:
+        return False
+    return "gmail" not in server.lower()
+
 
 # ---------------------------------------------------------------------------
 # Entry point
@@ -481,9 +605,13 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--kind",
-        choices=tuple(_DISPATCH.keys()),
+        choices=(*_DISPATCH.keys(), "auto"),
         required=True,
-        help="Which capture path to dispatch: sent | inbound | stubs.",
+        help=(
+            "Which capture path to dispatch: sent | inbound | stubs, or "
+            "auto to resolve it from the envelope's tool_name (required "
+            "for Cursor's afterMCPExecution, which takes no matcher)."
+        ),
     )
     parser.add_argument(
         "--workspace",
@@ -491,7 +619,30 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         default=None,
         help="Override workspace path (default: <framework>/../workspace).",
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help=(
+            "Treat stdin as the MCP tool response itself rather than a hook "
+            "envelope. This is the no-hook path: on a harness with no "
+            "tool-call hooks, the agent pipes the response it already has in "
+            "context straight in. Requires an explicit --kind."
+        ),
+    )
+    parser.add_argument(
+        "--request-json",
+        type=str,
+        default=None,
+        help=(
+            "JSON object of the arguments passed to send_email. Only used "
+            "with --raw --kind=sent, where the sent body cannot be "
+            "recovered from Gmail's minimal response."
+        ),
+    )
+    args = parser.parse_args(argv)
+    if args.raw and args.kind == "auto":
+        parser.error("--raw needs an explicit --kind (auto reads the envelope's tool_name)")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -503,16 +654,34 @@ def main(argv: list[str] | None = None) -> int:
     if not _privacy_enabled(workspace):
         return EXIT_OK
     try:
-        envelope = _read_envelope()
+        envelope = _raw_envelope(args) if args.raw else _read_envelope()
     except (OSError, ValueError) as exc:
         _log(f"{args.kind}: stdin read failed: {exc}")
         return EXIT_OK
     if not envelope:
         return EXIT_OK
+    if os.environ.get("SUPERAGENT_EMAIL_HOOK_DEBUG"):
+        # Schema-discovery aid: hook payload shapes are version-specific and
+        # thinly documented, so dump the envelope keys (and the raw envelope
+        # itself) when explicitly asked. Values can carry message bodies, so
+        # this is opt-in and never on by default.
+        _log(f"debug: event={envelope.get('hook_event_name')!r} keys={sorted(envelope)}")
+        _log(f"debug: envelope={json.dumps(envelope, default=str)[:4000]}")
+
+    kind = args.kind
+    if kind == "auto":
+        if _wrong_server(envelope):
+            return EXIT_OK
+        resolved = _infer_kind(envelope)
+        if resolved is None:
+            return EXIT_OK
+        kind = resolved
+        _log(f"auto: tool={envelope.get('tool_name')!r} -> {kind}")
+
     try:
-        return _DISPATCH[args.kind](envelope, workspace)
+        return _DISPATCH[kind](envelope, workspace)
     except Exception:  # noqa: BLE001
-        _log(f"{args.kind}: unhandled exception:\n{traceback.format_exc()}")
+        _log(f"{kind}: unhandled exception:\n{traceback.format_exc()}")
         return EXIT_OK
 
 
