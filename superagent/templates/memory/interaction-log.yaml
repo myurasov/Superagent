@@ -1,29 +1,64 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: append-only log of touchpoints and significant agent actions.
 # New entries go at the end; do NOT rewrite history.
+#
+# This template is the SINGLE NORMATIVE DEFINITION of the interaction-log row
+# shape (cited by contracts/events-stream.md § "Canonical row shape"). Every
+# new append MUST use the canonical shape below. Legacy rows that use the
+# retired `timestamp` / `type` / `subject` keys stay in place forever — the
+# file is append-only and `tools/events_derive.py` reads both shapes — but no
+# new row may be written in the legacy shape. `tools/validate.py` warns
+# (never errors) on rows that drift from the canonical shape.
 
 schema_version: 1
 
 entries:
-  # Each entry:
-  #   timestamp           — ISO 8601 when the interaction occurred (or was logged).
-  #   type                — email | message | meeting | call | note | skill_run |
-  #                          ingest_run | bill_paid | appointment | health_event |
-  #                          maintenance | important_date | document_event | other.
-  #   subject             — Short title or thread subject.
-  #   participants        — List of names or emails (people involved); empty for self-events.
-  #   summary             — What happened or was decided.
-  #   related_domain      — Domain slug from domains-index, or null.
+  # Canonical entry (every new append):
+  #   id                  — "ilog-YYYY-MM-DD-NNN", minted with
+  #                          `uv run python -m superagent.tools.next_id --kind ilog \
+  #                             --file <workspace>/_memory/interaction-log.yaml`.
+  #                          Derived events anchor `source: interaction-log.yaml#<id>`.
+  #   ts                  — ISO 8601 datetime WITH offset (e.g. "2026-09-06T14:05:00-07:00").
+  #   skill               — Skill manifest STEM (the `skills/<stem>.md` filename, framework
+  #                          `superagent/skills/` or overlay `_custom/skills/`), or null for
+  #                          a non-skill note. MUST equal a stem exactly:
+  #                            * no `superagent-` prefix (`migrate`, not `superagent-migrate`);
+  #                            * no parenthetical / free-text qualifiers — those go in `action`
+  #                              (`skill: browserctl`, `action: "<app> order_lookup"`);
+  #                            * project context goes in `related_project`, never in `skill`;
+  #                            * one skill per row — a compound run logs one row per skill.
+  #   action              — Short snake_case verb phrase (`run_daily_briefing`, `file_source`,
+  #                          `create_project`, `mark_bill_paid`). Overlay / app qualifiers
+  #                          may follow the verb phrase as free text.
+  #   summary             — What happened or was decided; 1-6 lines (folded `>-` scalar).
+  #   related_domain      — Domain id from domains-index, or null.
+  #   related_project     — Project slug from projects-index, or null.
   #   related_asset       — Asset id from assets-index, or null.
   #   related_account     — Account id from accounts-index, or null.
-  #   action_items        — List of strings; open tasks or follow-ups from this touchpoint.
-  #   ingestion_log_ref   — When type==ingest_run, points to ingestion-log.yaml row id.
-  - timestamp: null
-    type: "note"
-    subject: ""
-    participants: []
+  #   action_items        — List of short strings; open tasks or follow-ups from this row.
+  #   ingestion_log_ref   — When the row records an ingest run, the ingestion-log.yaml run
+  #                          id; otherwise null.
+  #
+  # Legacy entry (READ-ONLY — never written by new appends; kept for history):
+  #   timestamp           — ISO 8601 when the interaction occurred (superseded by `ts`).
+  #   type                — email | message | meeting | call | note | skill_run | ingest_run |
+  #                          bill_paid | appointment | health_event | maintenance |
+  #                          important_date | document_event | other (superseded by
+  #                          `skill` + `action`; `tools/events_derive.kind_for_old_row`
+  #                          still maps it to an event kind).
+  #   subject             — Short title or thread subject (superseded by `action`).
+  #   participants        — List of names or emails; empty for self-events (dropped —
+  #                          name people in `summary` or link a contact via
+  #                          `related_*` / the world graph).
+  #   summary / related_domain / related_asset / related_account / action_items /
+  #   ingestion_log_ref   — Same meaning as the canonical fields above.
+  - id: null
+    ts: null
+    skill: null
+    action: ""
     summary: ""
     related_domain: null
+    related_project: null
     related_asset: null
     related_account: null
     action_items: []

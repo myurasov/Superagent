@@ -170,11 +170,19 @@ def kind_for_old_row(row: dict[str, Any]) -> str:
 
 
 def kind_for_new_row(row: dict[str, Any]) -> str:
+    """Map a new-format interaction-log row to an event kind.
+
+    `action` wins when it names a known milestone; otherwise the row is an
+    `ingest_run` only when `skill` is exactly `ingest` or an `ingest-<source>`
+    stem. Compound free-text values (`"ingest + log-event"`) are NOT ingest
+    runs — they derive as `skill_run` like every other non-stem value (per
+    contracts/events-stream.md § "Canonical row shape").
+    """
     action = str(row.get("action") or "").strip()
     if action in KIND_BY_NEW_ACTION:
         return KIND_BY_NEW_ACTION[action]
     skill = str(row.get("skill") or "").strip()
-    if skill.startswith("ingest"):
+    if skill == "ingest" or skill.startswith("ingest-"):
         return "ingest_run"
     return "skill_run"
 

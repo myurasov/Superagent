@@ -64,14 +64,14 @@ ILOG_NEW_ROW_DEFAULT_KIND = {
     "skill": "log-event",
     "summary": "User reported insurance reinstated. Confirmed via Gmail thread.",
     "related_domain": "home",
-    "related_project": "mortgage-1380-insurance",
+    "related_project": "mortgage-insurance-lapse",
 }
 
 ILOG_OLD_ROW = {
     "timestamp": "2026-05-20T08:00:00-07:00",
     "type": "email_sent",
     "subject": "Sent dispute letter to FasTrak",
-    "participants": ["Mikhail"],
+    "participants": ["Alex"],
     "summary": "Dispute letter for 3 toll notices sent.",
     "related_domain": "vehicles",
 }
@@ -139,7 +139,7 @@ def test_new_format_ilog_row_derives(tmp_path: Path) -> None:
     ev2 = next(e for e in q2 if e.get("source") == "interaction-log.yaml#ilog-2026-06-20-001")
     assert ev2["kind"] == "skill_run"
     assert ev2["subject"] == "User reported insurance reinstated."
-    assert "project:mortgage-1380-insurance" in ev2["entities"]
+    assert "project:mortgage-insurance-lapse" in ev2["entities"]
 
 
 def test_old_format_ilog_row_derives(tmp_path: Path) -> None:
@@ -381,3 +381,16 @@ def test_log_window_reads_derived_partition(tmp_path: Path) -> None:
             "history_entry", "skill_run"} <= kinds
     # 2 legacy + 1 old-format + 2 new-format + 1 history entry (2026-07-05).
     assert len(rows) == 6
+
+
+def test_kind_for_new_row_ingest_requires_exact_stem() -> None:
+    """`ingest_run` only for skill == ingest or ingest-<source>; compound text is skill_run."""
+    kind = events_derive.kind_for_new_row
+    assert kind({"skill": "ingest", "action": "run"}) == "ingest_run"
+    assert kind({"skill": "ingest-simplefin", "action": "run"}) == "ingest_run"
+    assert kind({"skill": "ingest + log-event (update)", "action": "run"}) == "skill_run"
+    assert kind({"skill": "ingestion-review", "action": "run"}) == "skill_run"
+    assert kind({"skill": "ingest_csv", "action": "run"}) == "skill_run"
+    assert kind({"skill": None, "action": "note"}) == "skill_run"
+    # `action` mapping still wins over the skill.
+    assert kind({"skill": "ingest", "action": "file_source"}) == "source_added"
