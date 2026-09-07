@@ -27,6 +27,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Integration: `add-project --workflow <id>` (specified in skill markdown; full instantiation flow documented in skill + procedures).
 - Lessons-learned loop: at completion, the user is prompted "anything to capture for next time?" — the answer appends to `_memory/procedures.yaml` cross-referenced from the workflow id.
 
+_Retired in 0.8.0 — see roadmap._
+
 ### #3 — World model YAML — entity graph ✓
 
 **Status**: Implemented (also closes perf-improvement-ideas BB-4).
@@ -70,6 +72,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Tests: `tests/test_log_summarize_and_diff.py::test_snapshot_diff_detects_added_row`.
 - Falls through to live `_memory/` when target checkpoint is missing.
 
+_Retired in 0.8.0 — see roadmap._
+
 ### #9 — Time-shape vs entity-shape vs event-shape ✓
 
 **Status**: Implemented as taxonomy.
@@ -84,7 +88,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 **Status**: Implemented as opt-in schema.
 
 - Schema addition: `parent` field on `domains-index.yaml.domains[]` and `projects-index.yaml.projects[]`.
-- Contract: `procedures.md` § 22 "Hierarchies Contract".
+- Contract: `procedures.md` § 22 "Hierarchies Contract". _Contract retired in 0.8.0 (orphaned; the `parent` field itself stays) — see roadmap._
 - Folder convention: child folders nest under parent's path.
 - Default: `parent: null` (flat).
 
@@ -119,6 +123,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Five scenarios: cancel-subscriptions, trial-end-impact, bill-shock, balance-floor, project-overrun.
 - Output to stdout + optional `Outbox/scenarios/<name>.md`.
 - Tests: `tests/test_play_and_scenarios.py::test_scenarios_*` (3 tests).
+
+_Retired in 0.8.0 — see roadmap._
 
 ### #16 — Events stream as unifying timeline ✓
 
@@ -195,6 +201,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Custom overlay support: `_custom/playbooks/<name>.yaml` overrides framework playbook.
 - Tests: `tests/test_play_and_scenarios.py::test_play_*` (2 tests).
 
+_Retired in 0.8.0 — see roadmap._
+
 ### #22 — Time-windowed views over append-only logs ✓
 
 **Status**: Implemented (also closes perf-improvement-ideas MI-2).
@@ -212,6 +220,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Contract: `procedures.md` § 34 "Working-set Contract".
 - Privacy: paths + sizes only — never contents.
 
+_Retired in 0.8.0 — see roadmap._
+
 ### #24 — First-class decisions log ✓
 
 **Status**: Implemented.
@@ -222,6 +232,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Schema: confidence, reversibility, alternatives_considered, rationale, review_at, outcome, revisited.
 - Surface windows: `weekly-review` (decisions made this week), `monthly-review` (decisions due to review).
 
+_Skill retired in 0.8.0 (the `decisions.yaml` store + contract stay) — see roadmap._
+
 ### #25 — Notification policy as configuration ✓
 
 **Status**: Implemented.
@@ -231,6 +243,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Contract: `procedures.md` § 31 "Notification Policy Contract".
 - Auto-create-task: missing-task auto-creation idempotent across runs.
 - Per-rule `where`: which skills consume it; per-rule `severity` drives placement.
+
+_Retired in 0.8.0 — see roadmap._
 
 ---
 
@@ -246,11 +260,11 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 
 ## Cross-cutting changes
 
-- **`config.yaml`** extended with new policy blocks: `events`, `audit`, `tags`, `decisions`, `briefing_cache`, `session`, `telemetry`, `sensitive`, `visibility`, `handles`, `outbox`, `inbox_triage`, `anti_patterns`.
-- **`workspace_init.py`** scaffolds new folders: `Outbox/{drafts,staging,sent,sealed}/`, `_memory/{_briefings,_artifacts,_session,_telemetry,_checkpoints,sensitive,events}/`, plus copies the new memory templates.
+- **`config.yaml`** extended with new policy blocks: `events`, `audit`, `tags`, `decisions`, `briefing_cache`, `session`, `telemetry`, `sensitive`, `visibility`, `handles`, `outbox`, `inbox_triage`, `anti_patterns`. _`briefing_cache`, `session`, `telemetry` retired in 0.8.0 — see roadmap._
+- **`workspace_init.py`** scaffolds new folders: `Outbox/{drafts,staging,sent,sealed}/`, `_memory/{_briefings,_artifacts,_session,_telemetry,_checkpoints,sensitive,events}/`, plus copies the new memory templates. _`_artifacts/`, `_session/`, `_telemetry/`, `_checkpoints/` eager scaffold retired in 0.8.0 — see roadmap; `_memory/_checkpoints/<version>/` returned lazily in 0.18.0 as the migration checkpoint dir._
 - **`AGENTS.md`** extended with: read-budget policy, local-first read order, operational handles, visibility/sensitive tier, provenance, time/entity/event-shape taxonomy, prompt-cache discipline.
 - **`procedures.md`** extended with 23 new sections (§ 17 through § 39).
 - **8 new memory templates** + new fields on existing templates.
-- **5 starter workflow templates** + 5 starter playbooks.
+- **5 starter workflow templates** + 5 starter playbooks. _Retired in 0.8.0 — see roadmap._
 - **8 new skills** + 14 new Python tools (all with tests).
 - **Test count grew from 43 → 96** (53 new tests).

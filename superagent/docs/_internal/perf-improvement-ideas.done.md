@@ -29,7 +29,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 
 ### QW-3 — Read-budget policy in AGENTS.md ✓
 
-- AGENTS.md: § "Read budget (token efficiency)" — explicit rule that for files > 200 lines, Grep first then `Read --offset --limit`; batch parallel reads; use the manifest; use briefing cache; use log summaries.
+- AGENTS.md: § "Read budget (token efficiency)" — explicit rule that for files > 200 lines, Grep first then `Read --offset --limit`; batch parallel reads; use the manifest; use briefing cache; use log summaries. _Briefing cache and log summaries retired in 0.8.0 — see roadmap._
 - Mirrored in `procedures.md` § 38 "Local-first Read Order".
 - Anti-pattern scanner enforces (`tools/anti_patterns.py`).
 
@@ -40,6 +40,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Output: `<file>.summary.yaml` sibling with totals, last_30_days breakdown, last_7_days breakdown, notable rows.
 - Tests: `tests/test_log_summarize_and_diff.py::test_log_summarize_interaction_log`.
 
+_Retired in 0.8.0 — see roadmap._
+
 ### QW-5 — Pre-rendered briefing cache ✓
 
 - Tool: `tools/briefing_cache.py` (get / put / list / evict).
@@ -48,6 +50,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Config: `config.preferences.briefing_cache.{enabled, ttl_minutes, invalidate_on_source_mtime}`.
 - Contract: `procedures.md` § 32 "Briefing Cache Contract".
 - Tests: `tests/test_briefing_cache.py` (4 tests).
+
+_Retired in 0.8.0 — see roadmap._
 
 ### QW-6 — Real LLM-generated `_summary.md` for the Sources cache ✓
 
@@ -63,7 +67,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 
 - Codified as `procedures.md` § 38 "Local-first Read Order" — explicit AND-condition for falling through to live source.
 - Mirrored in `AGENTS.md` § "Local-first read order".
-- Anti-pattern scanner catches violations (AP-3, AP-5, AP-6).
+- Anti-pattern scanner catches violations (AP-3, AP-5, AP-6). _AP-6 retired in place in 0.8.0 — see roadmap._
 
 ---
 
@@ -76,6 +80,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Config: `config.preferences.session.{enabled, keep_recent_sessions, expire_days}`.
 - Contract: `procedures.md` § 33 "Per-session Scratchpad Contract".
 - Tests: `tests/test_audit_and_session.py::test_session_*` (2 tests).
+
+_Retired in 0.8.0 — see roadmap._
 
 ### MI-2 — Time-partitioned interaction log + events stream ✓
 
@@ -99,6 +105,8 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - Implemented via the same `tools/briefing_cache.py` (QW-5).
 - Convention: every skill whose output is a candidate for re-read writes to `_memory/_artifacts/<skill>/<key>.md` with sibling `<key>.meta.yaml` (skill, key, generated_at, ttl_minutes, inputs_hash, size_bytes).
 - The Supertailor's strategic pass surfaces skills that NEVER cache-hit (candidates for shorter TTL or different cache key).
+
+_Retired in 0.8.0 — see roadmap._
 
 ---
 
@@ -146,7 +154,7 @@ Items NOT in this log remain in the original brainstorm doc as future candidates
 - **BB-1** — Embeddings for semantic retrieval — separate roadmap item.
 - **BB-2-a** — Anthropic prompt-cache alignment in a CLI wrapper.
 - **BB-3** — Pre-warmed cadence briefings (cron / launchd).
-- **Measurement** section (full telemetry + A/B framework) — partially: working-sets.jsonl ships per item #23; telemetry config block lands in `config.yaml`; the actual A/B harness is deferred.
+- **Measurement** section (full telemetry + A/B framework) — partially: working-sets.jsonl ships per item #23; telemetry config block lands in `config.yaml`; the actual A/B harness is deferred. _working-sets and the `telemetry` config block retired in 0.8.0 — see roadmap._
 
 ---
 

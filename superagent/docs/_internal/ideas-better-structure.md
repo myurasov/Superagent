@@ -555,13 +555,13 @@ The cadence skills consume this, generate the surfacing block. User edits the po
 If you can do **3** of these in the next quarter, do these:
 
 1. **#5 Inbox → Triage → File pipeline** — converts the gmail-ingestor's per-attachment dumps into actual filed Sources, closes the loop on email ingestion.
-2. **#6 Differential snapshots** — small tool, big insight ("what changed this week").
+2. **#6 Differential snapshots** — small tool, big insight ("what changed this week"). _Retired in 0.8.0 — see roadmap._
 3. **#4 Provenance + facts-with-sources** — establishes the discipline before the schema fills with un-sourced facts.
 
 If you can do **3 more** in the quarter after, do these:
 
 4. **#3 World model entity graph** — unlocks "show me everything related to X" as a real query.
-5. **#21 Skill bundles / playbooks** — captures recurring workflows that today are re-typed each time.
+5. **#21 Skill bundles / playbooks** — captures recurring workflows that today are re-typed each time. _Retired in 0.8.0 — see roadmap._
 6. **#16 Unified events stream** — sets up the foundation for #6, #17, #22, #24.
 
 The remaining ideas are valuable but situational — pursue when the specific pain emerges.
