@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -116,11 +117,52 @@ def normalize_handle(value: str | None, kind_default: str = "other") -> str | No
     return f"{kind_default}:{raw}"
 
 
+# Same slug class `tools/handles.py` accepts: lowercase, digits, `_`, `-`.
+# Applied ONLY to contact-typed refs — other kinds (e.g. bill ids carrying an
+# uppercase timestamp marker) are deliberately left ungated.
+_CONTACT_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+
+# `for_member` sentinels documented in the important-dates / documents-index
+# templates. They are not contacts; matched case-insensitively.
+_FOR_MEMBER_SENTINELS = frozenset({"self", "household", "world"})
+
+
+def normalize_contact_ref(value: Any) -> str | None:
+    """Return a canonical contact handle for `value`, or None when it is prose.
+
+    Accepts either an explicit handle (contains `:`) or a bare slug in the
+    class `handles.py` uses. Free-text names, phone numbers, emails and the
+    like return None so callers can skip (and count) them rather than emit a
+    dangling `contact:<free text>` edge.
+    """
+    if not value or not isinstance(value, str):
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    if ":" in raw:
+        return raw
+    if _CONTACT_SLUG_RE.match(raw):
+        return f"contact:{raw}"
+    return None
+
+
+def is_for_member_sentinel(value: Any) -> bool:
+    """True when a `for_member` value is one of the self/household/world sentinels."""
+    return isinstance(value, str) and value.strip().lower() in _FOR_MEMBER_SENTINELS
+
+
 def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Walk every entity-shape YAML and produce nodes + edges from scratch."""
+    """Walk every entity-shape YAML and produce nodes + edges from scratch.
+
+    Free-text contact refs (stakeholders / primary_contacts / provider-style
+    fields whose value is not a handle or slug) are skipped; one aggregated
+    summary line goes to stderr when any were dropped.
+    """
     memory = workspace / "_memory"
     nodes: dict[str, dict[str, Any]] = {}
     edges: list[dict[str, Any]] = []
+    skipped_contact_refs: dict[str, int] = defaultdict(int)
 
     def add_node(handle: str, kind: str, path: str, label: str = "",
                  tags: list[str] | None = None) -> None:
@@ -148,90 +190,131 @@ def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dic
             return
         edges.append({"from": from_h, "to": to_h, "kind": kind, "evidence": evidence})
 
+    def resolve_target(fname: str, field: str, value: Any) -> str | None:
+        """Canonical target handle for a cross-ref field value, or None to skip.
+
+        Contact-typed fields go through `normalize_contact_ref` so prose never
+        becomes an edge endpoint; every other kind keeps the permissive
+        `normalize_handle` path (bill / asset ids are not slug-constrained).
+        """
+        target_kind = _kind_for_field(field)
+        if field == "for_member" and is_for_member_sentinel(value):
+            return None
+        if target_kind == "contact":
+            target = normalize_contact_ref(value)
+            if target is None and isinstance(value, str) and value.strip():
+                skipped_contact_refs[fname] += 1
+            return target
+        if value is None or isinstance(value, (dict, list)):
+            return None
+        return normalize_handle(str(value), target_kind)
+
+    edge_fields = (
+        ("related_domain", "scoped"),
+        ("related_project", "scoped"),
+        ("related_asset", "related_asset"),
+        ("related_account", "pay_from"),
+        ("pay_from_account", "pay_from"),
+        ("provider", "provider"),
+        ("contact", "contact"),
+        ("for_member", "for_member"),
+        ("parent", "lives_under"),
+        ("workflow", "instantiated_from"),
+        ("ordered_by", "ordered_by"),
+        ("primary_care", "provider"),
+        ("pharmacy", "provider"),
+        ("prescribed_by", "provider"),
+        ("asset", "related_asset"),
+        ("account", "pay_from"),
+    )
+    # (row field, edge kind, kind of the target node). Values may be bare id
+    # strings or {<target_kind>: <id>, ...} objects (e.g. accounts-index
+    # `linked_accounts` rows carry relationship metadata alongside the id).
+    linked_fields = (
+        ("linked_accounts", "linked_account", "account"),
+        ("linked_assets", "related_asset", "asset"),
+    )
+
+    def process_row(fname: str, kind: str, id_field: str, label_field: str,
+                    row: dict[str, Any], extra_tags: list[str]) -> None:
+        rid = row.get(id_field)
+        if not rid:
+            return
+        handle = row.get("handle") or f"{kind}:{rid}"
+        label = row.get(label_field) or rid
+        tags = row.get("tags") or []
+        tags = list(tags) if isinstance(tags, list) else []
+        add_node(handle, kind, f"_memory/{fname}#{rid}",
+                 label=str(label), tags=tags + extra_tags)
+        for field, kind_label in edge_fields:
+            v = row.get(field)
+            if v in (None, "", []):
+                continue
+            items = v if isinstance(v, list) else [v]
+            for item in items:
+                target = resolve_target(fname, field, item)
+                if target:
+                    add_edge(handle, target, kind_label,
+                             f"{fname}.<{rid}>.{field}")
+        for field, kind_label, target_kind in linked_fields:
+            for item in (row.get(field) or []):
+                ref = item.get(target_kind) if isinstance(item, dict) else item
+                target = normalize_handle(ref, target_kind) if isinstance(ref, str) else None
+                if target:
+                    add_edge(handle, target, kind_label, f"{fname}.<{rid}>.{field}")
+        for t in tags:
+            if isinstance(t, str) and t:
+                # Materialize the tag node implicitly so the validate
+                # pass doesn't see the edge as orphaned.
+                add_node(f"tag:{t}", "tag",
+                         path=f"_memory/tags.yaml#{t}",
+                         label=t, tags=[])
+                add_edge(handle, f"tag:{t}", "tagged",
+                         f"{fname}.<{rid}>.tags")
+        for field, kind_label in (("stakeholders", "stakeholder"),
+                                  ("primary_contacts", "rolodex_member")):
+            for ref in (row.get(field) or []):
+                target = normalize_contact_ref(ref)
+                if target:
+                    add_edge(handle, target, kind_label, f"{fname}.<{rid}>.{field}")
+                elif isinstance(ref, str) and ref.strip():
+                    skipped_contact_refs[fname] += 1
+
+    # (file, [(list key, extra node tags), ...], kind, id field, label field).
+    # projects-index keeps completed-then-archived rows under a sibling
+    # `archived` list (contracts/projects.md § lifecycle); they stay resolvable
+    # handles, tagged `archived`.
     spec = [
-        ("domains-index.yaml", "domains", "domain", "id", "name"),
-        ("projects-index.yaml", "projects", "project", "id", "name"),
-        ("contacts.yaml", "contacts", "contact", "id", "name"),
-        ("assets-index.yaml", "assets", "asset", "id", "name"),
-        ("accounts-index.yaml", "accounts", "account", "id", "name"),
-        ("bills.yaml", "bills", "bill", "id", "name"),
-        ("subscriptions.yaml", "subscriptions", "subscription", "id", "name"),
-        ("appointments.yaml", "appointments", "appointment", "id", "title"),
-        ("important-dates.yaml", "dates", "important_date", "id", "title"),
-        ("documents-index.yaml", "documents", "document", "id", "title"),
-        ("sources-index.yaml", "sources", "source", "id", "title"),
-        ("decisions.yaml", "decisions", "decision", "id", "decision"),
-        ("tags.yaml", "tags", "tag", "id", "id"),
+        ("domains-index.yaml", [("domains", [])], "domain", "id", "name"),
+        ("projects-index.yaml", [("projects", []), ("archived", ["archived"])],
+         "project", "id", "name"),
+        ("contacts.yaml", [("contacts", [])], "contact", "id", "name"),
+        ("assets-index.yaml", [("assets", [])], "asset", "id", "name"),
+        ("accounts-index.yaml", [("accounts", [])], "account", "id", "name"),
+        ("bills.yaml", [("bills", [])], "bill", "id", "name"),
+        ("subscriptions.yaml", [("subscriptions", [])], "subscription", "id", "name"),
+        ("appointments.yaml", [("appointments", [])], "appointment", "id", "title"),
+        ("important-dates.yaml", [("dates", [])], "important_date", "id", "title"),
+        ("documents-index.yaml", [("documents", [])], "document", "id", "title"),
+        ("sources-index.yaml", [("sources", [])], "source", "id", "title"),
+        ("decisions.yaml", [("decisions", [])], "decision", "id", "decision"),
+        ("tags.yaml", [("tags", [])], "tag", "id", "id"),
     ]
-    for fname, list_key, kind, id_field, label_field in spec:
-        path = memory / fname
-        data = load_yaml(path) or {}
-        rows = data.get(list_key) or []
-        for row in rows:
-            if not isinstance(row, dict):
-                continue
-            rid = row.get(id_field)
-            if not rid:
-                continue
-            handle = row.get("handle") or f"{kind}:{rid}"
-            label = row.get(label_field) or rid
-            tags = row.get("tags") or []
-            add_node(handle, kind, f"_memory/{fname}#{rid}",
-                     label=str(label), tags=tags if isinstance(tags, list) else [])
-            edge_fields = (
-                ("related_domain", "scoped"),
-                ("related_project", "scoped"),
-                ("related_asset", "related_asset"),
-                ("related_account", "pay_from"),
-                ("pay_from_account", "pay_from"),
-                ("provider", "provider"),
-                ("contact", "contact"),
-                ("for_member", "for_member"),
-                ("parent", "lives_under"),
-                ("workflow", "instantiated_from"),
-                ("ordered_by", "ordered_by"),
-                ("primary_care", "provider"),
-                ("pharmacy", "provider"),
-                ("prescribed_by", "provider"),
-                ("asset", "related_asset"),
-                ("account", "pay_from"),
-            )
-            for field, kind_label in edge_fields:
-                v = row.get(field)
-                if v in (None, "", []):
-                    continue
-                if isinstance(v, list):
-                    for item in v:
-                        target = normalize_handle(item, _kind_for_field(field))
-                        if target:
-                            add_edge(handle, target, kind_label,
-                                     f"{fname}.<{rid}>.{field}")
-                else:
-                    target = normalize_handle(str(v), _kind_for_field(field))
-                    if target:
-                        add_edge(handle, target, kind_label,
-                                 f"{fname}.<{rid}>.{field}")
-            for t in (row.get("tags") or []):
-                if isinstance(t, str) and t:
-                    # Materialize the tag node implicitly so the validate
-                    # pass doesn't see the edge as orphaned.
-                    add_node(f"tag:{t}", "tag",
-                             path=f"_memory/tags.yaml#{t}",
-                             label=t, tags=[])
-                    add_edge(handle, f"tag:{t}", "tagged",
-                             f"{fname}.<{rid}>.tags")
-            for stake in (row.get("stakeholders") or []):
-                if isinstance(stake, str) and stake:
-                    target = normalize_handle(stake, "contact")
-                    if target:
-                        add_edge(handle, target, "stakeholder",
-                                 f"{fname}.<{rid}>.stakeholders")
-            for member in (row.get("primary_contacts") or []):
-                if isinstance(member, str) and member:
-                    target = normalize_handle(member, "contact")
-                    if target:
-                        add_edge(handle, target, "rolodex_member",
-                                 f"{fname}.<{rid}>.primary_contacts")
+    for fname, list_keys, kind, id_field, label_field in spec:
+        data = load_yaml(memory / fname) or {}
+        if not isinstance(data, dict):
+            continue
+        for list_key, extra_tags in list_keys:
+            for row in (data.get(list_key) or []):
+                if isinstance(row, dict):
+                    process_row(fname, kind, id_field, label_field, row, extra_tags)
+
+    if skipped_contact_refs:
+        total = sum(skipped_contact_refs.values())
+        per_file = ", ".join(f"{f}: {n}" for f, n in sorted(skipped_contact_refs.items()))
+        print(f"warn: skipped {total} free-text contact ref(s) ({per_file}); "
+              f"use contact ids (contact:<slug>) per contracts/operational-handles.md",
+              file=sys.stderr)
 
     return list(nodes.values()), edges
 

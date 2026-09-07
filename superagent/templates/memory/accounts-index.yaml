@@ -29,6 +29,18 @@ accounts:
   #   beneficiaries     — List of beneficiary names (relevant for retirement / life ins).
   #   linked_bills      — List of bill ids paid from this account.
   #   linked_subs       — List of subscription ids charged to this account.
+  #   linked_assets     — List of asset ids this account funds or serves (e.g. a toll
+  #                        transponder account → the vehicles on it; a mortgage → the home).
+  #                        tools/world.py emits an account → asset `related_asset` edge each.
+  #   linked_accounts   — List of account-to-account links. Each row is an OBJECT (not a
+  #                        bare id) because the relationship is worth keeping:
+  #     account         —   The other account's id (required).
+  #     relationship    —   Short snake_case label, e.g. "auto_replenish_payment_method",
+  #                          "overdraft_backup", "sweep_target", "funding_source".
+  #     since           —   ISO 8601 date the link was set up; null if unknown.
+  #     notes           —   Free-form.
+  #                       tools/world.py emits an account → account `linked_account` edge
+  #                          from each row's `account` key.
   #   low_balance_threshold — USD; if balance dips below, P0 task auto-created.
   #                            Default from config.preferences.money.low_balance_default.
   #   plaid_item_id     — Internal id from Plaid ingestor; null if not Plaid-linked.
@@ -98,6 +110,8 @@ accounts:
     beneficiaries: []
     linked_bills: []
     linked_subs: []
+    linked_assets: []
+    linked_accounts: []   # e.g. [{account: "", relationship: "", since: null, notes: ""}]
     low_balance_threshold: null
     plaid_item_id: null
     ingest_source: "manual"
