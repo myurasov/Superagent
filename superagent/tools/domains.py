@@ -12,7 +12,16 @@ helper that any skill / tool calls before writing to a domain markdown file:
     ensure_folder(workspace, framework, "health")    # creates Domains/Health/ + 5 files
 
 The shipped `_memory/domains-index.yaml` template still REGISTERS all 12
-default domains; the folders themselves are absent until earned.
+default domains; the folders themselves are absent until earned. When a
+folder is first materialized, the matching index row is stamped
+(`created` if still null, `last_updated` always) so materialized domains
+carry timestamps; repeat calls leave the index untouched.
+
+The stamp is a surgical text edit — only the two timestamp lines of the
+target row change; the maintenance banner, the per-field schema comments and
+every other row stay byte-identical. The result is verified by re-parsing;
+only if that check fails does the tool fall back to a full `yaml.safe_dump`
+(which drops in-body comments but keeps the leading header block).
 
 CLI:
 
@@ -23,6 +32,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import re
 import shutil
 import sys
@@ -36,17 +46,56 @@ from superagent.tools.workspace_init import DEFAULT_DOMAINS, render_domain_file
 DOMAIN_FILES = ("info", "status", "history", "rolodex", "sources")
 
 
+def now_iso() -> str:
+    return dt.datetime.now().astimezone().isoformat(timespec="seconds")
+
+
 def workspace_default(framework: Path) -> Path:
     return framework.parent / "workspace"
 
 
+def domains_index_path(workspace: Path) -> Path:
+    return workspace / "_memory" / "domains-index.yaml"
+
+
 def load_domains_index(workspace: Path) -> dict[str, Any]:
     """Load `_memory/domains-index.yaml`. Empty stub if missing."""
-    path = workspace / "_memory" / "domains-index.yaml"
+    path = domains_index_path(workspace)
     if not path.exists():
         return {"domains": []}
     with path.open() as fh:
         return yaml.safe_load(fh) or {"domains": []}
+
+
+def _write_atomic(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+
+
+def _leading_comments(text: str) -> str:
+    """Return the file's leading run of `#` / blank lines (the header block)."""
+    out: list[str] = []
+    for line in text.splitlines(keepends=True):
+        if line.strip() and not line.lstrip().startswith("#"):
+            break
+        out.append(line)
+    return "".join(out)
+
+
+def save_domains_index(workspace: Path, data: dict[str, Any], *, header: str = "") -> None:
+    """Re-dump `_memory/domains-index.yaml` atomically, preserving key order.
+
+    This is a full `yaml.safe_dump`: it drops every in-body comment and
+    restyles scalars / flow mappings, so it is the LAST resort —
+    `stamp_index_row` prefers a surgical text edit and only lands here when
+    that edit cannot be verified. `header` (typically the file's leading
+    `#` block from `_leading_comments`) is prepended verbatim so the
+    maintenance banner survives the re-dump.
+    """
+    body = yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
+    _write_atomic(domains_index_path(workspace), header + body)
 
 
 def lookup_domain(workspace: Path, domain_id: str) -> dict[str, Any] | None:
@@ -56,12 +105,123 @@ def lookup_domain(workspace: Path, domain_id: str) -> dict[str, Any] | None:
     return None
 
 
+# Scalars that count as "no value yet" for `created` in the surgical stamp.
+_NULLISH = frozenset({"", "~", "null", "Null", "NULL", '""', "''"})
+
+
+def _row_block(lines: list[str], domain_id: str) -> tuple[int, int, int] | None:
+    """Locate the `- id: <domain_id>` list item inside `lines`.
+
+    Returns `(start, end, key_indent)`: `lines[start]` is the id line, `end`
+    is the index of the first line past the block (next sibling item, a
+    shallower non-blank non-comment line, or EOF) and `key_indent` is the
+    column the item's keys sit at. None when no id line matches — e.g. a
+    flow-style row or an id carrying an inline comment.
+    """
+    id_re = re.compile(
+        r"^(?P<indent>[ ]*)-(?P<gap>[ ]+)id:[ ]*(?P<q>[\"']?)"
+        + re.escape(domain_id)
+        + r"(?P=q)[ ]*$"
+    )
+    for start, line in enumerate(lines):
+        m = id_re.match(line.rstrip("\r\n"))
+        if not m:
+            continue
+        indent = len(m.group("indent"))
+        key_indent = indent + 1 + len(m.group("gap"))
+        end = start + 1
+        while end < len(lines):
+            stripped = lines[end].strip()
+            if stripped and not stripped.startswith("#"):
+                cur = len(lines[end]) - len(lines[end].lstrip(" "))
+                if cur <= indent:
+                    break
+            end += 1
+        return start, end, key_indent
+    return None
+
+
+def _stamp_text(text: str, domain_id: str, ts: str) -> str | None:
+    """Return `text` with the target row's timestamp lines stamped, else None.
+
+    Rewrites `created: <nullish>` and `last_updated: <anything>` in place
+    (preserving indent and line ending); a `created` that already holds a
+    value is left alone. Keys missing from the row are inserted right after
+    the id line (or after the last timestamp line already present). Nothing
+    else in the file is touched. None means the row could not be located as
+    an editable block-style item.
+    """
+    lines = text.splitlines(keepends=True)
+    loc = _row_block(lines, domain_id)
+    if loc is None:
+        return None
+    start, end, key_indent = loc
+    prefix = " " * key_indent
+    key_re = re.compile(rf"^{prefix}(created|last_updated):[ ]*(.*?)[ ]*$")
+    nl = "\r\n" if lines[start].endswith("\r\n") else "\n"
+    seen: set[str] = set()
+    anchor = start
+    for i in range(start + 1, end):
+        body = lines[i].rstrip("\r\n")
+        m = key_re.match(body)
+        if not m:
+            continue
+        key, value = m.group(1), m.group(2)
+        seen.add(key)
+        anchor = i
+        if key == "created" and value not in _NULLISH:
+            continue
+        lines[i] = f'{prefix}{key}: "{ts}"' + lines[i][len(body):]
+    if not lines[start].endswith(("\n", "\r")):
+        lines[start] += nl
+    missing = [k for k in ("created", "last_updated") if k not in seen]
+    for offset, key in enumerate(missing, start=1):
+        lines.insert(anchor + offset, f'{prefix}{key}: "{ts}"{nl}')
+    return "".join(lines)
+
+
+def stamp_index_row(workspace: Path, domain_id: str, *, now: str | None = None) -> bool:
+    """Stamp the `domains-index.yaml` row for `domain_id` with timestamps.
+
+    Sets `created` only when it is null / missing and `last_updated`
+    unconditionally, both to `now` (ISO 8601 with offset; defaults to the
+    current local time). The edit is surgical: only those two lines of the
+    target row change and the rest of the file — header banner, schema
+    comments, every other row — stays byte-identical. The rewritten text is
+    re-parsed and must equal the expected document (target row stamped,
+    everything else dict-equal); if it does not, the tool falls back to a
+    full re-dump that keeps only the leading comment header.
+    Returns True iff a matching row was found and the file was rewritten.
+    """
+    path = domains_index_path(workspace)
+    if not path.exists():
+        return False
+    text = path.read_text(encoding="utf-8")
+    data = yaml.safe_load(text) or {"domains": []}
+    rows = data.get("domains", []) or []
+    target = next((r for r in rows if isinstance(r, dict) and r.get("id") == domain_id), None)
+    if target is None:
+        return False
+    ts = now or now_iso()
+    if not target.get("created"):
+        target["created"] = ts
+    target["last_updated"] = ts
+    new_text = _stamp_text(text, domain_id, ts)
+    if new_text is not None and yaml.safe_load(new_text) == data:
+        _write_atomic(path, new_text)
+    else:
+        save_domains_index(workspace, data, header=_leading_comments(text))
+    return True
+
+
 def ensure_folder(workspace: Path, framework: Path, domain_id: str) -> bool:
     """Materialize `Domains/<Name>/` with the 5-file scaffold if not present.
 
     Returns True iff the folder was newly created. Idempotent: subsequent
-    calls are near-no-ops. Raises ValueError when `domain_id` is not
-    registered in `_memory/domains-index.yaml`.
+    calls are near-no-ops and leave `domains-index.yaml` untouched. On first
+    creation the matching index row is stamped via `stamp_index_row`
+    (`created` if null, `last_updated` always). Raises ValueError when
+    `domain_id` is not registered in `_memory/domains-index.yaml`.
     """
     row = lookup_domain(workspace, domain_id)
     if row is None:
@@ -81,6 +241,7 @@ def ensure_folder(workspace: Path, framework: Path, domain_id: str) -> bool:
             name,
         )
         (folder / f"{kind}.md").write_text(body)
+    stamp_index_row(workspace, domain_id)
     return True
 
 
