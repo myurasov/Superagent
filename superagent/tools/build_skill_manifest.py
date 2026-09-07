@@ -40,8 +40,28 @@ def now_iso() -> str:
     return dt.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
-def parse_skill(path: Path) -> dict[str, Any] | None:
-    """Parse one skill markdown file. Returns the manifest row or None."""
+def display_path(path: Path, root: Path | None) -> str:
+    """Return `path` relative to `root` when it lives inside it, else as given.
+
+    The manifest is a committed artifact, so framework rows must never embed
+    a machine-absolute prefix (`/Users/<user>/...`). Overlay rows relativize
+    to the same repo root when the workspace sits inside the checkout and
+    fall back to the raw string when it does not.
+    """
+    if root is None:
+        return str(path)
+    try:
+        return str(path.resolve().relative_to(root.resolve()))
+    except ValueError:
+        return str(path)
+
+
+def parse_skill(path: Path, root: Path | None = None) -> dict[str, Any] | None:
+    """Parse one skill markdown file. Returns the manifest row or None.
+
+    `root` is the directory the emitted `path` field is relativized against
+    (normally the repo root, i.e. the parent of the framework directory).
+    """
     body = path.read_text()
     match = FRONTMATTER_RE.match(body)
     if not match:
@@ -64,7 +84,7 @@ def parse_skill(path: Path) -> dict[str, Any] | None:
     return {
         "name": fm.get("name", path.stem),
         "stem": path.stem,
-        "path": str(path),
+        "path": display_path(path, root),
         "one_line": (fm.get("description") or "").strip().split("\n")[0][:200],
         "triggers": fm.get("triggers") or [],
         "mcp_required": fm.get("mcp_required") or [],
@@ -79,20 +99,30 @@ def parse_skill(path: Path) -> dict[str, Any] | None:
     }
 
 
+FILES_READ_RE = re.compile(
+    r"(?:workspace/)?"
+    r"(_memory/[a-z_-]+\.yaml"
+    r"|Domains/[A-Za-z_-]+/[a-z_-]+\.md"
+    r"|Projects/[a-z0-9_-]+/[a-z_-]+\.md"
+    # Stop at whitespace, closing bracket/paren, and the markdown / prose
+    # punctuation that typically follows an inline-code path (` ] ; ,).
+    r"|Sources/(?:documents|references|_cache)/[^\s\)\]`;,]+)",
+    re.IGNORECASE,
+)
+
+
 def infer_files_read(body: str) -> list[str]:
-    """Heuristic: pull paths under workspace/_memory or Domains/ or Projects/."""
+    """Heuristic: pull paths under workspace/_memory or Domains/ or Projects/.
+
+    Paths are normalized before dedup: an optional leading `workspace/` is
+    dropped (so one row never lists both spellings of the same file) and any
+    trailing `/`, backtick, `;` or `,` swallowed from surrounding markdown is
+    stripped. Returns at most 8 distinct paths, in order of first mention.
+    """
     seen: list[str] = []
-    pattern = re.compile(
-        r"(?:workspace/)?"
-        r"(?:_memory/[a-z_-]+\.yaml"
-        r"|Domains/[A-Za-z_-]+/[a-z_-]+\.md"
-        r"|Projects/[a-z0-9_-]+/[a-z_-]+\.md"
-        r"|Sources/(?:documents|references|_cache)/[^\s\)]+)",
-        re.IGNORECASE,
-    )
-    for match in pattern.finditer(body):
-        path = match.group(0)
-        if path not in seen:
+    for match in FILES_READ_RE.finditer(body):
+        path = match.group(1).rstrip("/`;,")
+        if path and path not in seen:
             seen.append(path)
         if len(seen) >= 8:
             break
@@ -102,10 +132,14 @@ def infer_files_read(body: str) -> list[str]:
 def collect_skills(framework: Path, workspace: Path | None) -> list[dict[str, Any]]:
     """Walk skill directories and return a list of manifest rows."""
     skills: list[dict[str, Any]] = []
+    # Emit repo-relative paths: framework rows become
+    # `superagent/skills/<stem>.md`; overlay rows relativize to the same
+    # root when the workspace lives inside the checkout (see display_path).
+    root = framework.resolve().parent
     framework_dir = framework / "skills"
     if framework_dir.exists():
         for path in sorted(framework_dir.glob("*.md")):
-            row = parse_skill(path)
+            row = parse_skill(path, root)
             if row is not None:
                 row["origin"] = "framework"
                 skills.append(row)
@@ -113,7 +147,7 @@ def collect_skills(framework: Path, workspace: Path | None) -> list[dict[str, An
         custom_dir = workspace / "_custom" / "skills"
         if custom_dir.exists():
             for path in sorted(custom_dir.glob("*.md")):
-                row = parse_skill(path)
+                row = parse_skill(path, root)
                 if row is not None:
                     row["origin"] = "custom"
                     skills.append(row)
