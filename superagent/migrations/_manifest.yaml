@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-09-06T21:34:44+00:00'
+generated_at: '2026-09-07T06:40:03+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -127,3 +127,11 @@ migrations:
   breaking: false
   revertible: true
   estimated_duration: <1 minute
+- to_version: 0.18.0
+  from_version: 0.17.2
+  file: 0.18.0.md
+  title: 'Workspace hygiene: history.md headers, sessions cap, config sources, Outbox
+    README'
+  breaking: false
+  revertible: true
+  estimated_duration: <2 minutes
