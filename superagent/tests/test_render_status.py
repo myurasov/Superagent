@@ -300,3 +300,91 @@ def test_workspace_todo_includes_all_open_tasks(initialized_workspace: Path) -> 
     assert "| Scope |" in body
     # Domain column header should no longer be present.
     assert "| Domain |" not in body
+
+
+def test_archived_project_reported_as_archived_not_unknown(
+    initialized_workspace: Path, capsys
+) -> None:
+    """An archived project is skipped as archived, with its open-task count.
+
+    `projects-index.yaml` keeps archived rows in `archived[]`, and an
+    archived project's status.md is deliberately frozen (per
+    `contracts/projects.md` § 16.9 item 4 its tasks stay in todo.yaml but
+    are no longer surfaced). Skipping is therefore correct, but reporting
+    the id as *unknown* hid the real signal: archival is supposed to close
+    or cancel the project's tasks, so any task left open is a hygiene
+    problem worth naming.
+    """
+    import yaml
+
+    from superagent.tools.render_status import main as render_main
+
+    projects_index = initialized_workspace / "_memory" / "projects-index.yaml"
+    data = yaml.safe_load(projects_index.read_text()) or {}
+    data.setdefault("archived", []).append({
+        "id": "old-project",
+        "name": "Old Project",
+        "status": "archived",
+        "path": "workspace/Archive/2026-08/Projects/old-project",
+    })
+    projects_index.write_text(yaml.safe_dump(data, sort_keys=False))
+
+    for tid, status in (("task-20260601-002", "open"), ("task-20260601-003", "done")):
+        _add_task(initialized_workspace, {
+            "id": tid,
+            "title": f"Leftover {status} task",
+            "description": "",
+            "priority": "P2",
+            "status": status,
+            "created": dt.datetime.now().astimezone().isoformat(),
+            "due_date": None,
+            "completed_date": None,
+            "related_domain": None,
+            "related_project": "old-project",
+            "related_asset": None,
+            "related_account": None,
+            "related_appointment": None,
+            "related_bill": None,
+            "tags": [],
+            "source": "user",
+        })
+
+    rc = render_main(["--workspace", str(initialized_workspace)])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "archived project 'old-project'" in out
+    assert "1 task(s) still open" in out  # the done one must not count
+    assert "unknown project id 'old-project'" not in out
+    # The archive stays frozen — nothing is rendered into the archived path.
+    # (`Archive/` itself is scaffolded by init, so check the project folder.)
+    assert not (initialized_workspace / "Archive" / "2026-08").exists()
+
+
+def test_unknown_project_id_still_reported_as_unknown(
+    initialized_workspace: Path, capsys
+) -> None:
+    """A task pointing at an id in neither `projects[]` nor `archived[]`."""
+    from superagent.tools.render_status import main as render_main
+
+    _add_task(initialized_workspace, {
+        "id": "task-20260601-004",
+        "title": "Task with a dangling project link",
+        "description": "",
+        "priority": "P2",
+        "status": "open",
+        "created": dt.datetime.now().astimezone().isoformat(),
+        "due_date": None,
+        "completed_date": None,
+        "related_domain": None,
+        "related_project": "no-such-project",
+        "related_asset": None,
+        "related_account": None,
+        "related_appointment": None,
+        "related_bill": None,
+        "tags": [],
+        "source": "user",
+    })
+
+    rc = render_main(["--workspace", str(initialized_workspace)])
+    assert rc == 0
+    assert "unknown project id 'no-such-project'" in capsys.readouterr().out

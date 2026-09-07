@@ -367,6 +367,10 @@ def main(argv: list[str] | None = None) -> int:
     projects_data = load_yaml(projects_index) or {}
     projects = projects_data.get("projects") or []
     project_by_id = {p["id"]: p for p in projects if isinstance(p, dict) and p.get("id")}
+    archived_ids = {
+        p["id"] for p in (projects_data.get("archived") or [])
+        if isinstance(p, dict) and p.get("id")
+    }
 
     scopes = []
     if args.scope:
@@ -391,7 +395,20 @@ def main(argv: list[str] | None = None) -> int:
             proj_id = scope[len("project:"):]
             project = project_by_id.get(proj_id)
             if not project:
-                print(f"  skip   unknown project id '{proj_id}'")
+                if proj_id in archived_ids:
+                    # An archived project keeps its tasks in todo.yaml but is
+                    # no longer surfaced (contracts/projects.md § 16.9 item 4),
+                    # so its status.md is deliberately frozen. Any task still
+                    # open is a hygiene signal — archival should have closed
+                    # or cancelled it — so count it rather than stay quiet.
+                    still_open = sum(
+                        len(v) for v in
+                        group_open_by_priority(select_tasks_for_scope(tasks, scope)).values()
+                    )
+                    note = f" — {still_open} task(s) still open" if still_open else ""
+                    print(f"  skip   archived project '{proj_id}'{note}")
+                else:
+                    print(f"  skip   unknown project id '{proj_id}'")
                 continue
             scope_name = project.get("name", proj_id)
             project_path = project.get("path") or f"Projects/{proj_id}"
