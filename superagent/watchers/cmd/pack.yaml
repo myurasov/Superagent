@@ -1,0 +1,41 @@
+# [Do not change manually — managed by Superagent]
+# Watcher pack: cmd (named after its detect type). Schema:
+# contracts/watchlist.md § 4; security posture § 11.
+#
+# Any CLI-reachable source becomes a watcher: the registry row supplies a
+# shell command, the tool runs it with a timeout, requires exit 0, and
+# fingerprints stdout. Replaces what would otherwise be a dedicated fetcher
+# per service (git ls-remote, gh api, a JSON status endpoint via curl, ...).
+#
+# GATED: `cmd` executes shell from a data file. The tool refuses to run it
+# unless `config.preferences.watchlist.allow_cmd: true`; until then every
+# check reports `unreachable` with that reason. The command is never
+# templated from network content. See README.md.
+watcher_version: 1
+id: cmd
+title: "Command — fingerprint the stdout of a shell command"
+description: >-
+  Runs one shell command on each eligible cycle (exit 0 required) and
+  reports changed when the sha256 of its stdout moves.
+kind: generic
+parameterized: true
+params:
+  cmd:
+    required: true
+    description: >-
+      The command to run, exactly as the shell would receive it. Read-only
+      by contract: it must not write, send, or mutate anything.
+
+detect:
+  type: cmd
+  cmd: "{{cmd}}"
+
+probe:
+  kind: always
+
+defaults:
+  cycles: [daily-update]
+  evict_after_days: 30
+  schedule: daily
+  capture_mode: automatic
+  min_check_interval_minutes: 60

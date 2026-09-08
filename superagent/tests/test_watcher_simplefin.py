@@ -1,9 +1,12 @@
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
-"""Tests for `tools/ingest/simplefin.py` (SimpleFin Bridge ingestor).
+"""Tests for the `simplefin` pack handler (`watchers/simplefin/handler.py`).
+
+The handler is loaded BY FILE PATH exactly as `tools/watchlist.py` loads every
+pack handler — never through a package import.
 
 The emphasis is fetch-failure bookkeeping: a refresh that fails must land
-on the RunResult so it reaches `ingestion-log.yaml` and `data-sources.yaml`.
+on the RunResult so it reaches `ingestion-log.yaml` and `watchlist-state.yaml`.
 A read timeout used to escape `except (HTTPError, URLError)` and kill the
 run before anything was written, which made a failed refresh indistinguishable
 from one that never happened.
@@ -17,6 +20,11 @@ from urllib.error import HTTPError, URLError
 
 import pytest
 import yaml
+
+from superagent.tools import watchlist as wl
+
+HANDLER_PATH = Path(__file__).resolve().parents[1] / "watchers" / "simplefin" / "handler.py"
+simplefin = wl.import_handler_module(HANDLER_PATH)
 
 ACCESS_URL = "https://user:pa:ss@bridge.example.com/simplefin"
 
@@ -61,7 +69,7 @@ def _accounts_payload(txn_id: str = "t1", pending: bool = False) -> dict:
 
 
 def _ingestor(ws: Path):
-    from superagent.tools.ingest.simplefin import SimpleFinIngestor
+    SimpleFinIngestor = simplefin.SimpleFinIngestor
 
     _stage_credentials(ws)
     return SimpleFinIngestor(ws)
@@ -74,7 +82,6 @@ def _ingestor(ws: Path):
 
 def test_run_records_read_timeout_as_error_instead_of_raising(tmp_path: Path) -> None:
     """A read timeout is a recorded run error, not a traceback."""
-    from superagent.tools.ingest import simplefin
 
     ingestor = _ingestor(tmp_path / "ws")
     with patch.object(
@@ -99,7 +106,6 @@ def test_run_records_read_timeout_as_error_instead_of_raising(tmp_path: Path) ->
 )
 def test_run_records_http_and_url_errors(tmp_path: Path, exc: Exception, needle: str) -> None:
     """Pre-existing HTTP / network error handling keeps working."""
-    from superagent.tools.ingest import simplefin
 
     ingestor = _ingestor(tmp_path / "ws")
     with patch.object(simplefin, "http_get_json", side_effect=exc):
@@ -112,7 +118,6 @@ def test_run_records_http_and_url_errors(tmp_path: Path, exc: Exception, needle:
 
 def test_run_error_message_names_the_window(tmp_path: Path) -> None:
     """Errors identify which chunk failed, so multi-chunk backfills stay legible."""
-    from superagent.tools.ingest import simplefin
 
     ingestor = _ingestor(tmp_path / "ws")
     with patch.object(simplefin, "http_get_json", side_effect=TimeoutError()):
@@ -122,27 +127,18 @@ def test_run_error_message_names_the_window(tmp_path: Path) -> None:
     assert ".." in result.errors[0]
 
 
-def test_update_source_row_records_the_failure(tmp_path: Path) -> None:
-    """A recorded error must reach data-sources.yaml and bump failure_streak."""
-    from superagent.tools.ingest._base import RunResult
-    from superagent.tools.ingest.simplefin import _update_source_row
-
+def test_cli_refuses_a_live_run_and_points_at_watchlist_harvest(tmp_path: Path, capsys) -> None:
+    """Live pulls go through the watchlist so budget counters and state stay consistent."""
     ws = tmp_path / "ws"
-    ds = ws / "_memory" / "data-sources.yaml"
-    ds.parent.mkdir(parents=True)
-    ds.write_text(yaml.safe_dump({
-        "schema_version": 1,
-        "sources": [{"id": "simplefin", "failure_streak": 2, "last_ingest": "2026-01-01T00:00:00"}],
-    }))
-
-    result = RunResult(source="simplefin", started_at="t0", finished_at="t1")
-    result.errors = ["fetch 2026-08-24..2026-08-26: timed out after 180s"]
-    _update_source_row(ws, "simplefin", result, "ingest-1", window=None)
-
-    row = yaml.safe_load(ds.read_text())["sources"][0]
-    assert row["failure_streak"] == 3
-    assert row["last_run"]["errors"] == result.errors
-    assert row["last_run"]["run_log_id"] == "ingest-1"
+    _stage_credentials(ws)
+    with patch.object(simplefin, "http_get_json") as spy:
+        rc = _run_cli(ws)
+    assert rc == 2
+    assert not spy.called, "no API call happens on a refused live run"
+    err = capsys.readouterr().err
+    assert "watchlist harvest --id simplefin" in err
+    with pytest.raises(SystemExit):
+        _run_cli(ws, "--backfill")  # the flag moved to `watchlist harvest --backfill`
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +147,6 @@ def test_update_source_row_records_the_failure(tmp_path: Path) -> None:
 
 
 def test_run_defaults_to_the_module_timeout(tmp_path: Path) -> None:
-    from superagent.tools.ingest import simplefin
 
     ingestor = _ingestor(tmp_path / "ws")
     with patch.object(simplefin, "http_get_json", return_value=_accounts_payload()) as spy:
@@ -161,7 +156,6 @@ def test_run_defaults_to_the_module_timeout(tmp_path: Path) -> None:
 
 
 def test_run_honors_a_configured_timeout(tmp_path: Path) -> None:
-    from superagent.tools.ingest import simplefin
 
     ingestor = _ingestor(tmp_path / "ws")
     with patch.object(simplefin, "http_get_json", return_value=_accounts_payload()) as spy:
@@ -170,24 +164,9 @@ def test_run_honors_a_configured_timeout(tmp_path: Path) -> None:
     assert spy.call_args.kwargs["timeout"] == 240
 
 
-def test_probe_uses_the_short_probe_timeout(tmp_path: Path) -> None:
-    """Probes ask for balances only; they must not inherit the fetch timeout."""
-    from superagent.tools.ingest import simplefin
-    from superagent.tools.ingest._base import ProbeStatus
-
-    ingestor = _ingestor(tmp_path / "ws")
-    with patch.object(simplefin, "http_get_json", return_value={}) as spy:
-        res = ingestor.probe()
-
-    assert res.status == ProbeStatus.AVAILABLE
-    assert spy.call_args.kwargs["timeout"] == simplefin.PROBE_HTTP_TIMEOUT
-    assert simplefin.PROBE_HTTP_TIMEOUT < simplefin.DEFAULT_HTTP_TIMEOUT
-
-
 def test_cli_timeout_flag_reaches_the_config_row(tmp_path: Path) -> None:
-    from superagent.tools.ingest import simplefin
     from superagent.tools.ingest._base import RunResult
-    from superagent.tools.ingest.simplefin import SimpleFinIngestor
+    SimpleFinIngestor = simplefin.SimpleFinIngestor
 
     ws = tmp_path / "ws"
     _stage_credentials(ws)
@@ -207,9 +186,8 @@ def test_cli_timeout_flag_reaches_the_config_row(tmp_path: Path) -> None:
 
 def test_cli_without_timeout_flag_leaves_it_unset(tmp_path: Path) -> None:
     """Absent flag means the ingestor falls back to DEFAULT_HTTP_TIMEOUT."""
-    from superagent.tools.ingest import simplefin
     from superagent.tools.ingest._base import RunResult
-    from superagent.tools.ingest.simplefin import SimpleFinIngestor
+    SimpleFinIngestor = simplefin.SimpleFinIngestor
 
     ws = tmp_path / "ws"
     _stage_credentials(ws)
@@ -232,8 +210,7 @@ def test_cli_without_timeout_flag_leaves_it_unset(tmp_path: Path) -> None:
 
 
 def test_run_normalizes_and_inserts_transactions(tmp_path: Path) -> None:
-    from superagent.tools.ingest import simplefin
-    from superagent.tools.ingest.simplefin import SimpleFinIngestor
+    SimpleFinIngestor = simplefin.SimpleFinIngestor
 
     ws = tmp_path / "ws"
     ingestor = _ingestor(ws)
@@ -254,8 +231,7 @@ def test_run_normalizes_and_inserts_transactions(tmp_path: Path) -> None:
 
 
 def test_run_skips_transactions_already_in_the_index(tmp_path: Path) -> None:
-    from superagent.tools.ingest import simplefin
-    from superagent.tools.ingest.simplefin import SimpleFinIngestor
+    SimpleFinIngestor = simplefin.SimpleFinIngestor
 
     ws = tmp_path / "ws"
     ingestor = _ingestor(ws)
@@ -272,7 +248,7 @@ def test_run_skips_transactions_already_in_the_index(tmp_path: Path) -> None:
 
 
 def test_split_access_url_handles_a_colon_in_the_password() -> None:
-    from superagent.tools.ingest.simplefin import split_access_url
+    split_access_url = simplefin.split_access_url
 
     base, user, password = split_access_url(ACCESS_URL)
     assert base == "https://bridge.example.com/simplefin"
@@ -331,7 +307,6 @@ def _stage_index(ws: Path, rows: list[dict]) -> Path:
 
 
 def _run_cli(ws: Path, *extra: str) -> int:
-    from superagent.tools.ingest import simplefin
 
     argv = ["ingest-simplefin", "--workspace", str(ws), *extra]
     with patch.object(simplefin.sys, "argv", argv):
@@ -340,8 +315,7 @@ def _run_cli(ws: Path, *extra: str) -> int:
 
 def test_run_reconciles_pending_orphan_against_posted_twin(tmp_path: Path) -> None:
     """End-of-run pass: orphan gets superseded_by + the posted date; counts surface."""
-    from superagent.tools.ingest import simplefin
-    from superagent.tools.ingest.simplefin import SimpleFinIngestor
+    SimpleFinIngestor = simplefin.SimpleFinIngestor
 
     ws = tmp_path / "ws"
     posted_date = simplefin.unix_to_iso_date(1756200000)  # the payload's posted ts
@@ -485,7 +459,7 @@ def test_reconcile_counts_reach_the_ingestion_log(tmp_path: Path) -> None:
 
 
 def test_reconcile_tolerates_a_small_absolute_amount_delta() -> None:
-    from superagent.tools.ingest.simplefin import _plan_reconciliation
+    _plan_reconciliation = simplefin._plan_reconciliation
 
     plan = _plan_reconciliation([
         _stored_row("simplefin:acc1:p1", amount=-12.34),
@@ -495,7 +469,7 @@ def test_reconcile_tolerates_a_small_absolute_amount_delta() -> None:
 
 
 def test_reconcile_rejects_amount_delta_beyond_tolerance() -> None:
-    from superagent.tools.ingest.simplefin import _plan_reconciliation
+    _plan_reconciliation = simplefin._plan_reconciliation
 
     plan = _plan_reconciliation([
         _stored_row("simplefin:acc1:p1", amount=-12.34),
@@ -506,7 +480,7 @@ def test_reconcile_rejects_amount_delta_beyond_tolerance() -> None:
 
 
 def test_reconcile_rejects_a_sign_flip_even_within_tolerance() -> None:
-    from superagent.tools.ingest.simplefin import _plan_reconciliation
+    _plan_reconciliation = simplefin._plan_reconciliation
 
     plan = _plan_reconciliation([
         _stored_row("simplefin:acc1:p1", amount=-0.40),
@@ -517,7 +491,7 @@ def test_reconcile_rejects_a_sign_flip_even_within_tolerance() -> None:
 
 def test_reconcile_tolerance_keeps_the_uniqueness_rule() -> None:
     """Two posted rows inside the tolerance band -> ambiguous, not a guess."""
-    from superagent.tools.ingest.simplefin import _plan_reconciliation
+    _plan_reconciliation = simplefin._plan_reconciliation
 
     plan = _plan_reconciliation([
         _stored_row("simplefin:acc1:p1", amount=-12.34),
@@ -530,7 +504,7 @@ def test_reconcile_tolerance_keeps_the_uniqueness_rule() -> None:
 
 
 def test_reconcile_plan_names_excluded_ids() -> None:
-    from superagent.tools.ingest.simplefin import _plan_reconciliation
+    _plan_reconciliation = simplefin._plan_reconciliation
 
     plan = _plan_reconciliation(
         [_stored_row("simplefin:acc1:p1"), _posted_twin("simplefin:acc1:t1")],
@@ -542,7 +516,6 @@ def test_reconcile_plan_names_excluded_ids() -> None:
 
 def test_reconcile_dry_run_lists_ambiguous_and_stale_ids(tmp_path: Path, capsys) -> None:
     """--reconcile-dry-run prints the skipped orphans and the would-be stale ones."""
-    from superagent.tools.ingest import simplefin
 
     ws = tmp_path / "ws"
     idx = _stage_index(ws, [
@@ -582,7 +555,7 @@ def _today() -> dt.date:
 
 
 def test_mark_stale_pending_flags_old_orphans_and_is_idempotent() -> None:
-    from superagent.tools.ingest.simplefin import mark_stale_pending
+    mark_stale_pending = simplefin.mark_stale_pending
 
     rows = [_stored_row("simplefin:acc1:p1", transacted_at="2026-08-01")]
 
@@ -598,7 +571,7 @@ def test_mark_stale_pending_flags_old_orphans_and_is_idempotent() -> None:
 
 
 def test_mark_stale_pending_never_touches_superseded_rows() -> None:
-    from superagent.tools.ingest.simplefin import mark_stale_pending
+    mark_stale_pending = simplefin.mark_stale_pending
 
     rows = [
         _stored_row("simplefin:acc1:p1", transacted_at="2026-01-05",
@@ -609,7 +582,7 @@ def test_mark_stale_pending_never_touches_superseded_rows() -> None:
 
 
 def test_mark_stale_pending_boundary_is_strictly_older_than_days() -> None:
-    from superagent.tools.ingest.simplefin import mark_stale_pending
+    mark_stale_pending = simplefin.mark_stale_pending
 
     # today 2026-09-06, days 14 -> cutoff 2026-08-23. Exactly 14 days old
     # is NOT stale; 15 days old is.
@@ -624,7 +597,7 @@ def test_mark_stale_pending_boundary_is_strictly_older_than_days() -> None:
 
 
 def test_mark_stale_pending_ignores_non_orphans_and_unparseable_anchors() -> None:
-    from superagent.tools.ingest.simplefin import mark_stale_pending
+    mark_stale_pending = simplefin.mark_stale_pending
 
     rows = [
         _posted_twin("simplefin:acc1:t1", date="2026-01-01", transacted_at="2026-01-01"),
@@ -637,7 +610,8 @@ def test_mark_stale_pending_ignores_non_orphans_and_unparseable_anchors() -> Non
 
 
 def test_apply_reconciliation_clears_a_stale_flag_when_the_twin_arrives() -> None:
-    from superagent.tools.ingest.simplefin import _apply_reconciliation, _plan_reconciliation
+    _apply_reconciliation = simplefin._apply_reconciliation
+    _plan_reconciliation = simplefin._plan_reconciliation
 
     rows = [
         _stored_row("simplefin:acc1:p1", stale_pending=True),
@@ -651,8 +625,7 @@ def test_apply_reconciliation_clears_a_stale_flag_when_the_twin_arrives() -> Non
 
 def test_run_marks_stale_orphans_after_reconciliation_and_saves(tmp_path: Path) -> None:
     """A fetch that inserts nothing still persists newly-flagged stale rows."""
-    from superagent.tools.ingest import simplefin
-    from superagent.tools.ingest.simplefin import SimpleFinIngestor
+    SimpleFinIngestor = simplefin.SimpleFinIngestor
 
     ws = tmp_path / "ws"
     posted_date = simplefin.unix_to_iso_date(1756200000)
@@ -683,8 +656,7 @@ def test_run_marks_stale_orphans_after_reconciliation_and_saves(tmp_path: Path) 
 
 
 def test_run_honours_a_longer_stale_pending_days_override(tmp_path: Path) -> None:
-    from superagent.tools.ingest import simplefin
-    from superagent.tools.ingest.simplefin import SimpleFinIngestor
+    SimpleFinIngestor = simplefin.SimpleFinIngestor
 
     ws = tmp_path / "ws"
     idx = _stage_index(ws, [
@@ -705,8 +677,7 @@ def test_run_honours_a_longer_stale_pending_days_override(tmp_path: Path) -> Non
 
 
 def test_run_dry_run_reports_stale_candidates_without_writing(tmp_path: Path) -> None:
-    from superagent.tools.ingest import simplefin
-    from superagent.tools.ingest.simplefin import SimpleFinIngestor
+    SimpleFinIngestor = simplefin.SimpleFinIngestor
 
     ws = tmp_path / "ws"
     idx = _stage_index(ws, [
@@ -729,29 +700,20 @@ def test_run_dry_run_reports_stale_candidates_without_writing(tmp_path: Path) ->
     assert idx.read_text() == before
 
 
-def test_reconcile_only_reads_stale_pending_days_from_the_data_sources_row(
-    tmp_path: Path, capsys
-) -> None:
-    from superagent.tools.ingest import simplefin
+def test_reconcile_only_honours_the_stale_pending_days_flag(tmp_path: Path, capsys) -> None:
 
     ws = tmp_path / "ws"
     idx = _stage_index(ws, [
         _stored_row("simplefin:acc1:p9", transacted_at="2026-08-07"),  # 30 days old
     ])
-    ds = ws / "_memory" / "data-sources.yaml"
-    ds.write_text(yaml.safe_dump({
-        "schema_version": 1,
-        "sources": [{"id": "simplefin", "enabled": True, "stale_pending_days": 45}],
-    }))
     before = idx.read_text()
 
     with patch.object(simplefin, "_today", return_value=_today()):
-        assert _run_cli(ws, "--reconcile") == 0
+        assert _run_cli(ws, "--reconcile", "--stale-pending-days", "45") == 0
     assert "stale_marked=0" in capsys.readouterr().out
     assert idx.read_text() == before
 
-    # Without the override the default (14d) applies and the row is flagged.
-    ds.unlink()
+    # Without the flag the default (14d) applies and the row is flagged.
     with patch.object(simplefin, "_today", return_value=_today()):
         assert _run_cli(ws, "--reconcile") == 0
     assert "stale_marked=1" in capsys.readouterr().out

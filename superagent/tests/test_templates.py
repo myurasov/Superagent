@@ -33,7 +33,7 @@ REQUIRED_MEMORY_TEMPLATES = [
     "important-dates.yaml",
     "documents-index.yaml",
     "health-records.yaml",
-    "data-sources.yaml",
+    "watchlist-state.yaml",  # 0.19.0: replaces data-sources.yaml (retired)
     "ingestion-log.yaml",
     "insights.yaml",
     "procedures.yaml",
@@ -212,13 +212,18 @@ def _load_config_template(framework_dir: Path) -> dict:
         return yaml.safe_load(fh)
 
 
-def test_config_template_registers_simplefin(framework_dir: Path) -> None:
-    """The shipped finance ingestor appears in both catalogue blocks."""
+def test_config_template_declares_watchlist_preferences(framework_dir: Path) -> None:
+    """0.19.0: the watchlist block ships with the documented defaults and the retired
+    `preferences.ingestion_schedule` is gone from the template (contracts/watchlist.md)."""
     cfg = _load_config_template(framework_dir)
-    finance = cfg["data_sources_configured"]["finance"]
-    assert finance.get("simplefin") is False, "simplefin must be catalogued (off by default)"
-    schedule = cfg["preferences"]["ingestion_schedule"]
-    assert schedule.get("simplefin") == "weekly"
+    wl = cfg["preferences"]["watchlist"]
+    assert wl["path"] == "Sources/Watchlist"
+    assert wl["cycles"] == ["daily-update"]
+    assert wl["evict_after_days"] == 14
+    assert wl["allow_cmd"] is False
+    assert "min_check_interval_minutes" in wl and wl["min_check_interval_minutes"] is None
+    assert "ingestion_schedule" not in cfg["preferences"]
+    assert "data-sources.yaml" not in (framework_dir / "templates" / "memory" / "config.yaml").read_text()
 
 
 def test_config_template_declares_outbox_drafts_stale_days(framework_dir: Path) -> None:

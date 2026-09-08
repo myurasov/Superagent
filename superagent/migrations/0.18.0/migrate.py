@@ -49,6 +49,7 @@ from __future__ import annotations
 import argparse
 import dataclasses as dc
 import datetime as dt
+import importlib.util
 import re
 import shutil
 import subprocess
@@ -361,6 +362,33 @@ def _insert_at(lines: list[str], start: int, end: int) -> int:
     return k
 
 
+def _load_simplefin_handler() -> Any | None:
+    """Return the SimpleFIN normalizer module, or None when unavailable.
+
+    Pre-0.19.0 trees expose it as ``superagent.tools.ingest.simplefin``; from
+    0.19.0 it is the self-contained pack handler
+    ``superagent/watchers/simplefin/handler.py`` and is loaded by file path,
+    exactly as ``tools/watchlist.py`` loads any pack handler.
+    """
+    try:
+        from superagent.tools.ingest import simplefin  # type: ignore[attr-defined]
+        return simplefin
+    except ImportError:
+        pass
+    handler = Path(__file__).resolve().parents[2] / "watchers" / "simplefin" / "handler.py"
+    if not handler.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("superagent_watchers_simplefin_handler", handler)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception:  # noqa: BLE001 — a broken handler must not abort the migration
+        return None
+    return module
+
+
 def _find_key(lines: list[str], start: int, end: int, indent: int, key: str) -> int | None:
     pat = re.compile(rf"^ {{{indent}}}{re.escape(key)}:(\s|$)")
     return next((k for k in range(start, end) if pat.match(lines[k])), None)
@@ -652,13 +680,15 @@ class Migration:
         self._say("world.yaml: rebuilt (derived)")
 
     def step_transactions(self) -> None:
+        # Since 0.19.0 the SimpleFIN normalizer lives in its pack folder
+        # (superagent/watchers/simplefin/handler.py), so it is loaded by file
+        # path; the pre-0.19.0 package import is tried first for old trees.
         path = self.ws / "_memory" / "transactions.yaml"
         if not path.exists():
             return
-        try:
-            from superagent.tools.ingest import simplefin
-            mark = simplefin.mark_stale_pending
-        except (ImportError, AttributeError):
+        simplefin = _load_simplefin_handler()
+        mark = getattr(simplefin, "mark_stale_pending", None)
+        if mark is None:
             self._say("transactions.yaml: mark_stale_pending not available in this build; skipped")
             return
         try:

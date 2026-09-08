@@ -48,4 +48,4 @@ Some signals come from ingestion, not chat. Examples and where they go:
 | Bank balance < `accounts-index.yaml.<acct>.low_balance_threshold` | P0 task + alert in next daily-update |
 | Email from a contact in `rolodex.md` of a "recently inactive" domain | Concierge surfaces the contact in next daily-update under "Reconnect" |
 
-As each ingestor lands, it documents its own auto-capture pass in its module docstring under `tools/ingest/<source>.py`. The roadmap (`docs/roadmap.md` § "Auto-capture and surfacing rules") tracks the planned rule set across sources.
+As each harvest handler lands, it documents its own auto-capture pass in its module docstring in its pack folder (`superagent/watchers/<id>/handler.py`). The roadmap (`docs/roadmap.md` § "Auto-capture and surfacing rules") tracks the planned rule set across sources.

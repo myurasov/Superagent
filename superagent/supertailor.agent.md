@@ -47,8 +47,8 @@ Mechanical, reversible repairs to keep the workspace tidy:
 - **Memory staleness.** `context.yaml.last_check` older than 7 days; `model-context.yaml` not updated this month; daily-update last ran > 7 days ago; weekly-review > 14 days ago; monthly-review > 45 days ago.
 - **Cadence adherence.** Surfaces "you said you wanted daily updates but the last one was 5 days ago — should I drop the cadence preference, or is there a setup issue?".
 - **Schema integrity.** Validate every `_memory/*.yaml` against its declared `schema_version` (delegates to `tools/validate.py`); flag any row with required fields missing.
-- **Ingestion-source health.** Every row in `data-sources.yaml` with `failure_streak > 0` is surfaced with the failure cause and a one-line "what to fix" hint.
-- **Custom-overlay scaffold.** If `_custom/` is missing or has no `rules/` / `skills/` / `agents/` / `templates/` subdirs, the Supertailor offers to create the empty scaffold so the SA can drop overlays in later.
+- **Watchlist health.** Every row in `_memory/watchlist-state.yaml` with `error_streak > 0` or `status: evicted` is surfaced with its `last_error` / `evict_reason` and a one-line "what to fix" hint.
+- **Custom-overlay scaffold.** If `_custom/` is missing or has no `rules/` / `skills/` / `agents/` / `templates/` / `watchers/` subdirs, the Supertailor offers to create the empty scaffold so the SA can drop overlays in later.
 - **Improvement-ideas catalogues exist.** Verify `superagent/docs/_internal/ideas-better-structure.md` and `superagent/docs/_internal/perf-improvement-ideas.md` are present and parseable (have their expected tier headings). They are mandatory inputs to the strategic-pass catalogue lookup; missing files silently degrade Supertailor quality. Surface as `needs-attention` (not auto-fixable — the catalogues are hand-curated).
 
 Repairs proposed by the hygiene pass are mechanical and reversible. The Supertailor lists each, asks **approve / decline / defer**, and **hands the approved set to the Supercoder as a single bundled brief** (one Supercoder run, one commit, one entry per repair in the commit's body … no, single-sentence subject only — see `supercoder.agent.md` § "Git practices"). Reversibility for `superagent/` writes comes from the Supercoder's commit (`git revert`); for `workspace/` writes the file-by-file safety nets in `superagent/docs/faq.md` apply. Once `roadmap.md` § S-27 ships, the Supertailor will additionally snapshot affected files into `_memory/_checkpoints/<date>/` before each run.
@@ -136,14 +136,15 @@ Each row in `supertailor-suggestions.yaml`:
     captured 23 shipping-confirmation emails in the same period. No
     package-tracking row exists in any index.
   suggestion: >
-    Add a `packages.yaml` index. The Gmail ingestor regex-matches
-    "Your order/package has shipped" / "tracking number" patterns and
-    appends one row per shipment. New `packages` skill renders open shipments;
-    daily-update surfaces deliveries scheduled today.
+    Add a `packages.yaml` index. A pass over the local email archive
+    regex-matches "Your order/package has shipped" / "tracking number"
+    patterns and appends one row per shipment. New `packages` skill renders
+    open shipments; daily-update surfaces deliveries scheduled today.
   implementation_sketch: >
     1. Add superagent/templates/memory/packages.yaml.
-    2. Extend superagent/tools/ingest/gmail.py with a package-extraction
-       pass (regex + carrier detection: USPS/UPS/FedEx/DHL/Amazon).
+    2. Add a package-extraction pass over `tools/email/archive.py`
+       `find_by_query` results (regex + carrier detection:
+       USPS/UPS/FedEx/DHL/Amazon), fed by a `gmail` watcher.
     3. Add superagent/skills/packages.md (list / mark-delivered / forget).
     4. Add a daily-update step that surfaces "expected today" packages.
     5. Re-run tools/build_skill_manifest.py so the new skill appears in
@@ -170,7 +171,7 @@ After a `supertailor-review` run, the Supertailor prints a structured report:
 - ✓ All 12 domain folders match template (3 minor banner fixes applied)
 - ✓ No orphan domains
 - ⚠ context.yaml.last_check is 11 days old (you've been busy?). Last daily-update: 2026-04-17.
-- ⚠ Strava ingestor: 4 consecutive auth failures. Hint: token rotated; re-auth via `tools/ingest/strava.py --reauth`.
+- ⚠ Watcher `gmail-bills`: 4 consecutive unreachable checks. Hint: Gmail MCP token missing at `~/.gmail-mcp/credentials.json`; re-run the MCP auth flow (`docs/data-sources.md#gmail`).
 - 3 mechanical repairs proposed:
   1. Restore missing maintenance banner in Domains/Travel/info.md.
   2. Fix invalid YAML in `_memory/bills.yaml` (line 142, missing colon).

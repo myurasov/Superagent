@@ -1,0 +1,38 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: machine-owned state of the watchlist (contracts/watchlist.md § 7).
+# Written only by `tools/watchlist.py` (`check`, `stamp`, `harvest`) under an fslock
+# with atomic replace. The REGISTRY — which watchers exist and how they are
+# configured — is the folder of `Sources/Watchlist/<id>.ref.md` files; edit those,
+# never this file. Rows whose ref disappeared are pruned on the next run.
+
+schema_version: 1
+
+# ISO 8601 of the last write by the tool (state-shape singleton; null until the first check).
+last_updated: null
+
+# Keyed by watcher id (the ref's filename stem; handle `watch:<id>`).
+# Each row:
+#   status               — active | disabled | evicted
+#   last_checked         — ISO 8601 of the last detect that actually ran
+#   last_changed         — ISO 8601 of the last `changed` outcome
+#   last_success         — ISO 8601 of the last check that reached the source
+#                          (changed or unchanged); the eviction guard reads this
+#   baseline_at          — ISO 8601 of the first check after enable / resume / revive;
+#                          the eviction window starts at max(baseline_at, last_changed)
+#   fingerprint          — type-specific: content hash, validators, mtime+count,
+#                          stdout hash, gmail newest-date+count, or the stamped note
+#   last_outcome         — changed | unchanged | indeterminate | unreachable
+#   error_streak         — consecutive unreachable outcomes (0 on any success)
+#   error_since          — ISO 8601 when the current streak began, or null
+#   last_error           — last error string, or null
+#   evicted_at           — ISO 8601, or null
+#   evict_reason         — stale | expired | null
+# Harvest-bearing rows (a pack with `harvest:`) additionally carry:
+#   last_harvest         — ISO 8601 of the last handler call
+#   last_harvest_result  — {items_pulled, items_inserted, items_updated, items_skipped,
+#                           errors: [], run_log_id}
+#   calls_today          — handler calls counted against budget.max_calls_per_day
+#   calls_today_date     — YYYY-MM-DD the counter belongs to (reset when it differs)
+# Mirror-backed rows (index_query; reserved, not implemented this release) would carry:
+#   mirror_last_advanced — the mirror's own high-water mark, independent of the query
+watchers: {}

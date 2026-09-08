@@ -50,27 +50,26 @@ preferences:
     tailor_review: "every 90 days"
     doctor: "every 180 days"
 
-  # Per-source ingestion cadence override (if not present, ingestor's default fires).
-  ingestion_schedule:
-    gmail: "daily"
-    google_calendar: "daily"
-    icloud_calendar: "daily"
-    apple_reminders: "daily"
-    apple_notes: "weekly"
-    apple_health: "daily"
-    simplefin: "weekly"
-    plaid: "weekly"
-    monarch: "weekly"
-    strava: "daily"
-    whoop: "daily"
-    garmin: "daily"
-    oura: "daily"
-    home_assistant: "daily"
-    tesla: "daily"
-    obsidian: "weekly"
-    notion: "weekly"
-    photos: "monthly"
-    google_maps_timeline: "monthly"
+  # Watchlist — change detection for external sources, and the registry of
+  # data sources (see contracts/watchlist.md). Absent block = these defaults.
+  # Per-watcher settings live in the registry refs, not here.
+  watchlist:
+    # Registry folder, workspace-relative: one `<id>.ref.md` per watcher.
+    # Reserved name inside Sources/; contents are user-editable.
+    path: "Sources/Watchlist"
+    # Default cadence runs a watcher is checked on when its ref sets none:
+    # daily-update | weekly-review | monthly-review.
+    cycles: [daily-update]
+    # Days without a detected change before a watcher is MARKED evicted
+    # (never deleted; revive with `watch.status: active`). null = never.
+    # Infrastructure feeds (a bank) set null on their own row.
+    evict_after_days: 14
+    # `cmd` watchers run a shell command from a registry file. Off until you
+    # opt in; the agent never flips this without your explicit instruction.
+    allow_cmd: false
+    # Default throttle: never detect a watcher more often than this many
+    # minutes regardless of cycle. null = none (per-row values still apply).
+    min_check_interval_minutes: null
 
   # What hurts most (set during init from the questionnaire).
   pain_points: []              # e.g. ["bills","subscriptions","health-tracking","important-dates"]
@@ -260,54 +259,18 @@ preferences:
 
 # --- Data sources (which MCPs / CLI tools you've authorized) ---
 # This block carries the COARSE flag (have you set up the auth at all?). The detailed
-# per-source config (last_ingest, recency_window_days, max_items_per_run, capture_mode,
-# failure_streak) lives in workspace/_memory/data-sources.yaml.
+# per-source configuration lives in the watchlist registry (one
+# `Sources/Watchlist/<id>.ref.md` per source; see contracts/watchlist.md) and its run
+# state in `_memory/watchlist-state.yaml`.
 #
 # init() flips an entry from `false` to `true` after a successful health check.
 data_sources_configured:
+  # Only sources with a shipped watcher pack are listed. Any other source is a
+  # pack you author or install under `workspace/_custom/watchers/<id>/` plus one
+  # `Sources/Watchlist/<id>.ref.md`; `watch enable <pack>` adds its flag row here.
   email:
-    gmail: false
-    icloud_mail: false
-    outlook: false
-  calendar:
-    google_calendar: false
-    icloud_calendar: false
-    outlook_calendar: false
-  reminders_and_notes:
-    apple_reminders: false       # via `rem` CLI or osascript
-    apple_notes: false           # via osascript / JXA
-    obsidian: false
-    notion: false
+    gmail: false                 # Gmail MCP authorized (the `gmail` pack reuses its token)
   finance:
     simplefin: false             # SimpleFIN Bridge (shipped; see docs/data-sources.md § simplefin)
-    plaid: false
-    monarch: false
-    ynab: false
-    csv_only: false              # generic bank CSV import
-  health:
-    apple_health: false          # via `healthsync` CLI or Apple Health MCP
-    whoop: false
-    strava: false
-    garmin: false
-    oura: false
-    fitbit: false
-  smart_home:
-    home_assistant: false
-    smartthings: false
-    homekit: false               # via Apple Shortcuts / osascript
-  vehicles:
-    tesla: false
-    obd_csv: false
-  messaging:
-    imessage: false              # via imessage-exporter
-    whatsapp: false
-    signal: false
-    slack: false                 # personal Slack workspaces
-  media_and_files:
-    icloud_drive: false
-    google_drive: false
-    dropbox: false
-    onedrive: false
-    photos_exif: false           # via exiftool
-  location:
-    google_maps_timeline: false
+    csv_only: false              # generic bank CSV import (`tools/ingest/csv.py --file`)
+

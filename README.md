@@ -32,13 +32,13 @@
 
 **Superagent** turns your coding agent — Cursor, Claude Code, or any `AGENTS.md`-reading CLI — into the chief of staff a wealthy person would hire — minus the salary, the trust trade-off, and the cloud account. It runs as a folder you open in that agent: a vault for everything that runs your life, plus the discipline to surface what needs your attention before you have to ask.
 
-**Quick-start works in 5 minutes** with zero data-source setup. Heavy ingestion (years of email, banks, health, smart home) is opt-in, deferred, and reversible.
+**Quick-start works in 5 minutes** with zero data-source setup. Watching external sources (bank feed, email queries, portals, pages) is opt-in, deferred, and reversible.
 
 ## What you'll feel
 
 - **Day 1** — a clean folder gets scaffolded. You log a bill. The agent surfaces it on the right day.
 - **Week 1** — you've added 5–10 things by saying them in chat. The morning briefing tells you what's due today, what's tomorrow, what's slipping.
-- **Month 1** — ingestion is on for email + calendar. The agent catches the trial about to convert, the bill 30% higher than usual, the dentist appointment your daughter just confirmed by email.
+- **Month 1** — watchers are on for your bank feed and a couple of Gmail queries. The agent catches the trial about to convert, the bill 30% higher than usual, the dentist appointment your daughter just confirmed by email.
 - **Year 1** — *"When did I last see Dr. Smith?"* answered in milliseconds. *"How much have I spent on streaming this year?"* categorized and surfaced. *"Draft the executor packet"* — one document an executor could use to take over your affairs.
 
 The bet: AI is finally good enough to take the administrative load of modern life off your shoulders, **surgically and ambiently**, so the work that matters has more room.
@@ -80,15 +80,14 @@ Capabilities grouped by intent. Full skill list (~50) lives at `superagent/skill
 
 ## Data sources
 
-Quick-start works with **zero** ingestion. Catalog of 28 supported sources, opt-in (four ingestors shipped today: Gmail metadata, SimpleFIN, Apple Reminders, generic CSV; the rest are probe-only stubs):
+Quick-start works with **zero** watchers. External sources live on the **watchlist**: one `.ref.md` per watched source under `Sources/Watchlist/`, checked by the cadence skills, with a "did it move?" detect step gating any expensive pull. Four watcher packs ship today:
 
-- Email + calendar — Gmail, iCloud, Outlook, Google Calendar
-- Reminders + notes — Apple Reminders / Notes, Obsidian, Notion
-- Finance — SimpleFIN (shipped), Plaid, Monarch, YNAB, generic CSV
-- Health + wearables — Apple Health, WHOOP, Strava, Garmin, Oura, Fitbit
-- Smart home + vehicles — Home Assistant, SmartThings, Tesla
-- Communications — iMessage, Slack
-- Files + media + location — photos via `exiftool`, Google Maps Timeline
+- **SimpleFIN** — bank, credit-card, and brokerage transactions (weekly harvest into `transactions.yaml`)
+- **Gmail** — live query for new mail matching a label or search; results land in the local email archive
+- **Web page** — any URL (ETag / Last-Modified first, then a scoped content hash)
+- **Subagent** — anything an agent can read (a portal behind a login, a PDF that gets re-issued)
+
+Plus a standalone CSV importer for bank statements. Anything else is a one-file `url` / `cmd` / `subagent` watcher, or a self-contained pack folder you drop into `workspace/_custom/watchers/<id>/` — no framework code touched.
 
 Per-source install / probe / writes destinations / caveats: [`superagent/docs/data-sources.md`](superagent/docs/data-sources.md).
 
@@ -96,7 +95,7 @@ Per-source install / probe / writes destinations / caveats: [`superagent/docs/da
 
 - **`workspace/` is gitignored.** Local-only to your machine unless **you** copy it somewhere.
 - **No telemetry.** No metrics, no crash reports, no "anonymous usage data". Ever.
-- **No remote write by default.** Ingestors are read-only.
+- **No remote write by default.** Watchers and harvests are read-only.
 - **Hard safeguard** in the framework's self-improvement loop — token-scan that prevents your personal data from leaking into committed framework code, even if you ask it to.
 - **Credentials never stored in plaintext.** Each account row carries a `vault_ref` pointing at your password manager.
 
@@ -108,20 +107,20 @@ The long version: [`superagent/docs/faq.md`](superagent/docs/faq.md) and [`super
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | Canonical operating rules — what the agent reads on every Superagent turn |
 | [`superagent/docs/architecture.md`](superagent/docs/architecture.md) | Mental model, repo layout, dual-agent loop, current build status |
-| [`superagent/docs/data-sources.md`](superagent/docs/data-sources.md) | Per-source install + probe + caveats (28 sources cataloged) |
+| [`superagent/docs/data-sources.md`](superagent/docs/data-sources.md) | The watchlist model + setup for the shipped packs (SimpleFIN, Gmail) and CSV import |
 | [`superagent/docs/domain-guide.md`](superagent/docs/domain-guide.md) | Per-domain practical guide |
 | [`superagent/docs/faq.md`](superagent/docs/faq.md) | Naming, comparisons, security, multi-user, mobile, what-ifs |
 | [`superagent/docs/roadmap.md`](superagent/docs/roadmap.md) | T-shirt-sized backlog, re-prioritized continuously by the Supertailor |
 
 ## Roadmap
 
-T-shirt-sized (XS/S/M/L/XL) with rationale and "done when" criteria. Headline near-term work: implement the remaining highest-leverage ingestors (google_calendar, apple_health; gmail metadata and SimpleFIN already ship, so Plaid is no longer the finance path) and wire the auto-capture rules they enable. Full plan: [`superagent/docs/roadmap.md`](superagent/docs/roadmap.md).
+T-shirt-sized (XS/S/M/L/XL) with rationale and "done when" criteria. Headline near-term work: more shipped watcher packs (calendar, health export, a `csv-drop` folder watcher) and the auto-capture rules they enable. Full plan: [`superagent/docs/roadmap.md`](superagent/docs/roadmap.md).
 
 ## Contributing
 
 If you're using this and find friction, the most useful thing you can do is **tell the agent**. Action signals get captured into `_memory/action-signals.yaml`, the Supertailor digests them, and approved fixes ship as code.
 
-If you want to write code: [`superagent/supercoder.agent.md`](superagent/supercoder.agent.md) documents the conventions. Add a new ingestor by dropping a file in `superagent/tools/ingest/<source>.py` that subclasses `IngestorBase`, registering it in `_registry.py`, and adding a smoke test.
+If you want to write code: [`superagent/supercoder.agent.md`](superagent/supercoder.agent.md) documents the conventions. Add a new data source by dropping a watcher pack folder into `superagent/watchers/<id>/` (`pack.yaml`, plus `handler.py` implementing `IngestorBase.run` only if it feeds a typed index), listing it in `watchers/_manifest.yaml`, and adding a pack-loader test — or keep it private under `workspace/_custom/watchers/<id>/`.
 
 ## License
 

@@ -74,7 +74,7 @@ The safeguard is not optional. The Supercoder cannot be talked out of it by the 
 ### Python
 
 - **Standard library first.** Heavy dependencies are an explicit choice in `pyproject.toml`, not a casual import.
-- **`pyyaml`** is the only mandatory framework dependency; ingestors that need extras declare them under `pyproject.toml.optional-dependencies.<source>`.
+- **`pyyaml`** is the only mandatory framework dependency; harvest handlers and watcher packs that need extras declare them under `pyproject.toml.optional-dependencies.<source>`.
 - **Shell commands**: prefer `subprocess.run([...], check=True, capture_output=True, text=True)` with explicit argument lists (no `shell=True` for user-supplied input).
 - **Type hints** on every public function. `from __future__ import annotations` at the top of every module so newer typing syntax works on older Pythons.
 - **`pathlib.Path`** everywhere — never raw `os.path.join` strings.
@@ -123,7 +123,7 @@ Examples of good commit messages from the Supercoder:
 - `Add packages.yaml index and Gmail tracking-number extractor`
 - `Fix daily-update overdue-task ordering`
 - `Bump superagent package version to 0.4.0`
-- `Wire WHOOP ingestor into weekly-review summary`
+- `Wire simplefin harvest into weekly-review summary`
 
 Examples of bad commit messages:
 

@@ -59,8 +59,8 @@ Per `supertailor.agent.md` § "Hygiene pass":
 3. **Memory staleness**: `context.yaml.last_check` older than 7 days; `model-context.yaml` not updated this month; cadence skill stale per the documented intervals.
 4. **Cadence adherence**: surface "you said weekly review weekly but the last one was 23 days ago — drop the cadence preference, or is something off?".
 5. **Schema integrity**: validate every `_memory/*.yaml` against its `schema_version` (delegate to `tools/validate.py`).
-6. **Ingestion-source health**: every `data-sources.yaml.<source>.failure_streak > 0` surfaced with the failure cause and one-line "what to fix".
-7. **Custom-overlay scaffold**: ensure `_custom/{rules,skills,agents,templates,tools}/` exist; create empty if missing.
+6. **Watchlist health**: every `_memory/watchlist-state.yaml` row with `error_streak > 0` or `status: evicted` surfaced with its `last_error` / `evict_reason` and one-line "what to fix" (per `contracts/watchlist.md`).
+7. **Custom-overlay scaffold**: ensure `_custom/{rules,skills,agents,templates,tools,watchers}/` exist; create empty if missing.
 8. **Improvement-ideas catalogues exist**: verify `superagent/docs/_internal/ideas-better-structure.md` (expected tier headings: § 1 through § 25 + Selection guide) and `superagent/docs/_internal/perf-improvement-ideas.md` (expected tier headings: Quick wins / Medium investments / Big bets) are present and parseable. They are mandatory inputs to step 3 below; missing files silently degrade Supertailor output. Surface as `needs-attention` (not auto-fixable — both are hand-curated).
 9. **Signal-capture health**: near-zero rows in `action-signals.yaml` + `personal-signals.yaml` while `user-queries.jsonl` is dense over the same period → capture-adherence failure (the session-end sweep in `contracts/capture.md` § 7.2a is not running); surface as `needs-attention`.
 10. **Memory-routing check**: run `uv run python -m superagent.tools.memory_routing_check --since <last review>`; exit 1 → flag the reported files for migration per `rules/memory-routing.md`.

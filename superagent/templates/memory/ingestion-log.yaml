@@ -12,7 +12,8 @@ schema_version: 1
 runs:
   # Each run:
   #   id                — Stable id "ingest-<YYYYMMDD>-<NNN>".
-  #   source            — Source id from data-sources.yaml.
+  #   source            — Watcher id: the filename stem of Sources/Watchlist/<id>.ref.md
+  #                        (its run state lives in watchlist-state.yaml).
   #   started_at        — ISO 8601.
   #   finished_at       — ISO 8601.
   #   trigger           — manual | scheduled | init | retry.

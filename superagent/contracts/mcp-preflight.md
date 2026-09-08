@@ -8,7 +8,7 @@ Any skill that depends on MCP servers OR shell-installed CLI tools (`rem`, `ekct
 
 1. **Probe each required source** with a lightweight call.
    - For MCPs: a health check or list-tools call.
-   - For CLI tools: `which <tool>` followed by `<tool> --version` (or the source's documented "smoke test" command in `data-sources.yaml`).
+   - For CLI tools: `which <tool>` followed by `<tool> --version` (or the declarative `probe:` block of the source's watcher pack — `superagent/watchers/<id>/pack.yaml` / `workspace/_custom/watchers/<id>/pack.yaml`, per `contracts/watchlist.md`; `watchlist probe <id>` runs it).
    - Record each as **available** or **blocked** with the failure mode (auth, missing binary, timeout, permission denied, server error).
 
 2. **Probe each optional source** the skill intends to use.

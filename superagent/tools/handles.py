@@ -13,6 +13,7 @@ Examples:
     project:tax-2026
     domain:health
     asset:car-blue-camry-2018
+    watch:solar-permit           (a Sources/Watchlist/<id>.ref.md watcher)
 
 The colon separates the entity kind (the type of thing) from the entity
 slug (the unique-within-kind identifier). Kinds are lowercase singular
@@ -36,6 +37,9 @@ KINDS = frozenset({
     "appointment", "important_date", "document", "domain", "project",
     "source", "medication", "vital", "task", "health_visit",
     "decision", "tag", "event", "skill",
+    # A watcher (ext-source): `Sources/Watchlist/<slug>.ref.md`, per
+    # contracts/watchlist.md. The slug is the ref filename stem.
+    "watch",
     "other",
 })
 

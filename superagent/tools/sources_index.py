@@ -18,6 +18,11 @@ Key invariants:
   - Missing files are kept for one cycle with `present: false` before being
     dropped, so an accidental `rm` doesn't immediately destroy hand-curated
     notes / cross-references.
+  - Watchers (`Sources/Watchlist/<id>.ref.md`, per `contracts/watchlist.md`)
+    are indexed like any other reference; their frontmatter `watch:` mapping
+    is lifted into the row as `watch` so `sources list` / `search` see them.
+    The mapping is carried across refreshes and only dropped when the file
+    itself parses without a `watch:` block.
 
 CLI:
   uv run python -m superagent.tools.sources_index refresh [--force]
@@ -30,6 +35,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime as dt
 import hashlib
 import json
@@ -59,6 +65,11 @@ PRESERVED_FIELDS = (
     "related_domain", "related_project", "related_asset", "related_account",
     "last_accessed", "read_count", "added",
 )
+
+# Derived from the ref's frontmatter, not hand-curated in the index -- but
+# never overwritten with "nothing" by a refresh that could not parse the file.
+# See `merge_existing`.
+WATCH_FIELD = "watch"
 
 
 # ---------------------------------------------------------------------------
@@ -209,6 +220,20 @@ def title_from_filename(path: Path) -> str:
     else:
         stem = path.stem
     return stem.replace("-", " ").replace("_", " ").strip() or path.name
+
+
+def ref_stem(path: str | Path) -> str | None:
+    """The ref filename minus its `.ref.md` / `.ref.txt` suffix, or None if not a ref.
+
+    For a watcher this is the watcher id (state key + `watch:<id>` handle),
+    per `contracts/watchlist.md`.
+    """
+    name = Path(path).name
+    for suffix in REF_SUFFIXES:
+        if name.endswith(suffix):
+            stem = name[: -len(suffix)]
+            return stem or None
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -417,6 +442,10 @@ def _apply_frontmatter(row: dict[str, Any], fm: dict[str, Any]) -> None:
         row["sensitive"] = fm["sensitive"]
     if isinstance(fm.get("tags"), list):
         row["tags"] = list(fm["tags"])
+    # Watcher configuration (contracts/watchlist.md § 5.1). Lifted verbatim;
+    # the ref file stays the source of truth, this is a derived view of it.
+    if isinstance(fm.get(WATCH_FIELD), dict):
+        row[WATCH_FIELD] = copy.deepcopy(fm[WATCH_FIELD])
 
 
 # ---------------------------------------------------------------------------
@@ -428,8 +457,17 @@ def merge_existing(new_row: dict[str, Any], existing_row: dict[str, Any]) -> dic
 
     Rule: if the existing row has a non-empty user-set value for any of the
     PRESERVED_FIELDS, keep it. Otherwise take what the filesystem produced.
+
+    `watch` (a watcher's detect config, lifted from the ref frontmatter) is
+    carried over when the fresh scan produced none AND the file did not parse
+    (`normalized: False`) -- a transiently broken file must not wipe the
+    row. When the file parsed cleanly without a `watch:` block, the block is
+    genuinely gone and the row drops it.
     """
     merged = dict(new_row)
+    if (WATCH_FIELD not in merged and isinstance(existing_row.get(WATCH_FIELD), dict)
+            and not new_row.get("normalized", False)):
+        merged[WATCH_FIELD] = copy.deepcopy(existing_row[WATCH_FIELD])
     for field in PRESERVED_FIELDS:
         existing_val = existing_row.get(field)
         if existing_val in (None, "", [], 0, False):
@@ -451,7 +489,11 @@ def diff_and_merge(existing: list[dict[str, Any]], scanned: list[dict[str, Any]]
 
     Strategy (4 passes):
       1. id-match: scanned rows whose id matches an existing row -> `merge_existing`
-         (path unchanged; preserves curated fields).
+         (path unchanged; preserves curated fields). Path identity counts too: a
+         scanned row whose PATH equals an existing present row's path keeps that
+         row's id even when the id is not the derived `src-<sha1(path)>` (the
+         row's `path` was rewritten in place, e.g. by a migration), so logs that
+         cite the id keep pointing at a live row.
       2. rename-detection: for unmatched scanned + unmatched existing rows,
          pair by basename. When EXACTLY one unmatched-existing and EXACTLY one
          unmatched-scanned share the same basename, treat as a directory move:
@@ -468,21 +510,36 @@ def diff_and_merge(existing: list[dict[str, Any]], scanned: list[dict[str, Any]]
     """
     by_id_existing = {r.get("id"): r for r in existing if r.get("id")}
     by_id_scanned = {r.get("id"): r for r in scanned if r.get("id")}
+    by_path_existing = {r.get("path"): r for r in existing
+                        if r.get("id") and r.get("path") and r.get("present", True) is not False}
 
     merged: list[dict[str, Any]] = []
     timestamp = now_iso()
+    matched_existing: set[str] = set()
+    matched_scanned: set[str] = set()
 
-    # Pass 1: id-matched rows (path unchanged).
+    # Pass 1: id-matched rows (path unchanged), then path-matched rows whose
+    # existing id differs from the derived one (path rewritten in place).
     for sid, srow in by_id_scanned.items():
         if srow.get("kind") == "_skip_ref_with_companion":
             continue
         if sid in by_id_existing:
             merged.append(merge_existing(srow, by_id_existing[sid]))
+            matched_existing.add(sid)
+            matched_scanned.add(sid)
+            continue
+        erow = by_path_existing.get(srow.get("path"))
+        if erow is not None and erow.get("id") not in matched_existing:
+            keep = merge_existing(srow, erow)
+            keep["id"] = erow["id"]
+            merged.append(keep)
+            matched_existing.add(erow["id"])
+            matched_scanned.add(sid)
 
     # Pass 2: rename detection by basename.
     unmatched_existing_by_basename: dict[str, list[dict[str, Any]]] = {}
     for eid, erow in by_id_existing.items():
-        if eid in by_id_scanned:
+        if eid in matched_existing:
             continue
         if erow.get("present", True) is False:
             continue
@@ -493,7 +550,7 @@ def diff_and_merge(existing: list[dict[str, Any]], scanned: list[dict[str, Any]]
 
     unmatched_scanned_by_basename: dict[str, list[dict[str, Any]]] = {}
     for sid, srow in by_id_scanned.items():
-        if sid in by_id_existing:
+        if sid in matched_scanned:
             continue
         if srow.get("kind") == "_skip_ref_with_companion":
             continue
@@ -517,9 +574,7 @@ def diff_and_merge(existing: list[dict[str, Any]], scanned: list[dict[str, Any]]
     for sid, srow in by_id_scanned.items():
         if srow.get("kind") == "_skip_ref_with_companion":
             continue
-        if sid in by_id_existing:
-            continue
-        if sid in renamed_scanned_ids:
+        if sid in matched_scanned or sid in renamed_scanned_ids:
             continue
         if not srow.get("added"):
             srow["added"] = timestamp
@@ -527,9 +582,7 @@ def diff_and_merge(existing: list[dict[str, Any]], scanned: list[dict[str, Any]]
 
     # Pass 4: remaining unmatched-existing rows -> mark present=false (one-cycle grace).
     for eid, erow in by_id_existing.items():
-        if eid in by_id_scanned:
-            continue
-        if eid in renamed_existing_ids:
+        if eid in matched_existing or eid in renamed_existing_ids:
             continue
         was_present = erow.get("present", True)
         if was_present is False:

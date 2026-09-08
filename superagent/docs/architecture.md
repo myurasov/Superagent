@@ -8,7 +8,7 @@
   - [The mental model](#the-mental-model)
   - [Two halves of the repo](#two-halves-of-the-repo)
   - [Memory: structured + narrative](#memory-structured--narrative)
-  - [Skills, tools, ingestors, contracts, rules](#skills-tools-ingestors-contracts-rules)
+  - [Skills, tools, watchers, contracts, rules](#skills-tools-watchers-contracts-rules)
   - [The dual-agent loop (Supertailor + Supercoder)](#the-dual-agent-loop-supertailor--supercoder)
   - [The hard safeguard](#the-hard-safeguard)
   - [The 4-file domain convention](#the-4-file-domain-convention)
@@ -63,8 +63,9 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 │   │   ├── workflows/, sources/, githooks/
 │   │   ├── _custom-starters/       ← starter content the user can copy into _custom/
 │   │   └── todo.md                 ← scoped task-view template
-│   ├── tools/                      ← workspace_init, validate, render_status, world, audit, …
-│   │   └── ingest/                 ← _base, _registry, _orchestrator, _stubs, per-source ingestors
+│   ├── tools/                      ← workspace_init, validate, render_status, world, audit, watchlist, …
+│   │   └── ingest/                 ← _base (harvest-handler contract), simplefin (harvest), csv (standalone --file import)
+│   ├── watchers/                   ← shipped watcher packs: <id>/pack.yaml (+ optional handler.py) + _manifest.yaml
 │   ├── tests/                      ← pytest; runs against templates + tools + skills
 │   └── docs/                       ← this file + faq, data-sources, domain-guide, roadmap
 │       └── _internal/              ← Supertailor-only planning + history
@@ -80,6 +81,7 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
     ├── Sources/                    ← reference library (IMMUTABLE except _cache/)
     │   ├── documents/              ←   actual local files; never deleted by skills
     │   ├── references/             ←   `.ref.md` pointers to external data
+    │   ├── Watchlist/              ←   watcher registry: one `<id>.ref.md` per watched source (reserved name, user-editable)
     │   └── _cache/                 ←   fetched copies (TTL + LRU eviction)
     ├── Inbox/                      ← staging for incoming files
     ├── Outbox/                     ← shareable artifacts (drafts, summaries, handoff packet)
@@ -97,25 +99,25 @@ The two layers serve different access patterns:
 
 | File | Owns | Read by |
 |---|---|---|
-| `config.yaml` | profile, preferences, ingestion config | every skill |
+| `config.yaml` | profile, preferences, watchlist defaults | every skill |
 | `context.yaml` | rolling state (last_check, current_focus, alerts) | `whatsup`, `daily-update`, `weekly-review`, `monthly-review` |
 | `model-context.yaml` | model's accumulated learning across sessions | every skill (read at session start) |
 | `interaction-log.yaml` | append-only log of touchpoints (every interaction the agent records) | `follow-up`, `summarize-thread`, all cadence skills |
-| `ingestion-log.yaml` | append-only per-run summaries of every ingestor invocation | `ingest`, Supertailor |
+| `ingestion-log.yaml` | append-only per-run summaries of every harvest | `watch`, cadence skills, Supertailor |
 | `todo.yaml` | task list (P0-P3) | `todo`, `triage-overdue`, all cadence skills |
 | `domains-index.yaml` | metadata about each domain folder | every skill |
 | `projects-index.yaml` | metadata about each project (charter, lifecycle, target_date) | `add-project`, `projects`, all cadence skills |
 | `sources-index.yaml` | metadata about each Sources/ entry (doc + ref) | `sources`, `add-source`, every skill that needs reference data |
 | `assets-index.yaml` | every owned physical thing | `add-asset`, `vehicle-log`, `home-maintenance`, `pet-care`, monthly-review |
-| `accounts-index.yaml` | every financial / utility / subscription account | `add-account`, `bills`, `expenses`, finance ingestors |
+| `accounts-index.yaml` | every financial / utility / subscription account | `add-account`, `bills`, `expenses`, the simplefin harvest |
 | `contacts.yaml` | every person | `add-contact`, every interaction skill |
-| `bills.yaml` | recurring bills | `bills`, `daily-update`, `monthly-review`, finance ingestors |
+| `bills.yaml` | recurring bills | `bills`, `daily-update`, `monthly-review`, the reconciler |
 | `subscriptions.yaml` | recurring subscriptions | `subscriptions`, `monthly-review` |
-| `appointments.yaml` | scheduled appointments | `appointments`, `daily-update`, calendar ingestors |
+| `appointments.yaml` | scheduled appointments | `appointments`, `daily-update` |
 | `important-dates.yaml` | birthdays / anniversaries / deadlines | `important-dates`, `daily-update` |
 | `documents-index.yaml` | important documents (with expiration tracking) | `add-document`, `monthly-review`, `handoff` |
 | `health-records.yaml` | medical events, meds, vitals, conditions | `health-log`, `appointments` (medical), monthly-review |
-| `data-sources.yaml` | per-source ingestion config and state | every ingestor, `ingest` skill |
+| `watchlist-state.yaml` | machine-owned run state per watcher (fingerprint, last_checked, error_streak, budget counters); the registry itself is `Sources/Watchlist/<id>.ref.md` | `tools/watchlist.py`, `watch`, cadence skills |
 | `personal-signals.yaml` | self-development feedback (capture + surface) | `personal-signals`, `weekly-review`, Supertailor |
 | `action-signals.yaml` | "this should change" signals (target: tailor / superagent) | every skill (capture); Supertailor (drain) |
 | `supertailor-suggestions.yaml` | Supertailor's framework-improvement backlog | Supertailor, Supercoder |
@@ -136,17 +138,17 @@ Domains/<domain>/
 
 Skills know how to traverse both layers — query the YAML for "what", read the markdown for "why".
 
-## Skills, tools, ingestors, contracts, rules
+## Skills, tools, watchers, contracts, rules
 
 Five complementary surfaces, each with one job:
 
 - **Skills** (`skills/*.md`) are **instructions for the agent** in human-readable markdown with YAML frontmatter. The agent reads the file when invoked and follows the steps. Skills do not contain executable code; they contain procedures the agent runs.
 - **Tools** (`tools/*.py`) are **executable Python** for repeatable transforms (scaffold, validate, render, hook). Tools are invoked from skills via the agent's shell tool (`uv run python superagent/tools/<tool>.py`).
-- **Ingestors** (`tools/ingest/<source>.py`) are a **specialized class of tools** — one per data source — that implement the `IngestorBase` contract. They probe, reauth, and run. The `ingest` skill is the user-facing front-end; the `_orchestrator.py` is its CLI implementation; per-source modules contain the actual scraping logic.
-- **Contracts** (`contracts/*.md`) are **multi-actor protocols** that several skills, tools, or agent roles must implement so they can interoperate. *Every ingestor MUST do X* / *every memory file is one of three shapes* / *every entity has a `<kind>:<slug>` handle*. Each contract is one .md file; skills cite the specific one they need (`contracts/<slug>.md`) and read only that file. Indexed by `contracts/_manifest.yaml`.
+- **Watchers** (`watchers/<id>/pack.yaml`, and the user's own under `workspace/_custom/watchers/<id>/`) are **declarative source definitions** — detect config, optional harvest handler, declarative probe, auth pointer, schedule / capture-mode defaults — per `contracts/watchlist.md`. `tools/watchlist.py` implements the detect types once (`url`, `path`, `cmd`, `subagent`, `gmail`, `harvest`) plus lifecycle, throttling, budgets, and reporting; a pack needs code only when it feeds a typed index, in which case its handler implements `IngestorBase.run` (`tools/ingest/<source>.py` — `simplefin` today). The registry is `Sources/Watchlist/<id>.ref.md` (one file per watched source); the `watch` skill is the user-facing front-end; the cadence skills run `check --cycle <cycle>`.
+- **Contracts** (`contracts/*.md`) are **multi-actor protocols** that several skills, tools, or agent roles must implement so they can interoperate. *Every harvest MUST do X* / *every memory file is one of three shapes* / *every entity has a `<kind>:<slug>` handle*. Each contract is one .md file; skills cite the specific one they need (`contracts/<slug>.md`) and read only that file. Indexed by `contracts/_manifest.yaml`.
 - **Rules** (`rules/*.yaml`) are **machine-readable rule catalogues** the framework's tools enforce — currently the skill anti-pattern catalogue used by `tools/anti_patterns.py`. Users can extend them at `workspace/_custom/rules/<file>.yaml`.
 
-The shape: **skills are language**, **tools are code**, **ingestors are pluggable**, **contracts are protocol**, **rules are policy**. A user can write a custom skill (in `_custom/skills/`) without touching code; a developer can add a new tool without changing any skill; a community contributor can add a new ingestor for a new data source by dropping a file in `tools/ingest/` and adding a row to `_registry.py`. A new cross-cutting protocol gets a new file in `contracts/`; a new policy gets a new row in `rules/<file>.yaml`.
+The shape: **skills are language**, **tools are code**, **watchers are pluggable**, **contracts are protocol**, **rules are policy**. A user can write a custom skill (in `_custom/skills/`) without touching code; a developer can add a new tool without changing any skill; anyone can add a new data source by dropping a self-contained pack folder into `watchers/<id>/` (core) or `workspace/_custom/watchers/<id>/` (private — no core code touched; custom wins on id collision and the tool announces it). A new cross-cutting protocol gets a new file in `contracts/`; a new policy gets a new row in `rules/<file>.yaml`.
 
 ## The dual-agent loop (Supertailor + Supercoder)
 
@@ -245,7 +247,7 @@ The frameworks were designed for the pre-AI era when capture / organize / distil
 | `_memory/contacts.yaml` | phone numbers, addresses | same |
 | `Outbox/handoff/` | aggregated estate-handoff packet | print + safe-deposit-box; encrypted USB |
 | `Sources/documents/pets/*` | vet records (often contain home address) | encrypted destination |
-| `_memory/data-sources.yaml.<source>.auth.ref` | references to credentials | not the credentials themselves; references to a vault |
+| `Sources/Watchlist/<id>.ref.md` `auth` / pack `auth.ref` | references to credentials | not the credentials themselves; references to a vault or a `_memory/sensitive/` file |
 
 In MVP, no built-in encryption. Roadmap entry "Sensitive-store options" (`docs/roadmap.md`) tracks the path to native encryption support.
 
@@ -272,7 +274,7 @@ Built-in multi-user / sync is on the roadmap (LOE-L: "Multi-user vault with last
 | Contracts | 39 multi-actor contracts under `contracts/`, indexed by `contracts/_manifest.yaml` |
 | Rules | machine-readable rule catalogues (anti-patterns shipped) + `workspace/_custom/rules/` user overlay |
 | Tools | ~30 shipped + tested (workspace_init, validate, render_status, render_report, world, sources_cache, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, ...) |
-| Ingestor framework | `IngestorBase`, registry of 27 sources, orchestrator CLI, stub fall-back, 2 reference ingestors shipped (`apple_reminders`, `csv`) |
+| Watchlist | `tools/watchlist.py` (six detect types, lifecycle, throttle + budget enforcement, `--report`), `Sources/Watchlist/` registry, `_memory/watchlist-state.yaml`, 4 shipped packs (`simplefin`, `gmail`, `url`, `cmd`, `path`, `subagent`) + `_custom/watchers/` overlay, `IngestorBase` harvest contract, standalone `csv` importer |
 | World graph | `_memory/world.yaml` derived state; `tools/world.py related <handle>` |
 | Events stream | quarterly-partitioned `_memory/events/<YYYY-Qn>.yaml`; cross-entity timeline queries |
 | Tests | ~100 pytest tests; all passing |

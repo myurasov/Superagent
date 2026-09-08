@@ -1,0 +1,42 @@
+# [Do not change manually — managed by Superagent]
+#
+# Index of watcher packs under `superagent/watchers/`.
+#
+# A pack is a self-contained folder `superagent/watchers/<id>/` holding
+# `pack.yaml` (declarative detect / harvest / probe / auth / defaults) plus,
+# only when the watcher needs real code, a same-folder `handler.py` and an
+# optional `README.md`. A registry row (`Sources/Watchlist/<id>.ref.md`)
+# inherits a pack with `watch.pack: <id>` and overrides only what it needs.
+#
+# The same folder shape works as a user overlay at
+# `workspace/_custom/watchers/<id>/`; on an id collision the custom folder
+# wins and the tool announces the override. Contract: contracts/watchlist.md.
+#
+# Every folder present under `superagent/watchers/` must have a row here and
+# vice versa (tests/test_watchers_packs.py).
+schema_version: 1
+packs:
+  - id: simplefin
+    path: watchers/simplefin/pack.yaml
+    kind: api
+    one_line: "SimpleFIN Bridge bank and brokerage feed — detect is the harvest call; weekly, manual capture, budgeted."
+  - id: gmail
+    path: watchers/gmail/pack.yaml
+    kind: api
+    one_line: "Live Gmail search for one query (parameterized); results capture-through into the local email archive."
+  - id: url
+    path: watchers/url/pack.yaml
+    kind: generic
+    one_line: "Change detection on one web page (parameterized url + optional CSS selector) with hardened fingerprinting."
+  - id: cmd
+    path: watchers/cmd/pack.yaml
+    kind: generic
+    one_line: "Fingerprint the stdout of one read-only shell command (parameterized cmd); gated by preferences.watchlist.allow_cmd."
+  - id: path
+    path: watchers/path/pack.yaml
+    kind: local
+    one_line: "Change detection on a local file (content hash) or folder (newest mtime + entry count); parameterized path."
+  - id: subagent
+    path: watchers/subagent/pack.yaml
+    kind: generic
+    one_line: "Anything watchable by a read-only natural-language prompt; the agent runs it and stamps a one-line delta."

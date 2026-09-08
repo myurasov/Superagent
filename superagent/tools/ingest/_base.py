@@ -1,18 +1,27 @@
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
-"""Base interface every Superagent ingestor must implement.
+"""Pack-handler contract: the one module a watcher pack's `handler.py` imports.
 
-The contract is the runtime expression of `superagent/contracts/ingestion.md`
-§ "Data Ingestion Contract":
+Since the watchlist tier (`superagent/contracts/watchlist.md`) took over
+scheduling, probing, and run state, this module is deliberately small. A
+pack's `handler.py` is loaded BY FILE PATH by `tools/watchlist.py` (never as
+a package import) and may expose:
 
-  * `probe()` — lightweight presence check. Returns ProbeResult.
-  * `reauth()` — re-authenticate (typically interactive). Returns bool.
-  * `run(config_row, dry_run=False)` — pull data for one window, write
-    rows to indexes / domain history files, return RunResult.
+  * `detect(ctx: DetectContext) -> DetectResult` — a pack-defined detect type.
+    Raise `DetectError` when the source cannot be reached. Any `detect.type`
+    that is not built into the tool (`url`, `path`, `cmd`, `subagent`,
+    `harvest`) is valid iff the pack's handler exposes this function.
+  * `harvest(config_row, dry_run=False) -> RunResult`, or a class deriving
+    `IngestorBase` whose `run(config_row, dry_run=False)` does the same —
+    pull data for one window, write rows to indexes / domain history files,
+    return a `RunResult`.
 
-Ingestors NEVER block on missing optional inputs. They report `unavailable`
-via ProbeResult and exit cleanly. The orchestrator decides whether
-`unavailable` is a hard error (required source) or a warning (optional).
+Also here: `RunResult.to_log_row()` (the `ingestion-log.yaml` row) and
+`ProbeResult` / `ProbeStatus` (the vocabulary the declarative pack probes
+report in — handlers never implement `probe()` themselves).
+
+Handlers NEVER block on missing optional inputs: record the problem on
+`RunResult.errors` and return, so a failed refresh still reaches the log.
 """
 from __future__ import annotations
 
@@ -28,8 +37,38 @@ def now_iso() -> str:
     return dt.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+class DetectError(Exception):
+    """Detect could not reach the source; the message is the reason (-> `unreachable`)."""
+
+
+@dc.dataclass
+class DetectResult:
+    """One detect result.
+
+    `fingerprint=None` means "not modified — keep the stamped fingerprint".
+    `state` is merged into the watcher's state row on success (e.g. HTTP
+    validators a later check should send back).
+    """
+    fingerprint: str | None
+    detail: str = ""
+    state: dict[str, Any] = dc.field(default_factory=dict)
+
+
+@dc.dataclass
+class DetectContext:
+    """What a pack's `detect(ctx)` receives. `row` is a read-only copy of the state row."""
+    watcher_id: str
+    detect: dict[str, Any]
+    workspace: Path
+    framework: Path
+    timeout: int
+    dry_run: bool
+    row: dict[str, Any]
+    now: dt.datetime
+
+
 class ProbeStatus:
-    """Possible outcomes of a probe."""
+    """Possible outcomes of a declarative pack probe."""
     AVAILABLE = "available"
     NOT_DETECTED = "not_detected"
     NEEDS_SETUP = "needs_setup"
@@ -46,7 +85,7 @@ class ProbeResult:
     setup_hint: str = ""
 
     def is_usable(self) -> bool:
-        """Return True if the source can be ingested right now."""
+        """Return True if the source can be harvested right now."""
         return self.status == ProbeStatus.AVAILABLE
 
 
@@ -88,10 +127,9 @@ class RunResult:
 
 
 class IngestorBase(abc.ABC):
-    """Abstract base for every source-specific ingestor.
+    """Abstract base for every source-specific harvest handler.
 
-    Subclasses MUST set `source` (str) and implement `probe()` and `run()`.
-    `reauth()` defaults to a no-op (override when relevant).
+    Subclasses MUST set `source` (str) and implement `run()`.
     """
 
     source: str = ""
@@ -132,46 +170,13 @@ class IngestorBase(abc.ABC):
         return list(summary.get("errors", []))
 
     @abc.abstractmethod
-    def probe(self) -> ProbeResult:
-        """Lightweight presence check. Must not perform heavy reads.
-
-        Answer "could `run()` work right now?" from a cheap signal — a file
-        exists, a CLI is on PATH, a credential row is present. Never pull
-        data here; the orchestrator probes every registered source on
-        `init`, so a slow probe slows first-run for everyone.
-
-        Example (a source backed by a local database file)::
-
-            def probe(self) -> ProbeResult:
-                db = Path.home() / ".examplesync" / "example.db"
-                if not db.exists():
-                    return ProbeResult(
-                        source=self.source,
-                        status=ProbeStatus.NOT_DETECTED,
-                        setup_hint="Install ExampleSync and run it once.",
-                    )
-                return ProbeResult(
-                    source=self.source,
-                    status=ProbeStatus.AVAILABLE,
-                    detail=f"db found at {db}",
-                )
-
-        Use `NEEDS_SETUP` when the tool is present but unconfigured,
-        `AUTH_EXPIRED` when a stored credential is rejected, and
-        `PERMISSION_DENIED` when the OS blocks the read.
-        """
-
-    def reauth(self) -> bool:
-        """Re-authenticate the source. Default: no-op (always returns True)."""
-        return True
-
-    @abc.abstractmethod
     def run(self, config_row: dict[str, Any], dry_run: bool = False) -> RunResult:
         """Pull data for one window and write normalized rows.
 
-        `config_row` is the row from `_memory/data-sources.yaml` for this source.
-        On `dry_run`, the ingestor MUST NOT write any files; it should return
-        a RunResult with `notes="dry-run; would have inserted N items"`.
+        `config_row` is built by the watchlist from the pack's
+        `harvest.defaults`, the watcher's `params`, plus `last_ingest` and
+        `id`. On `dry_run`, the ingestor MUST NOT write any files; it should
+        return a RunResult with `notes="dry-run; would have inserted N items"`.
 
         Example (the shape every shipped ingestor follows)::
 

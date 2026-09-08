@@ -93,7 +93,7 @@ Active projects surface in cadence skills per these rules:
 For projects with `recurring` ≠ `none`, when the project completes:
 
 1. The current row stays in `_memory/projects-index.yaml` as historical record.
-2. The Supercoder-side helper (`_orchestrator`-equivalent) auto-creates the next-cycle row:
+2. The Supercoder-side helper (a small cadence tool) auto-creates the next-cycle row:
    - `id: <base>-<next-period>` (e.g. `tax-2025` → `tax-2026`).
    - Inherits `name` (with year-substitution if applicable), `scope`, `success_criteria`, `deliverables`, `stakeholders`, `related_domains`, `recurring`.
    - `start_date: target_date + 1 day` (or rule-based — annual taxes default to "Jan 1 of next year").

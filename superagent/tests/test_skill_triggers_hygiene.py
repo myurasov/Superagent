@@ -136,3 +136,33 @@ def test_baton_fires_on_observed_handoff_phrasings(skills: list[dict], prompt: s
 )
 def test_baton_does_not_over_fire(skills: list[dict], prompt: str) -> None:
     assert "superagent-baton" not in _fired(prompt, skills)
+
+
+# --- watch: inherits every trigger the retired ingest skill owned (0.19.0) ---
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        # phrases the retired `ingest` skill used to own
+        "ingest",
+        "run ingest",
+        "import data",
+        "sync from simplefin",
+        "set up data sources",
+        "refresh my data",
+        "pull new data",
+        "refresh email",
+        "refresh transactions",
+        # the watchlist's own vocabulary
+        "add an ext-source for the permit portal",
+        "list my ext-sources",
+    ],
+)
+def test_watch_inherits_ingest_triggers(skills: list[dict], prompt: str) -> None:
+    fired = _fired(prompt, skills)
+    assert "superagent-watch" in fired
+    assert "superagent-ingest" not in fired
+
+
+def test_ingest_skill_is_retired(skills: list[dict]) -> None:
+    assert "superagent-ingest" not in {s["name"] for s in skills}

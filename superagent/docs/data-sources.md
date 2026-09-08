@@ -1,66 +1,90 @@
-# Superagent — Data sources catalogue
+# Superagent — Data sources (the watchlist)
 
 ---
 
 ## Table of Contents
 
-- [Superagent — Data sources catalogue](#superagent--data-sources-catalogue)
-  - [Maturity legend](#maturity-legend)
+- [Superagent — Data sources (the watchlist)](#superagent--data-sources-the-watchlist)
+  - [The model](#the-model)
+  - [Adding a source](#adding-a-source)
+  - [Writing your own pack](#writing-your-own-pack)
   - [Suggested utility MCPs](#suggested-utility-mcps)
-  - [Email and calendar](#email-and-calendar)
+  - [Shipped packs](#shipped-packs)
+    - [simplefin](#simplefin)
     - [gmail](#gmail)
-    - [icloud-mail](#icloud-mail)
-    - [outlook](#outlook)
-    - [google-calendar](#google-calendar)
-    - [icloud-calendar](#icloud-calendar)
-    - [outlook-calendar](#outlook-calendar)
-  - [Reminders and notes](#reminders-and-notes)
-    - [apple-reminders](#apple-reminders)
-    - [apple-notes](#apple-notes)
-    - [obsidian](#obsidian)
-    - [notion](#notion)
-  - [Finance](#finance)
-    - [plaid](#plaid)
-    - [monarch](#monarch)
-    - [ynab](#ynab)
+    - [url](#url)
+    - [cmd](#cmd)
+    - [path](#path)
+    - [subagent](#subagent)
+  - [Standalone importers](#standalone-importers)
     - [csv](#csv)
-  - [Health and wearables](#health-and-wearables)
-    - [apple-health](#apple-health)
-    - [whoop](#whoop)
-    - [strava](#strava)
-    - [garmin](#garmin)
-    - [oura](#oura)
-    - [fitbit](#fitbit)
-  - [Smart home and vehicles](#smart-home-and-vehicles)
-    - [home-assistant](#home-assistant)
-    - [smartthings](#smartthings)
-    - [tesla](#tesla)
-  - [Communications](#communications)
-    - [imessage](#imessage)
-    - [slack](#slack)
-  - [Files, media, location](#files-media-location)
-    - [photos](#photos)
-    - [gmaps-timeline](#gmaps-timeline)
 
 ---
 
-This is the master catalogue of every data source Superagent supports (or stubs out for future implementation). Each entry covers: what gets ingested, where it writes, install / auth steps, the probe that tells you whether it's available, and any known caveats.
+This is the reference for how Superagent reaches external data. Every external source — a bank feed, a Gmail query, a permit portal, a page that occasionally changes — is a **watcher** (internal synonym: **ext-source**) on the **watchlist**. The normative contract is [`contracts/watchlist.md`](../contracts/watchlist.md); the user-facing skill is `skills/watch.md`; the tool is `uv run python -m superagent.tools.watchlist` (alias `superagent.tools.ext_sources`).
 
-Run `uv run python -m superagent.tools.ingest._orchestrator setup` to probe every source on your machine and get an availability table. Run `... run --source <name>` to ingest one. Run `... run --all` to refresh everything that's enabled.
+## The model
 
-## Maturity legend
+Every source decomposes into two stages:
 
-| Tag | Meaning |
-|---|---|
-| **shipped** | Real ingestor implementation exists in `superagent/tools/ingest/<source>.py`. |
-| **stub** | Listed in registry; falls back to `_stubs.StubIngestor` for now. Implementing it just means adding a real `<source>.py` that subclasses `IngestorBase`. |
-| **community-best** | A reasonable third-party MCP / CLI exists; Superagent's per-source implementation can be a thin wrapper. |
+| Stage | Question | Cost | Per-source code |
+|---|---|---|---|
+| **detect** | "did it move?" | cheap | none — declarative |
+| **harvest** | "pull the records and normalize them into a typed index" | expensive | only where a typed index is fed (`simplefin` today) |
+
+The watchlist owns **detect** for every source and invokes **harvest** only where a handler exists and the watcher's `capture_mode` allows it. One lifecycle — scheduling, throttling, failure streaks, eviction, budgets, reporting — implemented once.
+
+**Registry = a folder of reference files.** Each watcher is one `Sources/Watchlist/<id>.ref.md` (path overridable via `config.preferences.watchlist.path`). The frontmatter is the normal `Sources/` ref frontmatter (`kind` / `source` locator, `ttl_minutes`, `related_*`) plus a `watch:` block: `pack` or `type`, `enabled`, `cycles`, `evict_after_days`, `min_check_interval_minutes`, `schedule`, `capture_mode`, and pack `params`. The filename stem is the `id`, the state key, and the handle (`watch:<id>`). `Sources/Watchlist/` is a reserved *name* with user-editable *contents* — hand-author, edit, or delete refs freely; `sources_index.py refresh` indexes them like any other reference.
+
+**State = one machine-owned file.** `_memory/watchlist-state.yaml` holds per-watcher `status`, `last_checked`, `last_changed`, `last_success`, `fingerprint`, `error_streak`, `last_outcome`, and — for harvest-bearing watchers — `last_harvest`, `calls_today`. Never hand-edit it.
+
+**Defaults** live in `config.yaml` under `preferences.watchlist` (`path`, `cycles`, `evict_after_days`, `allow_cmd`, `min_check_interval_minutes`).
+
+**Detect types** (implemented once in the tool): `url` (ETag / Last-Modified, then a scoped content hash), `path` (file hash or directory mtime + count), `cmd` (stdout hash; disabled unless `preferences.watchlist.allow_cmd: true`), `subagent` (the agent runs a read-only prompt and `stamp`s a one-line delta), `gmail` (a **live** Gmail API search using the token the Gmail MCP saved; results capture-through into the local email archive), `harvest` (the pack's handler *is* the detect). Outcomes: `changed | unchanged | indeterminate | unreachable`.
+
+**Cadence wiring.** `daily-update` runs `check --cycle daily-update`; `weekly-review` / `monthly-review` run their own cycles (`simplefin` lands in weekly). `whatsup` never checks — it reads the alerts the last check wrote to `context.yaml.alerts` and labels their age. Changed watchers append an `interaction-log.yaml` row (`action: watch_change_detected`, derived into the events stream as `kind: watch_changed`); harvest runs keep appending to `ingestion-log.yaml`.
+
+**Packs** are self-contained folders: `superagent/watchers/<id>/pack.yaml` (detect config, optional `harvest.handler`, declarative `probe:`, `auth:`, `budget:`, `defaults:`) plus, only when real code is needed, a same-folder `handler.py` and `README.md`. The same folder shape works under `workspace/_custom/watchers/<id>/` — the user's overlay, discovered alongside the shipped packs; on an id collision the custom folder wins and the tool announces it: *"Using `_custom/watchers/<id>` (overrides framework pack)."*
+
+## Adding a source
+
+```bash
+# what is set up on this machine? (no args = every pack's probe: block; --all = every registered watcher; <id> = one)
+uv run python -m superagent.tools.watchlist probe
+
+# enable a pack — writes Sources/Watchlist/<id>.ref.md from the template
+uv run python -m superagent.tools.watchlist enable simplefin --id simplefin
+uv run python -m superagent.tools.watchlist enable gmail --id gmail-bills --param query="label:Bills newer_than:30d"
+
+# inspect
+uv run python -m superagent.tools.watchlist list [--status active|evicted|disabled]
+
+# run a cycle (cadence skills do this); --report renders the briefing block
+uv run python -m superagent.tools.watchlist check --cycle daily-update --report [--no-harvest] [--dry-run]
+
+# explicit harvest (the only way a capture_mode: manual watcher ever pulls)
+uv run python -m superagent.tools.watchlist harvest --id simplefin [--dry-run]
+
+# record a dispatched subagent's outcome
+uv run python -m superagent.tools.watchlist stamp --id <id> --changed|--unchanged|--unreachable --note "<one-line delta>"
+```
+
+A source with no pack is a **bare ref**: drop a file into `Sources/Watchlist/` with a `watch:` block whose `type` is `url`, `path`, `cmd`, or `subagent` (it defaults from the ref's `kind`), or say "watch this page" and let the `watch` skill write it. `ttl_minutes` on the ref governs read freshness for `sources fetch` only — detect keeps its own fingerprint and never consults `_cache/`.
+
+## Writing your own pack
+
+1. Create `workspace/_custom/watchers/<id>/pack.yaml` with `watcher_version: 1`, `id`, `title`, `kind`, a `detect:` block, an optional `probe:` (`file_exists | cli_on_path | python_import | cmd_exit_zero | always`), `auth:`, `budget:`, and `defaults:` (`cycles`, `evict_after_days`, `schedule`, `capture_mode`).
+2. If the source feeds a typed `_memory/*.yaml` index, add `handler.py` in the same folder implementing `IngestorBase.run(config_row, dry_run=False)` (`superagent/tools/ingest/_base.py` is the contract) and reference it from `harvest:`; declare `writes:` and `affected_domains:`.
+3. Enable it: `uv run python -m superagent.tools.watchlist enable <id> --id <watcher-id>`.
+4. Share it by copying the folder. A shared pack's `handler.py` is importable Python — read it before you trust it, exactly as you would a script from someone else.
+
+Framework-side packs (`superagent/watchers/<id>/`) go through the same review as any other core code and are listed in `superagent/watchers/_manifest.yaml`.
 
 ---
 
 ## Suggested utility MCPs
 
-These MCPs do not ingest personal-life data into Superagent, but they are useful workspace companions for setup, verification, and debugging.
+These do not feed personal-life data into Superagent, but they are useful workspace companions for setup, verification, and debugging.
 
 - **browserctl CLI** (not an MCP) - browser automation for live page checks, screenshots, accessibility snapshots, and web smoke tests. Replaces the former Playwright MCP.
   - **Install**: nothing to add to MCP config; the tool ships at `superagent/tools/browserctl.py` (see the `browserctl` skill). One-time per machine: `uv run --with playwright playwright install chromium`.
@@ -68,26 +92,54 @@ These MCPs do not ingest personal-life data into Superagent, but they are useful
 
 ---
 
-## Email and calendar
+## Shipped packs
+
+### simplefin
+
+- **Pack**: `superagent/watchers/simplefin/pack.yaml`; detect type `harvest` (detect and harvest are the same call). Handler: `superagent/watchers/simplefin/handler.py` (implements `IngestorBase.run`).
+- **Kind**: API.
+- **Underlying tool**: [SimpleFin Bridge](https://beta-bridge.simplefin.org/) ($1.50/month or $15/year, covers up to 25 institutions and 25 apps; read-only by design).
+- **Harvests**: bank, credit-card, brokerage, and mortgage transactions; balances; account metadata.
+- **Writes to**:
+  - `_memory/transactions.yaml` (canonical normalized target).
+  - `_memory/accounts-index.yaml.<acct>` balances.
+  - `_memory/watchlist-state.yaml` (`simplefin` row: `last_harvest`, `last_harvest_result`, `calls_today`).
+  - `_memory/ingestion-log.yaml` (per-run rows).
+- **Reads / cross-links**: `accounts-index.yaml.<acct>.simplefin_account_id` — set this field on each account row to its SimpleFin account UUID so the reconciler can join transactions to bills' `pay_from_account` (`harvest --id simplefin --dry-run` lists the feed's accounts without writing).
+- **Defaults** (pack `defaults:`, preserved verbatim by the 0.19.0 fold-in): `schedule: weekly`, `capture_mode: manual`, `cycles: [weekly-review]`, `evict_after_days: null` (a quiet bank feed is quiet, not dead). `capture_mode: manual` means no cadence-triggered `check` ever dispatches this harvest — only an explicit `harvest --id simplefin` does; `weekly-review` § 1 asks before running it.
+- **Budget** (enforced *before* dispatch): `max_calls_per_day: 24`, `min_interval_minutes: 60`, `max_window_days: 90`. A harvest withheld by budget is reported as `budget_exceeded` and state is left untouched so the next eligible run retries cleanly.
+- **Install**:
+  1. Sign up at `bridge.simplefin.org` ($1.50/mo or $15/yr).
+  2. Connect your bank institutions through their hosted UI.
+  3. Generate a "Setup Token" for an app called `superagent`.
+  4. `uv run python superagent/watchers/simplefin/claim.py <SETUP_TOKEN>` — claims the token into a long-lived Access URL stored at `workspace/_memory/sensitive/simplefin-credentials.yaml` (mode 600).
+  5. `uv run python -m superagent.tools.watchlist enable simplefin --id simplefin`.
+- **Probe** (declarative, `file_exists`): `_memory/sensitive/simplefin-credentials.yaml` exists; `setup_hint` points at `superagent/watchers/simplefin/claim.py`.
+- **Run**: `uv run python -m superagent.tools.watchlist harvest --id simplefin` (incremental delta with 3-day overlap). A full backfill is `uv run python -m superagent.tools.watchlist harvest --id simplefin --backfill` (budget-counted like any harvest). The handler's own CLI keeps only `--dry-run` and the local `--reconcile` repair and refuses live runs, so nothing bypasses the watchlist state.
+- **Reconciliation**: `uv run python -m superagent.tools.reconcile_transactions [--days N] [--json]` — surfaces matched / missed bills and recurring-charge candidates not yet tracked in `bills.yaml` / `subscriptions.yaml`. The `weekly-review` skill calls this from its Bookkeeper pass.
+- **Pending → posted matching**: every run pairs each stored pending row with its later posted twin (same account, same sign, absolute amount delta ≤ $1.00, within the reconcile date window) and marks the pending row `superseded_by: <posted external_id>`. A pending row still orphaned after `stale_pending_days` (a pack `harvest.defaults` key, overridable in the `simplefin` ref's `watch:` block; handler default 14, measured from `transacted_at`) is flagged `stale_pending: true`. Both flags keep the row verbatim for audit; `reconcile_transactions` skips `superseded_by` and `stale_pending` rows so neither double-counts against bills.
+- **Caveats**:
+  - Per-day budget: SimpleFin allows ≤ 24 requests/day per account — the pack's `budget:` block mirrors it.
+  - Per-call window: ≤ 45 days (warning) / 90 days (hard cap). The handler auto-chunks larger windows.
+  - A bad institution connection has made `/accounts` take 29–60 s; the check `--timeout` bounds the wait and reports `unreachable` rather than hanging the briefing.
+  - Employer 401(k) plans (Fidelity NetBenefits) often expose balances as `$0.00` to aggregators — verify directly at the provider when those numbers look wrong.
+  - The Access URL embeds HTTP Basic credentials (`https://USER:PASS@host/`). Treat it as banking credential material; it lives in `_memory/sensitive/` for that reason.
+  - Detect *is* the expensive call here, so "skip harvest when quiet" saves nothing for this pack; the win is the unified lifecycle and the pre-dispatch budget guard. A cheaper `/accounts`-only detect is a candidate optimization.
 
 ### gmail
 
-- **Status**: two paths exist; only one is live.
-  - **ACTIVE — capture-on-touch archive** at `workspace/_memory/email/`, governed by [`contracts/email-capture.md`](../contracts/email-capture.md). Every email the agent reads (`read_email`), sends (`send_email`), or lists (`search_emails`) through the Gmail MCP is mirrored locally as a side-effect of normal work — full per-message JSON for read/sent, metadata stubs for search hits — plus the append-only sidecar `_messages.jsonl` (truth) and the `_index.yaml` counter cache. The bridge is `superagent/tools/email/archive_hook.py`: wired as a tool-call hook where the harness has one (Cursor `afterMCPExecution` with `--kind=auto`; Claude Code `PostToolUse` with three `mcp__gmail__<tool>` matchers — see the contract § 8.1), and invoked by the agent directly with `--raw` on every harness per the hook-free floor in [`rules/email-capture-fallback.md`](../rules/email-capture-fallback.md). Read-side: skills scan the archive first (`archive.find` / `find_by_query`) and only go live for the strictly-newer slice.
-  - **DORMANT — headless ingestor** `tools/ingest/gmail.py`. Bulk fetch is OFF per `AGENTS.md` § "Local archives — email"; the ingestor is not registered in any current workspace's `data-sources.yaml` and only runs if you explicitly re-enable it (see "Re-enabling the dormant ingestor" below). The two paths write to different places and can coexist.
-  - **Verify the active path**: `uv run python -m superagent.tools.email.archive stats` prints counts derived from `_messages.jsonl` (and repairs the `_index.yaml` cache if it drifted); `... archive find <message-id>` confirms a single capture.
-- **Maturity**: archive — shipped (`superagent/tools/email/archive.py`, `archive_hook.py`); ingestor — MVP, dormant (metadata-only; downstream classification skills TBD).
-- **Kind**: MCP for the chat-time tool surface (and therefore for the archive, which captures MCP responses); API for the headless ingestor. Both share one OAuth grant.
+Two complementary paths, both live, both feeding one local archive:
+
+- **Capture-on-touch archive** at `workspace/_memory/email/`, governed by [`contracts/email-capture.md`](../contracts/email-capture.md). Every email the agent reads (`read_email`), sends (`send_email`), or lists (`search_emails`) through the Gmail MCP is mirrored locally as a side-effect of normal work — full per-message JSON for read/sent, metadata stubs for search hits — plus the append-only sidecar `_messages.jsonl` (truth) and the `_index.yaml` counter cache. The bridge is `superagent/tools/email/archive_hook.py`: wired as a tool-call hook where the harness has one (Cursor `afterMCPExecution` with `--kind=auto`; Claude Code `PostToolUse` with three `mcp__gmail__<tool>` matchers — contract § 8.1), and invoked by the agent directly with `--raw` on every harness per the hook-free floor in [`rules/email-capture-fallback.md`](../rules/email-capture-fallback.md). Read-side: skills scan the archive first (`archive.find` / `find_by_query`) and only go live for the strictly-newer slice.
+- **The `gmail` watcher pack** — `superagent/watchers/gmail/pack.yaml`, detect type `gmail`, **parameterized** (`params.query`, required: a Gmail search query — always bound it with `newer_than:` so the result set stays small). Each check is one **live** `messages.list` call against the Gmail API using the OAuth token the MCP saved at `~/.gmail-mcp/credentials.json`; the fingerprint is the newest `internalDate` + result count; every result set is passed through `archive.maybe_capture_stubs`, so a check also grows the archive exactly as `search_emails` does. This is a targeted query with capture-through, **not** bulk fetch — there is no bulk Gmail ingestor any more. One shipped pack backs many rows (`gmail-bills`, `gmail-school`, `gmail-vet`).
+- **Verify**: `uv run python -m superagent.tools.email.archive stats` prints counts derived from `_messages.jsonl` (and repairs the `_index.yaml` cache if it drifted); `... archive find <message-id>` confirms a single capture; `uv run python -m superagent.tools.watchlist list` shows the gmail watchers and their last outcome.
+- **Kind**: MCP for the chat-time tool surface (and therefore for the archive); API for the watcher. Both share one OAuth grant.
 - **Underlying tools**:
   - **Chat-time MCP** (every harness): the [`@gongrzhe/server-gmail-autoauth-mcp`](https://github.com/GongRzhe/Gmail-MCP-Server) server exposes 19 Gmail tools (search_emails, read_email, modify_email, send_email, ...) for interactive use during a chat. Configured in the repo-local `.cursor/mcp.json` (Cursor) / `.mcp.json` (Claude Code); see step 4 below.
-  - **Headless ingest** (dormant; `tools/ingest/gmail.py`) talks to Google's Gmail API directly via `google-api-python-client`, reusing the OAuth tokens the chat MCP saved at `~/.gmail-mcp/credentials.json`.
-- **Ingests**:
-  - Archive (active): whatever the agent touches — full message (headers, body, labels, attachment metadata) on read/sent; id / subject / from / date / snippet stubs on search. Attachments are metadata-only unless the user asks, the message looks like a receipt, or the bytes are the task's primary data (contract § 5).
-  - Ingestor (dormant, MVP): message metadata only — id, threadId, subject, from, to, cc, date, snippet, label_ids, size_estimate. No body fetch.
-- **Writes to**:
-  - Archive (active): `_memory/email/<YYYY>/<MM>/<DD>/<YYYY-MM-DD>_<in|out>_<from_slug>_<subject_slug>_<hash8>.json`, `_memory/email/_messages.jsonl`, `_memory/email/_index.yaml`, and lazily `_memory/email/attachments/`.
-  - Ingestor (only when explicitly re-enabled): `_memory/_gmail/<YYYY-MM>.jsonl` — one JSON object per line, sharded by month based on Gmail's `internalDate`. Idempotent: each message id is appended exactly once across all shards.
-- **Future writes** (separate skills, reading the archive; not in either capture path):
+  - **Watcher**: `tools/watchlist.py`'s `gmail` detect talks to Google's Gmail API directly via `google-api-python-client`, reusing the MCP's saved token (token loading and search helpers salvaged from the former bulk ingestor).
+- **Captures**: whatever the agent touches — full message (headers, body, labels, attachment metadata) on read/sent; id / subject / from / date / snippet stubs on search hits and on watcher matches. Attachments are metadata-only unless the user asks, the message looks like a receipt, or the bytes are the task's primary data (contract § 5).
+- **Writes to**: `_memory/email/<YYYY>/<MM>/<DD>/<YYYY-MM-DD>_<in|out>_<from_slug>_<subject_slug>_<hash8>.json`, `_memory/email/_messages.jsonl`, `_memory/email/_index.yaml`, lazily `_memory/email/attachments/`; the watcher additionally writes its row in `_memory/watchlist-state.yaml` and a `context.yaml.alerts` row on change.
+- **Future writes** (separate skills, reading the archive):
   - `_memory/contacts.yaml` — auto-fill from senders not yet in contacts.
   - `_memory/bills.yaml` — detect "your statement is ready" / "amount due" patterns.
   - `_memory/subscriptions.yaml` — detect "Welcome to <service>" / "your subscription has renewed".
@@ -104,7 +156,7 @@ These MCPs do not ingest personal-life data into Superagent, but they are useful
      mkdir -p ~/.gmail-mcp
      cp ~/.config/google-mcp/oauth-client.json ~/.gmail-mcp/gcp-oauth.keys.json
      npx -y @gongrzhe/server-gmail-autoauth-mcp auth
-     # tokens land at ~/.gmail-mcp/credentials.json
+     # tokens land at ~/.gmail-mcp/credentials.json — the watcher reuses this file
      ```
   4. **Wire the MCP into the harness.** Each harness reads its own repo-local runtime file — `.cursor/mcp.json` (Cursor) / `.mcp.json` (Claude Code) — both regular-file copies of the committed templates `.cursor/mcp.json.cursor` / `.mcp.json.claude` (per `AGENTS.md` § "Harness setup"; `init` creates them and detects drift). The server key must be `gmail` (the archive's `--kind=auto` discriminates on it). Then fully quit and reopen the harness:
      ```json
@@ -116,374 +168,63 @@ These MCPs do not ingest personal-life data into Superagent, but they are useful
      ```
      Verify: `gmail` shows connected with 19 tools; smoke-test in a fresh chat ("list my 3 most recent emails"), then `uv run python -m superagent.tools.email.archive stats` should show the stubs that search just captured.
   5. **Hook wiring for the archive** (optional enhancement): `init` writes the Cursor `afterMCPExecution` entry to `.cursor/hooks.json` and the Claude Code `PostToolUse` matchers to `.claude/settings.json` per `contracts/email-capture.md` § 8.1. Nothing depends on them — the agent runs `archive_hook --raw` after every Gmail call regardless (`rules/email-capture-fallback.md`).
-- **Scopes granted**: `gmail.modify` + `gmail.settings.basic`. The MCP requests these (not configurable). The archive only mirrors responses the agent already received and never calls Gmail itself; the ingestor uses ONLY the read subset (`messages.list`, `messages.get`); the framework's "no remote write" rule (`AGENTS.md` § "Privacy and data location") enforces read-only at the skill level. Future skills that need actual modify capability must declare `writes_upstream: true` on the `data-sources.yaml` row + ask per-call confirmation per the same rule.
-- **Probe**: `users().getProfile(userId="me")` — minimal authenticated API call; returns the connected mailbox address.
-  ```bash
-  uv run python -m superagent.tools.ingest.gmail --probe
-  ```
-- **Re-enabling the dormant ingestor** (explicit opt-in; not part of any default flow):
-  1. Add or enable a `gmail` row in `workspace/_memory/data-sources.yaml` (`enabled: true`; current workspaces carry no such row).
-  2. Dry-run: `uv run python -m superagent.tools.ingest.gmail --dry-run` (no writes; reports counts).
-  3. Real run: `uv run python -m superagent.tools.ingest.gmail` (appends to `_memory/_gmail/<YYYY-MM>.jsonl`; separate from the archive).
+  6. **Register a watcher**: `uv run python -m superagent.tools.watchlist enable gmail --id gmail-bills --param query="label:Bills newer_than:30d"`. Repeat with a different `--id` / query per slice you care about.
+- **Defaults** (pack): `cycles: [daily-update]`, `evict_after_days: 30`, `min_check_interval_minutes: 60` (re-running `daily-update` by hand several times a day does not re-query Gmail).
+- **Scopes granted**: `gmail.modify` + `gmail.settings.basic`. The MCP requests these (not configurable). The archive only mirrors responses the agent already received; the watcher uses ONLY the read subset (`messages.list`, `messages.get`); the framework's "no remote write" rule (`AGENTS.md` § "Privacy and data location") enforces read-only at the skill level. Any future skill that needs actual modify capability must declare `writes_upstream: true` in its frontmatter and ask per-call confirmation per the same rule.
+- **Probe** (declarative, `file_exists`): `~/.gmail-mcp/credentials.json` exists; `setup_hint`: authorize the MCP once (step 3) and the watcher reuses its token. A check with the token file absent reports `unreachable` with that hint.
 - **Caveats**:
-  - The archive grows only by side-effect of work the agent does; it is not a backfill. `archive find <message-id>` proves a record exists, not that it has content — a stderr warning from `archive_hook --raw --kind=sent` (missing / malformed `--request-json`) means the capture was refused and must be re-run.
-  - Gmail's API quota is huge (1B units/day per project) — `max_items_per_run` (default 200) is for cron-friendliness, not quota.
+  - The archive grows by side-effect of work the agent does and by watcher matches; it is not a backfill. `archive find <message-id>` proves a record exists, not that it has content — a stderr warning from `archive_hook --raw --kind=sent` (missing / malformed `--request-json`) means the capture was refused and must be re-run.
+  - Gmail's API quota is huge (1B units/day per project); the per-watcher `min_check_interval_minutes` is for politeness and briefing stability, not quota.
   - First-time `npx -y` for the MCP downloads ~30 MB of npm packages; pre-install globally (step 2 above) to skip this on every harness cold start.
-  - Token refresh happens in-memory on the ingestor side (it doesn't write back to `~/.gmail-mcp/credentials.json`). Refresh tokens last indefinitely unless the user revokes via [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
-  - If the MCP smoke test fails in your harness, the headless ingestor will too — both share the same OAuth grant.
+  - Token refresh happens in-memory on the watcher side (it doesn't write back to `~/.gmail-mcp/credentials.json`). Refresh tokens last indefinitely unless the user revokes via [myaccount.google.com/permissions](https://myaccount.google.com/permissions).
+  - If the MCP smoke test fails in your harness, the watcher will too — both share the same OAuth grant.
 
-### icloud-mail
+### url
 
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: [iCloud MCP](https://github.com/iteratio/icloud-mcp) (IMAP via Apple credentials in macOS Keychain).
-- **Ingests**: same shape as `gmail`, against an iCloud Mail account.
-- **Install**: install iCloud MCP; create an app-specific password in Apple ID settings; the MCP stores it in macOS Keychain.
-- **Probe**: lists the INBOX folder summary (UIDs only).
-- **Caveats**: macOS-only. IMAP is slower than the Gmail API; first-run backfills can take longer.
+- **Pack**: `superagent/watchers/url/pack.yaml`; detect type `url`; parameterized by the target URL (the ref's `source`), optional `selector:` (CSS selector to scope the hash) and `ignore_patterns:` (regexes stripped before hashing).
+- **Detect**: a conditional `GET` carrying the stored validators (`If-None-Match` / `If-Modified-Since`); `304` means unchanged with no body downloaded. A `200` body (capped at 2 MB, http/https only, no credentials in the URL) is always normalized and hashed — strip `<script>` / `<style>` / comments, apply `selector` / `ignore_patterns` — so a rotated `ETag` alone is never reported as a change. `min_change_interval_minutes` keeps a flapping page from alerting more than once per window.
+- **Install**: nothing. **Probe**: `always`.
+- **Enable**: `uv run python -m superagent.tools.watchlist enable url --id <slug> --param url=<https://...>`, or hand-author a bare `kind: url` ref in `Sources/Watchlist/` with `watch.type: url`.
+- **Defaults**: `cycles: [daily-update]`, `evict_after_days: 30` (revive an evicted watcher with `status: active` in its ref).
+- **Caveats**: pages that embed CSRF tokens, session ids, or timestamps will churn without a `selector:` — scope the hash to the panel you actually care about. Sites that require a login are `subagent` territory.
 
-### outlook
+### cmd
 
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: an Outlook MCP that speaks Microsoft Graph (e.g. the same family used by NVIDIA's MaaS Outlook MCP, but pointed at a personal Microsoft account).
-- **Ingests**: same shape as `gmail`, against an Outlook.com / Microsoft 365 mailbox.
-- **Install**: install the MCP; OAuth your Microsoft account.
-- **Probe**: `list_messages limit=1`.
-- **Caveats**: Microsoft Graph rate limits are tighter than Gmail's at low tiers; the ingestor honors `max_items_per_run` aggressively.
+- **Pack**: `superagent/watchers/cmd/pack.yaml`; detect type `cmd`; parameterized by `cmd` (required — the shell command, verbatim). Any CLI-reachable source becomes a watcher: `git ls-remote <url> HEAD`, `gh api ...`, a `curl` against a JSON status endpoint.
+- **Detect**: runs the command with a timeout, requires exit 0, fingerprints the sha256 of stdout. Non-zero exit or timeout is `unreachable`, never `changed`.
+- **Gate**: **off by default.** The tool refuses to run any `cmd` watcher until `config.preferences.watchlist.allow_cmd: true`; until then every check reports `unreachable` naming the flag. The same gate covers `probe.kind: cmd_exit_zero`. The command string comes only from the ref (`watch.params.cmd`) and is never templated from anything fetched over the network; it must be read-only.
+- **Enable**: `uv run python -m superagent.tools.watchlist enable cmd --id <slug> --param cmd="<command>"`, or hand-author a `kind: cli` ref (its `source` is the command) — `cli` defaults to `type: cmd`.
+- **Defaults**: `cycles: [daily-update]`, `evict_after_days: 30`, `min_check_interval_minutes: 60` (raise it for rate-limited CLIs).
 
-### google-calendar
+### path
 
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: same Google Workspace MCP as `gmail`.
-- **Ingests**: events from primary + opted-in calendars.
-- **Writes to**:
-  - `_memory/appointments.yaml` — when the event matches the appointment-shape heuristic (single attendee at an external location, OR a known provider in `contacts.yaml`, OR matches one of the appointment-pattern regexes in `tools/ingest/_patterns.yaml` — planned; that file does not exist yet and ships with the first calendar ingestor).
-  - `Domains/<inferred>/history.md` — for substantive events.
-- **Install**: same MCP as gmail; ensure `calendar.readonly` scope.
-- **Probe**: `list_events maxResults=1`.
+- **Pack**: `superagent/watchers/path/pack.yaml`; detect type `path`; parameterized by `path` (required — absolute or `~`-relative file or directory).
+- **Detect**: a file is fingerprinted by the sha256 of its content; a directory by its newest modification time plus a recursive entry count, so a new export dropped into a folder registers on the next cycle. Local reads only; a missing path is `unreachable`.
+- **Install**: nothing. **Probe**: `always`.
+- **Enable**: `uv run python -m superagent.tools.watchlist enable path --id <slug> --param path=<~/Downloads/bank-exports>`, or hand-author a `kind: file` ref — `file` defaults to `type: path`.
+- **Defaults**: `cycles: [daily-update]`, `evict_after_days: 30`.
+- **Caveats**: never watch a file a harvest handler writes (for example `_memory/transactions.yaml`) — the watcher would fire on the harvest's own write. A folder watched for bank CSVs still needs a manual `tools/ingest/csv.py --file` import today; the `csv-drop` pack that would harvest it automatically is postponed.
 
-### icloud-calendar
+### subagent
 
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: iCloud MCP (CalDAV).
-- **Ingests**: same shape as google-calendar against iCloud Calendar.
-- **Install**: same as icloud-mail; CalDAV access uses the same app-specific password.
-- **Probe**: list the default calendar's most recent event.
-
-### outlook-calendar
-
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: Outlook MCP (same as `outlook`).
-- **Ingests**: same shape as google-calendar against Outlook calendar.
-- **Install**: same MCP; ensure calendar scope.
-- **Probe**: `list_events limit=1`.
+- **Pack**: `superagent/watchers/subagent/pack.yaml`; detect type `subagent`; parameterized by `prompt` (required — what to look at and how to report; must be read-only and ask for ONE line: the delta, or "no change").
+- **Detect**: the tool never spawns agents. `check` emits a **dispatch spec** for each eligible watcher; the calling agent runs it as a read-only subagent per `rules/subagents.md` (read the thing, compare against the last stamped note, return ONE line; never submit a form or write upstream; capture-through anything legitimately encountered) and records the outcome with `stamp --id <id> --changed|--unchanged|--unreachable --note "<delta>"`. The stamped note is the next fingerprint; it is rendered as quoted data in briefings and never concatenated into a later prompt.
+- **Install**: nothing beyond whatever the prompt needs (typically a `browserctl` profile with a saved login — see `workspace/_custom/skills/browserctl.<app>.md`). **Probe**: `always`.
+- **Enable**: `uv run python -m superagent.tools.watchlist enable subagent --id <slug> --param prompt="<instructions>"`; or hand-author a `kind: manual` ref with `watch.type: subagent` and `prompt:`.
+- **Defaults**: `cycles: [daily-update]`, `evict_after_days: 45`; set `expires: YYYY-MM-DD` for a hard end-of-life (a portal for a project that finishes).
+- **Caveats**: prompt injection reaches further here than anywhere else — a watched page can try to steer the subagent. Prompts must be read-only; notes are length-capped and control-character-stripped by the tool. This is the escape hatch for the long tail, not the default: prefer `url` when the page is public.
 
 ---
 
-## Reminders and notes
-
-### apple-reminders
-
-- **Maturity**: **shipped** (`superagent/tools/ingest/apple_reminders.py`).
-- **Kind**: CLI.
-- **Underlying tool**: [`rem`](https://rem.sidv.dev/) — a sub-200ms EventKit-backed CLI for Apple Reminders.
-- **Ingests**: every reminder across every list.
-- **Writes to**: `_memory/todo.yaml` (one P2 task per reminder, tagged with `rem:<reminder-id>` for idempotency).
-- **Install**: `curl -fsSL https://rem.sidv.dev/install | bash` then grant Reminders permission in System Settings → Privacy & Security → Reminders.
-- **Probe**: `which rem` AND `rem list --json --limit 1` (returns 0 if the permission grant succeeded).
-- **Caveats**: one-way only — Superagent does NOT push back to Reminders. Mark a reminder done in Reminders and the next ingest run picks up the new state on the same reminder id.
-
-### apple-notes
-
-- **Maturity**: stub.
-- **Kind**: CLI (osascript / JXA).
-- **Underlying tool**: macOS built-in `osascript`.
-- **Ingests**: full text of all notes (or a subset of folders if configured).
-- **Writes to**: `Domains/<inferred>/Resources/notes/<YYYY-MM-DD-slug>.md` (snapshots; one file per note per ingest run; deduplicated by note ID + content hash). Notes are working artifacts, not vault docs — `Resources/` is the right home.
-- **Install**: macOS built-in; first run prompts for Automation permission.
-- **Probe**: `osascript -e 'tell application "Notes" to count notes'` returns a number.
-- **Caveats**: notes with attachments only get the text portion; attachments are noted but not extracted in MVP.
-
-### obsidian
-
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: [MCPVault](https://mcp-obsidian.org/) or [obsidian-mcp-server](https://github.com/bazylhorsey/obsidian-mcp-server).
-- **Ingests**: vault metadata — note titles, tags, frontmatter, links graph. Optional: full body for tagged notes.
-- **Writes to**: `_memory/obsidian-index.yaml` (a derived index built by the ingestor).
-- **Install**: install MCPVault: `npx @bitbonsai/mcpvault@latest /path/to/vault`.
-- **Probe**: vault path readable + at least one `.md` file at depth ≤ 2.
-- **Caveats**: read-only by default. Writing back is technically supported (frontmatter-preserving) but `writes_upstream: false` in MVP — flip when you want Superagent to update vault notes.
-
-### notion
-
-- **Maturity**: stub.
-- **Kind**: API (official Notion API).
-- **Underlying tool**: official Notion REST + a thin Python wrapper.
-- **Ingests**: page / database titles, properties, last-edited timestamps. Bodies on demand.
-- **Writes to**: `_memory/notion-index.yaml`.
-- **Install**: generate an integration token at notion.so/my-integrations; share each top-level workspace page with the integration; set `NOTION_TOKEN` env var.
-- **Probe**: GET `/v1/users/me`.
-- **Caveats**: Notion API rate limit is 3 req/s; the ingestor sleeps appropriately.
-
----
-
-## Finance
-
-### simplefin
-
-- **Maturity**: **shipped** (`superagent/tools/ingest/simplefin.py`).
-- **Kind**: API.
-- **Underlying tool**: [SimpleFin Bridge](https://beta-bridge.simplefin.org/) ($1.50/month or $15/year, covers up to 25 institutions and 25 apps; read-only by design).
-- **Ingests**: bank, credit-card, brokerage, and mortgage transactions; balances; account metadata.
-- **Writes to**:
-  - `_memory/transactions.yaml` (canonical normalized ingest target).
-  - `_memory/data-sources.yaml` (`simplefin` row's `last_ingest` / `last_run`).
-  - `_memory/ingestion-log.yaml` (per-run rows).
-- **Reads / cross-links**: `accounts-index.yaml.<acct>.simplefin_account_id` — set this field on each account row to its SimpleFin account UUID so the reconciler can join transactions to bills' `pay_from_account`.
-- **Install**:
-  1. Sign up at `bridge.simplefin.org` ($1.50/mo or $15/yr).
-  2. Connect your bank institutions through their hosted UI.
-  3. Generate a "Setup Token" for an app called `superagent`.
-  4. `uv run python -m superagent.tools.simplefin_claim <SETUP_TOKEN>` — claims the token into a long-lived Access URL stored at `workspace/_memory/sensitive/simplefin-credentials.yaml` (mode 600).
-- **Probe**: `uv run python -m superagent.tools.ingest.simplefin --dry-run` returns ≥ 1 account.
-- **Run**: `uv run python -m superagent.tools.ingest.simplefin` (incremental delta with 3-day overlap), or `--backfill` for the full `backfill_window_days` (default 365). `--no-pending` to exclude not-yet-posted charges.
-- **Reconciliation**: `uv run python -m superagent.tools.reconcile_transactions [--days N] [--json]` — surfaces matched / missed bills and recurring-charge candidates not yet tracked in `bills.yaml` / `subscriptions.yaml`. The `weekly-review` skill calls this from its Bookkeeper pass.
-- **Pending → posted matching**: every run pairs each stored pending row with its later posted twin (same account, same sign, absolute amount delta ≤ $1.00, within the reconcile date window) and marks the pending row `superseded_by: <posted external_id>`. A pending row still orphaned after `stale_pending_days` (per-source key on the `simplefin` row in `_memory/data-sources.yaml`; default 14, measured from `transacted_at`) is flagged `stale_pending: true`. Both flags keep the row verbatim for audit; `reconcile_transactions` skips `superseded_by` and `stale_pending` rows so neither double-counts against bills.
-- **Caveats**:
-  - Per-day budget: SimpleFin allows ≤ 24 requests/day per account.
-  - Per-call window: ≤ 45 days (warning) / 90 days (hard cap). The ingestor auto-chunks larger windows.
-  - Employer 401(k) plans (Fidelity NetBenefits) often expose balances as `$0.00` to aggregators — verify directly at the provider when those numbers look wrong.
-  - The Access URL embeds HTTP Basic credentials (`https://USER:PASS@host/`). Treat it as banking credential material; it lives in `_memory/sensitive/` for that reason.
-  - SimpleFin is operated by an independent maintainer. If your specific banks have coverage gaps or you want a commercial alternative, see the `plaid` row below.
-
-### plaid
-
-- **Maturity**: stub.
-- **Kind**: CLI.
-- **Underlying tool**: [`plaid-cli`](https://github.com/landakram/plaid-cli) or [`yapcli`](https://pypi.org/project/yapcli/).
-- **Ingests**: transactions, balances, holdings across linked checking, savings, credit, brokerage accounts.
-- **Writes to**:
-  - `_memory/transactions.yaml` (a derived index — created by the ingestor on first run).
-  - `_memory/accounts-index.yaml.<acct>.last_balance` (per-run balance snapshots).
-  - `_memory/bills.yaml` and `_memory/subscriptions.yaml` (recurring-charge auto-detection cross-checks).
-- **Install**: see Plaid's developer docs to obtain client_id + secret + access_token; `pip install yapcli` or `brew install plaid-cli`.
-- **Probe**: `plaid-cli accounts` returns ≥ 1 linked account.
-- **Caveats**: Plaid Sandbox is free; real bank links require a Plaid Production tier (which is free for personal use up to a small request budget).
-
-### monarch
-
-- **Maturity**: stub.
-- **Kind**: CLI.
-- **Underlying tool**: [`monarch-cli`](https://github.com/crcatala/monarch-cli) (unofficial; Python).
-- **Ingests**: transactions, accounts, categories, budget assignments from Monarch Money.
-- **Writes to**: same as Plaid.
-- **Install**: `pip install monarch-cli`; log in with Monarch credentials (kept in macOS Keychain).
-- **Probe**: `monarch-cli accounts list` succeeds.
-- **Caveats**: unofficial wrapper — Monarch may break it without notice; the ingestor logs failures cleanly so it's always recoverable.
-
-### ynab
-
-- **Maturity**: stub.
-- **Kind**: API.
-- **Underlying tool**: official YNAB API + a thin Python wrapper.
-- **Ingests**: transactions, categories, budget vs actuals.
-- **Writes to**: `_memory/transactions.yaml`, `_memory/accounts-index.yaml`.
-- **Install**: generate a personal access token at api.ynab.com; set `YNAB_TOKEN` env var.
-- **Probe**: GET `/v1/user`.
+## Standalone importers
 
 ### csv
 
-- **Maturity**: **shipped** (`superagent/tools/ingest/csv.py`).
+- **Module**: `superagent/tools/ingest/csv.py` — a standalone importer with its own `--file` CLI; not wrapped in a watcher pack (a `csv-drop` folder watcher is a postponed roadmap item).
 - **Kind**: file.
 - **Underlying tool**: built-in (Python `csv` stdlib + format auto-detect).
-- **Ingests**: a single CSV passed via `--file <path>`. Auto-detects column headers from Chase, Bank of America, Wells Fargo, American Express, Schwab, Fidelity, plus a generic fallback.
-- **Writes to**: `_memory/transactions.yaml`.
+- **Imports**: a single CSV passed via `--file <path>`. Auto-detects column headers from Chase, Bank of America, Wells Fargo, American Express, Schwab, Fidelity, plus a generic fallback.
+- **Writes to**: `_memory/transactions.yaml` (same shape as the `simplefin` harvest, same dedup key), plus a row in `_memory/ingestion-log.yaml`.
 - **Install**: nothing.
-- **Probe**: always available.
-- **Caveats**: amount sign convention varies by bank; the ingestor normalizes to "positive = inflow, negative = outflow" but warns when ambiguous.
-
----
-
-## Health and wearables
-
-### apple-health
-
-- **Maturity**: stub (highest-priority for Day-1 health value).
-- **Kind**: CLI.
-- **Underlying tool**: [`healthsync`](https://healthsync.sidv.dev/) — parses iPhone-side Apple Health `export.zip` into SQLite at `~/.healthsync/healthsync.db`.
-- **Ingests**: every datapoint Apple Health collects — steps, heart rate, weight, sleep, BP, glucose, workouts, vitals, vaccines (when manually entered).
-- **Writes to**: `_memory/health-records.yaml.vitals[]` (rate-limited to one row per kind per day to keep file size sane).
-- **Install**: `curl -fsSL https://healthsync.sidv.dev/install | bash`. On the iPhone: Settings → Health → Profile picture → Export All Health Data; AirDrop / iCloud Drive the resulting zip to the Mac and run `healthsync parse <export>.zip` once.
-- **Probe**: `healthsync` binary on PATH AND `~/.healthsync/healthsync.db` exists.
-- **Caveats**: heavy first run (years of data). Backfill window is configurable (default 365 days).
-
-### whoop
-
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: a WHOOP MCP server (e.g. [mcpforwhoop.com](https://mcpforwhoop.com/)).
-- **Ingests**: recovery score, strain, sleep stages, cycles.
-- **Writes to**: `_memory/health-records.yaml.vitals[]` for sleep / HR; daily summaries to `Domains/Health/history.md` (or `Domains/Hobbies/history.md` if a fitness goal is active).
-- **Install**: install the MCP; OAuth your WHOOP account.
-- **Probe**: list-cycles call returns at least one cycle.
-
-### strava
-
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: any of the 7+ available Strava MCPs.
-- **Ingests**: workouts, segment efforts, kudos, route summaries.
-- **Writes to**:
-  - `Domains/Hobbies/history.md` — one H4 entry per workout above a duration threshold.
-  - `_memory/health-records.yaml.vitals[]` — workout-summary HR averages.
-- **Install**: install the MCP; OAuth Strava with `read,activity:read_all` scopes.
-- **Probe**: list-activities call returns ≥ 0 activities.
-- **Caveats**: Strava's auth is per-app; rate limit is 600 calls / 15 minutes.
-
-### garmin
-
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: [GarminMCP](https://github.com/JohanBellander/GarminMCP) — 29+ tools.
-- **Ingests**: every metric Garmin Connect tracks (sleep, HR, HRV, VO2max, training-load, body-battery, weight, body composition, runs, rides, swims, hikes).
-- **Writes to**: same as Strava + Whoop combined.
-- **Install**: install the MCP; provide Garmin Connect credentials (stored in Keychain).
-- **Probe**: `get_user_summary` for the most recent day.
-
-### oura
-
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: any Oura MCP, or via the Open Wearables aggregator.
-- **Ingests**: sleep, readiness, activity scores from Oura Ring.
-- **Writes to**: `_memory/health-records.yaml.vitals[]`.
-- **Install**: install the MCP; OAuth Oura.
-- **Probe**: list-sleep call.
-
-### fitbit
-
-- **Maturity**: stub (no mature MCP yet).
-- **Kind**: planned via Open Wearables aggregator.
-- **Ingests**: same shape as Oura.
-- **Install**: when an MCP ships; until then use Apple Health on iPhone (Apple Health pulls Fitbit data via the Fitbit iPhone app's Health-share toggle).
-- **Probe**: stub returns NEEDS_SETUP.
-
----
-
-## Smart home and vehicles
-
-### home-assistant
-
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: [ha-mcp](https://github.com/zorak1103/ha-mcp) — 39+ tools, full CRUD; or Home Assistant's official MCP integration.
-- **Ingests**:
-  - Automation / scene state (any change since last ingest → narrative entry).
-  - Sensor anomalies (door left open > 1 hour; motion in kid's room at 3am; sensor offline > 24 hours).
-  - Daily energy usage snapshot.
-  - Thermostat schedule + actual deviations.
-- **Writes to**:
-  - `Domains/Home/history.md` — one H4 entry per day if anything notable.
-  - `Domains/Home/Resources/ha-snapshots/<date>.json` — full state snapshot. Working / browseable artifact (not a vault document); lives in `Resources/`, not `Sources/`.
-- **Install**: install Home Assistant locally or use Nabu Casa Cloud; install ha-mcp; set `HOMEASSISTANT_URL` and a long-lived access token.
-- **Probe**: `GET /api/` succeeds with the auth token.
-
-### smartthings
-
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: [smartthings-mcp](https://github.com/technohead/smartthings-mcp).
-- **Ingests**: same shape as home-assistant against Samsung SmartThings ecosystem.
-- **Install**: install the MCP; OAuth SmartThings.
-- **Probe**: list-locations call.
-
-### tesla
-
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: [tesla-mcp](https://github.com/ysrdevs/tesla-mcp) — 96 tools.
-- **Ingests**:
-  - Mileage at last sync (cross-checked against `assets-index.yaml.<vehicle>.maintenance` thresholds).
-  - Charging session summaries.
-  - Climate state + scheduled departures.
-  - Service alerts.
-  - Optional: location history (the user toggles `track_location: true` per vehicle).
-- **Writes to**:
-  - `_memory/assets-index.yaml.<vehicle>` — current mileage, last charge, last service alert.
-  - `Domains/Vehicles/history.md` — H4 entries for service alerts and charging anomalies.
-  - When mileage crosses next-service threshold → adds a P2 task to `todo.yaml` and a Next-Steps bullet to `Domains/Vehicles/status.md`.
-- **Install**: install the MCP; complete the Tesla Fleet API auth flow (requires a public domain to host the key file — Tesla's restriction).
-- **Probe**: `vehicle_data` call returns a vehicle.
-- **Caveats**: Tesla Fleet API setup is non-trivial; the install_hint surfaces a link to the canonical guide.
-
----
-
-## Communications
-
-### imessage
-
-- **Maturity**: stub.
-- **Kind**: CLI.
-- **Underlying tool**: [`imessage-exporter`](https://github.com/VasimPatel/imessage-exporter) — read-only export of `~/Library/Messages/chat.db`.
-- **Ingests**: messages from / to the user, filtered by an "important contact" list (the contacts in `_memory/contacts.yaml` plus any opted-in numbers).
-- **Writes to**: `_memory/interaction-log.yaml` — one row per substantive thread per day (not per message — would be too noisy).
-- **Install**: `pip install imessage-exporter`. macOS requires Full Disk Access in System Settings → Privacy & Security → Full Disk Access (the chat.db lives in a TCC-protected folder).
-- **Probe**: `~/Library/Messages/chat.db` is readable.
-- **Caveats**: privacy-sensitive — defaults to importing only contacts already in `contacts.yaml`. The user can broaden via `data-sources.yaml.imessage.scope: "all"` (then the ingestor pulls every conversation).
-
-### slack
-
-- **Maturity**: stub.
-- **Kind**: MCP.
-- **Underlying tool**: a Slack MCP for personal workspaces.
-- **Ingests**: DMs, mentions in channels the user is in.
-- **Writes to**: `_memory/interaction-log.yaml`.
-- **Install**: install the MCP; OAuth your personal workspace(s).
-- **Probe**: `auth.test` returns user info.
-- **Caveats**: out-of-the-box this is intended for personal workspaces (book club, side-project, family Slack). Work Slacks should not be ingested by Superagent — that's what your work assistant is for.
-
----
-
-## Files, media, location
-
-### photos
-
-- **Maturity**: stub.
-- **Kind**: CLI.
-- **Underlying tool**: [`exiftool`](https://exiftool.org/).
-- **Ingests**: EXIF metadata (date, GPS, camera) for every photo in a configured library or folder.
-- **Writes to**: `_memory/photo-locations.jsonl` (append-only timeline; one line per photo: `{ts, lat, lon, file_path}`).
-- **Install**: `brew install exiftool`. Configure `data-sources.yaml.photos.library_path` to point at the Photos library or a folder containing photos.
-- **Probe**: `exiftool` on PATH; `library_path` exists.
-- **Caveats**: large libraries (>100k photos) — first run can take 10+ minutes. Backfill is split into chunks of 1000 photos per ingest run by default.
-
-### gmaps-timeline
-
-- **Maturity**: stub.
-- **Kind**: file.
-- **Underlying tool**: built-in (Python JSON parser).
-- **Ingests**: Google Takeout's `Location History/Records.json` (or per-month `Semantic Location History/<YYYY>/<YYYY>_<MONTH>.json`).
-- **Writes to**: `_memory/location-timeline.jsonl`.
-- **Install**: nothing. User downloads location history from takeout.google.com.
-- **Probe**: always available.
-- **Caveats**: Google deprecated server-side Timeline in 2024; users now have to enable on-device Timeline in the Google Maps app and export from Settings → "Your Timeline" → "Export Timeline data". The ingestor handles both old and new export shapes.
-
----
-
-## Adding a new data source
-
-The full procedure is documented in `superagent/supercoder.agent.md` and `superagent/tools/ingest/_base.py`. Summary:
-
-1. Add a row to `superagent/tools/ingest/_registry.py.REGISTRY`.
-2. Create `superagent/tools/ingest/<source>.py` exporting a class `<Source>Ingestor` that subclasses `IngestorBase`.
-3. Implement `probe()` (lightweight) and `run(config_row, dry_run=False)` (real work).
-4. Add a row to the appropriate `data_sources_configured.<category>` block in `superagent/templates/memory/config.yaml`.
-5. Add a smoke test in `superagent/tests/test_ingest_registry.py`.
-6. Document the source in this catalogue.
-
-The Supertailor's strategic pass watches for "user keeps asking about X but has no ingestor for it" patterns and proposes new ingestors as `supertailor-suggestions.yaml` rows tagged `category: new-ingestor, destination: superagent` — handing off to the Supercoder for implementation.
+- **Run**: `uv run python -m superagent.tools.ingest.csv --file <path> [--dry-run]`.
+- **Caveats**: amount sign convention varies by bank; the importer normalizes to "positive = inflow, negative = outflow" but warns when ambiguous.

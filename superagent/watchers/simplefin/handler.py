@@ -1,3 +1,4 @@
+#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
 """SimpleFin Bridge ingestor.
@@ -6,7 +7,7 @@ Pulls bank / credit-card / brokerage transactions from SimpleFin Bridge
 (https://beta-bridge.simplefin.org/) into `_memory/transactions.yaml`.
 
 The long-lived Access URL is generated once by claiming a setup token
-(see `superagent/tools/simplefin_claim.py`) and lives in
+(see `superagent/watchers/simplefin/claim.py`) and lives in
 `workspace/_memory/sensitive/simplefin-credentials.yaml` with mode 600.
 
 SimpleFin's `/accounts` endpoint:
@@ -49,7 +50,8 @@ specific rows can be held out with `--reconcile-exclude <external_id>`
 Orphans that never find a twin do not linger unmarked either. A second,
 additive pass (`mark_stale_pending`) flags every still-orphaned pending row
 whose `transacted_at` is older than `stale_pending_days` (default
-`DEFAULT_STALE_PENDING_DAYS`; per-source override on the data-sources row)
+`DEFAULT_STALE_PENDING_DAYS`; override via `watch.stale_pending_days` on the
+registry row, or `--stale-pending-days` for the local reconcile CLI)
 with `stale_pending: true`. The row is kept verbatim — the flag only tells
 window-based consumers (`reconcile_transactions`, expense totals) to skip
 it, the same way they skip `superseded_by` rows.
@@ -71,13 +73,16 @@ from urllib.request import Request, urlopen
 
 import yaml
 
-from ._base import IngestorBase, ProbeResult, ProbeStatus, RunResult, now_iso
+try:
+    from superagent.tools.ingest._base import IngestorBase, RunResult, now_iso
+except ModuleNotFoundError:  # run as a script by path: put the repo root on sys.path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+    from superagent.tools.ingest._base import IngestorBase, RunResult, now_iso
 
 DEFAULT_RECENCY_DAYS = 30
 DEFAULT_BACKFILL_DAYS = 365
 DEFAULT_MAX_ITEMS = 2000
 DEFAULT_HTTP_TIMEOUT = 180  # seconds; see the module docstring on latency.
-PROBE_HTTP_TIMEOUT = 15  # probes ask for balances only and must stay snappy.
 SIMPLEFIN_WINDOW_DAYS = 45  # SimpleFin's recommended soft-cap; >45d windows
 # trigger a warning and may be capped server-side. Docs say 90; the API itself
 # warns at 45 (observed 2026-05-27).
@@ -149,11 +154,11 @@ class SimpleFinIngestor(IngestorBase):
     source = "simplefin"
     kind = "api"
     description = "SimpleFin Bridge bank/CC/brokerage transactions."
-    affected_domains = ("finances",)
+    # Domain refresh is the watchlist's job (pack.yaml `harvest.affected_domains`);
+    # the handler itself never renders domains, so a harvest refreshes once.
 
     CREDENTIAL_PATH = Path("_memory/sensitive/simplefin-credentials.yaml")
     INDEX_PATH = Path("_memory/transactions.yaml")
-    DATA_SOURCES_PATH = Path("_memory/data-sources.yaml")
     INGESTION_LOG_PATH = Path("_memory/ingestion-log.yaml")
 
     def _credentials_file(self) -> Path:
@@ -170,47 +175,6 @@ class SimpleFinIngestor(IngestorBase):
         url = data.get("access_url") if isinstance(data, dict) else None
         return url if isinstance(url, str) and url.startswith("https://") else None
 
-    def probe(self) -> ProbeResult:
-        access_url = self._load_access_url()
-        if not access_url:
-            return ProbeResult(
-                source=self.source,
-                status=ProbeStatus.NEEDS_SETUP,
-                detail=f"missing {self.CREDENTIAL_PATH}",
-                setup_hint=(
-                    "Sign up at https://beta-bridge.simplefin.org, generate a setup "
-                    "token, then run `uv run python -m superagent.tools.simplefin_claim "
-                    "<TOKEN>` to claim it."
-                ),
-            )
-        try:
-            base, user, password = split_access_url(access_url)
-        except ValueError as exc:
-            return ProbeResult(
-                source=self.source,
-                status=ProbeStatus.PERMISSION_DENIED,
-                detail=f"malformed access URL: {exc}",
-            )
-        try:
-            http_get_json(
-                base.rstrip("/") + "/accounts?balances-only=1",
-                basic_auth_header(user, password),
-                timeout=PROBE_HTTP_TIMEOUT,
-            )
-        except HTTPError as exc:
-            return ProbeResult(
-                source=self.source,
-                status=ProbeStatus.PERMISSION_DENIED,
-                detail=f"HTTP {exc.code}",
-            )
-        except URLError as exc:
-            return ProbeResult(
-                source=self.source,
-                status=ProbeStatus.NOT_DETECTED,
-                detail=f"network: {exc.reason}",
-            )
-        return ProbeResult(source=self.source, status=ProbeStatus.AVAILABLE)
-
     def run(self, config_row: dict[str, Any], dry_run: bool = False) -> RunResult:
         started = now_iso()
         t0 = time.time()
@@ -218,7 +182,7 @@ class SimpleFinIngestor(IngestorBase):
 
         access_url = self._load_access_url()
         if not access_url:
-            result.errors.append(f"missing {self.CREDENTIAL_PATH}; run simplefin_claim first")
+            result.errors.append(f"missing {self.CREDENTIAL_PATH}; run watchers/simplefin/claim.py first")
             result.finished_at = now_iso()
             result.duration_ms = int((time.time() - t0) * 1000)
             return result
@@ -361,16 +325,6 @@ class SimpleFinIngestor(IngestorBase):
             result.notes = (result.notes + f"; dry-run, would insert {inserted}").strip("; ")
         elif inserted > 0 or reconciled > 0 or stale_marked > 0:
             _save_index(idx_path, index)
-
-        # Refresh affected Domain marker blocks per
-        # contracts/domain-reflection.md. Best-effort; errors do not fail
-        # the ingest. Skipped on dry-run (no upstream data changed).
-        if not dry_run:
-            refresh_errors = self._refresh_domains()
-            if refresh_errors:
-                result.notes = (result.notes
-                                + "; render_domain errors: "
-                                + "; ".join(refresh_errors)).strip("; ")
 
         result.finished_at = now_iso()
         result.duration_ms = int((time.time() - t0) * 1000)
@@ -702,30 +656,6 @@ def _save_index(path: Path, data: dict[str, Any]) -> None:
         yaml.safe_dump(data, fh, sort_keys=False, allow_unicode=True)
 
 
-def _load_data_sources(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {"schema_version": 1, "sources": []}
-    data = yaml.safe_load(path.read_text()) or {}
-    if not isinstance(data, dict):
-        return {"schema_version": 1, "sources": []}
-    data.setdefault("sources", [])
-    return data
-
-
-def _save_data_sources(path: Path, data: dict[str, Any]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    data["last_updated"] = now_iso()
-    with path.open("w") as fh:
-        yaml.safe_dump(data, fh, sort_keys=False, allow_unicode=True)
-
-
-def _find_source_row(data: dict[str, Any], source: str) -> dict[str, Any] | None:
-    for row in data.get("sources") or []:
-        if isinstance(row, dict) and row.get("id") == source:
-            return row
-    return None
-
-
 def _next_log_id(log: dict[str, Any]) -> str:
     today = dt.date.today().strftime("%Y%m%d")
     n = 1
@@ -753,51 +683,24 @@ def _append_ingestion_log(workspace: Path, run_id: str, log_row: dict[str, Any])
         yaml.safe_dump(log, fh, sort_keys=False, allow_unicode=True)
 
 
-def _update_source_row(
-    workspace: Path, source: str, result: RunResult, run_id: str, window: dict[str, Any]
-) -> None:
-    path = workspace / SimpleFinIngestor.DATA_SOURCES_PATH
-    data = _load_data_sources(path)
-    row = _find_source_row(data, source)
-    if row is None:
-        return
-    row["last_ingest"] = result.finished_at
-    row["last_run"] = {
-        "started_at": result.started_at,
-        "finished_at": result.finished_at,
-        "items_pulled": result.items_pulled,
-        "items_inserted": result.items_inserted,
-        "items_updated": result.items_updated,
-        "items_skipped": result.items_skipped,
-        "errors": result.errors,
-        "truncated": result.truncated,
-        "duration_ms": result.duration_ms,
-        "run_log_id": run_id,
-    }
-    if result.errors:
-        row["failure_streak"] = int(row.get("failure_streak") or 0) + 1
-    else:
-        row["failure_streak"] = 0
-    _save_data_sources(path, data)
+def _run_reconcile_only(
+    workspace: Path, exclude: set[str], dry_run: bool, *, stale_days: int = DEFAULT_STALE_PENDING_DAYS
+) -> int:
+    """One-shot LOCAL repair: reconcile the existing store without fetching.
 
-
-def _run_reconcile_only(workspace: Path, exclude: set[str], dry_run: bool) -> int:
-    """One-shot repair: reconcile the existing store without fetching.
-
-    `dry_run` prints the proposed matches (pending id -> posted id, amount,
-    payee pair), the ambiguous orphans it skipped, and the orphans it would
-    flag `stale_pending`, then writes nothing — no index save, no log row.
-    The stale threshold honours `stale_pending_days` on the data-sources row.
+    No API call, so no budget applies; the run still appends its summary row
+    to `ingestion-log.yaml` for the audit trail. `dry_run` prints the proposed
+    matches (pending id -> posted id, amount, payee pair), the ambiguous
+    orphans it skipped, and the orphans it would flag `stale_pending`, then
+    writes nothing — no index save, no log row. `stale_days` comes from the
+    `--stale-pending-days` flag (the registry row's `watch.stale_pending_days`
+    is what a watchlist harvest passes in).
     """
     started = now_iso()
     t0 = time.time()
     idx_path = workspace / SimpleFinIngestor.INDEX_PATH
     index = _load_index(idx_path)
     rows = index.get("transactions") or []
-    source_row = _find_source_row(
-        _load_data_sources(workspace / SimpleFinIngestor.DATA_SOURCES_PATH), "simplefin"
-    ) or {}
-    stale_days = int(source_row.get("stale_pending_days") or DEFAULT_STALE_PENDING_DAYS)
 
     plan = _plan_reconciliation(rows, exclude=exclude)
     for m in plan["matches"]:
@@ -858,14 +761,31 @@ def _print_skipped_ids(ambiguous_ids: list[str], excluded_ids: list[str]) -> Non
         print(f"  excluded: {eid} (held out by --reconcile-exclude)")
 
 
+LIVE_RUN_HINT = (
+    "A live SimpleFIN pull goes through the watchlist so the budget counters, "
+    "state, and ingestion log stay consistent:\n"
+    "  uv run python -m superagent.tools.watchlist harvest --id simplefin [--backfill]\n"
+    "This standalone CLI only supports --dry-run and the local --reconcile repair."
+)
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="ingest-simplefin")
+    parser = argparse.ArgumentParser(
+        prog="ingest-simplefin",
+        description="SimpleFIN pack handler: --dry-run preview or local --reconcile repair.",
+        epilog=LIVE_RUN_HINT,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--workspace", type=Path, default=None)
-    parser.add_argument("--backfill", action="store_true",
-                        help="Pull backfill_window_days instead of incremental delta.")
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Fetch and report what a harvest would insert; write nothing.")
     parser.add_argument("--no-pending", action="store_true",
                         help="Exclude pending transactions.")
+    parser.add_argument("--stale-pending-days", type=int, default=DEFAULT_STALE_PENDING_DAYS,
+                        help=(
+                            "Orphan age before stale_pending is set "
+                            f"(default {DEFAULT_STALE_PENDING_DAYS})."
+                        ))
     parser.add_argument("--timeout", type=int, default=None,
                         help=(
                             "Per-request read timeout in seconds "
@@ -892,36 +812,27 @@ def main() -> int:
 
     if args.reconcile or args.reconcile_dry_run:
         return _run_reconcile_only(
-            workspace, set(args.reconcile_exclude), dry_run=args.reconcile_dry_run
+            workspace, set(args.reconcile_exclude), dry_run=args.reconcile_dry_run,
+            stale_days=args.stale_pending_days,
         )
 
-    data_sources = _load_data_sources(workspace / SimpleFinIngestor.DATA_SOURCES_PATH)
-    row = _find_source_row(data_sources, "simplefin") or {}
+    if not args.dry_run:
+        print(LIVE_RUN_HINT, file=sys.stderr)
+        return 2
+
     config_row: dict[str, Any] = {
-        "last_ingest": row.get("last_ingest"),
-        "recency_window_days": row.get("recency_window_days", DEFAULT_RECENCY_DAYS),
-        "backfill_window_days": row.get("backfill_window_days", DEFAULT_BACKFILL_DAYS),
-        "max_items_per_run": row.get("max_items_per_run", DEFAULT_MAX_ITEMS),
-        "backfill": args.backfill,
+        "last_ingest": None,
+        "recency_window_days": DEFAULT_RECENCY_DAYS,
+        "backfill_window_days": DEFAULT_BACKFILL_DAYS,
+        "max_items_per_run": DEFAULT_MAX_ITEMS,
         "include_pending": not args.no_pending,
         "timeout": args.timeout,
         "reconcile_exclude": args.reconcile_exclude,
-        "stale_pending_days": row.get("stale_pending_days"),
+        "stale_pending_days": args.stale_pending_days,
     }
 
     ingestor = SimpleFinIngestor(workspace)
-    result = ingestor.run(config_row, dry_run=args.dry_run)
-
-    if not args.dry_run:
-        log_path = workspace / SimpleFinIngestor.INGESTION_LOG_PATH
-        log_data = yaml.safe_load(log_path.read_text()) if log_path.exists() else {"runs": []}
-        if not isinstance(log_data, dict):
-            log_data = {"runs": []}
-        run_id = _next_log_id(log_data)
-        log_row = result.to_log_row(run_id, trigger="manual", window=None)
-        log_row.pop("id", None)
-        _append_ingestion_log(workspace, run_id, log_row)
-        _update_source_row(workspace, "simplefin", result, run_id, window=None)
+    result = ingestor.run(config_row, dry_run=True)
 
     print(
         f"pulled={result.items_pulled} inserted={result.items_inserted} "

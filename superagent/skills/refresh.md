@@ -77,8 +77,8 @@ files — it only moves the checkout forward and runs the documented
 post-update steps.
 
 > **Disambiguation**: a bare "refresh" from the user usually means *pull new
-> data*, not update the framework — route to `ingest` (or `whatsup` for the
-> delta view) and confirm the routing in one line ("Refreshing your data —
+> data*, not update the framework — route to `watch` (a watchlist check /
+> harvest; `whatsup` for the delta view) and confirm the routing in one line ("Refreshing your data —
 > say 'update superagent' for a framework update."). This skill fires only
 > on framework-context phrasing.
 

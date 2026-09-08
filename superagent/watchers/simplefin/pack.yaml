@@ -1,0 +1,62 @@
+# [Do not change manually — managed by Superagent]
+# Watcher pack: SimpleFIN Bridge. Schema: contracts/watchlist.md § 4.
+#
+# Detect and harvest are the same call here: the SimpleFIN ingestor pulls
+# the accounts + transactions payload and its delta (rows inserted or
+# updated) is the fingerprint. Because that call is the expensive one, the
+# cadence is preserved from the ingestor days — weekly, manual capture,
+# budgeted — and a cadence `check` never dispatches the harvest on its own
+# (§ 8). See README.md in this folder for the live-cadence rationale.
+watcher_version: 1
+id: simplefin
+title: "SimpleFIN Bridge — bank and brokerage feed"
+description: >-
+  Aggregated bank / card / brokerage accounts and transactions via the
+  SimpleFIN Bridge. Normalizes into transactions.yaml and refreshes balances
+  in accounts-index.yaml.
+kind: api
+parameterized: false
+params: {}
+
+detect:
+  type: harvest
+
+harvest:
+  # No `handler:` key: the tool loads this folder's `handler.py` (an IngestorBase
+  # subclass, SimpleFinIngestor) by file path. The pack is self-sufficient.
+  writes: [transactions.yaml, accounts-index.yaml]
+  affected_domains: [finances, assets]
+  # Handler configuration; a registry row's `watch:` block overrides any key.
+  defaults:
+    recency_window_days: 30
+    backfill_window_days: 365
+    max_items_per_run: 10000
+    include_pending: true
+    stale_pending_days: null      # null = handler default
+
+probe:
+  kind: file_exists
+  # Workspace-relative. Written once by the claim tool with mode 600.
+  path: "_memory/sensitive/simplefin-credentials.yaml"
+  setup_hint: >-
+    Claim a SimpleFIN setup token once:
+    `uv run python superagent/watchers/simplefin/claim.py <TOKEN>` writes
+    _memory/sensitive/simplefin-credentials.yaml (mode 600). The pack
+    only ever points at that file; it never holds the credentials.
+
+auth:
+  kind: basic
+  ref: "file:_memory/sensitive/simplefin-credentials.yaml"
+
+# Enforced BEFORE any handler call (contracts/watchlist.md § 8).
+budget:
+  max_calls_per_day: 24           # SimpleFIN's documented ceiling
+  min_interval_minutes: 60
+  max_window_days: 90             # SimpleFIN's per-call window limit
+
+defaults:
+  cycles: [weekly-review]
+  evict_after_days: null          # infrastructure source — a quiet feed is not a dead one
+  schedule: weekly
+  capture_mode: manual            # only `harvest --id simplefin` after an explicit yes
+  min_check_interval_minutes: 60

@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-09-07T00:51:51-07:00'
+generated_at: '2026-09-07T23:06:31-07:00'
 skill_count: 54
 skills:
 - name: superagent-ad-hoc-task
@@ -43,10 +43,9 @@ skills:
   lines: 154
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 1322
+  typical_token_cost: 1383
   typical_files_read:
   - _memory/accounts-index.yaml
-  - _memory/data-sources.yaml
   - Domains/Finances/history.md
   - _memory/interaction-log.yaml
   origin: framework
@@ -248,10 +247,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 247
+  lines: 249
   h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 3149
+  typical_token_cost: 3291
   typical_files_read:
   - _memory/domains-index.yaml
   - _memory/projects-index.yaml
@@ -420,8 +419,9 @@ skills:
 - name: superagent-daily-update
   stem: daily-update
   path: superagent/skills/daily-update.md
-  one_line: 'Daily briefing: run scheduled ingestors, then aggregate today''s calendar, bills due, appointments,
-    important dates, P0/P1 tasks, health signals, inbox highlights, and anything notable from ingest sour'
+  one_line: 'Daily briefing: check the watchlist (daily-update cycle), then aggregate today''s calendar,
+    bills due, appointments, important dates, P0/P1 tasks, health signals, inbox highlights, and anything
+    the wat'
   triggers:
   - daily update
   - morning briefing
@@ -433,22 +433,23 @@ skills:
   - run an update
   mcp_required: []
   mcp_optional:
-  - any scheduled-cadence ingest source (gmail, gcal, icloud, apple_health, …)
+  - any watcher registered in Sources/Watchlist/ whose cycles include daily-update (gmail, url, subagent,
+    …)
   cli_required: []
   cli_optional: []
-  lines: 348
+  lines: 360
   h2_steps: 27
   h3_subsections: 0
-  typical_token_cost: 4027
+  typical_token_cost: 4486
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
-  - _memory/data-sources.yaml
   - _memory/appointments.yaml
   - _memory/bills.yaml
   - _memory/important-dates.yaml
   - _memory/todo.yaml
   - _memory/health-records.yaml
+  - Domains/Hobbies/status.md
   origin: framework
 - name: superagent-doctor
   stem: doctor
@@ -470,9 +471,10 @@ skills:
   lines: 229
   h2_steps: 20
   h3_subsections: 0
-  typical_token_cost: 2478
+  typical_token_cost: 2527
   typical_files_read:
   - _memory/domains-index.yaml
+  - _memory/watchlist-state.yaml
   - _memory/action-signals.yaml
   - _memory/world.yaml
   - _memory/model-context.yaml
@@ -580,8 +582,8 @@ skills:
 - name: superagent-expenses
   stem: expenses
   path: superagent/skills/expenses.md
-  one_line: Categorize and review spending. Reads ingested transactions; renders by category, by merchant,
-    by domain. Spots anomalies vs trailing average. Cross-references against `bills.yaml` + `subscriptions.ya
+  one_line: Categorize and review spending. Reads harvested transactions; renders by category, by merchant,
+    by domain. Spots anomalies vs trailing average. Cross-references against `bills.yaml` + `subscriptions.y
   triggers:
   - expenses
   - spending this month
@@ -595,16 +597,17 @@ skills:
   - check my transactions
   mcp_required: []
   mcp_optional:
-  - finance ingestors (simplefin / plaid / monarch / ynab / csv) — required for any data
+  - the simplefin watcher (harvest) or a CSV import — required for any data
   cli_required: []
   cli_optional: []
   lines: 124
   h2_steps: 5
   h3_subsections: 7
-  typical_token_cost: 1445
+  typical_token_cost: 1484
   typical_files_read:
-  - _memory/accounts-index.yaml
   - _memory/transactions.yaml
+  - _memory/accounts-index.yaml
+  - _memory/watchlist-state.yaml
   - _memory/expense-categories.yaml
   origin: framework
 - name: superagent-follow-up
@@ -675,13 +678,13 @@ skills:
   - log a lab result
   mcp_required: []
   mcp_optional:
-  - apple_health / whoop / strava / garmin / oura — auto-ingest vitals
+  - a health-data watcher pack under `workspace/_custom/watchers/` (none ships in core) — harvested vitals
   cli_required: []
   cli_optional: []
   lines: 175
   h2_steps: 5
   h3_subsections: 6
-  typical_token_cost: 1370
+  typical_token_cost: 1379
   typical_files_read:
   - _memory/health-records.yaml
   - Domains/Health/info.md
@@ -764,37 +767,6 @@ skills:
   - _memory/inbox-rules.yaml
   - _memory/interaction-log.yaml
   origin: framework
-- name: superagent-ingest
-  stem: ingest
-  path: superagent/skills/ingest.md
-  one_line: The data-ingestion front-end. Probes for available sources, lets the user enable / disable
-    each, runs ingestors on demand or per cadence, and surfaces the per-source last_run summary. The orchestrator
-  triggers:
-  - ingest
-  - import data
-  - sync from <source>
-  - run ingest
-  - set up data sources
-  - refresh my data / pull new data
-  - refresh email / transactions
-  mcp_required: []
-  mcp_optional:
-  - any source documented in docs/data-sources.md
-  cli_required: []
-  cli_optional: []
-  lines: 168
-  h2_steps: 5
-  h3_subsections: 16
-  typical_token_cost: 2346
-  typical_files_read:
-  - _memory/data-sources.yaml
-  - _memory/context.yaml
-  - _memory/transactions.yaml
-  - Domains/Hobbies/history.md
-  - Domains/Home/history.md
-  - Domains/Vehicles/history.md
-  - _memory/action-signals.yaml
-  origin: framework
 - name: superagent-init
   stem: init
   path: superagent/skills/init.md
@@ -811,15 +783,14 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 370
+  lines: 365
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 6094
+  typical_token_cost: 6021
   typical_files_read:
   - _memory/config.yaml
   - _memory/insights.yaml
   - _memory/interaction-log.yaml
-  - _memory/data-sources.yaml
   origin: framework
 - name: superagent-log-event
   stem: log-event
@@ -884,22 +855,22 @@ skills:
   - month-end review
   mcp_required: []
   mcp_optional:
-  - any scheduled-cadence ingest source
+  - any watcher whose cycles include monthly-review
   cli_required: []
   cli_optional: []
-  lines: 224
-  h2_steps: 23
+  lines: 233
+  h2_steps: 24
   h3_subsections: 0
-  typical_token_cost: 2141
+  typical_token_cost: 2298
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/documents-index.yaml
   - _memory/assets-index.yaml
+  - _memory/transactions.yaml
   - _memory/health-records.yaml
   - _memory/todo.yaml
   - _memory/projects-index.yaml
   - _memory/sources-index.yaml
-  - _memory/decisions.yaml
   origin: framework
 - name: superagent-personal-signals
   stem: personal-signals
@@ -1000,7 +971,7 @@ skills:
   lines: 273
   h2_steps: 12
   h3_subsections: 0
-  typical_token_cost: 3051
+  typical_token_cost: 3057
   typical_files_read:
   - _memory/config.yaml
   - _memory/interaction-log.yaml
@@ -1103,15 +1074,16 @@ skills:
   - find <doc>
   mcp_required: []
   mcp_optional:
-  - any source-fetch ingestor (depends on the ref kind)
+  - any live fetcher for the ref kind (MCP / CLI / HTTP)
   cli_required: []
   cli_optional: []
-  lines: 221
+  lines: 223
   h2_steps: 9
   h3_subsections: 7
-  typical_token_cost: 2060
+  typical_token_cost: 2183
   typical_files_read:
   - _memory/sources-index.yaml
+  - _memory/watchlist-state.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-subscriptions
@@ -1180,8 +1152,9 @@ skills:
   lines: 162
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2827
+  typical_token_cost: 2847
   typical_files_read:
+  - _memory/watchlist-state.yaml
   - _memory/supertailor-suggestions.yaml
   - _memory/contacts.yaml
   - _memory/domains-index.yaml
@@ -1293,6 +1266,37 @@ skills:
   - _memory/interaction-log.yaml
   - Domains/Vehicles/status.md
   origin: framework
+- name: superagent-watch
+  stem: watch
+  path: superagent/skills/watch.md
+  one_line: Register, list, pause, revive, check, and harvest watchers (ext-sources) — the change-detection
+    tier over `Sources/Watchlist/<id>.ref.md` (contracts/watchlist.md). Drives `tools/watchlist.py`, enables
+  triggers:
+  - watch this
+  - add a watcher
+  - watchlist
+  - ext-source / ext-sources
+  - what changed in my sources
+  - ingest
+  - import data
+  - sync from <source>
+  - run ingest
+  - set up data sources
+  - refresh my data / pull new data
+  - refresh email / refresh transactions
+  mcp_required: []
+  mcp_optional:
+  - gmail (the `gmail` pack reuses the Gmail MCP's saved OAuth token; no MCP call is made by the tool)
+  cli_required: []
+  cli_optional: []
+  lines: 152
+  h2_steps: 9
+  h3_subsections: 0
+  typical_token_cost: 3265
+  typical_files_read:
+  - _memory/config.yaml
+  - _memory/interaction-log.yaml
+  origin: framework
 - name: superagent-weekly-review
   stem: weekly-review
   path: superagent/skills/weekly-review.md
@@ -1307,14 +1311,14 @@ skills:
   - week in review
   mcp_required: []
   mcp_optional:
-  - any finance ingestor (simplefin / plaid / monarch / ynab)
-  - any health / fitness ingestor (apple_health / whoop / strava / garmin / oura)
+  - the simplefin watcher (weekly harvest) or a CSV import for the Bookkeeper pass
+  - any health / fitness watcher for the Coach pass
   cli_required: []
   cli_optional: []
-  lines: 252
-  h2_steps: 21
+  lines: 267
+  h2_steps: 22
   h3_subsections: 0
-  typical_token_cost: 2498
+  typical_token_cost: 2690
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md
@@ -1342,14 +1346,13 @@ skills:
   - what are my top tasks / top tasks to complete
   - steps for today
   mcp_required: []
-  mcp_optional:
-  - any scheduled-cadence ingest source
+  mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 167
+  lines: 162
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 1786
+  typical_token_cost: 1902
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml

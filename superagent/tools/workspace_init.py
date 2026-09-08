@@ -13,6 +13,10 @@ Creates `workspace/` (or the path configured via
                   so the `add-*` skills can route to them.
   - `Inbox/`, `Outbox/`, `Archive/` — staging / output / archive folders
   - `Projects/`, `Sources/`         — personal-life folders
+  - `Sources/Watchlist/`            — the watcher registry (reserved name,
+                                      user-editable contents) + its README;
+                                      `_memory/watchlist-state.yaml` seeded
+                                      alongside (contracts/watchlist.md)
   - `_custom/`                      — empty per-user overlay scaffold
   - `todo.md`                       — workspace-level cross-cutting task view
 
@@ -53,6 +57,49 @@ DEFAULT_DOMAINS = [
     ("Hobbies", "Each meaningful hobby — fitness, reading log, side project, garden, workshop, etc."),
     ("Self", "Personal-development goals, journaling, books / podcasts / media log, life themes"),
 ]
+
+# `templates/memory/*.yaml` files that are NOT seeded into a new workspace.
+# `data-sources.yaml` was retired by 0.19.0 (sources are `.ref.md` files under
+# `Sources/Watchlist/`, run state lives in `watchlist-state.yaml`); the guard
+# holds even while the old template file lingers in the tree.
+RETIRED_MEMORY_TEMPLATES = frozenset({"data-sources.yaml"})
+
+# Watcher registry folder (relative to the workspace) and the memory singleton
+# the watchlist tool owns. Both mirror `config.preferences.watchlist` defaults.
+WATCHLIST_DIRNAME = "Sources/Watchlist"
+WATCHLIST_STATE_NAME = "watchlist-state.yaml"
+
+# Fallbacks used when the framework templates are absent (older checkouts).
+WATCHLIST_STATE_DEFAULT = (
+    "# [Do not change manually — managed by Superagent]\n"
+    "# Superagent memory: machine-owned run state of the watchlist\n"
+    "# (contracts/watchlist.md). Keyed by watcher id = the filename stem of\n"
+    "# `Sources/Watchlist/<id>.ref.md`. Only `tools/watchlist.py` writes here.\n"
+    "\n"
+    "schema_version: 1\n"
+    "watchers: {}\n"
+)
+WATCHLIST_README_DEFAULT = """# `Sources/Watchlist/` -- the watcher registry
+
+Every `<id>.ref.md` in this folder is a normal Sources reference (canonical
+frontmatter per `superagent/templates/sources/ref.md`) that ALSO carries a
+`watch:` block. The filename stem is the watcher id, its state key, and its
+handle (`watch:<id>`). Rename = move the file.
+
+- The folder name is reserved (`config.preferences.watchlist.path`); its
+  contents are yours -- hand-author, edit, or delete any ref here.
+- `kind` / `source` stay the ref's locator. `watch.type` defaults from `kind`
+  (`url` -> `url`, `cli` -> `cmd`, `file` -> `path`, `manual` -> `subagent`);
+  `watch.pack: <id>` uses a shipped pack instead (`superagent/watchers/<id>/`
+  or `workspace/_custom/watchers/<id>/`).
+- `ttl_minutes` governs read freshness for `sources fetch` only -- never
+  change detection. Detect keeps its own fingerprint in
+  `_memory/watchlist-state.yaml`, which only the watchlist tool writes.
+- `enabled: false` pauses a watcher. `cmd` watchers run only when
+  `config.preferences.watchlist.allow_cmd` is true.
+
+Full contract: `superagent/contracts/watchlist.md`. Skill: `watch`.
+"""
 
 
 def now_iso() -> str:
@@ -189,9 +236,42 @@ def init_memory(workspace: Path, framework: Path, dry_run: bool, log: list[str])
     safe_mkdir(dst_dir, dry_run=dry_run, log=log)
     copied = 0
     for src in sorted(src_dir.glob("*.yaml")):
+        if src.name in RETIRED_MEMORY_TEMPLATES:
+            continue
         if safe_copy(src, dst_dir / src.name, dry_run=dry_run, log=log):
             copied += 1
     return copied
+
+
+def init_watchlist(workspace: Path, framework: Path, dry_run: bool, log: list[str]) -> int:
+    """Seed the watcher registry folder and its machine-owned state file.
+
+    Creates `Sources/Watchlist/` + `README.md` (from
+    `templates/folder-readmes/Watchlist.md` when it ships, else an inline
+    fallback) and `_memory/watchlist-state.yaml` (from
+    `templates/memory/watchlist-state.yaml` when it ships, else
+    `{schema_version: 1, watchers: {}}`). Idempotent like every other seed.
+    Returns the number of files / folders newly created.
+    """
+    touched = 0
+    registry = workspace / WATCHLIST_DIRNAME
+    if safe_mkdir(registry, dry_run=dry_run, log=log):
+        touched += 1
+    readme_src = framework / "templates" / "folder-readmes" / "Watchlist.md"
+    if readme_src.exists():
+        created = safe_copy(readme_src, registry / "README.md", dry_run=dry_run, log=log)
+    else:
+        created = safe_write(registry / "README.md", WATCHLIST_README_DEFAULT,
+                             dry_run=dry_run, log=log)
+    touched += int(created)
+    state_dst = workspace / "_memory" / WATCHLIST_STATE_NAME
+    state_src = framework / "templates" / "memory" / WATCHLIST_STATE_NAME
+    if state_src.exists():
+        created = safe_copy(state_src, state_dst, dry_run=dry_run, log=log)
+    else:
+        created = safe_write(state_dst, WATCHLIST_STATE_DEFAULT, dry_run=dry_run, log=log)
+    touched += int(created)
+    return touched
 
 
 def init_domains(workspace: Path, framework: Path, dry_run: bool, log: list[str]) -> int:
@@ -346,6 +426,7 @@ def main(argv: list[str] | None = None) -> int:
         memory_copied = init_memory(workspace, framework, args.dry_run, log)
         domains_touched = init_domains(workspace, framework, args.dry_run, log)
         folders_touched = init_folders(workspace, framework, args.dry_run, log)
+        watchlist_touched = init_watchlist(workspace, framework, args.dry_run, log)
         internal_touched = init_internal_dirs(workspace, args.dry_run, log)
         custom_touched = init_custom(workspace, args.dry_run, log)
         todo_written = init_workspace_todo(workspace, framework, args.dry_run, log)
@@ -362,6 +443,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  _memory files created:    {memory_copied}")
     print(f"  Domains/ created:         {domains_touched}  (per-domain folders are lazy)")
     print(f"  Top-level folders:        {folders_touched}")
+    print(f"  Watchlist registry+state: {watchlist_touched}")
     print(f"  internal _memory dirs:    {internal_touched}")
     print(f"  _custom subfolders:       {custom_touched}")
     print(f"  workspace todo.md:        {'created' if todo_written else 'kept'}")

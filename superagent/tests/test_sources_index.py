@@ -384,3 +384,98 @@ def test_rename_ambiguous_when_multiple_basename_matches(initialized_workspace: 
     assert old_b is not None and old_b["present"] is False
     assert old_a["notes"] == "alpha", "user's notes must survive on the present=false row"
     assert old_b["notes"] == "bravo"
+
+
+WATCH_REF = (
+    "---\n"
+    "ref_version: 1\n"
+    "title: Permit portal\n"
+    "kind: url\n"
+    "source: \"https://permits.example.gov/status?id=1\"\n"
+    "related_project: solar\n"
+    "watch:\n"
+    "  type: url\n"
+    "  enabled: true\n"
+    "  cycles: [daily-update]\n"
+    "  selector: \"#status\"\n"
+    "---\n\nNotes.\n"
+)
+
+
+def test_watchlist_ref_indexed_with_watch_lifted(initialized_workspace: Path) -> None:
+    """A `Sources/Watchlist/<id>.ref.md` is a normal reference row plus a lifted `watch` mapping;
+    the registry README is excluded like `Sources/README.md`."""
+    from superagent.tools.sources_index import ref_stem, refresh
+
+    ref = initialized_workspace / "Sources" / "Watchlist" / "solar-permit.ref.md"
+    _write(ref, WATCH_REF)
+    index = refresh(initialized_workspace, force=True)
+    rows = {r["path"]: r for r in index["sources"] if r.get("id")}
+    row = rows["Sources/Watchlist/solar-permit.ref.md"]
+    assert row["kind"] == "reference" and row["category"] == "Watchlist"
+    assert row["related_project"] == "solar"
+    assert row["watch"] == {"type": "url", "enabled": True, "cycles": ["daily-update"],
+                            "selector": "#status"}
+    assert ref_stem(row["path"]) == "solar-permit"
+    assert "Sources/Watchlist/README.md" not in rows
+    # Rows without a watch: block carry no `watch` key at all.
+    assert all("watch" not in r for p, r in rows.items() if p != row["path"])
+
+
+def test_watch_field_survives_broken_file_but_drops_when_block_removed(
+    initialized_workspace: Path,
+) -> None:
+    from superagent.tools.sources_index import refresh
+
+    ref = initialized_workspace / "Sources" / "Watchlist" / "solar-permit.ref.md"
+    _write(ref, WATCH_REF)
+    refresh(initialized_workspace, force=True)
+    # Transiently unparseable frontmatter: keep the previously lifted mapping.
+    _write(ref, "---\nkind: url\nsource: [unclosed\n---\n")
+    _bump_mtime(ref)
+    index = refresh(initialized_workspace, force=True)
+    row = next(r for r in index["sources"] if r.get("path") == "Sources/Watchlist/solar-permit.ref.md")
+    assert row["normalized"] is False
+    assert row["watch"]["type"] == "url"
+    # A clean file WITHOUT a watch: block means the block is gone: drop it.
+    _write(ref, WATCH_REF.split("watch:\n")[0] + "---\n\nNotes.\n")
+    _bump_mtime(ref, 4.0)
+    index = refresh(initialized_workspace, force=True)
+    row = next(r for r in index["sources"] if r.get("path") == "Sources/Watchlist/solar-permit.ref.md")
+    assert row["normalized"] is True
+    assert "watch" not in row
+
+
+def test_path_rewritten_in_place_keeps_row_id(initialized_workspace: Path) -> None:
+    """Path identity: a present row whose `path` already names the scanned file keeps
+    its id even though the derived `src-<sha1(path)>` would differ (contracts/sources.md
+    § 15.6). This is what lets the 0.19.0 migration relocate a ref without orphaning
+    the `src-...` ids cited in history / log rows."""
+    from superagent.tools.sources_index import (
+        id_for_path,
+        load_index,
+        refresh,
+        save_index,
+        update_row,
+    )
+
+    old = initialized_workspace / "Sources" / "a" / "thing.ref.md"
+    new = initialized_workspace / "Sources" / "b" / "thing_moved.ref.md"
+    _write(old, "---\nref_version: 1\ntitle: T\nkind: url\nsource: \"https://x\"\n---\n")
+    refresh(initialized_workspace, force=True)
+    old_id = id_for_path("Sources/a/thing.ref.md")
+    update_row(initialized_workspace, old_id, {"notes": "keep me"})
+    # Move the file and rewrite the row's path in place (id untouched).
+    new.parent.mkdir(parents=True)
+    old.rename(new)
+    index = load_index(initialized_workspace)
+    for row in index["sources"]:
+        if row.get("id") == old_id:
+            row["path"] = "Sources/b/thing_moved.ref.md"
+    save_index(initialized_workspace, index)
+    rows = {r["path"]: r for r in refresh(initialized_workspace, force=True)["sources"] if r.get("id")}
+    row = rows["Sources/b/thing_moved.ref.md"]
+    assert row["id"] == old_id != id_for_path("Sources/b/thing_moved.ref.md")
+    assert row["notes"] == "keep me" and row["present"] is True
+    assert "Sources/a/thing.ref.md" not in rows
+    assert sum(1 for r in rows.values() if r["id"] == old_id) == 1

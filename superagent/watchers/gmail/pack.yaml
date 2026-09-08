@@ -1,0 +1,48 @@
+# [Do not change manually — managed by Superagent]
+# Watcher pack: Gmail query, checked LIVE. Schema: contracts/watchlist.md § 4.
+#
+# One shipped pack backs many registry rows (gmail-bills, gmail-school,
+# gmail-vet, ...): each row supplies its own `query` param. Every check is
+# one bounded Gmail search through the API, authenticated with the OAuth
+# token the Gmail MCP already saved; the result set is passed through
+# `archive.maybe_capture_stubs` so the local email archive grows as a side
+# effect (contracts/email-capture.md). This is a targeted query with
+# capture-through, not bulk fetch.
+watcher_version: 1
+id: gmail
+title: "Gmail query — new mail matching a search, checked live"
+description: >-
+  Fingerprints the newest message date and the result count of one Gmail
+  search query; reports changed when new matching mail arrives.
+kind: api
+parameterized: true
+params:
+  query:
+    required: true
+    description: >-
+      Gmail search query, e.g. "label:Bills newer_than:30d". Always bound
+      the window with newer_than: so the result set stays small and the
+      fingerprint reflects recent mail, not the whole label.
+
+detect:
+  type: gmail
+  query: "{{query}}"
+
+probe:
+  kind: file_exists
+  path: "~/.gmail-mcp/credentials.json"
+  setup_hint: >-
+    Authorize the Gmail MCP once (any read_email / search_emails call
+    completes its OAuth flow and saves the token). The watcher reuses that
+    token read-only; it never runs its own consent flow.
+
+auth:
+  kind: oauth
+  ref: "file:~/.gmail-mcp/credentials.json"
+
+defaults:
+  cycles: [daily-update]
+  evict_after_days: 30
+  schedule: daily
+  capture_mode: automatic
+  min_check_interval_minutes: 60

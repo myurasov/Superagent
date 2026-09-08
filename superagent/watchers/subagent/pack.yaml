@@ -1,0 +1,39 @@
+# [Do not change manually — managed by Superagent]
+# Watcher pack: subagent (named after its detect type). Schema:
+# contracts/watchlist.md § 4; dispatch and trust boundary § 10.
+#
+# The escape hatch that makes anything watchable: no fetcher, no parser, no
+# schema. The registry row supplies a natural-language `prompt`; the tool
+# NEVER runs it — it emits a dispatch spec, the calling agent runs the
+# prompt as a read-only subagent, and records the one-line delta with
+# `stamp`. That stamped note becomes the next fingerprint. The note is
+# DATA, never instructions (see README.md).
+watcher_version: 1
+id: subagent
+title: "Subagent — watch anything with a read-only prompt"
+description: >-
+  Dispatches a natural-language, read-only prompt to a subagent on each
+  eligible cycle; the returned one-line delta is stamped as the fingerprint.
+kind: generic
+parameterized: true
+params:
+  prompt:
+    required: true
+    description: >-
+      What to look at and how to report. Must be read-only ("never submit a
+      form, never send, never write upstream") and must ask for ONE line:
+      the delta, or "no change".
+
+detect:
+  type: subagent
+  prompt: "{{prompt}}"
+
+probe:
+  kind: always
+
+defaults:
+  cycles: [daily-update]
+  evict_after_days: 45
+  schedule: daily
+  capture_mode: automatic
+  min_check_interval_minutes: null

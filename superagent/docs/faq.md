@@ -18,7 +18,7 @@
   - [What about phone access?](#what-about-phone-access)
   - [Is it secure?](#is-it-secure)
   - [What if the AI gets something wrong?](#what-if-the-ai-gets-something-wrong)
-  - [Why are some skills not implemented yet?](#why-are-some-skills-not-implemented-yet)
+  - [Which data sources are supported?](#which-data-sources-are-supported)
   - [Can I add my own skill?](#can-i-add-my-own-skill)
   - [What's the long-term plan?](#whats-the-long-term-plan)
 
@@ -77,15 +77,15 @@ Each data source you enable is an upgrade — Superagent now knows things you'd 
 
 ## What if a data source breaks?
 
-Each ingestor's failures are isolated. If `gmail` breaks, `apple_health` keeps working. After 3 consecutive failures of the same source, Superagent auto-flips it to `capture_mode: manual` and surfaces it in the next daily-update under "Sources needing attention" with the failure cause. You fix it (re-auth, re-install, …) and re-enable.
+Each watcher's failures are isolated. If the `gmail-bills` watcher can't reach Gmail, `simplefin` keeps working. A source that can't be reached is reported `unreachable` and **kept** — a down server is not a dead source, so it is never auto-evicted while unreachable — its `error_streak` grows in `_memory/watchlist-state.yaml`, and the next daily-update lists it under "Sources needing attention" with the last error. You fix it (re-auth, re-install, …) and the next check clears the streak.
 
-The Supertailor's strategic pass watches for sources that fail repeatedly and proposes either reauth automation or removing the source from the catalogue if the upstream service has shut down.
+The Supertailor's hygiene pass surfaces every watcher with `error_streak > 0` or `status: evicted`; its strategic pass proposes reauth automation or retiring the watcher if the upstream service has shut down.
 
 ## How does it compare to Notion / Obsidian / a spreadsheet?
 
 Notion / Obsidian / spreadsheets are **canvases** — they give you tools to organize information you put in. They don't read your inbox or know your bills are due.
 
-Superagent is a **system** — it has opinions about what to track, defaults for how to track it, and ambient ingestion that fills in the data so you don't have to. You can absolutely use Notion or Obsidian alongside Superagent (the `notion` and `obsidian` ingestors index them — your existing notes become Superagent-readable). What you can't do with a canvas is have the canvas wake you up when a bill is due.
+Superagent is a **system** — it has opinions about what to track, defaults for how to track it, and watchers that fill in the data so you don't have to. You can absolutely use Notion or Obsidian alongside Superagent (point a `path` or `cmd` watcher at the vault, or a `.ref.md` under `Sources/` at the pages you care about — your existing notes become Superagent-readable). What you can't do with a canvas is have the canvas wake you up when a bill is due.
 
 ## How does it compare to commercial AI life-managers like eeva, Kora, Okto, Alfred:Home?
 
@@ -142,13 +142,11 @@ Multiple safety nets:
 - **Plain-text data.** Worst case, you open the file in any editor and fix it manually. There's nothing the agent does that you can't undo.
 
 
-## Why are some skills / ingestors not implemented yet?
+## Which data sources are supported?
 
-The framework ships with ~49 skills documented as markdown instruction sets, ~30 Python tools (workspace_init, validate, render_status, log_user_query, world, sources_cache, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, …), and the ingest base + orchestrator + 2 reference ingestors (`apple_reminders`, `csv`).
+The framework ships with ~49 skills documented as markdown instruction sets, ~30 Python tools (workspace_init, validate, render_status, log_user_query, world, sources_cache, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, watchlist, …), and a **watchlist** of external sources (`contracts/watchlist.md`) with four shipped watcher packs: `simplefin` (bank / brokerage harvest), `gmail` (live query for new mail, capture-through into the local archive), `url` (any URL), and `subagent` (anything an agent can read — the escape hatch). A standalone CSV importer (`tools/ingest/csv.py --file`) covers bank statements. Setup notes: `docs/data-sources.md`.
 
-Most of the **per-source ingestors are stubs** that return NEEDS_SETUP from `probe()`. The roadmap (`roadmap.md`) prioritizes which to implement first based on user value: gmail, google_calendar, apple_health, plaid are the top of LOE-S.
-
-Implementing a stub means: add a real `<source>.py` that subclasses `IngestorBase`, implement `probe()` and `run()`, add a smoke test. The shipped `csv` and `apple_reminders` ingestors are reference implementations — small, contained, tested.
+There is deliberately **no catalogue of stubs**. A source Superagent does not know about is a one-file `url` / `cmd` / `subagent` row under `Sources/Watchlist/`, or — when it feeds a typed index and needs real normalization — a self-contained pack folder (`pack.yaml` + optional `handler.py` implementing `IngestorBase.run`) dropped into `workspace/_custom/watchers/<id>/`, no framework code touched. Sharing a watcher is copying its folder.
 
 ## Can I add my own skill?
 
@@ -160,8 +158,8 @@ If your skill turns out to be useful for everyone, the Supertailor's strategic p
 
 `docs/roadmap.md` has the full plan with LOE tiers (T-shirt sizes XS / S / M / L / XL). High-level shape:
 
-- **XS / S (this quarter)**: implement the highest-value ingestors (gmail, google_calendar, apple_health, plaid). Polish the daily / weekly / monthly briefings based on real usage.
-- **M (next quarter)**: more ingestors (whoop, strava, garmin, oura, home_assistant, tesla, obsidian, notion). Native encryption support. iOS Shortcut pack.
+- **XS / S (this quarter)**: more shipped watcher packs on the watchlist (calendar, health export) and a `csv-drop` folder watcher. Polish the daily / weekly / monthly briefings based on real usage.
+- **M (next quarter)**: cache-composed detect (one conditional GET serving both `sources fetch` and change detection). Native encryption support. iOS Shortcut pack.
 - **L (next year)**: multi-user vault with proper conflict resolution. Voice-first capture (audio in, transcribe, route to the right skill). Family-mode (shared Domains, per-user private Domains). A polished read-only mobile UI.
 - **XL (vision)**: a full evolution into "the personal-life equivalent of an AI engineering co-pilot — proactive, calibrated, ambient, indispensable".
 

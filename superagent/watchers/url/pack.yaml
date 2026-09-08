@@ -1,0 +1,42 @@
+# [Do not change manually — managed by Superagent]
+# Watcher pack: one web page. Schema: contracts/watchlist.md § 4.
+#
+# Generic, parameterized: a registry row supplies the `url` and optionally a
+# CSS `selector` that scopes the fingerprint to one region of the page. The
+# `url` detect type applies the hardening in contracts/watchlist.md § 5
+# (conditional request first; script / style / comments stripped;
+# `ignore_patterns`; `min_change_interval_minutes`) so a page that embeds
+# timestamps or session tokens does not cry wolf.
+watcher_version: 1
+id: url
+title: "URL — change detection on one web page"
+description: >-
+  Fingerprints the normalized text of a page (or of one CSS-selected
+  region) and reports changed when it moves.
+kind: generic
+parameterized: true
+params:
+  url:
+    required: true
+    description: "The page to watch. http or https only; no credentials in the URL."
+  selector:
+    required: false
+    default: ""
+    description: >-
+      Optional CSS selector scoping the fingerprint to one element, e.g.
+      "#status-panel". Empty = the whole page body after stripping.
+
+detect:
+  type: url
+  url: "{{url}}"
+  selector: "{{selector}}"
+
+probe:
+  kind: always
+
+defaults:
+  cycles: [daily-update]
+  evict_after_days: 30
+  schedule: daily
+  capture_mode: automatic
+  min_check_interval_minutes: 720     # never more than twice a day

@@ -1,3 +1,4 @@
+#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
 """Claim a SimpleFin Bridge setup token into a long-lived Access URL.
@@ -7,9 +8,9 @@ response body is an Access URL of the form `https://USER:PASS@host/path`,
 which is the read-only credential we use thereafter.
 
 Usage:
-    uv run python -m superagent.tools.simplefin_claim <SETUP_TOKEN>
-    # then verify by running the ingestor's probe:
-    uv run python -m superagent.tools.ingest.simplefin --dry-run
+    uv run python superagent/watchers/simplefin/claim.py <SETUP_TOKEN>
+    # then verify with a dry-run harvest:
+    uv run python superagent/watchers/simplefin/handler.py --dry-run
 
 The Access URL is written to
 `workspace/_memory/sensitive/simplefin-credentials.yaml` with mode 600
@@ -79,7 +80,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    framework = Path(__file__).resolve().parents[1]
+    framework = Path(__file__).resolve().parents[2]
     workspace = args.workspace or framework.parent / "workspace"
     out_path = workspace / "_memory" / "sensitive" / "simplefin-credentials.yaml"
 
@@ -110,7 +111,7 @@ def main() -> int:
         return 3
 
     print(f"[claim] OK -> wrote {out_path.relative_to(workspace.parent)} (mode 600)")
-    print("Next: uv run python -m superagent.tools.ingest.simplefin --dry-run")
+    print("Next: uv run python superagent/watchers/simplefin/handler.py --dry-run")
     return 0
 
 

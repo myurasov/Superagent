@@ -360,3 +360,34 @@ def test_accounts_template_documents_linked_assets_and_accounts(
     example = (yaml.safe_load(text)["accounts"] or [])[0]
     assert example["linked_assets"] == []
     assert example["linked_accounts"] == []
+
+
+def test_rebuild_emits_watch_nodes_for_registry_refs(initialized_workspace: Path) -> None:
+    """contracts/watchlist.md § 8.3: a sources-index row carrying `watch` yields a
+    `watch:<id>` node with its related_* edges and an `indexed_as` edge to the source row."""
+    from superagent.tools.sources_index import id_for_path, refresh
+    from superagent.tools.world import rebuild, related_to, validate
+
+    ref = initialized_workspace / "Sources" / "Watchlist" / "solar-permit.ref.md"
+    ref.parent.mkdir(parents=True, exist_ok=True)
+    ref.write_text(
+        "---\nref_version: 1\ntitle: Permit portal\nkind: url\n"
+        "source: \"https://permits.example.gov/x\"\nrelated_domain: home\n"
+        "related_project: solar\nwatch:\n  type: url\n---\n"
+    )
+    refresh(initialized_workspace, force=True)
+    data = rebuild(initialized_workspace)
+    nodes = {n["id"]: n for n in data["nodes"]}
+    assert nodes["watch:solar-permit"]["kind"] == "watch"
+    assert nodes["watch:solar-permit"]["path"] == "Sources/Watchlist/solar-permit.ref.md"
+    assert nodes["watch:solar-permit"]["label"] == "Permit portal"
+    edges = {(e["from"], e["to"], e["kind"]) for e in data["edges"]}
+    src = f"source:{id_for_path('Sources/Watchlist/solar-permit.ref.md')}"
+    assert ("watch:solar-permit", "domain:home", "scoped") in edges
+    assert ("watch:solar-permit", "project:solar", "scoped") in edges
+    assert ("watch:solar-permit", src, "indexed_as") in edges
+    assert validate(initialized_workspace) == [] or all(
+        "project:solar" in w for w in validate(initialized_workspace)
+    )  # project:solar is not registered in this fixture; nothing else may dangle
+    related = related_to(initialized_workspace, "domain:home")
+    assert any(n["id"] == "watch:solar-permit" for n in related["neighbors"])

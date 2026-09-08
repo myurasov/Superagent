@@ -8,19 +8,22 @@ The single design goal of this contract: **the user owns the layout; the agent m
 
 ### 15.1 Layout
 
-The layout is **user-defined**. The agent reserves exactly two names under `Sources/`:
+The layout is **user-defined**. The agent reserves exactly three names under `Sources/`:
 
 | Reserved | Why |
 |---|---|
 | `Sources/README.md` | The folder's user-facing docs (templates/folder-readmes/Sources.md). |
 | `Sources/_cache/` | Agent-managed fetch cache. Leading underscore = "agent territory; users should not touch by hand". |
+| `Sources/Watchlist/` (or `config.preferences.watchlist.path`) | The **watcher registry** (`contracts/watchlist.md`). Reserved *name*, user-editable *contents*: hand-author, edit or delete any `<id>.ref.md` in it. Each ref there is a normal reference (same frontmatter, same `kind` / `source` locator, indexed like any other) that also carries a `watch:` block; the filename stem is the watcher id and its handle (`watch:<id>`). Its `README.md` (templates/folder-readmes/Watchlist.md) is excluded from the index like `Sources/README.md`. |
 
 Everything else under `Sources/` is yours. Examples — all valid:
 
 ```
 Sources/
   README.md
-  _cache/                          ← agent-managed (the only reserved name besides README.md)
+  _cache/                          ← agent-managed
+  Watchlist/                       ← reserved name; `<id>.ref.md` watchers you edit by hand
+    solar-permit.ref.md
   vehicles/
     camry-2018-title.pdf
     camry-2018-title.ref.md        ← optional sidecar metadata for the file
@@ -71,6 +74,7 @@ A reference file is anything ending `.ref.md` or `.ref.txt`. The two extensions 
 | `params` | no | Key/value parameters specific to the source. |
 | `related_domain` / `related_project` / `related_asset` / `related_account` | no | Cross-references. |
 | `tags` | no | Free-form labels. |
+| `watch` | no | Only meaningful inside `Sources/Watchlist/`: the watcher's detect configuration (`pack`, `type`, `enabled`, `cycles`, `evict_after_days`, `schedule`, `capture_mode`, `params`, ...). Schema and semantics are defined in `contracts/watchlist.md` § 5.1, not here. `ttl_minutes` still governs read freshness only — it never drives change detection. |
 
 The body of the file (after the frontmatter) is free-text **notes** the agent reads BEFORE fetching. Sometimes the notes answer the question and the fetch is unnecessary.
 
@@ -133,6 +137,7 @@ The cache path is overridable via `config.preferences.sources.cache_path` (e.g. 
 - **LRU eviction** runs at write time — when total cache size > `cache_max_mb`, oldest-`last_used` entries are deleted until under the cap. The user is never asked.
 - **Force refresh**: any skill that reads a source accepts `--refresh`, which bypasses cache and re-fetches.
 - **Force never-cache**: `ttl_minutes: 0` in the ref file skips caching entirely (every read = live fetch).
+- **Detect is not a read.** The watchlist's change detection (`contracts/watchlist.md`) never consults this cache — a TTL-fresh entry would hand back the previous fingerprint and report "no change" wrongly. Detect keeps its own fingerprint in `_memory/watchlist-state.yaml`; `ttl_minutes` governs `sources fetch` only.
 
 ### 15.5 Read pattern (local-first)
 
@@ -159,9 +164,9 @@ Skills that violate this — e.g. that go straight to a live MCP without checkin
 4. **Else** rescans:
    - Enumerate every file under `Sources/` excluding `_cache/` and `README.md`.
    - For each file: classify as **document** (anything not matching `*.ref.md` / `*.ref.txt`) or **reference** (matching).
-   - For each ref: parse frontmatter (canonical) or run the parser (liberal). Pull `kind`, `source`, `ttl_minutes`, `sensitive`, cross-references, tags into the row. **Do not** auto-normalize during a refresh — that's interactive (§ 15.3).
+   - For each ref: parse frontmatter (canonical) or run the parser (liberal). Pull `kind`, `source`, `ttl_minutes`, `sensitive`, cross-references, tags into the row. A `watch:` mapping (registry refs) is lifted verbatim into the row as `watch`, so `sources list` / `sources search` see watchers like any other reference; it is carried across a refresh that could not parse the file and dropped only when the file parses cleanly without it. **Do not** auto-normalize during a refresh — that's interactive (§ 15.3).
    - For each document: build the row from path + (sibling `.ref.md` if present) + existing index fields.
-   - Build the row id deterministically: `id = "src-<sha1(workspace_relative_path)[:10]>"`. This is stable across renames only if a sibling `.ref.md` carries the original id.
+   - Build the row id deterministically: `id = "src-<sha1(workspace_relative_path)[:10]>"`. This is stable across renames only if a sibling `.ref.md` carries the original id — or if the existing row's `path` was already updated in place to the new location (path identity: a present row whose `path` names the scanned file keeps its `id`, so `history.md` / log rows that cite it stay live; the 0.19.0 migration relies on this when it relocates refs into `Sources/Watchlist/`).
    - **Diff** the rebuilt rows against the existing index:
      - **Added**: append.
      - **Removed**: keep the row and mark `present: false` for one cycle (so the user doesn't lose `notes` after an accidental `rm`); permanently drop on the next refresh if still missing.

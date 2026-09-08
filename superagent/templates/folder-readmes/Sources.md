@@ -8,12 +8,13 @@ The workspace's vault for documents and pointers to external data. Three things 
 
 ## Reserved names
 
-The agent only owns two names under `Sources/`:
+The agent reserves three names under `Sources/`:
 
 | Name | Purpose |
 |---|---|
 | `README.md` | This file. |
 | `_cache/` | Agent-managed fetch cache. TTL + LRU bounded. Don't put your own files here — they'll be evicted. |
+| `Watchlist/` | The **watchlist registry** — one `<id>.ref.md` per external thing the agent watches for change (a portal, a Gmail label, a bank feed). Reserved *name*, but the *contents* are yours to hand-write, edit, or delete; see its own `README.md` and `contracts/watchlist.md`. The folder path is configurable (`config.preferences.watchlist.path`). |
 
 Everything else is yours.
 

@@ -394,3 +394,14 @@ def test_kind_for_new_row_ingest_requires_exact_stem() -> None:
     assert kind({"skill": None, "action": "note"}) == "skill_run"
     # `action` mapping still wins over the skill.
     assert kind({"skill": "ingest", "action": "file_source"}) == "source_added"
+
+
+def test_watch_change_detected_derives_as_watch_changed() -> None:
+    """contracts/watchlist.md § 8.2: the check logs `action: watch_change_detected`;
+    the derived timeline row is `kind: watch_changed` (a canonical kind)."""
+    kind = events_derive.kind_for_new_row
+    assert events_derive.KIND_BY_NEW_ACTION["watch_change_detected"] == "watch_changed"
+    assert "watch_changed" in events_derive.CANONICAL_KINDS
+    assert kind({"skill": "watch", "action": "watch_change_detected"}) == "watch_changed"
+    # Other watch-skill rows stay ordinary skill runs.
+    assert kind({"skill": "watch", "action": "check"}) == "skill_run"

@@ -80,3 +80,13 @@ def test_filter_kind() -> None:
     handles = [parse("contact:a"), parse("project:b"), parse("contact:c")]
     out = sorted(str(h) for h in filter_kind(handles, "contact"))
     assert out == ["contact:a", "contact:c"]
+
+
+def test_watch_kind_is_canonical() -> None:
+    """0.19.0: a watcher (`Sources/Watchlist/<id>.ref.md`) has the handle `watch:<id>`."""
+    from superagent.tools.handles import KINDS, is_handle, parse
+
+    assert "watch" in KINDS
+    h = parse("watch:solar-permit")
+    assert h.kind == "watch" and h.slug == "solar-permit"
+    assert is_handle("watch:solar-permit")

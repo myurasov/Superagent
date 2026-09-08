@@ -316,6 +316,35 @@ def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dic
                 if isinstance(row, dict):
                     process_row(fname, kind, id_field, label_field, row, extra_tags)
 
+    # Watchers (contracts/watchlist.md § 8.3). A sources-index row carrying a
+    # `watch:` mapping is a `Sources/Watchlist/<id>.ref.md` watcher; besides
+    # its `source:<row id>` node it gets a `watch:<id>` node (id = ref
+    # filename stem) whose related_* fields become edges, plus an `indexed_as`
+    # edge back to the source row. `ensure_edge` callers that add the same
+    # edges between runs stay consistent with a full rebuild this way.
+    sources_data = load_yaml(memory / "sources-index.yaml") or {}
+    watch_rows = (sources_data.get("sources") or []) if isinstance(sources_data, dict) else []
+    for row in watch_rows:
+        if not isinstance(row, dict) or not isinstance(row.get("watch"), dict):
+            continue
+        wid = watch_id_for_path(row.get("path"))
+        if not wid:
+            continue
+        handle = f"watch:{wid}"
+        rid = row.get("id")
+        tags = row.get("tags") or []
+        tags = [t for t in tags if isinstance(t, str) and t] if isinstance(tags, list) else []
+        add_node(handle, "watch", str(row.get("path") or ""),
+                 label=str(row.get("title") or wid), tags=tags)
+        for field in ("related_domain", "related_project", "related_asset", "related_account"):
+            v = row.get(field)
+            if isinstance(v, str) and v.strip():
+                kind_label = dict(edge_fields)[field]
+                add_edge(handle, normalize_handle(v, _kind_for_field(field)), kind_label,
+                         f"sources-index.yaml.<{rid}>.{field}")
+        if rid:
+            add_edge(handle, f"source:{rid}", "indexed_as", f"sources-index.yaml.<{rid}>.watch")
+
     if skipped_contact_refs:
         total = sum(skipped_contact_refs.values())
         per_file = ", ".join(f"{f}: {n}" for f, n in sorted(skipped_contact_refs.items()))
@@ -324,6 +353,14 @@ def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dic
               file=sys.stderr)
 
     return list(nodes.values()), edges
+
+
+def watch_id_for_path(rel_path: Any) -> str | None:
+    """Watcher id for a registry ref path: the filename minus `.ref.md` / `.ref.txt`."""
+    if not isinstance(rel_path, str) or not rel_path.strip():
+        return None
+    from superagent.tools.sources_index import ref_stem
+    return ref_stem(rel_path)
 
 
 def _project_ids(memory: Path) -> set[str]:

@@ -6,7 +6,9 @@ Implements superagent/docs/_internal/ideas-better-structure.md item #20. Canonic
 
 **Kinds** (lowercase singular; see `tools/handles.py.KINDS`):
 
-`contact`, `account`, `asset`, `bill`, `subscription`, `appointment`, `important_date`, `document`, `domain`, `project`, `source`, `medication`, `vital`, `task`, `health_visit`, `decision`, `tag`, `event`, `skill`, `other`.
+`contact`, `account`, `asset`, `bill`, `subscription`, `appointment`, `important_date`, `document`, `domain`, `project`, `source`, `medication`, `vital`, `task`, `health_visit`, `decision`, `tag`, `event`, `skill`, `watch`, `other`.
+
+`watch:<slug>` is a watcher (ext-source) per `contracts/watchlist.md`: the slug is the filename stem of `Sources/Watchlist/<slug>.ref.md`, which is also its `watchlist-state.yaml` key — renaming the file renames the handle. The same file is additionally indexed as a `source:<id>` row; `tools/world.py rebuild` links the two with an `indexed_as` edge.
 
 **Slugs**: lowercase, hyphenated, no punctuation (per `tools/handles.py.slug_for(name)`).
 

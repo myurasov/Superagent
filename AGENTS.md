@@ -65,7 +65,7 @@ Superagent runs under many agent harnesses (Cursor, Claude Code, Codex CLI, and 
 
 The agent reads this file on the first turn of any session in which the user:
 
-- Invokes a Superagent skill by name (`init`, `daily-update`, `whatsup`, `bills`, `add-domain`, `ingest`, etc.) or asks for one in plain English ("draft my weekly review", "what bills are due", "log a vet visit").
+- Invokes a Superagent skill by name (`init`, `daily-update`, `whatsup`, `bills`, `add-domain`, `watch`, etc.) or asks for one in plain English ("draft my weekly review", "what bills are due", "log a vet visit").
 - Says "use superagent" / "this is for superagent" / "switch to superagent mode" or any obvious natural-language equivalent.
 - Opens or edits a file under `workspace/` or under `superagent/`.
 - Asks a question that is obviously about personal life — bills, health, family, home maintenance, personal vehicles, pets, personal travel, hobbies, important dates.
@@ -96,6 +96,7 @@ On **every Superagent turn**, before doing anything else:
 2. When the user invokes or infers a skill, search **both** `superagent/skills/` **and** `workspace/_custom/skills/`. On name collision, run the framework skill first, then apply the custom file as an addendum (extra steps) — and announce the overlay at the top of the response.
 3. When a role definition is needed, check `workspace/_custom/agents/` for a same-named overlay and merge its content as additional boundaries / preferences on top of the framework role (never weakening framework safety).
 4. When resolving a template, check `workspace/_custom/templates/` first. If a same-named template exists, use the custom version **and announce** it loudly: *"Using `_custom/templates/<name>` (overrides framework template)."*
+5. Watcher packs in `workspace/_custom/watchers/<id>/` are discovered alongside `superagent/watchers/<id>/` (per `contracts/watchlist.md`). On an `id` collision the custom pack wins — override, not merge — **and announce** it: *"Using `_custom/watchers/<id>` (overrides framework pack)."*
 
 If `workspace/_custom/` does not exist, skip the overlay silently — no error, no warning. It is optional scaffolding.
 
@@ -130,8 +131,8 @@ When the agent first opens (or first acts in) `workspace/` in a session:
 
 ## Before any file or MCP operation
 
-- **Always read `workspace/_memory/config.yaml` first** to resolve `preferences.workspace_path`, the user profile, MCP and CLI tool flags, automation preferences, and ingestion budgets. Do not assume a hardcoded `workspace/` path except as the documented default when config is missing.
-- **Always read `workspace/_memory/data-sources.yaml`** before invoking any ingestor or any skill that reads MCPs / CLI tools. That file is the single source of truth for which sources are configured, when each was last ingested, and the recency / size budget per source.
+- **Always read `workspace/_memory/config.yaml` first** to resolve `preferences.workspace_path`, the user profile, MCP and CLI tool flags, automation preferences, and watchlist defaults (`preferences.watchlist`). Do not assume a hardcoded `workspace/` path except as the documented default when config is missing.
+- **Always read the `Sources/Watchlist/` registry** (or `config.preferences.watchlist.path`) **and `workspace/_memory/watchlist-state.yaml`** before invoking any watcher, harvest, or skill that reads MCPs / CLI tools. The folder is the single source of truth for which sources are configured (one `<id>.ref.md` per watcher); the state file records when each last ran and its budget counters.
 
 ---
 
@@ -165,11 +166,11 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 |---|---|
 | **init** | First-run: short questionnaire, scaffold `_memory/` and `Domains/`, optionally probe and enable available data sources. |
 | **whatsup** | Quick delta since `last_check`: bills due, appointments, mail, tasks, alerts. |
-| **daily-update** | Daily briefing: bills due / overdue, today's appointments, P0/P1 tasks, anything from ingest sources that needs your attention. |
+| **daily-update** | Daily briefing: bills due / overdue, today's appointments, P0/P1 tasks, anything the watchlist flagged that needs your attention. |
 | **weekly-review** | Sunday-style review: spend by category, fitness summary, what got done, what slipped, what's coming. |
 | **monthly-review** | First-of-month: subscription audit, document expirations, vehicle / home maintenance windows, financial recap. |
 | **todo** | Add / list / complete / update tasks in `todo.yaml` with P0–P3 priority rules. |
-| **bills** | Add / list / mark-paid bills; reconcile against ingested bank transactions. |
+| **bills** | Add / list / mark-paid bills; reconcile against harvested bank transactions. |
 | **subscriptions** | Audit recurring charges; flag unused / lapsed-promo / candidate-cancel. |
 | **appointments** | Add / list / prep for appointments (doctor, dentist, vet, mechanic, hairdresser, school, …). |
 | **important-dates** | Add / list birthdays, anniversaries, document expirations, recurring deadlines. |
@@ -183,13 +184,13 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 | **vehicle-log** | Log a service / fuel-up / mileage reading; rolls into the vehicle's `history.md`. |
 | **home-maintenance** | Track home-care schedule (HVAC, filters, gutters, pest, etc.). |
 | **pet-care** | Vet schedule, vaccinations, meds, food / treat preferences. |
-| **expenses** | Categorize and review spending; cross-checks ingested transactions. |
+| **expenses** | Categorize and review spending; cross-checks harvested transactions. |
 | **draft-email** | Compose personal email with full context (recipient history, related domain, prior thread). |
 | **summarize-thread** | Condense a long email or message thread into key points and follow-ups. |
 | **report** | Author + render a printable report: HTML source of truth in the shared document style → US-Letter PDF via Chromium print (`tools/render_report.py`), with byline / page numbers / optional watermark. |
 | **follow-up** | Hunt for dropped balls: overdue tasks, unanswered messages, unfulfilled commitments. |
 | **research** | Research a topic across notes, web, knowledge MCPs (Obsidian, Notion). |
-| **ingest** | Run one or more configured ingestors (Gmail, Plaid, Apple Health, etc.). Front-end for `tools/ingest/`. |
+| **watch** | Watchlist — register, list, check, and harvest watched sources (ext-sources); one `.ref.md` per watcher under `Sources/Watchlist/`; packs in `superagent/watchers/` and `_custom/watchers/`. Replaces `ingest`. |
 | **personal-signals** | Capture self-development feedback; surface growth themes on request. |
 | **doctor** | Workspace data hygiene — stale domains, duplicate contacts, near-duplicate todos, simplification candidates. |
 | **supertailor-review** | Framework hygiene + strategic improvement; produces ranked suggestions in `supertailor-suggestions.yaml`. |
@@ -202,36 +203,36 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 
 ## Data ingestion contract
 
-Superagent's value scales with the breadth of authorized data sources. The contract that governs all ingestion is in `contracts/ingestion.md`; the one-paragraph summary:
+Superagent's value scales with the breadth of authorized data sources. External sources live on the **watchlist** — detect ("did it move?") is declarative and cheap; harvest (pull + normalize into a typed index) runs only where a handler exists. The contracts are `contracts/watchlist.md` (watchers, packs, lifecycle) and `contracts/ingestion.md` (harvest handlers); the one-paragraph summary:
 
-- **Every ingestor** lives in `superagent/tools/ingest/<source>.py`. One file per source.
-- **Every ingestor** reads its config from `workspace/_memory/data-sources.yaml` (which holds `enabled`, `last_ingest`, `recency_window_days`, `max_items_per_run`, source-specific auth pointer).
-- **Every ingestor** writes its state back to the same row of `data-sources.yaml` and appends a run summary to `workspace/_memory/ingestion-log.yaml`.
-- **Every ingestor** is **read-only** from the user's perspective unless explicitly documented otherwise. It pulls; it does not push, delete, or modify upstream state.
-- **Every ingestor** is **idempotent** within its recency window — re-running over the same window must not duplicate rows in any index or any domain `history.md`.
-- **Quick-start works without any ingestor enabled.** Init never silently turns on a source; it lists what's available and asks.
-- **Heavy ingestion is opt-in and deferred.** Backfilling 5 years of email or 3 years of bank data is a separate, explicit invocation.
+- **Every source** is a ref: `Sources/Watchlist/<id>.ref.md` (normal ref frontmatter plus a `watch:` block — `pack` or `type`, `enabled`, `cycles`, `schedule`, `capture_mode`, budgets, auth pointer). Filename stem = id = handle `watch:<id>`.
+- **Packs** are self-contained folders in `superagent/watchers/<id>/` (shipped: `simplefin`, `gmail`, `url`, `cmd`, `path`, `subagent`) or `workspace/_custom/watchers/<id>/`; a pack is completely self-sufficient — any source-specific code (a **harvest handler** implementing `IngestorBase.run`, or a code-backed `detect()`) lives in the pack's own `handler.py`, never under `superagent/tools/`.
+- **State** is machine-owned in `workspace/_memory/watchlist-state.yaml` (fingerprint, `last_checked`, `last_success`, `error_streak`, `last_harvest`, `calls_today`); harvest runs still append a row to `workspace/_memory/ingestion-log.yaml`.
+- **Every watcher and harvest** is **read-only** upstream unless explicitly documented otherwise. It pulls; it does not push, delete, or modify upstream state.
+- **Every harvest** is **idempotent** within its window — re-running over the same window must not duplicate rows in any index or any domain `history.md`. `capture_mode: manual` harvests never run from a cadence `check`; budgets are enforced before dispatch.
+- **Quick-start works with no watcher enabled.** Init never silently turns on a source; it probes the shipped packs, lists what's available, and asks.
+- **Heavy backfill is opt-in and deferred.** Pulling a year of bank data is a separate, explicit `harvest --id <id>` invocation.
 
 ---
 
 ## Local archives — email (capture-on-touch)
 
-Distinct from scheduled ingestors: every email the agent **reads** via `mcp_user-gmail_read_email` or **sends** via `mcp_user-gmail_send_email` is mirrored to a local per-message archive at `workspace/_memory/email/`. The archive grows by side-effect of normal work, not by bulk backfill. Governed by [`contracts/email-capture.md`](superagent/contracts/email-capture.md); one-paragraph summary:
+Distinct from the watchlist: every email the agent **reads** via `mcp_user-gmail_read_email` or **sends** via `mcp_user-gmail_send_email` is mirrored to a local per-message archive at `workspace/_memory/email/`. The archive grows by side-effect of normal work, not by bulk backfill. Governed by [`contracts/email-capture.md`](superagent/contracts/email-capture.md); one-paragraph summary:
 
 - **Layout** — `_memory/email/<YYYY>/<MM>/<DD>/<YYYY-MM-DD>_<in|out>_<from_slug>_<subject_slug>_<hash8>.json`, plus an append-only sidecar `_memory/email/_messages.jsonl` keyed by Gmail `message.id`, plus a singleton `_index.yaml` with counters.
 - **Trigger** — every successful `read_email` → `archive.capture_inbound(raw)`; every successful `send_email` → `archive.capture_sent(request, response)`; every `search_emails` → `archive.maybe_capture_stubs(results)`. Drafts that stay in `Outbox/emails/` are NOT mirrored.
 - **Harness-independent** — tool-call hooks are an optimization, never the mechanism. Per [`superagent/rules/email-capture-fallback.md`](superagent/rules/email-capture-fallback.md), after EVERY Gmail MCP call the agent pipes the response into `archive_hook --kind=<kind> --raw`, unconditionally and on every harness. Do NOT branch on whether a hook exists or already fired — capture is idempotent, so a redundant call is a no-op, while a skipped one fails silently. Verify with `archive find <message-id>` before calling an email task done.
 - **Attachments** — metadata-only by default. Save bytes only when the user explicitly asks, when the message looks like a receipt or confirmation, or when the attachment is the primary data the current task needs to act on.
 - **Read-side rule** — every skill that needs an email scans `_messages.jsonl` first (`superagent.tools.email.archive.find` / `find_by_query`) and only falls through to a live MCP read for the strictly-newer slice the local archive does not cover.
-- **Bulk fetch is OFF.** The pre-existing Gmail ingestor at `superagent/tools/ingest/gmail.py` stays dormant; this archive is the only active path.
+- **Bulk fetch is OFF.** There is no bulk Gmail ingestor. The `gmail` watcher (`contracts/watchlist.md`) runs **targeted** live queries with the token the Gmail MCP saved and captures every result set through `archive.maybe_capture_stubs` — so a watch check grows this archive exactly as `search_emails` does; nothing sweeps the mailbox.
 - **No SQLite FTS.** Linear scans of `_messages.jsonl` are sufficient at on-touch volume.
 
 ---
 
 ## Logging
 
-- **Log significant agent actions** (skill runs, structural edits to memory, autonomous suggestions that change files, ingestion runs) by appending to **`workspace/_memory/interaction-log.yaml`** per its schema (append-only; do not rewrite history).
-- **Ingestion runs** *also* append a row to **`workspace/_memory/ingestion-log.yaml`** with per-source counts, durations, and any errors. The interaction-log entry can simply reference the ingestion-log row.
+- **Log significant agent actions** (skill runs, structural edits to memory, autonomous suggestions that change files, watchlist changes — `action: watch_change_detected` — and harvest runs) by appending to **`workspace/_memory/interaction-log.yaml`** per its schema (append-only; do not rewrite history).
+- **Harvest runs (watchlist)** *also* append a row to **`workspace/_memory/ingestion-log.yaml`** with per-source counts, durations, and any errors. The interaction-log entry can simply reference the ingestion-log row.
 - **Payment confirmations** (any time money changes hands on the user's behalf, the user reports a completed payment, or the user shares a receipt) MUST be captured as files per `contracts/payment-confirmations.md` — long-lived / auditable payments go to `Sources/<Domain>/`; project-scoped purchases go to `Projects/<project>/Resources/`. Cross-linked from `bills.yaml` / `subscriptions.yaml` / `appointments.yaml` / project history. Capture by *what* the payment is, not by dollar amount.
 
 ---
@@ -279,7 +280,7 @@ A Project links UP to one or more Domains via `related_domains: [..]`. Tasks in 
 
 **Sources** = the workspace's reference library: documents the user owns + pointers (`.ref.md` / `.ref.txt`) to external data. Three foundational rules (per `contracts/sources.md`):
 
-1. **Layout is user-defined.** The agent reserves only `Sources/README.md` and `Sources/_cache/`; everything else is the user's territory. Drop files anywhere; organize folders any way.
+1. **Layout is user-defined.** The agent reserves only `Sources/README.md`, `Sources/_cache/`, and the `Sources/Watchlist/` name (the watcher registry — reserved name, user-editable contents; per `contracts/watchlist.md`); everything else is the user's territory. Drop files anywhere; organize folders any way.
 2. **Index is derived.** `_memory/sources-index.yaml` is rebuilt from the filesystem on demand by `tools/sources_index.py refresh` (mtime-lazy — near-no-op when nothing changed). Hand-curated fields (notes, tags, sensitive, related_*, last_accessed, read_count) are preserved across refreshes.
 3. **Local-first.** Every skill that needs source data reads the cache first; only goes to live MCP / API when the cache is stale or missing. Reads `_summary.md` + `_toc.yaml` first; only pulls relevant chunks of `raw.<ext>` when needed.
 
@@ -288,6 +289,7 @@ Sources/
   README.md                                 # user-facing docs (template)
   _cache/<source-hash>/                     # agent-managed (TTL + LRU)
     _meta.yaml _summary.md _toc.yaml raw.<ext> chunks/
+  Watchlist/<id>.ref.md                     # watcher registry (reserved name; refs with a watch: block)
   <whatever-folders-you-want>/<files>       # user-curated; any layout
     <doc>.<ext>                             # documents
     <doc>.<ext>.ref.md                      # optional sidecar metadata
@@ -323,7 +325,7 @@ This policy applies whenever the agent commits framework code under `superagent/
 
 ### Length and tense
 
-- **One sentence, imperative / future tense.** Examples: `Add packages.yaml index`, `Wire WHOOP ingestor into weekly-review`, `Bump version to 0.4.0`.
+- **One sentence, imperative / future tense.** Examples: `Add packages.yaml index`, `Wire simplefin harvest into weekly-review`, `Bump version to 0.4.0`.
 - **No past tense.** Not `Added…`, not `Wired…`.
 - **≤ 72 characters in the subject when possible.** Tighten wording rather than wrapping onto a second line.
 - **No body, no bullet list, no extra paragraphs.** If a change needs more explanation, that goes in a PR description or a code comment, not in the commit message.
@@ -444,7 +446,7 @@ Per `contracts/local-first-read-order.md` (codifies QW-7), every skill that need
 2. **Local Sources cache** (`<cache_path>/<hash>/`, default `Sources/_cache/`) for cached external content — read `_summary.md` first, then `_toc.yaml`, then only the relevant chunk(s) from `raw.<ext>` or `chunks/`. Refresh the derived index first via `tools/sources_index.py refresh`.
 3. **Domain / Project history.md** for narrative recall.
 4. **Events stream** (`_memory/events/<YYYY-Qn>.yaml` via `tools/log_window.py`) for cross-entity timeline queries.
-5. **Live MCP / CLI source** ONLY when **all** are true: (a) the local read returned no candidates that match the question; AND (b) the time window the question is asking about extends past the source's `last_ingest`; AND (c) freshness genuinely matters for the question.
+5. **Live MCP / CLI source** ONLY when **all** are true: (a) the local read returned no candidates that match the question; AND (b) the time window the question is asking about extends past the source's `last_success` / `last_harvest` in `watchlist-state.yaml`; AND (c) freshness genuinely matters for the question.
 
 When the live call happens, capture-through MUST run (per the ingestion contract in `contracts/ingestion.md`) so the next read is local.
 
@@ -498,7 +500,7 @@ Per `contracts/memory-taxonomy.md` (item #9), every YAML file in `_memory/` belo
   Files: `interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml`, `decisions.yaml`, `outbox-log.yaml`, `upstream-writes.yaml`, `supertailor-suggestions.yaml`, `health-records.yaml.{vitals,symptoms,vaccines,results,visits}`.
   AND the partitioned event stream under `_memory/events/<YYYY-Qn>.yaml`.
 - **State-shape (singleton snapshot)** — one current snapshot of "now"; read at session start, write at session end.
-  Files: `context.yaml`, `model-context.yaml`, `data-sources.yaml`, `config.yaml`.
+  Files: `context.yaml`, `model-context.yaml`, `watchlist-state.yaml`, `config.yaml`.
 
 Tools enforce the shape — `tools/audit.py.record_change()` writes to `<file>.history.jsonl` for entity-shape files only; mutating a row in an append-only file is a bug.
 
@@ -506,7 +508,7 @@ Tools enforce the shape — `tools/audit.py.record_change()` writes to `<file>.h
 
 - **`workspace/`** (including everything under it) is **gitignored** and **local only** to this machine unless you copy or sync it yourself. Do not assume it is backed up or shared anywhere.
 - **No telemetry.** Superagent does not phone home. No metrics, no crash reports, no "anonymous usage data" — any such mechanism would be a major-version change explicitly proposed in `docs/roadmap.md`, opt-in only, and clearly labelled.
-- **No remote write.** Superagent ingestors are read-only against upstream sources by default. Any skill that intends to *write* upstream (e.g. a future "auto-pay this bill" or "create this calendar event in Google Calendar") must declare it loudly in its frontmatter, ask for confirmation per call, and log the write to `interaction-log.yaml`.
+- **No remote write.** Superagent watchers and harvests are read-only against upstream sources by default. Any skill that intends to *write* upstream (e.g. a future "auto-pay this bill" or "create this calendar event in Google Calendar") must declare it loudly in its frontmatter, ask for confirmation per call, and log the write to `interaction-log.yaml`.
 - **Sensitive subfiles.** `_memory/health-records.yaml`, `_memory/accounts-index.yaml`, and the `handoff/` subfolder are the most sensitive items in the workspace. They live alongside everything else (no separate encrypted store in MVP) but are explicitly called out so the user can choose to symlink them to an encrypted disk image, a 1Password / Bitwarden secure note reference, or a Vault-style backend later. The `roadmap.md` "Sensitive-store options" entry tracks this.
 - **Sharing the workspace.** If the user wants their partner / household to share Superagent state, the supported approaches are documented in `docs/architecture.md` § "Multi-user options". TL;DR: copy the workspace folder to a shared iCloud Drive / Dropbox / Syncthing folder. There is no built-in multi-tenancy in MVP.
 
@@ -613,6 +615,6 @@ The IDE controls how the prompt is structured and which prefixes are cached. Bot
 - **Don't edit `AGENTS.md` / `contracts/` mid-session.** Both IDEs' prompt caches reward a stable prefix; mutating the docs that anchor the prefix forces a full re-cache, paying the long form back to the model on every subsequent turn.
 - **The Supertailor / Supercoder loop's commit-then-restart cycle is well-suited to this.** After the Supertailor proposes a doc change, approve it, let the Supercoder commit, then start a fresh chat session. The new session pays the full prompt cost ONCE; subsequent turns reap the cache savings.
 - **Don't open many framework files mid-session.** Each one bumps the prompt; fewer files = better cache reuse.
-- **For long-running ingestion sessions**, prefer running them via dedicated tool invocations (each is a stand-alone process) rather than long chat threads.
+- **For long-running harvest / backfill sessions**, prefer running them via dedicated tool invocations (each is a stand-alone process) rather than long chat threads.
 
 If a future Superagent CLI wraps the Anthropic API directly, structure the prompt as: `[stable: AGENTS.md + role files] → [cache_breakpoint] → [per-skill: the active skill + the contracts it cites] → [cache_breakpoint] → [per-turn: user message + tool results]`. That's the BB-2-a path; it requires API-level control that the IDEs don't expose today.

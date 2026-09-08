@@ -7,7 +7,7 @@ The framework code lives here; user data lives in `workspace/`
 
 Entry points:
   - `superagent/tools/workspace_init.py` — scaffold a fresh workspace.
-  - `superagent/tools/ingest/_orchestrator.py` — run ingestors.
+  - `superagent/tools/watchlist.py` — check watchers / dispatch harvest handlers.
   - `superagent/tools/validate.py` — schema-check the workspace.
   - `superagent/tools/render_status.py` — regenerate scoped status.md / todo.md.
 

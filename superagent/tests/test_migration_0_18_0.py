@@ -20,6 +20,17 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MIG_DIR = REPO_ROOT / "superagent" / "migrations" / "0.18.0"
 FRAMEWORK = REPO_ROOT / "superagent"
+
+
+def _simplefin(monkeypatch):
+    """The simplefin handler now lives in its pack; expose it under the legacy import name."""
+    import sys
+
+    from superagent.tools import watchlist as wl
+
+    module = wl.import_handler_module(FRAMEWORK / "watchers" / "simplefin" / "handler.py")
+    monkeypatch.setitem(sys.modules, "superagent.tools.ingest.simplefin", module)
+    return module
 NOW = dt.datetime(2026, 9, 6, 12, 0, 0, tzinfo=dt.UTC)
 EM = "—"
 
@@ -523,7 +534,7 @@ def test_revert_reports_unknown_seeded_path(tmp_path: Path) -> None:
 
 
 def test_transactions_step_skips_when_helper_missing(tmp_path: Path, monkeypatch) -> None:
-    from superagent.tools.ingest import simplefin
+    simplefin = _simplefin(monkeypatch)
     monkeypatch.delattr(simplefin, "mark_stale_pending", raising=False)
     ws = build_workspace(tmp_path, with_transactions=True)
     before = (ws / "_memory" / "transactions.yaml").read_bytes()
@@ -534,7 +545,7 @@ def test_transactions_step_skips_when_helper_missing(tmp_path: Path, monkeypatch
 
 
 def test_transactions_step_applies_helper(tmp_path: Path, monkeypatch) -> None:
-    from superagent.tools.ingest import simplefin
+    simplefin = _simplefin(monkeypatch)
 
     def fake_mark(rows: list[dict], *, days: int = -1, today=None) -> int:
         assert today == NOW.date()
@@ -583,7 +594,7 @@ def test_cli_dry_run_subprocess(tmp_path: Path) -> None:
 
 
 def test_transactions_step_honours_stale_pending_days_override(tmp_path: Path, monkeypatch) -> None:
-    from superagent.tools.ingest import simplefin
+    simplefin = _simplefin(monkeypatch)
     seen: dict[str, int] = {}
 
     def fake_mark(rows: list[dict], *, days: int = -1, today=None) -> int:

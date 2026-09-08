@@ -20,7 +20,7 @@ EXPECTED_MEMORY_FILES = [
     "contacts.yaml", "assets-index.yaml",
     "accounts-index.yaml", "bills.yaml", "subscriptions.yaml",
     "appointments.yaml", "important-dates.yaml", "documents-index.yaml",
-    "health-records.yaml", "data-sources.yaml", "ingestion-log.yaml",
+    "health-records.yaml", "watchlist-state.yaml", "ingestion-log.yaml",
     "insights.yaml", "procedures.yaml", "personal-signals.yaml",
     "action-signals.yaml", "supertailor-suggestions.yaml",
     "world.yaml", "decisions.yaml", "tags.yaml", "events.yaml",
@@ -93,6 +93,23 @@ def test_init_creates_top_level_folders(initialized_workspace: Path) -> None:
     assert domains_readme.is_file(), "missing Domains/README.md"
 
 
+def test_init_seeds_watchlist_registry_and_state(initialized_workspace: Path) -> None:
+    """0.19.0: `Sources/Watchlist/` + README and `_memory/watchlist-state.yaml` are seeded;
+    the retired `data-sources.yaml` is not (per contracts/watchlist.md)."""
+    registry = initialized_workspace / "Sources" / "Watchlist"
+    assert registry.is_dir()
+    assert (registry / "README.md").is_file()
+    assert [p.name for p in registry.iterdir()] == ["README.md"], "registry ships with README only"
+    state = initialized_workspace / "_memory" / "watchlist-state.yaml"
+    with state.open() as fh:
+        data = yaml.safe_load(fh)
+    assert data["schema_version"] == 1
+    assert data["watchers"] == {}
+    assert not (initialized_workspace / "_memory" / "data-sources.yaml").exists(), (
+        "data-sources.yaml was retired by 0.19.0 and must not be seeded"
+    )
+
+
 def test_init_does_not_force_sources_subfolders(initialized_workspace: Path) -> None:
     """Sources/ ships with ONLY README.md; layout is user-defined.
 
@@ -103,6 +120,8 @@ def test_init_does_not_force_sources_subfolders(initialized_workspace: Path) -> 
     sources = initialized_workspace / "Sources"
     assert sources.is_dir()
     assert (sources / "README.md").is_file()
+    # `Watchlist/` is the one reserved sub-folder (0.19.0); nothing else is forced.
+    assert [p.name for p in sources.iterdir() if p.is_dir()] == ["Watchlist"]
     assert not (sources / "documents").exists(), "Sources/documents/ no longer auto-created"
     assert not (sources / "references").exists(), "Sources/references/ no longer auto-created"
     assert not (sources / "_cache").exists(), "Sources/_cache/ should be lazy-created on first fetch"

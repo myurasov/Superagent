@@ -4,7 +4,7 @@
 
 Every email the agent **reads** via the Gmail MCP (`mcp_user-gmail_read_email`) or **sends** via `mcp_user-gmail_send_email` is mirrored to a local per-message archive under `workspace/_memory/email/`. The archive is the **primary source of truth for any email the agent has already touched**; the live Gmail MCP is the source of truth only for messages the agent has not yet read in this workspace.
 
-The archive is grown by **side-effect of normal work**, not by bulk backfill. There is no auto-sweep; the existing Gmail ingestor (`superagent/tools/ingest/gmail.py`) stays dormant unless the user explicitly opts in. The contract is a **capture-on-touch** discipline, modeled on the local-archive pattern in the Co-SA workspace but simplified (no SQLite FTS, no scheduled sync).
+The archive is grown by **side-effect of normal work**, not by bulk backfill. There is no auto-sweep and no bulk Gmail ingestor; the only other Gmail reader is the `gmail` watcher (`contracts/watchlist.md`), whose targeted live queries capture-through into this archive (§ 9). The contract is a **capture-on-touch** discipline, modeled on the local-archive pattern in the Co-SA workspace but simplified (no SQLite FTS, no scheduled sync).
 
 ## 1. Layout
 
@@ -196,9 +196,9 @@ RESPONSE
 
 The agent does **not** branch on whether a hook exists or whether one already fired. Capture is idempotent per § 4, so a redundant call reports `existing` / `upgraded` and writes no duplicate row. Verify with `archive find <message-id>` before declaring an email-touching task complete.
 
-## 9. Relationship to the Gmail ingestor
+## 9. Relationship to the `gmail` watcher
 
-The pre-existing Gmail ingestor (`superagent/tools/ingest/gmail.py`) writes a separate, metadata-only stream under `workspace/_memory/_gmail/<YYYY-MM>.jsonl`. It is unrelated to this archive and stays **dormant** unless the user explicitly enables its row in `data-sources.yaml` and runs `ingest gmail`. The two paths can coexist; the email archive is the live one for chat-time work.
+There is no bulk Gmail ingestor. The only other Gmail reader is the `gmail` watcher pack (`superagent/watchers/gmail/`, per `contracts/watchlist.md`): each `Sources/Watchlist/<id>.ref.md` with `watch.pack: gmail` runs one **targeted live search** per check (its `query` / query parameter), using the OAuth token the Gmail MCP already saved at `~/.gmail-mcp/credentials.json`, and passes every result set through `archive.maybe_capture_stubs` — so a watch check grows this archive exactly as `search_emails` does in § 5. That is capture-through on a bounded query, not a backfill: the "bulk fetch is OFF" rule in `AGENTS.md` still holds, and § 10 keeps historical backfill out of scope. Both paths write the same per-message store and sidecar; this archive is the local-first read for every skill.
 
 ## 10. Out of scope (for now)
 

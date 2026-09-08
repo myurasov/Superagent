@@ -94,7 +94,7 @@ CANONICAL_KINDS = {
     "task_completed", "task_created", "appointment_completed", "health_event",
     "maintenance_done", "decision", "important_date_marked", "source_added",
     "source_accessed", "project_milestone", "audit", "capture_signal",
-    "cache_evict", "ingest_failure", "history_entry", "other",
+    "cache_evict", "ingest_failure", "history_entry", "watch_changed", "other",
 }
 
 # New-format interaction-log `action` -> event kind (default: skill_run).
@@ -102,6 +102,10 @@ KIND_BY_NEW_ACTION = {
     "create_project": "project_milestone",
     "import_document": "source_added",
     "file_source": "source_added",
+    # A watchlist check that detected a change (contracts/watchlist.md § 8.2):
+    # the run logs `action: watch_change_detected`; the timeline shows it as
+    # `watch_changed` so weekly-review can answer "what moved this month".
+    "watch_change_detected": "watch_changed",
 }
 
 # `#### <date>[ <time/parenthetical suffix>] <dash separator> <title>`.

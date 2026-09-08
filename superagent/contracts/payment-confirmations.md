@@ -15,7 +15,7 @@ This contract activates when **any** of these are true in the current turn:
 - A skill submits a payment upstream (auto-pay, agent-initiated transfer, etc.).
 - The user reports a just-made payment ("I just paid X", "paid the dentist today").
 - The user shares / forwards / pastes a payment artifact (PDF, screenshot, email body, portal HTML, wire confirmation, money-order stub, check image, in-app receipt).
-- An ingestor surfaces a fresh transaction that matches an open bill, subscription, appointment, or project task (auto-capture per `contracts/capture.md § 7.3`).
+- A harvest surfaces a fresh transaction that matches an open bill, subscription, appointment, or project task (auto-capture per `contracts/capture.md § 7.3`).
 
 The skill should NOT skip capture because the artifact "is just sitting in email" or "is in my online banking" — those locations are not durable enough; pull it into the workspace.
 
@@ -116,7 +116,7 @@ Every save MUST trigger the following side-effects, in order:
     - **`_memory/accounts-index.yaml.<account-id>.transactions[]`** — append a structured row capturing the **account side** of the payment. This is symmetric to the entity-side update in step 3 above; both are required. Without this step, the user cannot answer "what did I spend from <account> this year?" without grepping logs.
     - Resolve the funding account by `(institution, number_last4)` matching the receipt artifact's payment-method line, OR by the user's explicit account choice in the conversation, OR by the `pay_from_account` field on `bills.yaml.<bill>` / `subscriptions.yaml.<sub>` when set.
     - Schema for the appended row is documented in § 4.3 below.
-    - Set `status: pending` on initial save; flip to `posted` either on next finance-ingestor reconciliation pass or on explicit user confirmation. `failed` / `reversed` are surfaced to triage skills.
+    - Set `status: pending` on initial save; flip to `posted` either on next finance harvest reconciliation pass or on explicit user confirmation. `failed` / `reversed` are surfaced to triage skills.
     - For payments with NO funding account on file (cash, money order, peer-to-peer with no bank trace), skip this step but log the reason in the artifact's frontmatter `notes`.
 
 4. **Append to `interaction-log.yaml`** with `kind: payment_confirmation_saved`, citing:

@@ -130,3 +130,7 @@ contracts:
     slug: domain-reflection
     title: "Domain Reflection (ingestor-refreshed marker blocks)"
     path: contracts/domain-reflection.md
+  - id: C-44
+    slug: watchlist
+    title: "Watchlist Contract (change detection for external sources)"
+    path: contracts/watchlist.md

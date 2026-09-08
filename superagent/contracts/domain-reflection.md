@@ -73,7 +73,7 @@ tools' rules independent of marker adoption.
 
 ## Ingestor obligation
 
-Every ingestor under `superagent/tools/ingest/<source>.py` MUST:
+Every harvest handler (`superagent/watchers/<id>/handler.py`, or the same path under `workspace/_custom/watchers/`) MUST:
 
 1. Declare `affected_domains: tuple[str, ...]` on its class. Empty tuple
    means "no domain refresh needed" (e.g. raw photo metadata).

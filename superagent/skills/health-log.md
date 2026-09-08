@@ -13,7 +13,7 @@ triggers:
   - log a lab result
 mcp_required: []
 mcp_optional:
-  - apple_health / whoop / strava / garmin / oura — auto-ingest vitals
+  - a health-data watcher pack under `workspace/_custom/watchers/` (none ships in core) — harvested vitals
 cli_required: []
 cli_optional: []
 ---

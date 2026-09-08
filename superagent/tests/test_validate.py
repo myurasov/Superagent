@@ -108,7 +108,7 @@ def test_skill_stems_include_framework_and_custom_overlay(
     (custom / "browserctl.shop.md").write_text("---\nname: browserctl.shop\n---\n")
     stems = skill_stems(framework_dir, initialized_workspace)
     assert "migrate" in stems
-    assert "ingest" in stems
+    assert "daily-update" in stems  # `ingest` was retired by 0.19.0 in favour of `watch`
     assert "browserctl.shop" in stems
     assert not any(s.startswith("_") for s in stems)
     # Missing workspace / overlay dir is fine.
@@ -218,3 +218,80 @@ def test_validate_fresh_interaction_log_has_no_warnings(
     out = capsys.readouterr().out
     assert rc == 0
     assert "WARN" not in out
+
+
+def test_check_watchlist_state_shape() -> None:
+    from superagent.tools.validate import check_watchlist_state
+
+    assert check_watchlist_state({"schema_version": 1, "watchers": {}}) == []
+    assert check_watchlist_state({"schema_version": 1, "watchers": {"a": {"status": "active"}}}) == []
+    assert any("missing required key 'watchers'" in e
+               for e in check_watchlist_state({"schema_version": 1}))
+    assert any("must be a mapping" in e
+               for e in check_watchlist_state({"schema_version": 1, "watchers": []}))
+    assert any("watchers.a must be a mapping" in e
+               for e in check_watchlist_state({"schema_version": 1, "watchers": {"a": "x"}}))
+
+
+def _watch_ref(body: str) -> str:
+    return ("---\nref_version: 1\ntitle: t\nkind: url\nsource: \"https://example.com\"\n"
+            + body + "---\n")
+
+
+def test_validate_watchlist_refs_schema(framework_dir: Path, initialized_workspace: Path) -> None:
+    from superagent.tools.validate import validate_watchlist_refs
+
+    reg = initialized_workspace / "Sources" / "Watchlist"
+    (reg / "good-url.ref.md").write_text(_watch_ref("watch:\n  enabled: true\n"))  # type from kind
+    (reg / "good-pack.ref.md").write_text(_watch_ref("watch:\n  pack: simplefin\n  capture_mode: manual\n"))
+    (reg / "bad-reserved.ref.md").write_text(_watch_ref("watch:\n  type: index_query\n"))
+    (reg / "bad-pack.ref.md").write_text(_watch_ref("watch:\n  pack: nope\n"))
+    (reg / "bad-shape.ref.md").write_text(
+        _watch_ref("watch:\n  type: url\n  enabled: yes please\n  cycles: daily\n  capture_mode: sometimes\n"))
+    (reg / "no-block.ref.md").write_text(_watch_ref(""))
+    (reg / "bare-subagent.ref.md").write_text(_watch_ref("watch:\n  type: subagent\n"))
+    (reg / "bare-harvest.ref.md").write_text(_watch_ref("watch:\n  type: harvest\n"))
+    # Not watchers: loose .ref.txt, nested files, README.md — the tool never loads them.
+    (reg / "loose.ref.txt").write_text("https://example.com\n")
+    (reg / "sub").mkdir()
+    (reg / "sub" / "nested.ref.md").write_text(_watch_ref("watch:\n  type: index_query\n"))
+    oks, errs = validate_watchlist_refs(initialized_workspace, framework_dir)
+    assert sorted(oks) == ["Sources/Watchlist/good-pack.ref.md", "Sources/Watchlist/good-url.ref.md"]
+    joined = "\n".join(errs)
+    assert "bad-reserved.ref.md: watch.type 'index_query' is reserved" in joined
+    assert "bad-pack.ref.md: watch.pack 'nope' is not a known pack" in joined
+    assert "bad-shape.ref.md: watch.enabled must be bool" in joined
+    assert "bad-shape.ref.md: watch.cycles must be a list" in joined
+    assert "bad-shape.ref.md: watch.capture_mode must be one of" in joined
+    assert "no-block.ref.md: registry ref has no 'watch:' block" in joined
+    assert "bare-subagent.ref.md: a bare subagent watcher needs watch.prompt" in joined
+    assert "bare-harvest.ref.md: watch.type 'harvest' needs a pack" in joined
+    assert "loose.ref.txt" not in joined and "nested.ref.md" not in joined
+
+
+def test_validate_main_reports_registry_errors(framework_dir: Path, initialized_workspace: Path,
+                                               capsys) -> None:
+    from superagent.tools.validate import main as validate_main
+
+    reg = initialized_workspace / "Sources" / "Watchlist"
+    (reg / "ok.ref.md").write_text(_watch_ref("watch:\n  type: url\n"))
+    assert validate_main(["--workspace", str(initialized_workspace),
+                          "--framework", str(framework_dir)]) == 0
+    (reg / "bad.ref.md").write_text(_watch_ref("watch:\n  type: index_query\n"))
+    rc = validate_main(["--workspace", str(initialized_workspace), "--framework", str(framework_dir)])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "ERROR  Sources/Watchlist/bad.ref.md" in out
+    assert "OK     Sources/Watchlist/ok.ref.md" in out
+
+
+def test_validate_passes_without_data_sources_yaml(framework_dir: Path,
+                                                   initialized_workspace: Path) -> None:
+    """0.19.0 retired data-sources.yaml; a workspace without it validates clean."""
+    from superagent.tools.validate import LIST_FILES
+    from superagent.tools.validate import main as validate_main
+
+    assert "data-sources.yaml" not in LIST_FILES
+    assert not (initialized_workspace / "_memory" / "data-sources.yaml").exists()
+    assert validate_main(["--workspace", str(initialized_workspace),
+                          "--framework", str(framework_dir)]) == 0

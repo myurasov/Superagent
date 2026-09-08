@@ -6,7 +6,7 @@ Implements superagent/docs/_internal/ideas-better-structure.md item #18.
 
 **What is implemented today** (the floor every skill can rely on):
 
-- **The tier root exists.** `init` (via `tools/workspace_init.py`) eagerly creates `_memory/sensitive/`. It is the home for credential and identifier files that tools write themselves — e.g. `tools/simplefin_claim.py` writes `_memory/sensitive/simplefin-credentials.yaml` with mode `600`.
+- **The tier root exists.** `init` (via `tools/workspace_init.py`) eagerly creates `_memory/sensitive/`. It is the home for credential and identifier files that tools write themselves — e.g. `superagent/watchers/simplefin/claim.py` writes `_memory/sensitive/simplefin-credentials.yaml` with mode `600`.
 - **The flagged files stay where they are.** `health-records.yaml` and `accounts-index.yaml` live at `_memory/` top level, and every skill and tool reads them there. Nothing relocates them.
 - **Per-row sensitive flag.** Any row may carry `sensitive: true` to opt that single row into outbound redaction (`contracts/outbound-surface.md`) regardless of which file it lives in.
 - **User-driven relocation.** The user may symlink the whole `_memory/sensitive/` directory (or any individual file) to an encrypted disk-image mount; tools open paths through the symlink transparently. This is a manual step, not something the framework performs.

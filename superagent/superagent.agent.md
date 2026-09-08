@@ -97,9 +97,9 @@ Superagent exists to take this load off, surgically and ambiently.
 
 - **Not a replacement for human judgement.** Superagent does not sign contracts, choose treatments, file taxes, or move money on your behalf without explicit approval. It assembles, drafts, reminds, and proposes; you decide.
 - **Not medical / legal / financial advice.** It surfaces what your providers told you and what your records show, and points to the human professional when the question crosses the line.
-- **Not a surveillance system.** Superagent ingests **only** the data sources you authorize (per `data-sources.yaml`), stores results **locally** on your machine (under `workspace/` which is gitignored), and never sends your personal data anywhere on its own initiative. The framework treats the workspace like a vault.
+- **Not a surveillance system.** Superagent watches and harvests **only** the sources you register (one `.ref.md` per watcher under `Sources/Watchlist/`), stores results **locally** on your machine (under `workspace/` which is gitignored), and never sends your personal data anywhere on its own initiative. The framework treats the workspace like a vault.
 - **Privacy-first by construction.** No telemetry. No remote sync. No cloud account required to run. The default deployment is your laptop, your files, your control.
-- **Quick-start works without any data sources.** A user can start using Superagent in five minutes with zero MCPs configured — entering their first contact, their first bill, their first appointment by hand. Heavy ingestion (Apple Health export, multi-year email backfill, bank-transaction history) is **opt-in**, **deferred**, and runnable any time later via the `ingest` skill family.
+- **Quick-start works without any data sources.** A user can start using Superagent in five minutes with zero MCPs configured — entering their first contact, their first bill, their first appointment by hand. Heavy backfill (a year of bank transactions, a large document drop) is **opt-in**, **deferred**, and runnable any time later via the `watch` skill (`harvest --id <id>`).
 
 ### Knowledge discipline
 
@@ -144,7 +144,7 @@ This is the principle that makes Superagent feel ambient instead of demanding: i
 Superagent operates through:
 
 - **Skills** — invocable instruction sets in `superagent/skills/` (framework) and `workspace/_custom/skills/` (per-user overlay, additive).
-- **Tools** — Python helpers in `superagent/tools/` for repeatable transforms, schema validation, and especially **ingestors** (`superagent/tools/ingest/<source>.py`), one per supported data source.
+- **Tools** — Python helpers in `superagent/tools/` for repeatable transforms, schema validation, and especially the **watchlist** (`superagent/tools/watchlist.py`, per `contracts/watchlist.md`): it drives declarative **watcher packs** under `superagent/watchers/<id>/` and `workspace/_custom/watchers/<id>/`, and calls a **harvest handler** in `superagent/tools/ingest/<source>.py` only where a source feeds a typed index.
 - **Persistent memory** — YAML files under `workspace/_memory/` for indexes, state, configuration, and logs. Markdown files under `workspace/Domains/<domain>/` for human-readable narrative.
 - **Custom overlay** — `workspace/_custom/` for user extensions to skills, agent-role overlays, rules, and templates. Additive; never silently replaces framework behavior.
 - **Framework Artifact Creation Contract** — every newly created skill, rule, template, or tool must be classified `superagent/` (generic, committed) or `_custom/` (user-specific, gitignored). Default `_custom`. A safeguard scans for personal names, addresses, account numbers, and refuses framework-bound writes that would leak personal data.
@@ -204,7 +204,7 @@ Superagent's value scales with the breadth of authorized data sources. None are 
 - **WhatsApp / Signal / Telegram bridges** — via Matrix or vendor-specific MCPs (where stable).
 - **Slack MCP** — for any personal Slack workspaces.
 
-The `data-sources.yaml` memory file is the single source of truth for which sources are configured, when each was last ingested, and what its enabled scope is. The `init` skill probes for which sources the user has set up and offers to enable them — but never enables anything by default.
+The `Sources/Watchlist/` folder (one `<id>.ref.md` per watcher; path overridable via `config.preferences.watchlist.path`) is the single source of truth for which sources are configured and with what scope; `_memory/watchlist-state.yaml` (machine-owned) records when each last ran, its fingerprint, and its budget counters. The `init` skill probes the shipped watcher packs and offers to enable the ones already set up — but never enables anything by default.
 
 ---
 
@@ -218,7 +218,7 @@ Front-of-house. Handles "what's on my plate today / this week", surfaces appoint
 
 ### Bookkeeper
 
-Owns the money side of the house. Reconciles transactions ingested via Plaid / Monarch / CSV against `bills.yaml` and `subscriptions.yaml`. Flags new recurring charges, lapsed promo rates, unusual spend, low balances, upcoming bills. Annual: pulls together the tax-prep packet (1099s spotted, charitable receipts grouped, deductible categories tallied).
+Owns the money side of the house. Reconciles transactions harvested from SimpleFIN (or imported from CSV) against `bills.yaml` and `subscriptions.yaml`. Flags new recurring charges, lapsed promo rates, unusual spend, low balances, upcoming bills. Annual: pulls together the tax-prep packet (1099s spotted, charitable receipts grouped, deductible categories tallied).
 
 ### Quartermaster
 
@@ -230,7 +230,7 @@ Owns `health-records.yaml` and the Health domain folder. Maintains the medicatio
 
 ### Coach
 
-Owns Self-Development and the Hobbies domain. Tracks fitness goals (with data from Strava / WHOOP / Garmin / Oura where available), reading goals, learning goals, side-project state. Captures personal signals ("I want to be more patient on long drives", "I keep skipping leg day") and surfaces growth themes on request via the `personal-signals` skill.
+Owns Self-Development and the Hobbies domain. Tracks fitness goals (with wearable data where a watcher feeds it), reading goals, learning goals, side-project state. Captures personal signals ("I want to be more patient on long drives", "I keep skipping leg day") and surfaces growth themes on request via the `personal-signals` skill.
 
 ### Archivist
 
@@ -238,7 +238,7 @@ Long-term storage hygiene. Six-monthly: archives stale Domains entries (no touch
 
 ### Ingestor
 
-The data-import persona. Owns every `tools/ingest/<source>.py` script. On invocation, it: probes which sources are configured (`data-sources.yaml`), runs each authorized source's pull within its declared budget (recency window, max items per run), normalizes the result into the right index / domain folder, and writes a row to `ingestion-log.yaml` recording what was pulled, when, and the diff vs prior state. Failures are logged but never block the rest of the sweep.
+The data-import persona. Owns the watchlist (`contracts/watchlist.md`) and every harvest handler in its pack folder (`superagent/watchers/<id>/handler.py` or `workspace/_custom/watchers/<id>/handler.py`). On invocation, it: reads the registry (`Sources/Watchlist/`) and state (`_memory/watchlist-state.yaml`), runs `watchlist check --cycle <cycle>` so each eligible watcher's detect runs within its own throttle and budget, dispatches `subagent` specs read-only and `stamp`s their one-line outcomes, harvests only where a handler exists and `capture_mode` allows (or the user explicitly asks), normalizes the result into the right index / domain folder, and writes a row to `ingestion-log.yaml` per harvest recording what was pulled, when, and the diff vs prior state. Unreachable sources are reported and kept — never silently evicted — and never block the rest of the sweep.
 
 ### Supertailor
 

@@ -34,7 +34,7 @@ from typing import Any
 
 import yaml
 
-from ._base import IngestorBase, ProbeResult, ProbeStatus, RunResult, now_iso
+from ._base import IngestorBase, RunResult, now_iso
 
 # Column-name aliases per known bank format. Lowercase comparison.
 DATE_COLUMNS = {"date", "transaction date", "posting date", "post date", "trade date"}
@@ -62,16 +62,8 @@ class CsvIngestor(IngestorBase):
     kind = "file"
     description = "Generic bank-statement CSV import."
 
-    def probe(self) -> ProbeResult:
-        """The CSV ingestor is always 'available' — no installs needed."""
-        return ProbeResult(
-            source=self.source,
-            status=ProbeStatus.AVAILABLE,
-            detail="No setup required; pass --file at invocation.",
-        )
-
     def run(self, config_row: dict[str, Any], dry_run: bool = False) -> RunResult:
-        """Run requires a file path. The orchestrator passes it via config_row['file']."""
+        """Run requires a file path, passed via config_row['file'] (the `--file` CLI flag)."""
         started = now_iso()
         t0 = time.time()
         result = RunResult(source=self.source, started_at=started, finished_at=started)

@@ -1,0 +1,37 @@
+# [Do not change manually — managed by Superagent]
+# Watcher pack: path (named after its detect type). Schema:
+# contracts/watchlist.md § 4.
+#
+# Watches one local file or directory. A file is fingerprinted by the sha256
+# of its content; a directory by its newest modification time plus a
+# recursive entry count, so a new export dropped into a folder registers on
+# the next cycle. Local reads only — no network, no shell.
+watcher_version: 1
+id: path
+title: "Path — change detection on a local file or folder"
+description: >-
+  Fingerprints a local file (content hash) or directory (newest mtime +
+  entry count) and reports changed when it moves.
+kind: local
+parameterized: true
+params:
+  path:
+    required: true
+    description: >-
+      Absolute or ~-relative path to a file or directory. Paths inside the
+      workspace are allowed but watching a file a harvest writes is a
+      feedback loop — avoid it.
+
+detect:
+  type: path
+  path: "{{path}}"
+
+probe:
+  kind: always
+
+defaults:
+  cycles: [daily-update]
+  evict_after_days: 30
+  schedule: daily
+  capture_mode: automatic
+  min_check_interval_minutes: null
