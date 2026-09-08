@@ -18,7 +18,7 @@ Use the right home instead:
 | File | Where it goes |
 |---|---|
 | **Finished documents** (insurance card scan, signed will, tax return PDF, vehicle title, appliance manual, warranty receipt) | `Sources/<your-folders>/` — the immutable canonical store; the layout under `Sources/` is yours (e.g. `Sources/Vehicles/<asset-slug>/`). Then add a row to this domain's `sources.md`. |
-| **Things to watch for change** (a provider portal, a status page, a feed) | `Sources/Watchlist/<Title_Case>.ref.md` via the `watch` skill; a URL merely worth remembering goes in the domain's `info.md` / `rolodex.md` |
+| **Things to watch for change** (a provider portal, a status page, a feed) | `Sources/Watchlist/<name>.ref.md` via the `watch` skill; a URL merely worth remembering goes in the domain's `info.md` / `rolodex.md` |
 | **Things to send / give to someone else** (drafts ready to copy-paste into email, printable checklists for a contractor, exports for a tax preparer) | `Outbox/` |
 
 The crisp test:

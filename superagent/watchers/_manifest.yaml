@@ -5,7 +5,7 @@
 # A pack is a self-contained folder `superagent/watchers/<id>/` holding
 # `pack.yaml` (declarative detect / harvest / probe / auth / defaults) plus,
 # only when the watcher needs real code, a same-folder `handler.py` and an
-# optional `README.md`. A registry row (`Sources/Watchlist/<Title_Case>.ref.md`)
+# optional `README.md`. A registry row (`Sources/Watchlist/<name>.ref.md`)
 # inherits a pack with `watch.pack: <id>` and overrides only what it needs.
 #
 # The same folder shape works as a user overlay at

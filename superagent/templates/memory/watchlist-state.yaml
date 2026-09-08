@@ -2,7 +2,7 @@
 # Superagent memory: machine-owned state of the watchlist (contracts/watchlist.md § 7).
 # Written only by `tools/watchlist.py` (`check`, `stamp`, `harvest`) under an fslock
 # with atomic replace. The REGISTRY — which watchers exist and how they are
-# configured — is the folder of `Sources/Watchlist/<Title_Case>.ref.md` files (id =
+# configured — is the folder of `Sources/Watchlist/<name>.ref.md` files (id =
 # stem lowercased); edit those, never this file. A row whose ref disappeared is
 # warned on each run and pruned on the third consecutive run without its ref.
 
@@ -11,7 +11,7 @@ schema_version: 1
 # ISO 8601 of the last write by the tool (state-shape singleton; null until the first check).
 last_updated: null
 
-# Keyed by watcher id (the ref's `<Title_Case>` filename stem, lowercased; handle `watch:<id>`).
+# Keyed by watcher id (the ref's filename stem, lowercased; handle `watch:<id>`).
 # Each row:
 #   status               — active | disabled | evicted
 #   last_checked         — ISO 8601 of the last detect that actually ran

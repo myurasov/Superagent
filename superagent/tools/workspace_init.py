@@ -74,7 +74,7 @@ WATCHLIST_STATE_DEFAULT = (
     "# [Do not change manually — managed by Superagent]\n"
     "# Superagent memory: machine-owned run state of the watchlist\n"
     "# (contracts/watchlist.md). Keyed by watcher id = the filename stem of\n"
-    "# `Sources/Watchlist/<Title_Case>.ref.md`, lowercased. Only\n"
+    "# `Sources/Watchlist/<name>.ref.md`, lowercased. Only\n"
     "# `tools/watchlist.py` writes here.\n"
     "\n"
     "schema_version: 1\n"
@@ -84,10 +84,12 @@ WATCHLIST_README_DEFAULT = """# `Sources/Watchlist/` -- the watcher registry
 
 Every `.ref.md` in this folder is a WATCHER DEFINITION (`ref_version: 2`,
 template `superagent/templates/sources/ref.md`): `title`, `description`,
-`related_*`, `tags`, provenance, and the `watch:` block. Filenames are
-Title_Case (`Simplefin.ref.md`, `Home_Assistant-Hub.ref.md`); the watcher
-id is the stem lowercased (`simplefin`) -- its state key and its handle
-(`watch:simplefin`). Files resolve case-insensitively; rename = move the file.
+`related_*`, `tags`, provenance, and the `watch:` block. Name your files as
+you like (`HA.ref.md`, `ha.ref.md` -- kept exactly as written); the tool
+writes Title_Case names for the refs it generates (`Simplefin.ref.md`,
+`Home_Assistant-Hub.ref.md`). The watcher id is the stem lowercased
+(`simplefin`) -- its state key and its handle (`watch:simplefin`). Files
+resolve case-insensitively; rename = move the file.
 
 - The folder name is reserved (`config.preferences.watchlist.path`); its
   contents are yours -- hand-author, edit, or delete any ref here.

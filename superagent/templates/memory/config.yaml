@@ -54,7 +54,7 @@ preferences:
   # data sources (see contracts/watchlist.md). Absent block = these defaults.
   # Per-watcher settings live in the registry refs, not here.
   watchlist:
-    # Registry folder, workspace-relative: one `<Title_Case>.ref.md` per watcher (id = stem lowercased).
+    # Registry folder, workspace-relative: one `<name>.ref.md` per watcher (id = stem lowercased).
     # Reserved name inside Sources/; contents are user-editable.
     path: "Sources/Watchlist"
     # Default cadence a watcher is checked on when its ref sets none:
@@ -244,14 +244,14 @@ preferences:
 # --- Data sources (which MCPs / CLI tools you've authorized) ---
 # This block carries the COARSE flag (have you set up the auth at all?). The detailed
 # per-source configuration lives in the watchlist registry (one
-# `Sources/Watchlist/<Title_Case>.ref.md` per source, id = stem lowercased; see contracts/watchlist.md) and its run
+# `Sources/Watchlist/<name>.ref.md` per source, id = stem lowercased; see contracts/watchlist.md) and its run
 # state in `_memory/watchlist-state.yaml`.
 #
 # init() flips an entry from `false` to `true` after a successful health check.
 data_sources_configured:
   # Only sources with a shipped watcher pack are listed. Any other source is a
   # pack you author or install under `workspace/_custom/watchers/<id>/` plus one
-  # `Sources/Watchlist/<Title_Case>.ref.md` (id = stem lowercased); `watch enable <pack>` adds its flag row here.
+  # `Sources/Watchlist/<name>.ref.md` (id = stem lowercased); `watch enable <pack>` adds its flag row here.
   email:
     gmail: false                 # Gmail MCP authorized (the `gmail` pack reuses its token)
   finance:

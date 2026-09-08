@@ -27,7 +27,7 @@ Superagent is a **personal-life operating system** built on five layers:
 1. **A structured-state vault** (`workspace/_memory/*.yaml`) — small, queryable indexes for things that need fast retrieval: bills, subscriptions, appointments, important dates, contacts, accounts, assets, documents, health records, projects, sources.
 2. **A narrative layer — Domains** (`workspace/Domains/<domain>/*.md`) — markdown for *ongoing* areas of responsibility (Health, Finances, Home, …). The story of each domain over time, the people in it, the routines.
 3. **A narrative layer — Projects** (`workspace/Projects/<slug>/*.md`) — markdown for *time-bounded* efforts (file taxes, plan trip, replace dishwasher, renovate kitchen). Same 4-file shape as Domains; they cross-link via `related_domains: [..]`.
-4. **A reference library — Sources** (`workspace/Sources/`) — immutable documents the user owns (any layout, each optionally described by a `<doc>.<ext>.meta.md` sidecar) plus the watcher registry (`Watchlist/<Title_Case>.ref.md`, one per external thing watched for change). Documents are read from disk; external things are watched, never fetched on demand.
+4. **A reference library — Sources** (`workspace/Sources/`) — immutable documents the user owns (any layout, each optionally described by a `<doc>.<ext>.meta.md` sidecar) plus the watcher registry (`Watchlist/<name>.ref.md`, one per external thing watched for change). Documents are read from disk; external things are watched, never fetched on demand.
 5. **An agent skin** (`superagent/skills/*.md` + `superagent/tools/`) — invocable behaviours that read all four layers, write to layers 1-3, and speak the user's language.
 
 All layers are designed for **graceful degradation**. Structured vault works without narrative. Narrative works without structured. Sources work without ingestion. Agent skin works at the most basic level by reading and writing markdown — every advanced feature (ingestion, surfacing, audit, the Supertailor / Supercoder loop) layers on top.
@@ -80,7 +80,7 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
     │   └── <project-slug>/         ←   info.md / status.md / history.md / rolodex.md / sources.md
     ├── Sources/                    ← reference library (IMMUTABLE to the agent; user-defined layout)
     │   ├── <your-folders>/         ←   documents + optional `<doc>.<ext>.meta.md` sidecars; never deleted by skills
-    │   └── Watchlist/              ←   watcher registry: one `<Title_Case>.ref.md` per watched source (reserved name, user-editable)
+    │   └── Watchlist/              ←   watcher registry: one `<name>.ref.md` per watched source (reserved name, user-editable)
     ├── Inbox/                      ← staging for incoming files
     ├── Outbox/                     ← shareable artifacts (drafts, summaries, handoff packet)
     ├── Archive/                    ← reversible archive (per `doctor` skill)
@@ -115,7 +115,7 @@ The two layers serve different access patterns:
 | `important-dates.yaml` | birthdays / anniversaries / deadlines | `important-dates`, `daily-update` |
 | `documents-index.yaml` | important documents (with expiration tracking) | `add-document`, `monthly-review`, `handoff` |
 | `health-records.yaml` | medical events, meds, vitals, conditions | `health-log`, `appointments` (medical), monthly-review |
-| `watchlist-state.yaml` | machine-owned run state per watcher (fingerprint, last_checked, error_streak, budget counters); the registry itself is `Sources/Watchlist/<Title_Case>.ref.md` | `tools/watchlist.py`, `watch`, cadence skills |
+| `watchlist-state.yaml` | machine-owned run state per watcher (fingerprint, last_checked, error_streak, budget counters); the registry itself is `Sources/Watchlist/<name>.ref.md` | `tools/watchlist.py`, `watch`, cadence skills |
 | `personal-signals.yaml` | self-development feedback (capture + surface) | `personal-signals`, `weekly-review`, Supertailor |
 | `action-signals.yaml` | "this should change" signals (target: tailor / superagent) | every skill (capture); Supertailor (drain) |
 | `supertailor-suggestions.yaml` | Supertailor's framework-improvement backlog | Supertailor, Supercoder |
@@ -142,7 +142,7 @@ Five complementary surfaces, each with one job:
 
 - **Skills** (`skills/*.md`) are **instructions for the agent** in human-readable markdown with YAML frontmatter. The agent reads the file when invoked and follows the steps. Skills do not contain executable code; they contain procedures the agent runs.
 - **Tools** (`tools/*.py`) are **executable Python** for repeatable transforms (scaffold, validate, render, hook). Tools are invoked from skills via the agent's shell tool (`uv run python superagent/tools/<tool>.py`).
-- **Watchers** (`watchers/<id>/pack.yaml`, and the user's own under `workspace/_custom/watchers/<id>/`) are **declarative source definitions** — detect config, optional harvest handler, declarative probe, auth pointer, schedule / capture-mode defaults — per `contracts/watchlist.md`. `tools/watchlist.py` implements the detect types once (`url`, `path`, `cmd`, `subagent`, `gmail`, `harvest`) plus lifecycle, throttling, budgets, and reporting; a pack needs code only when it feeds a typed index, in which case its own `watchers/<id>/handler.py` implements `IngestorBase.run` from `tools/ingest/_base.py` (`simplefin` today; `tools/ingest/` holds only the base contract and the standalone CSV importer). The registry is `Sources/Watchlist/<Title_Case>.ref.md` (one file per watched source; every `.ref.md` under `Sources/` is a watcher); the `watch` skill is the user-facing front-end; the cadence skills run `check --cycle <cycle>`.
+- **Watchers** (`watchers/<id>/pack.yaml`, and the user's own under `workspace/_custom/watchers/<id>/`) are **declarative source definitions** — detect config, optional harvest handler, declarative probe, auth pointer, schedule / capture-mode defaults — per `contracts/watchlist.md`. `tools/watchlist.py` implements the detect types once (`url`, `path`, `cmd`, `subagent`, `gmail`, `harvest`) plus lifecycle, throttling, budgets, and reporting; a pack needs code only when it feeds a typed index, in which case its own `watchers/<id>/handler.py` implements `IngestorBase.run` from `tools/ingest/_base.py` (`simplefin` today; `tools/ingest/` holds only the base contract and the standalone CSV importer). The registry is `Sources/Watchlist/<name>.ref.md` (one file per watched source; every `.ref.md` under `Sources/` is a watcher); the `watch` skill is the user-facing front-end; the cadence skills run `check --cycle <cycle>`.
 - **Contracts** (`contracts/*.md`) are **multi-actor protocols** that several skills, tools, or agent roles must implement so they can interoperate. *Every harvest MUST do X* / *every memory file is one of three shapes* / *every entity has a `<kind>:<slug>` handle*. Each contract is one .md file; skills cite the specific one they need (`contracts/<slug>.md`) and read only that file. Indexed by `contracts/_manifest.yaml`.
 - **Rules** (`rules/*.yaml`) are **machine-readable rule catalogues** the framework's tools enforce — currently the skill anti-pattern catalogue used by `tools/anti_patterns.py`. Users can extend them at `workspace/_custom/rules/<file>.yaml`.
 
@@ -245,7 +245,7 @@ The frameworks were designed for the pre-AI era when capture / organize / distil
 | `_memory/contacts.yaml` | phone numbers, addresses | same |
 | `Outbox/handoff/` | aggregated estate-handoff packet | print + safe-deposit-box; encrypted USB |
 | the `Sources/` folder you keep pet records in (e.g. `Sources/Pets/`) | vet records (often contain home address) | encrypted destination |
-| pack `auth.ref` (a `Sources/Watchlist/<Title_Case>.ref.md` carries no auth field) | references to credentials | not the credentials themselves; references to a vault or a `_memory/sensitive/` file |
+| pack `auth.ref` (a `Sources/Watchlist/<name>.ref.md` carries no auth field) | references to credentials | not the credentials themselves; references to a vault or a `_memory/sensitive/` file |
 
 In MVP, no built-in encryption. Roadmap entry "Sensitive-store options" (`docs/roadmap.md`) tracks the path to native encryption support.
 

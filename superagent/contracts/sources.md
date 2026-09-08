@@ -15,14 +15,14 @@ The layout is **user-defined**. The agent reserves exactly two names under `Sour
 | Reserved | Why |
 |---|---|
 | `Sources/README.md` | The folder's user-facing docs (templates/folder-readmes/Sources.md). Excluded from the index. |
-| `Sources/Watchlist/` (or `config.preferences.watchlist.path`) | The **watcher registry** (`contracts/watchlist.md`). Reserved *name*, user-editable *contents*: hand-author, edit or delete any `<Title_Case>.ref.md` in it. Its `README.md` (templates/folder-readmes/Watchlist.md) is excluded from the index like `Sources/README.md`. |
+| `Sources/Watchlist/` (or `config.preferences.watchlist.path`) | The **watcher registry** (`contracts/watchlist.md`). Reserved *name*, user-editable *contents*: hand-author, edit or delete any `<name>.ref.md` in it. Its `README.md` (templates/folder-readmes/Watchlist.md) is excluded from the index like `Sources/README.md`. |
 
 Everything else under `Sources/` is yours. Examples — all valid:
 
 ```
 Sources/
   README.md
-  Watchlist/                       ← reserved name; one `<Title_Case>.ref.md` per watcher
+  Watchlist/                       ← reserved name; one `<name>.ref.md` per watcher
     README.md
     Simplefin.ref.md               ← id `simplefin`, handle `watch:simplefin`
     Solar_Permit.ref.md            ← id `solar_permit`
@@ -82,14 +82,14 @@ A sidecar is the right place for anything the document cannot carry itself: a sc
 
 Sidecars are the only markdown files under `Sources/` the agent may write outside `Sources/Watchlist/`, and only when the user asks for one (`add-source`, a payment capture, a document promotion). It never rewrites a sidecar the user hand-authored except to add a field the user asked for.
 
-### 15.4 Watchers — `Sources/Watchlist/<Title_Case>.ref.md`
+### 15.4 Watchers — `Sources/Watchlist/<name>.ref.md`
 
 **Every `.ref.md` is a watcher.** Anywhere under `Sources/`, the `.ref.md` suffix means one thing: a change-detection definition governed by `contracts/watchlist.md`. There is no exception (document metadata is `.meta.md`, § 15.3), and `.ref.txt` is not recognized at all. A `.ref.md` outside the registry folder is neither a document nor a watcher — move it into the registry, or rename it `<doc>.<ext>.meta.md` if it was meant as document metadata.
 
 What this contract says about them; everything else is `contracts/watchlist.md`:
 
 - **Location**: the registry folder, `Sources/Watchlist/` by default (`config.preferences.watchlist.path`).
-- **Filename**: `Title_Case` — the first letter of every `_`- or `-`-delimited token capitalized (`Simplefin.ref.md`, `Home_Assistant-Hub.ref.md`, `Gmail-Bills.ref.md`). The watcher **id** is the stem lowercased (`simplefin`, `home_assistant-hub`, `gmail-bills`); the handle is `watch:<id>`; files resolve case-insensitively; two files with the same lowercased stem are a load error. `enable --id foo_bar` writes `Foo_Bar.ref.md`.
+- **Filename**: `<name>.ref.md` — the suffix is what makes it a watcher; the name is the user's and is kept as written (`HA.ref.md`, `ha.ref.md`, `Home_Assistant.ref.md` are all valid; nothing renames them or warns about their casing). The names the tool generates are `Title_Case` — the first letter of every `_`- or `-`-delimited token capitalized (`enable --id gmail-bills` → `Gmail-Bills.ref.md`; `--id foo_bar` → `Foo_Bar.ref.md`; `Simplefin.ref.md`, `Home_Assistant-Hub.ref.md`). The watcher **id** is the stem lowercased (`simplefin`, `home_assistant-hub`, `gmail-bills`, `ha`); the handle is `watch:<id>`; files resolve case-insensitively; two files with the same lowercased stem are a load error.
 - **Schema**: `ref_version: 2` — `title`, `description`, `related_*`, `tags`, `added_by`, `added_at`, and a required `watch:` block that carries the detect configuration AND the locator (`url:` / `path:` / `cmd:` / `prompt:` / `query:` for a bare watcher; `params:` for a pack instance). The template is `superagent/templates/sources/ref.md`. Field table: `contracts/watchlist.md` § 2.
 - **Indexing**: `sources_index.py refresh` indexes each watcher like any other source so `sources list` / `sources search` see it; the `watch:` mapping is lifted verbatim into the row as `watch`. The world graph links the `watch:<id>` node and the `source:<id>` row with an `indexed_as` edge (`contracts/operational-handles.md`).
 - **What it is not**: a watcher is not fetched on demand and has no read-freshness of its own. The question it answers is "did it move?", with the fingerprint kept in `_memory/watchlist-state.yaml`; when a watcher's harvest pulls records they land in a typed `_memory/` index, which is where skills read them (§ 15.5).

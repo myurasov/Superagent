@@ -8,7 +8,7 @@ Implements superagent/docs/_internal/ideas-better-structure.md item #20. Canonic
 
 `contact`, `account`, `asset`, `bill`, `subscription`, `appointment`, `important_date`, `document`, `domain`, `project`, `source`, `medication`, `vital`, `task`, `health_visit`, `decision`, `tag`, `event`, `skill`, `watch`, `other`.
 
-`watch:<slug>` is a watcher (ext-source) per `contracts/watchlist.md`: the slug is the lowercased filename stem of `Sources/Watchlist/<Title_Case>.ref.md` (`Gmail-Bills.ref.md` → `watch:gmail-bills`), which is also its `watchlist-state.yaml` key — renaming the file to a different stem renames the handle; a case-only rename does not. The same file is additionally indexed as a `source:<id>` row; `tools/world.py rebuild` links the two with an `indexed_as` edge.
+`watch:<slug>` is a watcher (ext-source) per `contracts/watchlist.md`: the slug is the lowercased filename stem of `Sources/Watchlist/<name>.ref.md` (`Gmail-Bills.ref.md` → `watch:gmail-bills`), which is also its `watchlist-state.yaml` key — renaming the file to a different stem renames the handle; a case-only rename does not. The same file is additionally indexed as a `source:<id>` row; `tools/world.py rebuild` links the two with an `indexed_as` edge.
 
 **Slugs**: lowercase, hyphenated, no punctuation (per `tools/handles.py.slug_for(name)`).
 

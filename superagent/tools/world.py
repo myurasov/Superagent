@@ -317,7 +317,7 @@ def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dic
                     process_row(fname, kind, id_field, label_field, row, extra_tags)
 
     # Watchers (contracts/watchlist.md § 9). A sources-index row carrying a
-    # `watch:` mapping is a `Sources/Watchlist/<Title_Case>.ref.md` watcher;
+    # `watch:` mapping is a `Sources/Watchlist/<name>.ref.md` watcher;
     # besides its `source:<row id>` node it gets a `watch:<id>` node (id = ref
     # filename stem, lowercased) whose related_* fields become edges, plus an
     # `indexed_as` edge back to the source row. `ensure_edge` callers that add
@@ -359,7 +359,8 @@ def watch_id_for_path(rel_path: Any) -> str | None:
     """Watcher id for a registry ref path: the `.ref.md` stem, lowercased.
 
     `Sources/Watchlist/Home_Assistant-Hub.ref.md` -> `home_assistant-hub`
-    (`tools/watchlist.py::id_from_stem`; the file on disk is Title_Case).
+    (`tools/watchlist.py::id_from_stem`; the file on disk keeps whatever casing
+    it was written with -- `enable` writes Title_Case, a user's name is kept).
     """
     if not isinstance(rel_path, str) or not rel_path.strip():
         return None

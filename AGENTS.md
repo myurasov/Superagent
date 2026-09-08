@@ -132,7 +132,7 @@ When the agent first opens (or first acts in) `workspace/` in a session:
 ## Before any file or MCP operation
 
 - **Always read `workspace/_memory/config.yaml` first** to resolve `preferences.workspace_path`, the user profile, MCP and CLI tool flags, automation preferences, and watchlist defaults (`preferences.watchlist`). Do not assume a hardcoded `workspace/` path except as the documented default when config is missing.
-- **Always read the `Sources/Watchlist/` registry** (or `config.preferences.watchlist.path`) **and `workspace/_memory/watchlist-state.yaml`** before invoking any watcher, harvest, or skill that reads MCPs / CLI tools. The folder is the single source of truth for which sources are configured (one `<Title_Case>.ref.md` per watcher; id = stem lowercased); the state file records when each last ran and its budget counters.
+- **Always read the `Sources/Watchlist/` registry** (or `config.preferences.watchlist.path`) **and `workspace/_memory/watchlist-state.yaml`** before invoking any watcher, harvest, or skill that reads MCPs / CLI tools. The folder is the single source of truth for which sources are configured (one `<name>.ref.md` per watcher — the tool writes Title_Case names; yours are kept as you named them; id = stem lowercased); the state file records when each last ran and its budget counters.
 
 ---
 
@@ -205,7 +205,7 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 
 Superagent's value scales with the breadth of authorized data sources. External sources live on the **watchlist** — detect ("did it move?") is declarative and cheap; harvest (pull + normalize into a typed index) runs only where a handler exists. The contracts are `contracts/watchlist.md` (watchers, packs, lifecycle) and `contracts/ingestion.md` (harvest handlers); the one-paragraph summary:
 
-- **Every source** is a watcher ref: `Sources/Watchlist/<Title_Case>.ref.md` (`ref_version: 2` — `title`, `related_*`, `tags`, provenance, plus a `watch:` block carrying `pack` or `type`, the locator — `url:` / `path:` / `cmd:` / `prompt:` / `query:`, or pack `params` — `enabled`, `cycles`, `schedule`, `capture_mode`). No `kind` / `source` / `ttl_minutes`. Filename stem lowercased = id = handle `watch:<id>`. Every `.ref.md` under `Sources/` is a watcher.
+- **Every source** is a watcher ref: `Sources/Watchlist/<name>.ref.md` (the tool writes Title_Case names — `enable --id gmail-bills` → `Gmail-Bills.ref.md`; name your own files as you like; `ref_version: 2` — `title`, `related_*`, `tags`, provenance, plus a `watch:` block carrying `pack` or `type`, the locator — `url:` / `path:` / `cmd:` / `prompt:` / `query:`, or pack `params` — `enabled`, `cycles`, `schedule`, `capture_mode`). No `kind` / `source` / `ttl_minutes`. Filename stem lowercased = id = handle `watch:<id>`. Every `.ref.md` under `Sources/` is a watcher.
 - **Packs** are self-contained folders in `superagent/watchers/<id>/` (shipped: `simplefin`, `gmail`, `url`, `cmd`, `path`, `subagent`) or `workspace/_custom/watchers/<id>/`; a pack is completely self-sufficient — any source-specific code (a **harvest handler** implementing `IngestorBase.run`, or a code-backed `detect()`) lives in the pack's own `handler.py`, never under `superagent/tools/`.
 - **State** is machine-owned in `workspace/_memory/watchlist-state.yaml` (fingerprint, `last_checked`, `last_success`, `error_streak`, `last_harvest`, `calls_today`); harvest runs still append a row to `workspace/_memory/ingestion-log.yaml`.
 - **Every watcher and harvest** is **read-only** upstream unless explicitly documented otherwise. It pulls; it does not push, delete, or modify upstream state.
@@ -287,7 +287,7 @@ A Project links UP to one or more Domains via `related_domains: [..]`. Tasks in 
 ```
 Sources/
   README.md                                 # user-facing docs (template)
-  Watchlist/<Title_Case>.ref.md             # watcher registry (reserved name; id = stem lowercased)
+  Watchlist/<name>.ref.md                   # watcher registry (reserved name; id = stem lowercased; your names are kept)
   <whatever-folders-you-want>/<files>       # user-curated; any layout
     <doc>.<ext>                             # documents
     <doc>.<ext>.meta.md                     # optional sidecar metadata for that document

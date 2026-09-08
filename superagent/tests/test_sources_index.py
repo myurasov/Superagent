@@ -447,7 +447,7 @@ WATCH_REF = (
 
 
 def test_watchlist_ref_indexed_as_watcher_with_watch_lifted(initialized_workspace: Path) -> None:
-    """A `Sources/Watchlist/<Title_Case>.ref.md` is a `watcher` row with the `watch` mapping lifted;
+    """A `Sources/Watchlist/<name>.ref.md` is a `watcher` row with the `watch` mapping lifted;
     the registry README is excluded like `Sources/README.md`."""
     from superagent.tools.sources_index import ref_stem
 
@@ -590,4 +590,5 @@ def test_non_ref_file_in_the_registry_is_warned_and_not_indexed(initialized_work
     assert paths["Sources/Watchlist/Ok.ref.md"]["kind"] == "watcher"
     assert len(warnings) == 1, warnings
     assert warnings[0].startswith("Sources/Watchlist/Ha.md: not a .ref.md — not a watcher; rename it to "
-                                  "`<Title_Case>.ref.md`")
+                                  "`<name>.ref.md`"), "no casing is prescribed for the user's file"
+    assert "Title_Case" not in warnings[0]

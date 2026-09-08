@@ -65,7 +65,7 @@ _Last updated: {{LAST_UPDATED}}_
 
 ## Watchers
 
-<!-- `Sources/Watchlist/<Title_Case>.ref.md` watchers whose `related_domain`
+<!-- `Sources/Watchlist/<name>.ref.md` watchers whose `related_domain`
      is this domain (contracts/watchlist.md). A watcher is watched for
      change, never fetched on demand: its state is in
      `_memory/watchlist-state.yaml`, its harvested records (if any) in the

@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-09-08T02:02:17-07:00'
+generated_at: '2026-09-08T13:24:08-07:00'
 skill_count: 54
 skills:
 - name: superagent-ad-hoc-task
@@ -785,7 +785,7 @@ skills:
   lines: 365
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 6145
+  typical_token_cost: 6144
   typical_files_read:
   - _memory/config.yaml
   - _memory/insights.yaml
@@ -1077,7 +1077,7 @@ skills:
   lines: 168
   h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 1998
+  typical_token_cost: 1995
   typical_files_read:
   - _memory/sources-index.yaml
   - _memory/watchlist-state.yaml
@@ -1269,7 +1269,8 @@ skills:
   stem: watch
   path: superagent/skills/watch.md
   one_line: Register, list, pause, revive, check, and harvest watchers (ext-sources) — the change-detection
-    tier over `Sources/Watchlist/<Title_Case>.ref.md` (contracts/watchlist.md; every `.ref.md` is a watcher,
+    tier over `Sources/Watchlist/<name>.ref.md` (contracts/watchlist.md; every `.ref.md` is a watcher,
+    `ref_
   triggers:
   - watch this
   - add a watcher
@@ -1291,7 +1292,7 @@ skills:
   lines: 153
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 3752
+  typical_token_cost: 3819
   typical_files_read:
   - _memory/config.yaml
   - _memory/interaction-log.yaml

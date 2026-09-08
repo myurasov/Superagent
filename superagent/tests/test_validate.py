@@ -311,21 +311,24 @@ def test_validate_watchlist_refs_schema(framework_dir: Path, initialized_workspa
     assert not any(w.startswith("Sources/Watchlist/manual.pdf.meta.md") for w in warns)
 
 
-def test_validate_watchlist_refs_title_case_and_collisions(framework_dir: Path,
-                                                          initialized_workspace: Path,
-                                                          monkeypatch) -> None:
+def test_validate_watchlist_refs_respect_user_casing_and_flag_collisions(framework_dir: Path,
+                                                                        initialized_workspace: Path,
+                                                                        monkeypatch) -> None:
+    """User decision: the tool never enforces its Title_Case naming on the user's files.
+    `ha.ref.md`, `HA.ref.md`, `lowercase_name.ref.md` are all valid; only a collision errors."""
     from superagent.tools import validate as v
 
     reg = initialized_workspace / "Sources" / "Watchlist"
     (reg / "lowercase_name.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
+    (reg / "HA.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
     (reg / "Fine.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
     oks, errs, warns = v.validate_watchlist_refs(initialized_workspace, framework_dir)
     assert errs == []
-    assert sorted(oks) == ["Sources/Watchlist/Fine.ref.md", "Sources/Watchlist/lowercase_name.ref.md"], (
-        "a non-Title_Case file still validates (loaded case-insensitively)"
+    assert sorted(oks) == ["Sources/Watchlist/Fine.ref.md", "Sources/Watchlist/HA.ref.md",
+                           "Sources/Watchlist/lowercase_name.ref.md"], (
+        "any casing validates (loaded case-insensitively)"
     )
-    assert warns == ["Sources/Watchlist/lowercase_name.ref.md: filename is not Title_Case; canonical "
-                     "name is Lowercase_Name.ref.md (loaded case-insensitively)"]
+    assert warns == [], "a user's filename casing is never warned about"
     # Two files whose lowercase stems collide (presented via the listing so the test does not
     # depend on a case-sensitive filesystem): both are errors, neither is OK.
     (reg / "FINE.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
@@ -334,6 +337,7 @@ def test_validate_watchlist_refs_title_case_and_collisions(framework_dir: Path,
     oks, errs, warns = v.validate_watchlist_refs(initialized_workspace, framework_dir)
     assert oks == ["Sources/Watchlist/lowercase_name.ref.md"]
     assert len(errs) == 2 and all("watcher id 'fine' is claimed by 2 files" in e for e in errs)
+    assert warns == []
 
 
 def test_stray_ref_and_ref_txt_warnings(framework_dir: Path, initialized_workspace: Path) -> None:
@@ -381,9 +385,10 @@ def test_validate_main_reports_registry_errors(framework_dir: Path, initialized_
     assert rc == 1
     assert "ERROR  Sources/Watchlist/Bad.ref.md" in out
     assert "OK     Sources/Watchlist/Ok.ref.md" in out
-    assert "WARN   Sources/Watchlist/shouting.ref.md: filename is not Title_Case" in out
+    assert "OK     Sources/Watchlist/shouting.ref.md" in out, "a lowercase name is the user's choice"
+    assert "shouting.ref.md: filename" not in out, "no naming warning on a user-named ref"
     assert "WARN   Sources/loose.ref.txt: `.ref.txt` is no longer supported" in out
-    assert "2 warning(s)" in out, "registry warnings count as soft checks"
+    assert "1 warning(s)" in out, "registry warnings count as soft checks"
 
 
 def test_validate_passes_without_data_sources_yaml(framework_dir: Path,

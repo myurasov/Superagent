@@ -148,6 +148,7 @@ title: "Broker API"
 kind: api
 source: "https://api.example.com/v1/balances"
 auth_ref: "1Password://Personal/broker-api"
+added_by: "watch"
 watch:
   type: subagent
   enabled: false
@@ -238,10 +239,10 @@ def build_workspace(ws: Path) -> Path:
     _write(ws / "Domains" / "Home" / "sources.md", HOME_CATALOGUE)
     _write(ws / "Domains" / "Vehicles" / "sources.md", VEHICLES_CATALOGUE)
     (ws / "Sources" / "_cache").mkdir(parents=True, exist_ok=True)
-    # Index the tree, then hand-curate the hub row so the migration has
-    # curated fields to carry across the rename.
+    # Index the tree, then hand-curate the broker row (a framework-written ref
+    # the migration renames) so it has curated fields to carry across the rename.
     si.refresh(ws, force=True, warn=lambda _m: None)
-    row = si.get_by_path(ws, "Sources/Watchlist/home_assistant-hub.ref.md", refresh_first=False)
+    row = si.get_by_path(ws, "Sources/Watchlist/broker_api.ref.md", refresh_first=False)
     assert row is not None
     si.update_row(ws, row["id"], {"notes": "hand note", "read_count": 3})
     return ws
@@ -284,6 +285,33 @@ def _ledger(ws: Path) -> dict:
 # ---------------------------------------------------------------------------
 # Unit helpers
 # ---------------------------------------------------------------------------
+
+
+def test_framework_written_is_decided_by_added_by(tmp_path: Path) -> None:
+    """Only `watch` / `init` / `migrate-*` mark a ref as framework-named; everything
+    else (user, other values, missing, unparseable) is the user's name to keep."""
+    assert migrate.framework_written({"added_by": "watch"})
+    assert migrate.framework_written({"added_by": "init"})
+    assert migrate.framework_written({"added_by": "migrate-0.19.0"})
+    assert migrate.framework_written({"added_by": " migrate-0.18.1 "})
+    assert not migrate.framework_written({"added_by": "user"})
+    assert not migrate.framework_written({"added_by": "me"})
+    assert not migrate.framework_written({"added_by": None})
+    assert not migrate.framework_written({"added_by": 3})
+    assert not migrate.framework_written({"title": "no provenance"})
+    assert not migrate.framework_written(None)
+    tool = tmp_path / "gmail-bills.ref.md"
+    tool.write_text('---\nref_version: 2\ntitle: "x"\nadded_by: watch\nwatch: {pack: gmail}\n---\n')
+    mine = tmp_path / "ha.ref.md"
+    mine.write_text('---\nref_version: 2\ntitle: "x"\nadded_by: user\nwatch: {type: url, url: u}\n---\n')
+    anon = tmp_path / "HA_Portal.ref.md"
+    anon.write_text('---\nref_version: 2\ntitle: "x"\nwatch: {type: url, url: u}\n---\n')
+    broken = tmp_path / "broken.ref.md"
+    broken.write_text("no frontmatter at all\n")
+    assert migrate.rename_target(tool) == "Gmail-Bills.ref.md"
+    assert migrate.rename_target(mine) == "ha.ref.md"
+    assert migrate.rename_target(anon) == "HA_Portal.ref.md"
+    assert migrate.rename_target(broken) == "broken.ref.md"
 
 
 def test_title_case_and_ids() -> None:
@@ -431,11 +459,16 @@ def test_classify_sidecar_shapes(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_registry_refs_converted_and_title_cased(initialized_workspace: Path) -> None:
-    ws = _migrated(initialized_workspace)
+def test_registry_refs_converted_and_framework_written_ones_title_cased(initialized_workspace: Path) -> None:
+    """Every ref is converted to schema 2; only the refs the FRAMEWORK named
+    (`added_by: migrate-0.19.0` / `watch`) are renamed to Title_Case. The
+    user-named ones (`added_by: user`, or no `added_by`) keep their casing."""
+    ws = build_workspace(initialized_workspace)
+    code, lines = _run(ws)
+    assert code == 0, "\n".join(lines)
     reg = ws / "Sources" / "Watchlist"
-    assert _names(reg) == ["Broker_Api.ref.md", "Home_Assistant-Hub.ref.md",
-                           "Permit_Portal.ref.md", "README.md", "Simplefin.ref.md"]
+    assert _names(reg) == ["Broker_Api.ref.md", "README.md", "Simplefin.ref.md",
+                           "home_assistant-hub.ref.md", "permit_portal.ref.md"]
     for name in _names(reg):
         if name == "README.md":
             continue
@@ -443,26 +476,76 @@ def test_registry_refs_converted_and_title_cased(initialized_workspace: Path) ->
         assert fm["ref_version"] == 2
         assert not any(k in fm for k in migrate.LEGACY_REF_KEYS), name
         assert set(fm) <= set(migrate.REF_TOP_KEYS), name
-    hub = _fm(reg / "Home_Assistant-Hub.ref.md")
+    hub = _fm(reg / "home_assistant-hub.ref.md")
+    assert hub["added_by"] == "user"
     assert hub["watch"] == {"type": "cmd", "cmd": "ssh user@192.0.2.10", "enabled": False}
-    text = (reg / "Home_Assistant-Hub.ref.md").read_text()
+    text = (reg / "home_assistant-hub.ref.md").read_text()
     assert "# inline comment must survive" in text and "Primary smart-home host." in text
-    portal = _fm(reg / "Permit_Portal.ref.md")
+    portal = _fm(reg / "permit_portal.ref.md")
+    assert "added_by" not in portal
     assert portal["watch"] == {"type": "url", "url": "https://permits.example.gov/status?id=1",
                                "enabled": False}
+    assert "kept Sources/Watchlist/home_assistant-hub.ref.md (user-named; casing respected)" in lines
+    assert "kept Sources/Watchlist/permit_portal.ref.md (user-named; casing respected)" in lines
+    assert any(ln.startswith("rename Sources/Watchlist/simplefin.ref.md -> Sources/Watchlist/Simplefin.ref.md "
+                             "(Title_Case, framework-written ref") for ln in lines)
     ledger = _ledger(ws)
     assert {c["path"] for c in ledger["converted"]} == {
         "Sources/Watchlist/simplefin.ref.md", "Sources/Watchlist/home_assistant-hub.ref.md",
         "Sources/Watchlist/permit_portal.ref.md", "Sources/Watchlist/broker_api.ref.md"}
     renamed = {m["from"]: m["to"] for m in ledger["renamed"]}
-    assert renamed["Sources/Watchlist/simplefin.ref.md"] == "Sources/Watchlist/Simplefin.ref.md"
-    assert renamed["Sources/Watchlist/home_assistant-hub.ref.md"] == \
-        "Sources/Watchlist/Home_Assistant-Hub.ref.md"
+    assert renamed == {"Sources/Watchlist/simplefin.ref.md": "Sources/Watchlist/Simplefin.ref.md",
+                       "Sources/Watchlist/broker_api.ref.md": "Sources/Watchlist/Broker_Api.ref.md"}
     # Originals are checkpointed under their pre-migration names, byte-for-byte.
     ck = ws / "_memory" / "_checkpoints" / "0.20.0" / "Sources" / "Watchlist"
     assert _names(ck) == ["broker_api.ref.md", "home_assistant-hub.ref.md",
                           "permit_portal.ref.md", "simplefin.ref.md"]
     assert (ck / "home_assistant-hub.ref.md").read_text() == HUB_REF
+
+
+def test_user_named_refs_keep_their_casing_through_migrate_validate_revert(
+    initialized_workspace: Path,
+) -> None:
+    """User decision: `ha.ref.md`, `HA.ref.md`, `Home_Assistant.ref.md` are all the user's to
+    name. The migration renames only what the framework wrote; validate does not flag the
+    user's casing; revert leaves the user's files exactly where they were."""
+    ws = build_workspace(initialized_workspace)
+    reg = ws / "Sources" / "Watchlist"
+    v2 = ('---\nref_version: 2\ntitle: "{t}"\n{who}watch:\n  type: url\n  enabled: false\n'
+          '  url: "https://x.example/{t}"\n---\n')
+    _write(reg / "ha.ref.md", v2.format(t="ha", who='added_by: "user"\n'))
+    _write(reg / "HA_Portal.ref.md", v2.format(t="portal2", who=""))
+    _write(reg / "Mixed_case-Thing.ref.md", v2.format(t="mixed", who='added_by: "someone-else"\n'))
+    _write(reg / "gmail-bills.ref.md", v2.format(t="bills", who="added_by: watch\n"))
+    before = _snapshot(ws)
+    names_before = _names(reg)
+    code, lines = _run(ws)
+    assert code == 0, "\n".join(lines)
+    assert _names(reg) == ["Broker_Api.ref.md", "Gmail-Bills.ref.md", "HA_Portal.ref.md",
+                           "Mixed_case-Thing.ref.md", "README.md", "Simplefin.ref.md", "ha.ref.md",
+                           "home_assistant-hub.ref.md", "permit_portal.ref.md"]
+    assert "kept Sources/Watchlist/ha.ref.md (user-named; casing respected)" in lines
+    assert "kept Sources/Watchlist/HA_Portal.ref.md (user-named; casing respected)" in lines
+    assert "kept Sources/Watchlist/Mixed_case-Thing.ref.md (user-named; casing respected)" in lines
+    assert any(ln.startswith("rename Sources/Watchlist/gmail-bills.ref.md -> "
+                             "Sources/Watchlist/Gmail-Bills.ref.md") for ln in lines)
+    renamed = {m["from"] for m in _ledger(ws)["renamed"]}
+    assert renamed == {"Sources/Watchlist/simplefin.ref.md", "Sources/Watchlist/broker_api.ref.md",
+                       "Sources/Watchlist/gmail-bills.ref.md"}
+    results = validate.run_checks(ws, FRAMEWORK)
+    failed = [m for ok, m in results if not ok]
+    assert not failed, failed
+    assert ("filename: 8 registry ref(s) with unique ids (3 framework-written, Title_Case; "
+            "5 user-named, casing respected)") in [m for _, m in results]
+    # The loader resolves every casing to its lowercase id.
+    cfg = wl.load_config(ws)
+    packs, _ = wl.discover_packs(FRAMEWORK, ws, announce=lambda _m: None)
+    watchers, errors = wl.load_registry(ws, cfg, packs)
+    assert errors == [], errors
+    assert {w.id for w in watchers} >= {"ha", "ha_portal", "mixed_case-thing", "gmail-bills"}
+    assert revert.run_revert(ws, framework=FRAMEWORK, out=lambda _m: None) == 0
+    assert _names(reg) == names_before
+    assert _snapshot(ws) == before
 
 
 def test_simplefin_cadence_applied_and_recorded(initialized_workspace: Path) -> None:
@@ -498,9 +581,10 @@ def test_sidecars_renamed_and_catalogues_rewritten(initialized_workspace: Path) 
     vehicles = (ws / "Domains" / "Vehicles" / "sources.md").read_text()
     assert "`Sources/Vehicles/manual.pdf.meta.md`" in vehicles and ".ref.md" not in vehicles
     home = (ws / "Domains" / "Home" / "sources.md").read_text()
-    assert "`Sources/Watchlist/Home_Assistant-Hub.ref.md`" in home
-    assert "`Sources/Watchlist/Permit_Portal.ref.md`" in home
-    assert "home_assistant-hub" not in home
+    # User-named refs were not renamed, so their catalogue rows are untouched.
+    assert "`Sources/Watchlist/home_assistant-hub.ref.md`" in home
+    assert "`Sources/Watchlist/permit_portal.ref.md`" in home
+    assert "Home_Assistant-Hub" not in home and "Permit_Portal" not in home
     proj = (ws / "Projects" / "x" / "sources.md").read_text()
     assert "`Sources/Watchlist/Simplefin.ref.md`" in proj
     assert "`Resources/orders/2026-01-01_order-1.pdf` + `.meta.md`" in proj
@@ -517,24 +601,31 @@ def test_index_rows_keep_ids_across_renames(initialized_workspace: Path) -> None
     ws = build_workspace(initialized_workspace)
     before = {r["path"]: r["id"] for r in si.load_index(ws)["sources"] if r.get("id")}
     hub_id = before["Sources/Watchlist/home_assistant-hub.ref.md"]
+    api_id = before["Sources/Watchlist/broker_api.ref.md"]
     simplefin_id = before["Sources/Watchlist/simplefin.ref.md"]
     manual_id = before["Sources/Vehicles/manual.pdf"]
     assert _run(ws)[0] == 0
     index = si.load_index(ws)
     rows = {r["path"]: r for r in index["sources"] if r.get("id") and r.get("present", True)}
-    assert "Sources/Watchlist/home_assistant-hub.ref.md" not in rows
+    assert "Sources/Watchlist/broker_api.ref.md" not in rows
     assert "Sources/Watchlist/simplefin.ref.md" not in rows
-    hub = rows["Sources/Watchlist/Home_Assistant-Hub.ref.md"]
-    assert hub["id"] == hub_id and hub["notes"] == "hand note" and hub["read_count"] == 3
-    assert hub["id"] != si.id_for_path("Sources/Watchlist/Home_Assistant-Hub.ref.md")
+    api = rows["Sources/Watchlist/Broker_Api.ref.md"]
+    assert api["id"] == api_id and api["notes"] == "hand note" and api["read_count"] == 3
+    assert api["id"] != si.id_for_path("Sources/Watchlist/Broker_Api.ref.md")
+    # The user-named hub ref was not renamed: same path, same id, converted content.
+    assert "Sources/Watchlist/Home_Assistant-Hub.ref.md" not in rows
+    hub = rows["Sources/Watchlist/home_assistant-hub.ref.md"]
+    assert hub["id"] == hub_id
     assert hub["watch"] == {"type": "cmd", "cmd": "ssh user@192.0.2.10", "enabled": False}
     assert rows["Sources/Watchlist/Simplefin.ref.md"]["id"] == simplefin_id
     assert rows["Sources/Watchlist/Simplefin.ref.md"]["watch"]["capture_mode"] == "automatic"
     assert rows["Sources/Vehicles/manual.pdf"]["id"] == manual_id
     assert "Sources/Vehicles/manual.pdf.ref.md" not in rows
+    assert sum(1 for r in index["sources"] if r.get("id") == api_id) == 1
     assert sum(1 for r in index["sources"] if r.get("id") == hub_id) == 1
     renamed = {m["from"]: m for m in _ledger(ws)["renamed"]}
-    assert renamed["Sources/Watchlist/home_assistant-hub.ref.md"]["index_id"] == hub_id
+    assert renamed["Sources/Watchlist/broker_api.ref.md"]["index_id"] == api_id
+    assert "Sources/Watchlist/home_assistant-hub.ref.md" not in renamed
 
 
 def test_case_only_mismatch_between_disk_and_index_is_aligned(initialized_workspace: Path) -> None:
@@ -602,13 +693,17 @@ def test_undeterminable_ref_left_untouched_and_reported(initialized_workspace: P
     _write(bad, '---\nref_version: 1\ntitle: "m"\nkind: api\nsource: "https://x.example/"\n---\n')
     code, lines = _run(ws)
     assert code == 0
-    # Left at ref_version 1 (not converted) but still Title_Cased so ids stay consistent.
-    kept = ws / "Sources" / "Watchlist" / "Mystery.ref.md"
+    # Left at ref_version 1 (not converted); no `added_by` -> user-named, so the
+    # casing is respected too and the file stays exactly where it was.
+    kept = ws / "Sources" / "Watchlist" / "mystery.ref.md"
     assert kept.read_text().startswith("---\nref_version: 1\n")
+    names = _names(ws / "Sources" / "Watchlist")  # exact on-disk case (the fs is case-insensitive)
+    assert "mystery.ref.md" in names and "Mystery.ref.md" not in names
+    assert "kept Sources/Watchlist/mystery.ref.md (user-named; casing respected)" in lines
     assert any("cannot derive watch.type" in ln for ln in lines)
     assert any(ln.startswith("refs left at ref_version 1") for ln in lines)
     failed = [m for ok, m in validate.run_checks(ws, FRAMEWORK) if not ok]
-    assert any(m.startswith("schema: Sources/Watchlist/Mystery.ref.md") for m in failed), failed
+    assert any(m.startswith("schema: Sources/Watchlist/mystery.ref.md") for m in failed), failed
 
 
 def test_version_bumped(initialized_workspace: Path) -> None:
@@ -675,12 +770,15 @@ def test_validate_passes_after_migration(initialized_workspace: Path) -> None:
     messages = "\n".join(msg for _, msg in results)
     assert "schema: 4 registry ref(s) at ref_version 2 with no legacy keys" in messages
     assert "loader: 4 watcher(s) load with zero errors" in messages
-    assert "filename: 4 registry ref(s) Title_Case with unique ids" in messages
+    assert ("filename: 4 registry ref(s) with unique ids (2 framework-written, Title_Case; "
+            "2 user-named, casing respected)") in messages
     assert "stray: no .ref.md outside the registry" in messages
     assert "loose.ref.txt" in messages
     assert "sidecar: 2 .meta.md sidecar(s), every one beside its document" in messages
     assert "catalogue: no dangling path" in messages
-    assert "index: 4 renamed row(s) kept their ids" in messages  # the four registry rows
+    # The two framework-written registry rows (SimpleFIN, Broker API); the user-named
+    # refs were never renamed, so they have no move to verify.
+    assert "index: 2 renamed row(s) kept their ids" in messages
     assert ("simplefin: Sources/Watchlist/Simplefin.ref.md schedule 'daily', capture_mode "
             "'automatic', cycles ['daily-update']") in messages
     assert "cache: Sources/_cache/ absent" in messages
@@ -710,27 +808,31 @@ def test_validate_fails_on_reintroduced_legacy_key_lowercase_name_and_cadence(
     reg = ws / "Sources" / "Watchlist"
     sf = reg / "Simplefin.ref.md"
     sf.write_text(sf.read_text().replace("capture_mode: automatic", "capture_mode: manual"))
-    portal = reg / "Permit_Portal.ref.md"
+    portal = reg / "permit_portal.ref.md"  # user-named: never re-cased by the migration
     portal.write_text(portal.read_text().replace("ref_version: 2\n", "ref_version: 2\nkind: url\n"))
     migrate.rename_two_step(reg / "Broker_Api.ref.md", reg / "broker_api.ref.md")
     failed = [m for ok, m in validate.run_checks(ws, FRAMEWORK) if not ok]
     assert any(m.startswith("simplefin: Sources/Watchlist/Simplefin.ref.md") and "expected daily" in m
                for m in failed), failed
-    assert any(m == "schema: Sources/Watchlist/Permit_Portal.ref.md still carries legacy key(s) kind"
+    assert any(m == "schema: Sources/Watchlist/permit_portal.ref.md still carries legacy key(s) kind"
                for m in failed), failed
     assert any(m.startswith("filename: Sources/Watchlist/broker_api.ref.md should be Broker_Api.ref.md")
                for m in failed), failed
     assert any(m.startswith("loader:") for m in failed), failed
+    # A user-named ref re-cased by hand is the user's business: not a finding.
+    migrate.rename_two_step(reg / "home_assistant-hub.ref.md", reg / "HOME_ASSISTANT-HUB.ref.md")
+    failed = [m for ok, m in validate.run_checks(ws, FRAMEWORK) if not ok]
+    assert not any("HOME_ASSISTANT-HUB" in m and m.startswith("filename:") for m in failed), failed
 
 
 def test_validate_fails_on_dangling_catalogue_path_and_orphan_sidecar(initialized_workspace: Path) -> None:
     ws = _migrated(initialized_workspace)
     cat = ws / "Domains" / "Home" / "sources.md"
-    cat.write_text(cat.read_text() + "| Old | `Sources/Watchlist/home_assistant-hub.ref.md` | cli |\n")
+    cat.write_text(cat.read_text() + "| Old | `Sources/Watchlist/broker_api.ref.md` | api |\n")
     (ws / "Sources" / "Vehicles" / "manual.pdf").unlink()
     failed = [m for ok, m in validate.run_checks(ws, FRAMEWORK) if not ok]
     assert any(m == "catalogue: Domains/Home/sources.md still names "
-               "Sources/Watchlist/home_assistant-hub.ref.md" for m in failed), failed
+               "Sources/Watchlist/broker_api.ref.md" for m in failed), failed
     assert any(m == "sidecar: Sources/Vehicles/manual.pdf.meta.md has no document manual.pdf"
                for m in failed), failed
 
@@ -839,11 +941,12 @@ def test_world_yaml_checkpointed_and_restored_on_revert(initialized_workspace: P
 def test_interrupted_rename_is_completed_on_rerun(initialized_workspace: Path) -> None:
     ws = build_workspace(initialized_workspace)
     reg = ws / "Sources" / "Watchlist"
-    # Simulate a halt between the two renames of the case-only step.
-    os.rename(reg / "permit_portal.ref.md", reg / ("Permit_Portal.ref.md" + migrate.RENAME_TMP_SUFFIX))
+    # Simulate a halt between the two renames of the case-only step (on a
+    # framework-written ref -- the only kind the step renames).
+    os.rename(reg / "simplefin.ref.md", reg / ("Simplefin.ref.md" + migrate.RENAME_TMP_SUFFIX))
     code, lines = _run(ws)
     assert code == 0
-    assert "Permit_Portal.ref.md" in _names(reg)
+    assert "Simplefin.ref.md" in _names(reg)
     assert not any(n.endswith(migrate.RENAME_TMP_SUFFIX) for n in _names(reg))
     assert any("interrupted rename completed" in ln for ln in lines)
     assert not [m for ok, m in validate.run_checks(ws, FRAMEWORK) if not ok]

@@ -29,8 +29,6 @@ Soft checks (WARNINGS — reported, never affect the exit code):
     the legacy `superagent-<stem>` alias is counted separately as "prefixed".
   - `interaction-log.yaml` rows already written in the canonical shape (no
     legacy `timestamp` key) that lack `id` / `ts` / `skill`.
-  - a registry ref whose filename is not the canonical Title_Case form
-    (`Home_Assistant-Hub.ref.md`); the tool loads it case-insensitively.
   - a stray `.ref.md` outside the registry (document metadata belongs in
     `<doc>.<ext>.meta.md`), or a `.ref.txt` anywhere (no longer supported).
   Legacy rows are append-only history and are never rewritten; the warnings
@@ -83,7 +81,9 @@ WATCHLIST_STATE = "watchlist-state.yaml"
 # Top-level keys the tool writes to the state singleton (`save_state`); always allowed.
 WATCHLIST_STATE_TOP_KEYS = frozenset({"schema_version", "last_updated", "watchers"})
 DEFAULT_WATCHLIST_PATH = "Sources/Watchlist"
-# A registry file is `<Title_Case>.ref.md`; a document sidecar is `<doc>.<ext>.meta.md`.
+# A registry file is `<name>.ref.md` (id = stem lowercased; `enable` writes Title_Case
+# names, a hand-written ref keeps the casing the user chose); a document sidecar is
+# `<doc>.<ext>.meta.md`.
 REF_SUFFIX = ".ref.md"
 META_SUFFIX = ".meta.md"
 # The ref schema this release reads. 1 = the 0.19.0 "reference + watch block"
@@ -283,10 +283,13 @@ def watch_id_from_stem(stem: str) -> str:
 
 
 def title_case_id(watcher_id: str) -> str:
-    """Canonical filename stem for an id: capitalize each `_` / `-` token's first letter.
+    """The filename stem the TOOL writes for an id: each `_` / `-` token's first letter upper.
 
     `simplefin` -> `Simplefin`; `home_assistant-hub` -> `Home_Assistant-Hub`.
-    Digits are left alone (`2fa_codes` -> `2fa_Codes`). Idempotent.
+    Digits are left alone (`2fa_codes` -> `2fa_Codes`). Idempotent. This is
+    `enable`'s naming convention, not a rule for user-authored refs: `ha.ref.md`
+    and `HA.ref.md` are both valid names for the watcher `ha`, and nothing
+    validates or warns on their casing.
     """
     return re.sub(r"(^|[_-])([a-z])", lambda m: m.group(1) + m.group(2).upper(),
                   watcher_id.lower())
@@ -452,8 +455,9 @@ def validate_watchlist_refs(workspace: Path, framework: Path,
 
     Errors: schema (`check_ref_frontmatter`), an id that fails
     `WATCH_ID_PATTERN` once lowercased, two files whose lowercase stems
-    collide. Warnings: a filename that is not the canonical Title_Case form,
-    plus `stray_ref_warnings` over the Sources trees.
+    collide. Warnings: `stray_ref_warnings` over the Sources trees. A
+    filename's casing is the user's choice and is never warned about
+    (`ha.ref.md`, `HA.ref.md` and `Ha.ref.md` are all the watcher `ha`).
     """
     from superagent.tools.sources_index import parse_canonical_ref
 
@@ -482,9 +486,6 @@ def validate_watchlist_refs(workspace: Path, framework: Path,
                           f"{len(siblings)} files ({', '.join(p.name for p in siblings)}); "
                           "ids resolve case-insensitively — rename one")
             continue
-        if stem != title_case_id(wid):
-            warnings.append(f"{label}: filename is not Title_Case; canonical name is "
-                            f"{title_case_id(wid)}{REF_SUFFIX} (loaded case-insensitively)")
         fm, _body = parse_canonical_ref(ref)
         if fm is None:
             errors.append(f"{label}: missing or unparseable YAML frontmatter (`---` block)")

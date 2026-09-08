@@ -23,7 +23,7 @@
 #     (title, related_*, tags, sensitive, notes). The sidecar has NO row of its
 #     own — its frontmatter is folded into the document's row. A sidecar with
 #     no document next to it is an "orphan" refresh warning, not a row.
-#   - WATCHERS: `Sources/Watchlist/<Title_Case>.ref.md` (contracts/watchlist.md).
+#   - WATCHERS: `Sources/Watchlist/<name>.ref.md` (contracts/watchlist.md).
 #     Row kind `watcher`, keyed by the ref path, with the `watch:` mapping lifted
 #     into the row. Every `.ref.md` is a watcher; one outside the registry is a
 #     "stray .ref.md outside the registry" refresh warning, not a row.
@@ -41,7 +41,7 @@ sources:
   #   kind            — document | watcher
   #                      document → file at `path` is the source (metadata from an
   #                                 optional `<doc>.<ext>.meta.md` sidecar).
-  #                      watcher  → `path` is a `Sources/Watchlist/<Title_Case>.ref.md`
+  #                      watcher  → `path` is a `Sources/Watchlist/<name>.ref.md`
   #                                 watcher definition; see `watch` below.
   #   title           — Display title (filename stem if not set in the sidecar / ref
   #                      frontmatter).

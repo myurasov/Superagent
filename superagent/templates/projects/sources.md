@@ -75,7 +75,7 @@ _Last updated: {{LAST_UPDATED}}_
 
 ## Watchers
 
-<!-- `Sources/Watchlist/<Title_Case>.ref.md` watchers whose `related_project`
+<!-- `Sources/Watchlist/<name>.ref.md` watchers whose `related_project`
      is this project (contracts/watchlist.md) — a permit portal, a vendor
      status page, a Gmail query. Watchers always live in the one workspace
      registry (never under Projects/<slug>/Sources/); give a project-bound one

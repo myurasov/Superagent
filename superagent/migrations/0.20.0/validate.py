@@ -9,8 +9,9 @@ Mirrors the ``## Validate`` bullets of ``superagent/migrations/0.20.0.md``:
   top-level key and has a ``watch:`` mapping;
 - ``superagent.tools.watchlist.load_registry`` loads the registry with zero
   errors;
-- every registry filename is the Title_Case form of its lowercase id and the
-  ids are unique (case-insensitively);
+- every FRAMEWORK-WRITTEN registry ref (``added_by`` ``watch`` / ``init`` /
+  ``migrate-*``) is named the Title_Case form of its lowercase id; a user-named
+  ref keeps whatever casing it has; ids are unique (case-insensitively);
 - no ``.ref.md`` exists outside the registry (scan roots ``Sources/``,
   ``Projects/*/Sources/``, ``Projects/*/Resources/``);
 - every ``.meta.md`` sidecar has its document (a payment confirmation whose
@@ -156,18 +157,28 @@ def check_filenames(mig: ModuleType, ws: Path, registry: Path) -> list[Check]:
     results: list[Check] = []
     seen: dict[str, str] = {}
     refs = mig.registry_refs(registry)
+    framework_named = user_named = 0
     for ref in refs:
         rel = ref.relative_to(ws).as_posix()
         stem = ref.name[: -len(mig.REF_SUFFIX)]
         wid = mig.id_from_stem(stem)
-        want = mig.title_case(wid) + mig.REF_SUFFIX
-        if ref.name != want:
-            results.append((False, f"filename: {rel} should be {want} (Title_Case of id {wid!r})"))
+        # Title_Case is checked only where the framework chose the name; a ref
+        # the user named keeps its casing and is never flagged for it.
+        if mig.framework_written(mig.frontmatter_of(ref)):
+            framework_named += 1
+            want = mig.title_case(wid) + mig.REF_SUFFIX
+            if ref.name != want:
+                results.append((False, f"filename: {rel} should be {want} (Title_Case of id "
+                                       f"{wid!r}; framework-written ref)"))
+        else:
+            user_named += 1
         if wid in seen:
             results.append((False, f"filename: {rel} and {seen[wid]} share the id {wid!r}"))
         seen.setdefault(wid, rel)
     if not results:
-        results.append((True, f"filename: {len(refs)} registry ref(s) Title_Case with unique ids"))
+        results.append((True, f"filename: {len(refs)} registry ref(s) with unique ids "
+                              f"({framework_named} framework-written, Title_Case; "
+                              f"{user_named} user-named, casing respected)"))
     return results
 
 

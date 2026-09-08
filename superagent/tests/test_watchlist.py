@@ -10,8 +10,9 @@ never leak in) and never touches the network: url tests monkeypatch
 `GMAIL_CLIENT_FACTORY` for a fake.
 
 Refs are `ref_version: 2` watcher definitions (0.20.0): no `kind` / `source`;
-a bare watcher carries its locator inside `watch:`; the file on disk is the
-Title_Case form of the id and loads case-insensitively.
+a bare watcher carries its locator inside `watch:`; `enable` writes the file
+as the Title_Case form of the id, a user-named file keeps its casing, and
+either loads case-insensitively.
 """
 from __future__ import annotations
 
@@ -53,13 +54,13 @@ def ws(initialized_workspace: Path) -> Path:
 
 
 def ref_path(ws: Path, wid: str) -> Path:
-    """The canonical (Title_Case) registry file for a watcher id."""
+    """The registry file `enable` would write for a watcher id (Title_Case)."""
     return ws / "Sources" / "Watchlist" / wl.ref_filename(wid)
 
 
 def write_ref(ws: Path, wid: str, fm: dict[str, Any], body: str = "# Notes\n", *,
               filename: str | None = None) -> Path:
-    """Write a ref; the filename is the Title_Case form of `wid` unless overridden."""
+    """Write a ref; the filename is the tool's Title_Case form of `wid` unless overridden."""
     path = ws / "Sources" / "Watchlist" / (filename or wl.ref_filename(wid))
     path.parent.mkdir(parents=True, exist_ok=True)
     front = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True)
@@ -383,7 +384,9 @@ def test_case_only_stem_collision_is_a_load_error(ws: Path, fw: Path, monkeypatc
     assert [w.id for w in watchers] == ["keep"]
     collision = [e for e in errs if e["id"] == "loud"]
     assert len(collision) == 2
-    assert all("claimed by 2 files" in e["error"] and "`Loud.ref.md`" in e["error"] for e in collision)
+    assert all("claimed by 2 files" in e["error"] and "rename one of them" in e["error"] for e in collision)
+    # No "canonical" casing is prescribed: which of the two the user keeps, and how it is cased, is theirs.
+    assert not any("canonical" in e["error"] for e in collision)
     assert {e["file"] for e in collision} == {"Sources/Watchlist/LOUD.ref.md", "Sources/Watchlist/Loud.ref.md"}
     patch_state(ws, "loud", fingerprint="sha256:kept")
     payload = check(ws, fw)
@@ -1699,22 +1702,31 @@ def test_ref_version_is_required_not_defaulted(ws: Path) -> None:
 
 
 def test_non_ref_file_in_the_registry_is_warned_about_not_ignored(ws: Path, fw: Path, capsys: Any) -> None:
-    """Review finding: a watcher definition parked as `HA.md` was silently nothing."""
+    """Review finding: a watcher definition parked as `HA.md` was silently nothing.
+    The rename hint keeps the user's own stem -- only the suffix is prescribed, never the casing."""
     write_ref(ws, "ok", url_ref("https://e.com"))
     stray = ws / "Sources" / "Watchlist" / "Ha.md"
     stray.write_text("---\nref_version: 1\ntitle: parked\nkind: cli\nsource: 'echo hi'\n---\n")
+    (ws / "Sources" / "Watchlist" / "HA_notes.md").write_text("---\ntitle: also parked\n---\n")
     (ws / "Sources" / "Watchlist" / "README.md").write_text("# registry\n")
     (ws / "Sources" / "Watchlist" / ".DS_Store").write_bytes(b"\x00")
     notes = wl.registry_stray_files(ws / "Sources" / "Watchlist")
-    assert len(notes) == 1, notes
+    assert len(notes) == 2, notes
     assert notes[0].startswith("Ha.md: not a .ref.md — not a watcher; rename it to `Ha.ref.md`")
+    assert notes[1].startswith("HA_notes.md: not a .ref.md — not a watcher; rename it to `HA_notes.ref.md`"), (
+        "the hint keeps the stem as the user wrote it, not `Ha_Notes.ref.md`"
+    )
+    assert "`ha_notes`" in notes[1], "the id (stem lowercased) is still shown"
+    assert "Ha_Notes" not in notes[1]
     payload = check(ws, fw, dry_run=True)
     assert [w for w in payload["warnings"] if w.startswith("Sources/Watchlist/Ha.md: not a .ref.md")]
+    assert [w for w in payload["warnings"] if w.startswith("Sources/Watchlist/HA_notes.md: not a .ref.md")]
     assert ids(payload["errors"]) == [], "a stray file is a warning, never an error"
     rc = wl.main(["list", "--workspace", str(ws), "--framework", str(fw)])
     assert rc == 0
     err = capsys.readouterr().err
     assert "warning: Sources/Watchlist/Ha.md: not a .ref.md" in err
+    assert "warning: Sources/Watchlist/HA_notes.md: not a .ref.md" in err
 
 
 def test_cycle_string_and_null_are_accepted_by_loader_and_validator(ws: Path) -> None:

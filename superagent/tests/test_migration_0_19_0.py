@@ -724,8 +724,10 @@ def test_chain_0_18_1_to_0_20_0_and_back_is_byte_identical(initialized_workspace
     assert m20.run_migration(ws, framework=FRAMEWORK, skip_world=True, now=NOW,
                              out=lines.append) == 0, "\n".join(lines)
     assert (ws / ".version").read_text().strip() == "0.20.0"
-    assert sorted(os.listdir(reg)) == ["Home_Assistant-Hub.ref.md", "Portal.ref.md", "README.md",
-                                       "Simplefin.ref.md"]
+    # 0.20.0 re-cases only the refs the framework wrote (the folded SimpleFIN ref
+    # carries `added_by: migrate-0.19.0`); the moved user refs keep their names.
+    assert sorted(os.listdir(reg)) == ["README.md", "Simplefin.ref.md", "home_assistant-hub.ref.md",
+                                       "portal.ref.md"]
     assert (ws / "Sources" / "Vehicles" / "manual.pdf.meta.md").is_file()
     assert (ws / "Projects" / "x" / "Resources" / "orders" / "2026-01-01_order-1.pdf.meta.md").is_file()
     v_lines: list[str] = []

@@ -2,7 +2,7 @@
 
 This folder is the **registry** of watchers: one `.ref.md` file per external thing you want to be told about when it moves — a permit portal, a Gmail label, a bank feed, a page, a portal behind a login. A `.ref.md` is a watcher definition and nothing else; document metadata elsewhere in `Sources/` is a `<doc>.<ext>.meta.md` sidecar instead. Internally a watcher is also called an **ext-source**; the words are interchangeable.
 
-**Filenames are Title_Case; ids are lowercase.** Capitalize the first letter of each `_`- or `-`-separated token in the filename — `Simplefin.ref.md`, `Gmail-Bills.ref.md`, `Home_Assistant-Hub.ref.md`. The watcher's id is the stem lowercased (`simplefin`, `gmail-bills`, `home_assistant-hub`) and its handle is `watch:<id>`. Files resolve case-insensitively; two files whose lowercased stems collide are a load error.
+**Name your files as you like; ids are lowercase.** The `.ref.md` suffix is what makes a file a watcher — `HA.ref.md`, `ha.ref.md`, `Home_Assistant.ref.md` are all valid, and the agent keeps the name you gave it (it never renames a file of yours or warns about its casing). The files the tool writes for you are Title_Case — first letter of each `_`- or `-`-separated token capitalized: `enable --id gmail-bills` → `Gmail-Bills.ref.md`, `Simplefin.ref.md`, `Home_Assistant-Hub.ref.md`. The watcher's id is the stem lowercased (`ha`, `simplefin`, `gmail-bills`, `home_assistant-hub`) and its handle is `watch:<id>`. Files resolve case-insensitively; two files whose lowercased stems collide are a load error.
 
 It is a reserved *name* inside your `Sources/` library, but the *contents* are yours: hand-write, edit, or delete any file here. The agent validates each file when it loads the registry and tells you — file and line — when one does not parse. It never rewrites your refs; the only file it ever creates here is the one you ask for with `enable`.
 
@@ -61,4 +61,4 @@ uv run python -m superagent.tools.watchlist list
 
 Everything else — adding, pausing, reviving, checking, harvesting — is the `watch` skill (`superagent/skills/watch.md`); just say "watch this", "add a watcher", "what changed in my sources", or "refresh my data". Full rules: `superagent/contracts/watchlist.md`.
 
-This `README.md` is documentation, not a watcher; the agent skips it when loading the registry. Any other file here that does not end in `.ref.md` is not a watcher either — the agent warns ("not a .ref.md — not a watcher; rename to `<Title_Case>.ref.md` or move it out of the registry") and skips it.
+This `README.md` is documentation, not a watcher; the agent skips it when loading the registry. Any other file here that does not end in `.ref.md` is not a watcher either — the agent warns ("not a .ref.md — not a watcher; rename to `<name>.ref.md` or move it out of the registry") and skips it.

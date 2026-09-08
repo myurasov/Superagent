@@ -9,14 +9,19 @@
 # migration. Document metadata is NOT a ref — it lives in `<doc>.<ext>.meta.md`
 # next to the document, anywhere under `Sources/`.
 #
-# FILENAME: Title_Case of the id — capitalize the first letter of every `_`-
-# or `-`-delimited token: `Simplefin.ref.md`, `Home_Assistant-Hub.ref.md`,
-# `Gmail-Bills.ref.md`. THE STEM LOWERCASED IS THE ID (`simplefin`,
-# `home_assistant-hub`): the state key and the handle (`watch:<id>`),
-# matching `^[a-z0-9][a-z0-9_-]{0,62}$`. Files resolve case-insensitively;
-# two files whose lowercase stems collide are a load error. Renaming the file
-# renames the watcher (the tool warns about the orphaned state row and
-# offers to carry it across). A watcher is also called an "ext-source".
+# FILENAME: `<name>.ref.md` — the `.ref.md` suffix is what makes this file a
+# watcher; the name is yours (`HA.ref.md`, `ha.ref.md`, `Home_Assistant.ref.md`
+# are all valid and are kept exactly as you wrote them; nothing renames them or
+# warns about their casing). The files the TOOL generates are Title_Case —
+# first letter of every `_`- or `-`-delimited token capitalized: `enable --id
+# gmail-bills` writes `Gmail-Bills.ref.md`; `Simplefin.ref.md`,
+# `Home_Assistant-Hub.ref.md` — a convention for generated names, not a rule
+# for yours. THE STEM LOWERCASED IS THE ID (`simplefin`, `home_assistant-hub`,
+# `ha`): the state key and the handle (`watch:<id>`), matching
+# `^[a-z0-9][a-z0-9_-]{0,62}$`. Files resolve case-insensitively; two files
+# whose lowercase stems collide are a load error. Renaming the file renames the
+# watcher (the tool warns about the orphaned state row and offers to carry it
+# across). A watcher is also called an "ext-source".
 #
 # INHERITANCE RULE: a `watch.` key that is PRESENT — even as `null` — is
 # set on this row. A key that is ABSENT inherits: pack default, then

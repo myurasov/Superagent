@@ -132,7 +132,7 @@ This is the principle that makes Superagent feel ambient instead of demanding: i
 
 ### Core capabilities
 
-- **Ambient ingestion.** Pulls from your email, calendar, banks, health apps, smart home, notes, and reminders on a schedule you control. Each source is a watcher ref in `Sources/Watchlist/` (`<Title_Case>.ref.md`, per `contracts/watchlist.md`); all run state lives in one machine-owned file, `_memory/watchlist-state.yaml`.
+- **Ambient ingestion.** Pulls from your email, calendar, banks, health apps, smart home, notes, and reminders on a schedule you control. Each source is a watcher ref in `Sources/Watchlist/` (`<name>.ref.md`, per `contracts/watchlist.md`); all run state lives in one machine-owned file, `_memory/watchlist-state.yaml`.
 - **Domain-organized memory.** Life is sliced into a small number of **Domains** (Health, Finances, Home, Vehicles, Assets, Pets, Family, Travel, Career, Business, Education, Hobbies, Self, plus any custom — see `contracts/domains-and-assets.md` § 6.4b for detection-driven suggestions). Each domain is a folder with a 4-file structure (`info.md`, `status.md`, `history.md`, `rolodex.md`).
 - **Structured indexes.** YAML indexes hold the "small data" that needs to be queried fast: `bills.yaml`, `subscriptions.yaml`, `appointments.yaml`, `important-dates.yaml`, `assets-index.yaml`, `accounts-index.yaml`, `contacts.yaml`, `documents-index.yaml`, `health-records.yaml`.
 - **Cadence-driven surfacing.** Daily, weekly, monthly skills aggregate state into briefings ("here's what's due this week, here are the three appointments, here are the two birthdays you forgot last year, here's the subscription you haven't used since January").
@@ -204,7 +204,7 @@ Superagent's value scales with the breadth of authorized data sources. None are 
 - **WhatsApp / Signal / Telegram bridges** — via Matrix or vendor-specific MCPs (where stable).
 - **Slack MCP** — for any personal Slack workspaces.
 
-The `Sources/Watchlist/` folder (one `<Title_Case>.ref.md` per watcher, id = stem lowercased; path overridable via `config.preferences.watchlist.path`) is the single source of truth for which sources are configured and with what scope; `_memory/watchlist-state.yaml` (machine-owned) records when each last ran, its fingerprint, and its budget counters. The `init` skill probes the shipped watcher packs and offers to enable the ones already set up — but never enables anything by default.
+The `Sources/Watchlist/` folder (one `<name>.ref.md` per watcher, id = stem lowercased; path overridable via `config.preferences.watchlist.path`) is the single source of truth for which sources are configured and with what scope; `_memory/watchlist-state.yaml` (machine-owned) records when each last ran, its fingerprint, and its budget counters. The `init` skill probes the shipped watcher packs and offers to enable the ones already set up — but never enables anything by default.
 
 ---
 

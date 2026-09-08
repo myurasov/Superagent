@@ -11,7 +11,7 @@ this module rebuilds on demand.
 `Sources/` holds three things (since 0.20.0): the user's DOCUMENTS (any
 file), optional document SIDECARS `<doc>.<ext>.meta.md` carrying metadata for
 the document next to them, and the WATCHER registry `Sources/Watchlist/`
-(`config.preferences.watchlist.path`) whose `<Title_Case>.ref.md` files are
+(`config.preferences.watchlist.path`) whose `<name>.ref.md` files are
 watcher definitions (`contracts/watchlist.md`). Every `.ref.md` is a watcher;
 one found outside the registry is a "stray" indexing warning and is not
 indexed. `.ref.txt` is not read by anything.
@@ -286,8 +286,9 @@ def ref_stem(path: str | Path) -> str | None:
     """The ref filename minus its `.ref.md` suffix, or None if not a ref.
 
     For a watcher this stem LOWERCASED is the watcher id (state key +
-    `watch:<id>` handle) — `tools/watchlist.py::id_from_stem`; the file on
-    disk is Title_Case (`Home_Assistant-Hub.ref.md`).
+    `watch:<id>` handle) — `tools/watchlist.py::id_from_stem`. The file on
+    disk keeps the casing it was written with: `enable` writes Title_Case
+    (`Home_Assistant-Hub.ref.md`); a hand-written `ha.ref.md` is respected.
     """
     p = Path(path)
     if not is_ref_file(p):
@@ -494,7 +495,7 @@ def build_filesystem_row(workspace: Path, path: Path, *, registry: Path | None =
         # A watcher definition parked under the wrong name (or any stray file)
         # would otherwise become a bogus "document" row and never be watched.
         warn(f"{rel_path}: not a .ref.md — not a watcher; rename it to "
-             f"`<Title_Case>{REF_SUFFIX}` (id = stem lowercased) or move it out of the "
+             f"`<name>{REF_SUFFIX}` (id = stem lowercased) or move it out of the "
              f"registry ({workspace_relative(workspace, registry)}/); not indexed")
         row["kind"] = _SKIP
         return row

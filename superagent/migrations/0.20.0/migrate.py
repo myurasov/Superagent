@@ -17,10 +17,14 @@ Steps (in order):
    ``path`` -> ``watch.path``); a ref that relied on kind-to-type defaulting
    gets an explicit ``watch.type``; a pack instance simply drops ``source``.
    Every other line, comment and the markdown body are preserved.
-2. Registry filenames become Title_Case (``simplefin.ref.md`` ->
-   ``Simplefin.ref.md``); a case-only rename goes through a temp name so it
-   works on a case-insensitive filesystem. The ``_memory/sources-index.yaml``
-   row keeps its id (path rewritten in place) and catalogue rows follow.
+2. Registry files the framework itself wrote -- frontmatter ``added_by`` of
+   ``watch``, ``init`` or ``migrate-*`` -- become Title_Case
+   (``simplefin.ref.md`` -> ``Simplefin.ref.md``); a case-only rename goes
+   through a temp name so it works on a case-insensitive filesystem. A ref
+   with ``added_by: user``, any other value, or no ``added_by`` at all is
+   user-named: its casing is respected and it is reported as kept. The
+   ``_memory/sources-index.yaml`` row keeps its id (path rewritten in place)
+   and catalogue rows follow.
 3. Every document sidecar ``<doc>.<ext>.ref.md`` under ``Sources/``,
    ``Projects/*/Sources/`` and ``Projects/*/Resources/`` becomes
    ``<doc>.<ext>.meta.md``; catalogue rows and the index row (id kept) follow.
@@ -158,6 +162,38 @@ def target_name(name: str) -> str:
     """Title_Case registry filename for a `.ref.md` name (`simplefin.ref.md` -> `Simplefin.ref.md`)."""
     stem = name[: -len(REF_SUFFIX)]
     return title_case(id_from_stem(stem)) + REF_SUFFIX
+
+
+# `added_by` values that mean the FRAMEWORK chose the filename: `enable` (`watch`),
+# `init`, and any earlier migration (`migrate-0.19.0`, ...). Only these refs are
+# renamed to Title_Case; every other ref is user-named and keeps its casing.
+FRAMEWORK_AUTHORS = ("watch", "init")
+FRAMEWORK_AUTHOR_PREFIX = "migrate"
+
+
+def framework_written(fm: dict[str, Any] | None) -> bool:
+    """True when the ref's frontmatter says the framework named the file.
+
+    `added_by: watch` / `init` / `migrate-*` -> True. `added_by: user`, any
+    other value, a missing key, or unparseable frontmatter -> False (the user's
+    name is respected whenever authorship is not provably the tool's).
+    """
+    if not isinstance(fm, dict):
+        return False
+    who = fm.get("added_by")
+    if not isinstance(who, str):
+        return False
+    who = who.strip()
+    return who in FRAMEWORK_AUTHORS or who.startswith(FRAMEWORK_AUTHOR_PREFIX)
+
+
+def rename_target(ref: Path) -> str:
+    """The on-disk name this migration wants for `ref`.
+
+    Title_Case (`target_name`) for a framework-written ref; the ref's own name,
+    unchanged, for a user-named one.
+    """
+    return target_name(ref.name) if framework_written(frontmatter_of(ref)) else ref.name
 
 
 def watchlist_rel_path(config: dict[str, Any] | None) -> str:
@@ -812,19 +848,24 @@ class Migration:
                     or not (self.registry / stray).is_file()):
                 continue
             self._say(f"note: {self._rel(self.registry / stray)} is not a .ref.md -- not a "
-                      "watcher; rename it to `<Title_Case>.ref.md` or move it out of the "
+                      "watcher; rename it to `<name>.ref.md` or move it out of the "
                       "registry (left as is)")
         for ref in registry_refs(self.registry):
             want = target_name(ref.name)
             if want == ref.name:
                 continue
             rel = self._rel(ref)
+            if not framework_written(frontmatter_of(ref)):
+                # The user named this file (`added_by: user`, another value, or
+                # none at all): its casing is respected, whatever it is.
+                self._say(f"kept {rel} (user-named; casing respected)")
+                continue
             if want in names:
                 self._say(f"keep {rel} (rename target {want} already exists; two watchers share "
                           f"the id {id_from_stem(want[: -len(REF_SUFFIX)])!r} -- resolve by hand)")
                 continue
             dest = ref.with_name(want)
-            self._say(f"rename {rel} -> {self._rel(dest)} (Title_Case; id "
+            self._say(f"rename {rel} -> {self._rel(dest)} (Title_Case, framework-written ref; id "
                       f"{id_from_stem(want[: -len(REF_SUFFIX)])!r} unchanged)")
             self.changed.append(rel)
             entry: dict[str, Any] = {"from": rel, "to": self._rel(dest),
@@ -837,13 +878,14 @@ class Migration:
             self._record("renamed", entry, unique_by="from")
             pairs.append((rel, self._rel(dest)))
         # Index rows whose path differs from the on-disk name only by case (the
-        # file was already Title_Case; the row was written before) are aligned
-        # too, so `refresh` keeps their ids through path identity.
+        # file was already Title_Case, or the user renamed it; the row was
+        # written before) are aligned too, so `refresh` keeps their ids through
+        # path identity.
         listed = set(pairs)
         for ref in registry_refs(self.registry):
             # After a real rename the listing already carries the new name; in a
-            # dry run `target_name` projects it.
-            new_rel = self._rel(ref.with_name(target_name(ref.name)))
+            # dry run `rename_target` projects it (a user-named ref maps to itself).
+            new_rel = self._rel(ref.with_name(rename_target(ref)))
             for row_path in self._index_paths_matching(new_rel):
                 if (row_path, new_rel) not in listed and row_path != new_rel:
                     pairs.append((row_path, new_rel))

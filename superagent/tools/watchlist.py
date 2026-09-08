@@ -20,10 +20,13 @@ and the `watch:` block. A bare (packless) watcher carries its locator inside
 `watch.pack` (+ `watch.params`). `watch.pack` or `watch.type` is required;
 nothing defaults from a ref `kind` any more, and the retired reference keys
 (`kind`, `source`, `ttl_minutes`, ...) are load errors naming the 0.20.0
-migration. Registry filenames are Title_Case (`Simplefin.ref.md`,
-`Home_Assistant-Hub.ref.md`; `title_case()`); the watcher id is the stem
-lowercased (`id_from_stem()`), files resolve case-insensitively, and two
-files whose lowercase stems collide are a load error.
+migration. The files `enable` writes are named Title_Case (`Simplefin.ref.md`,
+`Home_Assistant-Hub.ref.md`; `title_case()`) -- the tool's convention for the
+names it generates, not a rule for the user's own files: a hand-written
+`ha.ref.md` / `HA.ref.md` / `Home_Assistant.ref.md` is kept exactly as named
+and is never renamed or warned about. The watcher id is the stem lowercased
+(`id_from_stem()`), files resolve case-insensitively, and two files whose
+lowercase stems collide are a load error.
 
 Built-in detect types (contract § 5):
 
@@ -191,10 +194,12 @@ SUMMARY_KEYS = (
 EXTRA_BUCKETS = ("skipped_harvest", "disabled", "inactive", "warnings", "notes")
 
 #: Watcher id = ref filename stem LOWERCASED = state key = handle slug. Sources
-#: naming convention: lowercase, `_` between words, `-` inside tokens. The
-#: file on disk is the Title_Case form of the id (`title_case`).
+#: naming convention: lowercase, `_` between words, `-` inside tokens. `enable`
+#: writes the file as the Title_Case form of the id (`title_case`); a user's
+#: own file keeps whatever casing it was given.
 ID_RE = WATCH_ID_RE
-ID_RULE = "lowercase letters, digits, `_` and `-`; no spaces or dots (the file is Title_Case)"
+ID_RULE = ("lowercase letters, digits, `_` and `-`; no spaces or dots "
+           "(the id is the filename stem, lowercased)")
 PARAM_RE = re.compile(r"\{\{\s*([A-Za-z_][\w-]*)\s*\}\}")
 MAX_NOTE_CHARS = 500
 # Control characters become a space; zero-width / bidi-override / BOM code points
@@ -299,12 +304,14 @@ def slugify_id(raw: str) -> str:
 
 
 def title_case(watcher_id: str) -> str:
-    """Canonical registry filename stem for a watcher id.
+    """The registry filename stem `enable` writes for a watcher id.
 
     Capitalizes the first letter of every `_`- or `-`-delimited token:
     `simplefin` -> `Simplefin`, `home_assistant-hub` -> `Home_Assistant-Hub`.
     Digits are untouched; idempotent (`title_case(title_case(x)) == title_case(x)`).
-    Imported by the 0.20.0 migration for the case-only renames.
+    A convention for tool-generated names only -- a ref the user named is
+    respected as written. Imported by the 0.20.0 migration, which applies the
+    case-only rename to framework-written refs alone.
     """
     return title_case_id(watcher_id)
 
@@ -1048,6 +1055,8 @@ def registry_stray_files(folder: Path) -> list[str]:
     A watcher definition parked under the wrong suffix (`Foo.md`) would
     otherwise be silently nothing: never loaded, never checked, never
     converted by a migration. `check` and `list` surface these as warnings.
+    The hint keeps the user's own stem (`HA_notes.md` -> `HA_notes.ref.md`);
+    only the suffix is prescribed, never the casing.
     """
     if not folder.is_dir():
         return []
@@ -1056,9 +1065,10 @@ def registry_stray_files(folder: Path) -> list[str]:
         if (not p.is_file() or p.name.startswith(".") or p.name == "README.md"
                 or is_ref_name(p.name)):
             continue
+        stem = p.name.split(".")[0]
         out.append(
             f"{p.name}: not a .ref.md — not a watcher; rename it to "
-            f"`{ref_filename(id_from_stem(p.name.split('.')[0]))}` (id = stem lowercased) "
+            f"`{stem}{REF_SUFFIX}` (id = stem lowercased: `{id_from_stem(stem)}`) "
             "or move it out of the registry"
         )
     return out
@@ -1103,7 +1113,7 @@ def load_registry(
                 raise WatchlistError(
                     f"watcher id `{wid}` is claimed by {len(siblings)} files "
                     f"({', '.join(p.name for p in siblings)}); ids resolve case-insensitively "
-                    f"— rename one (canonical: `{ref_filename(wid)}`)"
+                    f"— rename one of them to a different stem"
                 )
             text = path.read_text(encoding="utf-8")
             fm, _body = parse_frontmatter(text)
@@ -2438,8 +2448,11 @@ def enable_pack(workspace: Path, framework: Path, *, pack_id: str, watcher_id: s
                 params: dict[str, str], title: str | None) -> Path:
     """Write `<Title_Case id>.ref.md` for a pack (contract § 4). Never overwrites.
 
-    The existence check is case-insensitive, like loading: `--id simplefin`
-    refuses when `simplefin.ref.md` or `SIMPLEFIN.ref.md` is already there.
+    Title_Case is the tool's convention for the names IT generates
+    (`--id gmail-bills` -> `Gmail-Bills.ref.md`); a ref the user wrote by hand
+    keeps whatever name it was given. The existence check is case-insensitive,
+    like loading: `--id simplefin` refuses when `simplefin.ref.md` or
+    `SIMPLEFIN.ref.md` is already there.
     """
     cfg = load_config(workspace)
     packs, _ = discover_packs(framework, workspace)

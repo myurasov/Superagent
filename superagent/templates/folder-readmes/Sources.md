@@ -13,7 +13,7 @@ The agent reserves two names under `Sources/`:
 | Name | Purpose |
 |---|---|
 | `README.md` | This file. |
-| `Watchlist/` | The **watchlist registry** — one `<Title_Case>.ref.md` per external thing the agent watches for change (a portal, a Gmail label, a bank feed, a page). Reserved *name*, but the *contents* are yours to hand-write, edit, or delete; see its own `README.md` and `contracts/watchlist.md`. The folder path is configurable (`config.preferences.watchlist.path`). |
+| `Watchlist/` | The **watchlist registry** — one `<name>.ref.md` per external thing the agent watches for change (a portal, a Gmail label, a bank feed, a page). Reserved *name*, but the *contents* are yours to hand-write, edit, or delete; see its own `README.md` and `contracts/watchlist.md`. The folder path is configurable (`config.preferences.watchlist.path`). |
 
 Everything else is yours. There is no cache folder: nothing under `Sources/` is written or evicted by the agent on its own.
 
@@ -23,7 +23,7 @@ Everything else is yours. There is no cache folder: nothing under `Sources/` is 
 |---|---|---|
 | A PDF / scan / spreadsheet you own | Whatever you want — `camry-title.pdf`, `2024-tax-return.pdf`, `medical/labs.pdf` | Indexes the path; opens it directly when read. |
 | Extra metadata about one of those documents | `<doc>.<ext>.meta.md` beside it — `camry-title.pdf.meta.md` | Reads it before the document; lifts its fields and cross-references into the index row. |
-| Something elsewhere you want to be told about when it changes | `Watchlist/<Title_Case>.ref.md` | Checks it on a cadence; alerts on change; never fetches it on demand. |
+| Something elsewhere you want to be told about when it changes | `Watchlist/<name>.ref.md` | Checks it on a cadence; alerts on change; never fetches it on demand. |
 
 **Every `.ref.md` is a watcher.** The suffix means one thing, so a `.ref.md` outside `Watchlist/` is a mistake — move it in, or rename it `<doc>.<ext>.meta.md` if it was meant as document metadata. `.ref.txt` is not recognized.
 
@@ -50,7 +50,7 @@ Sidecars are also where a saved payment confirmation carries its structured fiel
 
 ## Authoring a watcher by hand
 
-Template: `superagent/templates/sources/ref.md`. The filename is Title_Case (`Solar_Permit.ref.md`); the watcher id is the stem lowercased (`solar_permit`, handle `watch:solar_permit`). The `watch:` block carries what to watch and how:
+Template: `superagent/templates/sources/ref.md`. Name the file as you like (`Solar_Permit.ref.md`, `solar_permit.ref.md` — the agent writes Title_Case when it creates one for you and keeps yours exactly as named); the watcher id is the stem lowercased (`solar_permit`, handle `watch:solar_permit`). The `watch:` block carries what to watch and how:
 
 ```markdown
 ---
