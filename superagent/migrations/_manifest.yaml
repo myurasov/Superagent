@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-09-08T04:57:02+00:00'
+generated_at: '2026-09-08T09:02:17+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -142,3 +142,11 @@ migrations:
   breaking: false
   revertible: true
   estimated_duration: <2 minutes
+- to_version: 0.20.0
+  from_version: 0.19.0
+  file: 0.20.0.md
+  title: 'Refs are watchers only: ref schema 2, Title_Case registry names, .meta.md
+    sidecars, SimpleFIN daily'
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute
