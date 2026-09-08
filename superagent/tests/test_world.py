@@ -368,21 +368,20 @@ def test_rebuild_emits_watch_nodes_for_registry_refs(initialized_workspace: Path
     from superagent.tools.sources_index import id_for_path, refresh
     from superagent.tools.world import rebuild, related_to, validate
 
-    ref = initialized_workspace / "Sources" / "Watchlist" / "solar-permit.ref.md"
+    ref = initialized_workspace / "Sources" / "Watchlist" / "Solar-Permit.ref.md"
     ref.parent.mkdir(parents=True, exist_ok=True)
     ref.write_text(
-        "---\nref_version: 1\ntitle: Permit portal\nkind: url\n"
-        "source: \"https://permits.example.gov/x\"\nrelated_domain: home\n"
-        "related_project: solar\nwatch:\n  type: url\n---\n"
+        "---\nref_version: 2\ntitle: Permit portal\nrelated_domain: home\n"
+        "related_project: solar\nwatch:\n  type: url\n  url: \"https://permits.example.gov/x\"\n---\n"
     )
     refresh(initialized_workspace, force=True)
     data = rebuild(initialized_workspace)
     nodes = {n["id"]: n for n in data["nodes"]}
-    assert nodes["watch:solar-permit"]["kind"] == "watch"
-    assert nodes["watch:solar-permit"]["path"] == "Sources/Watchlist/solar-permit.ref.md"
+    assert nodes["watch:solar-permit"]["kind"] == "watch", "id = Title_Case stem, lowercased"
+    assert nodes["watch:solar-permit"]["path"] == "Sources/Watchlist/Solar-Permit.ref.md"
     assert nodes["watch:solar-permit"]["label"] == "Permit portal"
     edges = {(e["from"], e["to"], e["kind"]) for e in data["edges"]}
-    src = f"source:{id_for_path('Sources/Watchlist/solar-permit.ref.md')}"
+    src = f"source:{id_for_path('Sources/Watchlist/Solar-Permit.ref.md')}"
     assert ("watch:solar-permit", "domain:home", "scoped") in edges
     assert ("watch:solar-permit", "project:solar", "scoped") in edges
     assert ("watch:solar-permit", src, "indexed_as") in edges

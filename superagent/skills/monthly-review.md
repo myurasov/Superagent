@@ -12,7 +12,7 @@ triggers:
   - month-end review
 mcp_required: []
 mcp_optional:
-  - any watcher whose cycles include monthly-review
+  - any watcher on the watchlist (the monthly cycle covers the weekly and daily tiers too)
 cli_required: []
 cli_optional: []
 ---
@@ -56,7 +56,7 @@ Compute the **trailing calendar month** (1st of last month through end of last m
 
 ## 1. Check the monthly watchlist cycle
 
-Per `contracts/watchlist.md` — the slow watchers (`cycles: [monthly-review]`, e.g. a warranty or policy page that rarely moves) run here:
+Per `contracts/watchlist.md` § 2 cycles nest, so this one run covers the slow watchers (`cycles: [monthly-review]`, e.g. a warranty or policy page that rarely moves) **and every weekly and daily watcher** — the review never needs `daily-update` or `weekly-review` run first; each watcher's throttle and budget keep a same-day re-run cheap (`simplefin` included, budget-gated):
 
 ```bash
 uv run python -m superagent.tools.watchlist check --cycle monthly-review --report
@@ -170,7 +170,7 @@ Read `_memory/sources-index.yaml`:
 
 - Sources with `read_count: 0` AND `added > 180 days ago` → surface "haven't used this in 6 months. Keep, or move to Archive/?".
 - Sources with broken `path` (file no longer exists) → surface as `broken-link`.
-- `Sources/_cache/` total size + LRU eviction stats since last monthly-review.
+- `.meta.md` sidecars whose document is gone, and any `.ref.md` outside `Sources/Watchlist/` (neither a document nor a watcher, `contracts/sources.md` § 15.4) → surface as `misplaced`; suggest the move or rename.
 
 Note: per the immutability contract (§ 15.2), `doctor` cannot delete from `Sources/` automatically. The user does the deletion manually if they choose; this section just surfaces candidates.
 

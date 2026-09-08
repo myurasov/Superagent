@@ -2,16 +2,19 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tests for `tools/sources_index.py` (the derived-index tool).
 
-Exercises the contract documented in `contracts/sources.md` § 15.6:
+Exercises the contract documented in `contracts/sources.md`:
   - Filesystem under `Sources/` is canonical; the index is derived.
   - Refresh is mtime-lazy.
   - Hand-curated fields (notes, tags, related_*, last_accessed, read_count,
     sensitive) are preserved across refreshes.
-  - Sidecar `.ref.md` next to a non-ref document is metadata for the document
-    (not a separate row).
+  - A `<doc>.<ext>.meta.md` sidecar next to a document is metadata for the
+    document (not a separate row); an orphan sidecar is a warning.
+  - Every `.ref.md` is a watcher: indexed (kind `watcher`, `watch` lifted)
+    only inside the registry; a stray one elsewhere is a warning, not a row.
+    `.ref.txt` is an ordinary file.
   - Removed files survive one refresh cycle as `present: false` before being
     dropped.
-  - The cache subtree (`Sources/_cache/`) is excluded from the index.
+  - A leftover `Sources/_cache/` (retired 0.19.0 fetch cache) is excluded.
 """
 from __future__ import annotations
 
@@ -23,6 +26,25 @@ from pathlib import Path
 def _write(p: Path, text: str = "") -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text)
+
+
+def _refresh(ws: Path, **kw) -> tuple[dict, list[str]]:
+    """`refresh(force=True)` returning (index, warnings)."""
+    from superagent.tools.sources_index import refresh
+
+    warnings: list[str] = []
+    index = refresh(ws, force=True, warn=warnings.append, **kw)
+    return index, warnings
+
+
+SIDECAR = (
+    "---\n"
+    "title: Camry title 2018\n"
+    "tags: [titles, camry]\n"
+    "related_asset: asset-camry-2018\n"
+    "sensitive: true\n"
+    "---\n\nThe physical original is in the file cabinet.\n"
+)
 
 
 def _bump_mtime(p: Path, seconds_into_future: float = 2.0) -> None:
@@ -45,61 +67,46 @@ def test_refresh_picks_up_new_document(initialized_workspace: Path) -> None:
     assert row["title"]
 
 
-def test_refresh_picks_up_standalone_reference(initialized_workspace: Path) -> None:
-    from superagent.tools.sources_index import refresh
-
+def test_stray_ref_outside_the_registry_warns_and_is_not_indexed(initialized_workspace: Path) -> None:
+    """Every `.ref.md` is a watcher (0.20.0): one outside `Sources/Watchlist/` is a stray."""
     ref = initialized_workspace / "Sources" / "finance" / "fidelity.ref.md"
-    ref_body = (
-        "---\n"
-        "ref_version: 1\n"
-        "title: Fidelity 401k portal\n"
-        "kind: url\n"
-        "source: \"https://401k.fidelity.com/dashboard\"\n"
-        "sensitive: true\n"
-        "tags: [retirement, login-required]\n"
-        "---\n\n"
-        "Notes: SSO via work email.\n"
-    )
-    _write(ref, ref_body)
-    index = refresh(initialized_workspace)
-    rows = index["sources"]
-    row = next(r for r in rows if r["path"].endswith("fidelity.ref.md"))
-    assert row["kind"] == "reference"
-    assert row["title"] == "Fidelity 401k portal"
-    assert row["sensitive"] is True
-    assert "retirement" in row["tags"]
-    assert row["normalized"] is True
+    _write(ref, "---\nref_version: 2\ntitle: Fidelity 401k portal\nwatch:\n  type: url\n"
+                "  url: \"https://401k.fidelity.com/dashboard\"\n---\n")
+    _write(initialized_workspace / "Projects" / "x" / "Sources" / "Portal.ref.md",
+           "---\nref_version: 2\ntitle: p\nwatch: {type: url, url: https://x}\n---\n")
+    index, warnings = _refresh(initialized_workspace)
+    paths = {r["path"] for r in index["sources"] if r.get("id")}
+    assert "Sources/finance/fidelity.ref.md" not in paths
+    assert "Projects/x/Sources/Portal.ref.md" not in paths
+    assert sorted(warnings) == [
+        "Projects/x/Sources/Portal.ref.md: stray .ref.md outside the registry — a .ref.md is a "
+        "watcher definition (Sources/Watchlist/); document metadata belongs in `<doc>.<ext>.meta.md`; "
+        "not indexed",
+        "Sources/finance/fidelity.ref.md: stray .ref.md outside the registry — a .ref.md is a "
+        "watcher definition (Sources/Watchlist/); document metadata belongs in `<doc>.<ext>.meta.md`; "
+        "not indexed",
+    ]
 
 
-def test_refresh_recognizes_ref_txt_extension(initialized_workspace: Path) -> None:
-    from superagent.tools.sources_index import refresh
-
+def test_ref_txt_is_an_ordinary_file(initialized_workspace: Path) -> None:
+    """`.ref.txt` support is gone: the file indexes like any other document, nothing is parsed."""
     ref = initialized_workspace / "Sources" / "misc" / "freeform.ref.txt"
     _write(ref, "URL: https://example.com\nTitle: Example\n")
-    index = refresh(initialized_workspace)
-    rows = index["sources"]
-    row = next(r for r in rows if r["path"].endswith("freeform.ref.txt"))
-    assert row["kind"] == "reference"
-    assert row["normalized"] is False, "txt freeform should not be auto-normalized on refresh"
+    index, warnings = _refresh(initialized_workspace)
+    row = next(r for r in index["sources"] if r["path"].endswith("freeform.ref.txt"))
+    assert row["kind"] == "document"
+    assert row["title"] == "freeform.ref" and "watch" not in row
+    assert warnings == []
 
 
-def test_sidecar_ref_does_not_create_separate_row(initialized_workspace: Path) -> None:
-    """A `.ref.md` sibling of a document is metadata for the document, not a row of its own."""
-    from superagent.tools.sources_index import refresh
-
+def test_meta_sidecar_does_not_create_separate_row(initialized_workspace: Path) -> None:
+    """A `<doc>.<ext>.meta.md` sibling is metadata for the document, not a row of its own."""
     doc = initialized_workspace / "Sources" / "vehicles" / "title.pdf"
-    sidecar = initialized_workspace / "Sources" / "vehicles" / "title.pdf.ref.md"
+    sidecar = initialized_workspace / "Sources" / "vehicles" / "title.pdf.meta.md"
     _write(doc, "%PDF-1.4 stub\n")
-    _write(sidecar,
-           "---\n"
-           "ref_version: 1\n"
-           "title: Camry title 2018\n"
-           "kind: file\n"
-           "source: \"Sources/vehicles/title.pdf\"\n"
-           "tags: [titles, camry]\n"
-           "related_asset: asset-camry-2018\n"
-           "---\n\nThe physical original is in the file cabinet.\n")
-    index = refresh(initialized_workspace)
+    _write(sidecar, SIDECAR)
+    index, warnings = _refresh(initialized_workspace)
+    assert warnings == []
     rows = [r for r in index["sources"] if r["path"].startswith("Sources/vehicles/")]
     paths = sorted(r["path"] for r in rows)
     assert paths == ["Sources/vehicles/title.pdf"], (
@@ -109,7 +116,44 @@ def test_sidecar_ref_does_not_create_separate_row(initialized_workspace: Path) -
     assert row["kind"] == "document"
     assert row["title"] == "Camry title 2018"
     assert row["related_asset"] == "asset-camry-2018"
+    assert row["sensitive"] is True
     assert "titles" in row["tags"]
+    assert "watch" not in row
+
+
+def test_meta_sidecar_form_b_and_project_scoped(initialized_workspace: Path) -> None:
+    """`<stem>.meta.md` next to `<stem>.<ext>` works too, including under Projects/*/Sources/."""
+    doc = initialized_workspace / "Projects" / "tax-2025" / "Sources" / "w2.pdf"
+    _write(doc, "%PDF\n")
+    _write(doc.with_name("w2.meta.md"), "---\ntitle: 2025 W-2\ntags: [taxes]\n---\n")
+    index, warnings = _refresh(initialized_workspace)
+    assert warnings == []
+    rows = {r["path"]: r for r in index["sources"] if r.get("id")}
+    assert "Projects/tax-2025/Sources/w2.meta.md" not in rows
+    row = rows["Projects/tax-2025/Sources/w2.pdf"]
+    assert row["title"] == "2025 W-2" and row["tags"] == ["taxes"] and row["related_project"] == "tax-2025"
+
+
+def test_orphan_meta_sidecar_warns_and_is_not_indexed(initialized_workspace: Path) -> None:
+    _write(initialized_workspace / "Sources" / "vehicles" / "gone.pdf.meta.md", SIDECAR)
+    index, warnings = _refresh(initialized_workspace)
+    assert not any(r["path"].endswith("gone.pdf.meta.md") for r in index["sources"] if r.get("id"))
+    assert warnings == ["Sources/vehicles/gone.pdf.meta.md: orphan sidecar — no document next to it "
+                        "(expected `<doc>.<ext>.meta.md` beside its document); not indexed"]
+
+
+def test_legacy_ref_sidecar_is_a_stray_and_lends_no_metadata(initialized_workspace: Path) -> None:
+    """A pre-0.20.0 `<doc>.<ext>.ref.md` next to its document: warned, not applied (rename it)."""
+    doc = initialized_workspace / "Sources" / "vehicles" / "title.pdf"
+    _write(doc, "%PDF-1.4 stub\n")
+    _write(doc.with_name("title.pdf.ref.md"), SIDECAR)
+    index, warnings = _refresh(initialized_workspace)
+    rows = {r["path"]: r for r in index["sources"] if r.get("id")}
+    assert "Sources/vehicles/title.pdf.ref.md" not in rows
+    assert rows["Sources/vehicles/title.pdf"]["title"] == "title", "legacy sidecar metadata is not applied"
+    assert len(warnings) == 1
+    assert warnings[0].startswith("Sources/vehicles/title.pdf.ref.md: stray .ref.md outside the registry")
+    assert "belongs in `title.pdf.meta.md`" in warnings[0], "the rename is spelled out"
 
 
 def test_refresh_is_mtime_lazy(initialized_workspace: Path) -> None:
@@ -186,7 +230,8 @@ def test_removed_file_marked_present_false_first_then_dropped(
     assert row is None, "second refresh after rm should drop the row"
 
 
-def test_cache_subtree_excluded_from_index(initialized_workspace: Path) -> None:
+def test_leftover_cache_subtree_excluded_from_index(initialized_workspace: Path) -> None:
+    """A `Sources/_cache/` left behind by 0.19.0 never becomes "documents"."""
     from superagent.tools.sources_index import refresh
 
     cache_file = initialized_workspace / "Sources" / "_cache" / "abc123" / "raw.txt"
@@ -388,13 +433,12 @@ def test_rename_ambiguous_when_multiple_basename_matches(initialized_workspace: 
 
 WATCH_REF = (
     "---\n"
-    "ref_version: 1\n"
+    "ref_version: 2\n"
     "title: Permit portal\n"
-    "kind: url\n"
-    "source: \"https://permits.example.gov/status?id=1\"\n"
     "related_project: solar\n"
     "watch:\n"
     "  type: url\n"
+    "  url: \"https://permits.example.gov/status?id=1\"\n"
     "  enabled: true\n"
     "  cycles: [daily-update]\n"
     "  selector: \"#status\"\n"
@@ -402,55 +446,106 @@ WATCH_REF = (
 )
 
 
-def test_watchlist_ref_indexed_with_watch_lifted(initialized_workspace: Path) -> None:
-    """A `Sources/Watchlist/<id>.ref.md` is a normal reference row plus a lifted `watch` mapping;
+def test_watchlist_ref_indexed_as_watcher_with_watch_lifted(initialized_workspace: Path) -> None:
+    """A `Sources/Watchlist/<Title_Case>.ref.md` is a `watcher` row with the `watch` mapping lifted;
     the registry README is excluded like `Sources/README.md`."""
-    from superagent.tools.sources_index import ref_stem, refresh
+    from superagent.tools.sources_index import ref_stem
 
-    ref = initialized_workspace / "Sources" / "Watchlist" / "solar-permit.ref.md"
+    ref = initialized_workspace / "Sources" / "Watchlist" / "Solar-Permit.ref.md"
     _write(ref, WATCH_REF)
-    index = refresh(initialized_workspace, force=True)
+    index, warnings = _refresh(initialized_workspace)
+    assert warnings == []
     rows = {r["path"]: r for r in index["sources"] if r.get("id")}
-    row = rows["Sources/Watchlist/solar-permit.ref.md"]
-    assert row["kind"] == "reference" and row["category"] == "Watchlist"
+    row = rows["Sources/Watchlist/Solar-Permit.ref.md"]
+    assert row["kind"] == "watcher" and row["category"] == "Watchlist"
+    assert row["title"] == "Permit portal"
     assert row["related_project"] == "solar"
-    assert row["watch"] == {"type": "url", "enabled": True, "cycles": ["daily-update"],
-                            "selector": "#status"}
-    assert ref_stem(row["path"]) == "solar-permit"
+    assert row["normalized"] is True
+    assert row["watch"] == {"type": "url", "url": "https://permits.example.gov/status?id=1",
+                            "enabled": True, "cycles": ["daily-update"], "selector": "#status"}
+    assert ref_stem(row["path"]) == "Solar-Permit", "the stem as written; the tool lowercases it for the id"
     assert "Sources/Watchlist/README.md" not in rows
     # Rows without a watch: block carry no `watch` key at all.
     assert all("watch" not in r for p, r in rows.items() if p != row["path"])
 
 
+def test_registry_path_from_config_and_meta_inside_registry(initialized_workspace: Path) -> None:
+    """`preferences.watchlist.path` moves the registry; the registry holds watchers only —
+    a document parked inside it is warned about and not indexed (its `.meta.md` stays a sidecar)."""
+    import yaml
+
+    ws = initialized_workspace
+    cfg_path = ws / "_memory" / "config.yaml"
+    cfg = yaml.safe_load(cfg_path.read_text()) or {}
+    cfg.setdefault("preferences", {})["watchlist"] = {"path": "Sources/Watchers"}
+    cfg_path.write_text(yaml.safe_dump(cfg, sort_keys=False))
+    _write(ws / "Sources" / "Watchers" / "Solar-Permit.ref.md", WATCH_REF)
+    _write(ws / "Sources" / "Watchlist" / "Old.ref.md", WATCH_REF)  # no longer the registry: stray
+    _write(ws / "Sources" / "Watchers" / "notes.pdf", "%PDF\n")
+    _write(ws / "Sources" / "Watchers" / "notes.pdf.meta.md", "---\ntitle: Registry notes\n---\n")
+    index, warnings = _refresh(ws)
+    rows = {r["path"]: r for r in index["sources"] if r.get("id")}
+    assert rows["Sources/Watchers/Solar-Permit.ref.md"]["kind"] == "watcher"
+    assert "Sources/Watchers/notes.pdf" not in rows, "the registry is for watchers; documents go elsewhere"
+    assert "Sources/Watchers/notes.pdf.meta.md" not in rows
+    assert "Sources/Watchlist/Old.ref.md" not in rows
+    assert len(warnings) == 2, warnings
+    stray = [w for w in warnings if w.startswith("Sources/Watchlist/Old.ref.md: stray .ref.md")]
+    assert stray and "(Sources/Watchers/)" in stray[0]
+    parked = [w for w in warnings if w.startswith("Sources/Watchers/notes.pdf: not a .ref.md — not a watcher")]
+    assert parked and "(Sources/Watchers/)" in parked[0]
+
+
 def test_watch_field_survives_broken_file_but_drops_when_block_removed(
     initialized_workspace: Path,
 ) -> None:
-    from superagent.tools.sources_index import refresh
-
-    ref = initialized_workspace / "Sources" / "Watchlist" / "solar-permit.ref.md"
+    ref = initialized_workspace / "Sources" / "Watchlist" / "Solar-Permit.ref.md"
     _write(ref, WATCH_REF)
-    refresh(initialized_workspace, force=True)
+    _refresh(initialized_workspace)
     # Transiently unparseable frontmatter: keep the previously lifted mapping.
-    _write(ref, "---\nkind: url\nsource: [unclosed\n---\n")
+    _write(ref, "---\ntitle: x\nwatch: [unclosed\n---\n")
     _bump_mtime(ref)
-    index = refresh(initialized_workspace, force=True)
-    row = next(r for r in index["sources"] if r.get("path") == "Sources/Watchlist/solar-permit.ref.md")
+    index, _ = _refresh(initialized_workspace)
+    row = next(r for r in index["sources"] if r.get("path") == "Sources/Watchlist/Solar-Permit.ref.md")
     assert row["normalized"] is False
     assert row["watch"]["type"] == "url"
     # A clean file WITHOUT a watch: block means the block is gone: drop it.
     _write(ref, WATCH_REF.split("watch:\n")[0] + "---\n\nNotes.\n")
     _bump_mtime(ref, 4.0)
-    index = refresh(initialized_workspace, force=True)
-    row = next(r for r in index["sources"] if r.get("path") == "Sources/Watchlist/solar-permit.ref.md")
+    index, _ = _refresh(initialized_workspace)
+    row = next(r for r in index["sources"] if r.get("path") == "Sources/Watchlist/Solar-Permit.ref.md")
     assert row["normalized"] is True
     assert "watch" not in row
 
 
+def test_cli_list_kind_choices_and_refresh_prints_warnings(initialized_workspace: Path, capsys) -> None:
+    from superagent.tools.sources_index import main
+
+    ws = initialized_workspace
+    _write(ws / "Sources" / "Watchlist" / "Solar-Permit.ref.md", WATCH_REF)
+    _write(ws / "Sources" / "docs" / "a.pdf", "%PDF\n")
+    _write(ws / "Sources" / "docs" / "stray.ref.md", "---\ntitle: s\n---\n")
+    assert main(["--workspace", str(ws), "refresh", "--force"]) == 0
+    out = capsys.readouterr().out
+    assert "Index has 2 row(s)" in out
+    assert "WARN  Sources/docs/stray.ref.md: stray .ref.md outside the registry" in out
+    assert main(["--workspace", str(ws), "list", "--kind", "watcher"]) == 0
+    out = capsys.readouterr().out
+    assert "Solar-Permit.ref.md" in out and "a.pdf" not in out
+    assert main(["--workspace", str(ws), "list", "--kind", "document"]) == 0
+    out = capsys.readouterr().out
+    assert "a.pdf" in out and "Solar-Permit" not in out
+    import pytest
+
+    with pytest.raises(SystemExit):
+        main(["--workspace", str(ws), "list", "--kind", "reference"])
+
+
 def test_path_rewritten_in_place_keeps_row_id(initialized_workspace: Path) -> None:
     """Path identity: a present row whose `path` already names the scanned file keeps
-    its id even though the derived `src-<sha1(path)>` would differ (contracts/sources.md
-    § 15.6). This is what lets the 0.19.0 migration relocate a ref without orphaning
-    the `src-...` ids cited in history / log rows."""
+    its id even though the derived `src-<sha1(path)>` would differ (contracts/sources.md).
+    This is what lets a migration relocate a file without orphaning the `src-...` ids
+    cited in history / log rows."""
     from superagent.tools.sources_index import (
         id_for_path,
         load_index,
@@ -459,11 +554,11 @@ def test_path_rewritten_in_place_keeps_row_id(initialized_workspace: Path) -> No
         update_row,
     )
 
-    old = initialized_workspace / "Sources" / "a" / "thing.ref.md"
-    new = initialized_workspace / "Sources" / "b" / "thing_moved.ref.md"
-    _write(old, "---\nref_version: 1\ntitle: T\nkind: url\nsource: \"https://x\"\n---\n")
+    old = initialized_workspace / "Sources" / "a" / "thing.pdf"
+    new = initialized_workspace / "Sources" / "b" / "thing_moved.pdf"
+    _write(old, "%PDF\n")
     refresh(initialized_workspace, force=True)
-    old_id = id_for_path("Sources/a/thing.ref.md")
+    old_id = id_for_path("Sources/a/thing.pdf")
     update_row(initialized_workspace, old_id, {"notes": "keep me"})
     # Move the file and rewrite the row's path in place (id untouched).
     new.parent.mkdir(parents=True)
@@ -471,11 +566,28 @@ def test_path_rewritten_in_place_keeps_row_id(initialized_workspace: Path) -> No
     index = load_index(initialized_workspace)
     for row in index["sources"]:
         if row.get("id") == old_id:
-            row["path"] = "Sources/b/thing_moved.ref.md"
+            row["path"] = "Sources/b/thing_moved.pdf"
     save_index(initialized_workspace, index)
     rows = {r["path"]: r for r in refresh(initialized_workspace, force=True)["sources"] if r.get("id")}
-    row = rows["Sources/b/thing_moved.ref.md"]
-    assert row["id"] == old_id != id_for_path("Sources/b/thing_moved.ref.md")
+    row = rows["Sources/b/thing_moved.pdf"]
+    assert row["id"] == old_id != id_for_path("Sources/b/thing_moved.pdf")
     assert row["notes"] == "keep me" and row["present"] is True
-    assert "Sources/a/thing.ref.md" not in rows
+    assert "Sources/a/thing.pdf" not in rows
     assert sum(1 for r in rows.values() if r["id"] == old_id) == 1
+
+
+def test_non_ref_file_in_the_registry_is_warned_and_not_indexed(initialized_workspace: Path) -> None:
+    """Review finding: `Sources/Watchlist/HA.md` (a v1 watcher parked under the wrong name)
+    was indexed as a bogus `document` row and never mentioned."""
+    reg = initialized_workspace / "Sources" / "Watchlist"
+    _write(reg / "README.md", "# registry\n")
+    _write(reg / "Ha.md", "---\nref_version: 1\ntitle: parked\nkind: cli\nsource: 'echo hi'\n---\n")
+    _write(reg / "Ok.ref.md", "---\nref_version: 2\ntitle: ok\nwatch: {type: url, url: https://x}\n---\n")
+    index, warnings = _refresh(initialized_workspace)
+    paths = {r["path"]: r for r in index["sources"] if r.get("id")}
+    assert "Sources/Watchlist/Ha.md" not in paths
+    assert "Sources/Watchlist/README.md" not in paths
+    assert paths["Sources/Watchlist/Ok.ref.md"]["kind"] == "watcher"
+    assert len(warnings) == 1, warnings
+    assert warnings[0].startswith("Sources/Watchlist/Ha.md: not a .ref.md — not a watcher; rename it to "
+                                  "`<Title_Case>.ref.md`")

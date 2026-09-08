@@ -61,7 +61,7 @@ If the user pasted the thread, use that. Otherwise resolve by:
 
 ## 2. Read the thread
 
-Read from the local mirror first. If `last_ingest` for the relevant source < end-of-thread, ingest the strictly-newer slice (capture-through per the contract).
+Read from the local mirror first. If the relevant source's `last_success` / `last_harvest` in `_memory/watchlist-state.yaml` < end-of-thread, read only the strictly-newer slice live (capture-through per the contract).
 
 ## 3. Generate the summary
 

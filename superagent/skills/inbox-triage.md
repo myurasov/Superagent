@@ -45,7 +45,6 @@ For each file (highest-confidence first), surface:
   What do you want to do?
     f - File at suggested location
     F - File at a different location (you specify)
-    a - Add as a `.ref.md` instead of moving the file (link, don't move)
     d - Discard (move to Tmp/_inbox-discarded/<date>/)
     l - Leave (defer for next time)
     s - Skip (will re-surface)
@@ -55,7 +54,6 @@ Per choice:
 
 - **f**: invoke `add-source --document <Inbox/path> --category <suggested category>`. The `add-source` skill moves the file and writes to `_memory/sources-index.yaml`.
 - **F**: prompt for category; same path with the override.
-- **a**: invoke `add-source --reference --kind file --source <Inbox/path>`. The original file stays where it is; a `.ref.md` is added at the user-chosen path under `Sources/` (typically `Sources/<category>/<short-slug>.ref.md`). Useful for one-off recordings or photos that the user wants indexed but not relocated.
 - **d**: move to `workspace/Tmp/_inbox-discarded/<YYYY-MM-DD>/<filename>` (so discards are reversible for 30 days before `doctor` cleans them).
 - **l**: leave the file in place; don't ask again until next triage run.
 - **s**: same as `l` but the next triage run re-surfaces it first.

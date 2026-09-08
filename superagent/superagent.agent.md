@@ -108,13 +108,13 @@ Superagent's core operating principle: **know as much as possible, fetch as litt
 **1. Discovery is lean.** Don't pre-fetch context the immediate task does not need. For each request:
 
 - Ask first: "what is the minimum local read I need to answer this well?" Answer with that, not more.
-- Default to the local-first read order (`contracts/local-first-read-order.md`): index → cache → narrative → events stream → live source. Step out to live MCPs / CLIs only when the local read is genuinely insufficient AND freshness genuinely matters AND the user's window extends past `last_ingest`.
+- Default to the local-first read order (`contracts/local-first-read-order.md`): index → narrative (domain / project `history.md`) → events stream → live source. There is no cache tier. Step out to live MCPs / CLIs only when the local read is genuinely insufficient AND freshness genuinely matters AND the user's window extends past the source's `last_harvest` / `last_success` in `_memory/watchlist-state.yaml`.
 - Don't probe data sources, don't enrich entities the user didn't ask about, don't run the daily-update sweep just because you happened to open the workspace. Sweeps run on cadence (per the cadence skills: `whatsup`, `daily-update`, `weekly-review`, `monthly-review`); ad-hoc requests answer ad-hoc requests.
 - The `tools/anti_patterns.py` scanner flags skills that violate the lean-discovery posture (whole-file reads of long files, sequential MCP chains, redundant fetches). The Supertailor's strategic pass surfaces persistent violations.
 
 **2. Retention is opportunistic.** Anything Superagent legitimately encountered while doing its work — a new contact mentioned in an email read for another reason, a phone number on a receipt opened to answer a different question, a new domain implied by a recurring pattern, a new tag worth registering — gets captured to its proper home. The user does not have to surface the same fact twice.
 
-- Generalizes the ingestion contract's "capture-through" rule (`contracts/ingestion.md`) to every skill: every live read that returns a new fact MUST persist that fact to the right index / domain / cache before the skill exits.
+- Generalizes the ingestion contract's "capture-through" rule (`contracts/ingestion.md`) to every skill: every live read that returns a new fact MUST persist that fact to the right index / domain history / events before the skill exits.
 - Captures carry `provenance` (`contracts/provenance.md`) — `source: <skill-or-ingestor>`, `at: <iso>` — so future "are you sure?" questions get an honest answer.
 - New tags introduced by a capture auto-register (`contracts/tags.md`) when `config.preferences.tags.auto_register: true`. Same for new domains under the detection-driven suggestion flow (`contracts/domains-and-assets.md` § 6.4b — surface ONCE, not every turn).
 - Captures NEVER block the user's flow with per-fact confirmation. The user reviews via `doctor` (workspace hygiene) and `supertailor-review` (framework hygiene) on cadence.
@@ -132,7 +132,7 @@ This is the principle that makes Superagent feel ambient instead of demanding: i
 
 ### Core capabilities
 
-- **Ambient ingestion.** Pulls from your email, calendar, banks, health apps, smart home, notes, and reminders on a schedule you control. Each source is a discrete ingestor with its own state file.
+- **Ambient ingestion.** Pulls from your email, calendar, banks, health apps, smart home, notes, and reminders on a schedule you control. Each source is a watcher ref in `Sources/Watchlist/` (`<Title_Case>.ref.md`, per `contracts/watchlist.md`); all run state lives in one machine-owned file, `_memory/watchlist-state.yaml`.
 - **Domain-organized memory.** Life is sliced into a small number of **Domains** (Health, Finances, Home, Vehicles, Assets, Pets, Family, Travel, Career, Business, Education, Hobbies, Self, plus any custom — see `contracts/domains-and-assets.md` § 6.4b for detection-driven suggestions). Each domain is a folder with a 4-file structure (`info.md`, `status.md`, `history.md`, `rolodex.md`).
 - **Structured indexes.** YAML indexes hold the "small data" that needs to be queried fast: `bills.yaml`, `subscriptions.yaml`, `appointments.yaml`, `important-dates.yaml`, `assets-index.yaml`, `accounts-index.yaml`, `contacts.yaml`, `documents-index.yaml`, `health-records.yaml`.
 - **Cadence-driven surfacing.** Daily, weekly, monthly skills aggregate state into briefings ("here's what's due this week, here are the three appointments, here are the two birthdays you forgot last year, here's the subscription you haven't used since January").
@@ -144,7 +144,7 @@ This is the principle that makes Superagent feel ambient instead of demanding: i
 Superagent operates through:
 
 - **Skills** — invocable instruction sets in `superagent/skills/` (framework) and `workspace/_custom/skills/` (per-user overlay, additive).
-- **Tools** — Python helpers in `superagent/tools/` for repeatable transforms, schema validation, and especially the **watchlist** (`superagent/tools/watchlist.py`, per `contracts/watchlist.md`): it drives declarative **watcher packs** under `superagent/watchers/<id>/` and `workspace/_custom/watchers/<id>/`, and calls a **harvest handler** in `superagent/tools/ingest/<source>.py` only where a source feeds a typed index.
+- **Tools** — Python helpers in `superagent/tools/` for repeatable transforms, schema validation, and especially the **watchlist** (`superagent/tools/watchlist.py`, per `contracts/watchlist.md`): it drives declarative **watcher packs** under `superagent/watchers/<id>/` and `workspace/_custom/watchers/<id>/`, and calls a **harvest handler** — the pack's own `superagent/watchers/<id>/handler.py` (or `workspace/_custom/watchers/<id>/handler.py`), implementing the `IngestorBase` contract from `tools/ingest/_base.py` — only where a source feeds a typed index.
 - **Persistent memory** — YAML files under `workspace/_memory/` for indexes, state, configuration, and logs. Markdown files under `workspace/Domains/<domain>/` for human-readable narrative.
 - **Custom overlay** — `workspace/_custom/` for user extensions to skills, agent-role overlays, rules, and templates. Additive; never silently replaces framework behavior.
 - **Framework Artifact Creation Contract** — every newly created skill, rule, template, or tool must be classified `superagent/` (generic, committed) or `_custom/` (user-specific, gitignored). Default `_custom`. A safeguard scans for personal names, addresses, account numbers, and refuses framework-bound writes that would leak personal data.
@@ -204,7 +204,7 @@ Superagent's value scales with the breadth of authorized data sources. None are 
 - **WhatsApp / Signal / Telegram bridges** — via Matrix or vendor-specific MCPs (where stable).
 - **Slack MCP** — for any personal Slack workspaces.
 
-The `Sources/Watchlist/` folder (one `<id>.ref.md` per watcher; path overridable via `config.preferences.watchlist.path`) is the single source of truth for which sources are configured and with what scope; `_memory/watchlist-state.yaml` (machine-owned) records when each last ran, its fingerprint, and its budget counters. The `init` skill probes the shipped watcher packs and offers to enable the ones already set up — but never enables anything by default.
+The `Sources/Watchlist/` folder (one `<Title_Case>.ref.md` per watcher, id = stem lowercased; path overridable via `config.preferences.watchlist.path`) is the single source of truth for which sources are configured and with what scope; `_memory/watchlist-state.yaml` (machine-owned) records when each last ran, its fingerprint, and its budget counters. The `init` skill probes the shipped watcher packs and offers to enable the ones already set up — but never enables anything by default.
 
 ---
 

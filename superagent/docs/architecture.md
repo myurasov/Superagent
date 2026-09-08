@@ -27,10 +27,10 @@ Superagent is a **personal-life operating system** built on five layers:
 1. **A structured-state vault** (`workspace/_memory/*.yaml`) — small, queryable indexes for things that need fast retrieval: bills, subscriptions, appointments, important dates, contacts, accounts, assets, documents, health records, projects, sources.
 2. **A narrative layer — Domains** (`workspace/Domains/<domain>/*.md`) — markdown for *ongoing* areas of responsibility (Health, Finances, Home, …). The story of each domain over time, the people in it, the routines.
 3. **A narrative layer — Projects** (`workspace/Projects/<slug>/*.md`) — markdown for *time-bounded* efforts (file taxes, plan trip, replace dishwasher, renovate kitchen). Same 4-file shape as Domains; they cross-link via `related_domains: [..]`.
-4. **A reference library — Sources** (`workspace/Sources/`) — immutable documents the user owns (`documents/`) plus pointers to external data (`references/<*>.ref.md`), with an evictable cache (`_cache/`) so the agent reads local first.
+4. **A reference library — Sources** (`workspace/Sources/`) — immutable documents the user owns (any layout, each optionally described by a `<doc>.<ext>.meta.md` sidecar) plus the watcher registry (`Watchlist/<Title_Case>.ref.md`, one per external thing watched for change). Documents are read from disk; external things are watched, never fetched on demand.
 5. **An agent skin** (`superagent/skills/*.md` + `superagent/tools/`) — invocable behaviours that read all four layers, write to layers 1-3, and speak the user's language.
 
-All layers are designed for **graceful degradation**. Structured vault works without narrative. Narrative works without structured. Sources work without ingestion. Agent skin works at the most basic level by reading and writing markdown — every advanced feature (ingestion, caching, surfacing, audit, the Supertailor / Supercoder loop) layers on top.
+All layers are designed for **graceful degradation**. Structured vault works without narrative. Narrative works without structured. Sources work without ingestion. Agent skin works at the most basic level by reading and writing markdown — every advanced feature (ingestion, surfacing, audit, the Supertailor / Supercoder loop) layers on top.
 
 The split between Domains and Projects is the PARA distinction made explicit:
 
@@ -64,8 +64,8 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 │   │   ├── _custom-starters/       ← starter content the user can copy into _custom/
 │   │   └── todo.md                 ← scoped task-view template
 │   ├── tools/                      ← workspace_init, validate, render_status, world, audit, watchlist, …
-│   │   └── ingest/                 ← _base (harvest-handler contract), simplefin (harvest), csv (standalone --file import)
-│   ├── watchers/                   ← shipped watcher packs: <id>/pack.yaml (+ optional handler.py) + _manifest.yaml
+│   │   └── ingest/                 ← _base (IngestorBase harvest-handler contract) + csv (standalone --file import) only
+│   ├── watchers/                   ← shipped watcher packs: <id>/pack.yaml (+ optional handler.py = the harvest handler) + _manifest.yaml
 │   ├── tests/                      ← pytest; runs against templates + tools + skills
 │   └── docs/                       ← this file + faq, data-sources, domain-guide, roadmap
 │       └── _internal/              ← Supertailor-only planning + history
@@ -78,11 +78,9 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
     │       └── Resources/          ←     drafts / working files / agent artifacts (lazy)
     ├── Projects/                   ← personal-life projects (time-bounded efforts)
     │   └── <project-slug>/         ←   info.md / status.md / history.md / rolodex.md / sources.md
-    ├── Sources/                    ← reference library (IMMUTABLE except _cache/)
-    │   ├── documents/              ←   actual local files; never deleted by skills
-    │   ├── references/             ←   `.ref.md` pointers to external data
-    │   ├── Watchlist/              ←   watcher registry: one `<id>.ref.md` per watched source (reserved name, user-editable)
-    │   └── _cache/                 ←   fetched copies (TTL + LRU eviction)
+    ├── Sources/                    ← reference library (IMMUTABLE to the agent; user-defined layout)
+    │   ├── <your-folders>/         ←   documents + optional `<doc>.<ext>.meta.md` sidecars; never deleted by skills
+    │   └── Watchlist/              ←   watcher registry: one `<Title_Case>.ref.md` per watched source (reserved name, user-editable)
     ├── Inbox/                      ← staging for incoming files
     ├── Outbox/                     ← shareable artifacts (drafts, summaries, handoff packet)
     ├── Archive/                    ← reversible archive (per `doctor` skill)
@@ -117,7 +115,7 @@ The two layers serve different access patterns:
 | `important-dates.yaml` | birthdays / anniversaries / deadlines | `important-dates`, `daily-update` |
 | `documents-index.yaml` | important documents (with expiration tracking) | `add-document`, `monthly-review`, `handoff` |
 | `health-records.yaml` | medical events, meds, vitals, conditions | `health-log`, `appointments` (medical), monthly-review |
-| `watchlist-state.yaml` | machine-owned run state per watcher (fingerprint, last_checked, error_streak, budget counters); the registry itself is `Sources/Watchlist/<id>.ref.md` | `tools/watchlist.py`, `watch`, cadence skills |
+| `watchlist-state.yaml` | machine-owned run state per watcher (fingerprint, last_checked, error_streak, budget counters); the registry itself is `Sources/Watchlist/<Title_Case>.ref.md` | `tools/watchlist.py`, `watch`, cadence skills |
 | `personal-signals.yaml` | self-development feedback (capture + surface) | `personal-signals`, `weekly-review`, Supertailor |
 | `action-signals.yaml` | "this should change" signals (target: tailor / superagent) | every skill (capture); Supertailor (drain) |
 | `supertailor-suggestions.yaml` | Supertailor's framework-improvement backlog | Supertailor, Supercoder |
@@ -144,7 +142,7 @@ Five complementary surfaces, each with one job:
 
 - **Skills** (`skills/*.md`) are **instructions for the agent** in human-readable markdown with YAML frontmatter. The agent reads the file when invoked and follows the steps. Skills do not contain executable code; they contain procedures the agent runs.
 - **Tools** (`tools/*.py`) are **executable Python** for repeatable transforms (scaffold, validate, render, hook). Tools are invoked from skills via the agent's shell tool (`uv run python superagent/tools/<tool>.py`).
-- **Watchers** (`watchers/<id>/pack.yaml`, and the user's own under `workspace/_custom/watchers/<id>/`) are **declarative source definitions** — detect config, optional harvest handler, declarative probe, auth pointer, schedule / capture-mode defaults — per `contracts/watchlist.md`. `tools/watchlist.py` implements the detect types once (`url`, `path`, `cmd`, `subagent`, `gmail`, `harvest`) plus lifecycle, throttling, budgets, and reporting; a pack needs code only when it feeds a typed index, in which case its handler implements `IngestorBase.run` (`tools/ingest/<source>.py` — `simplefin` today). The registry is `Sources/Watchlist/<id>.ref.md` (one file per watched source); the `watch` skill is the user-facing front-end; the cadence skills run `check --cycle <cycle>`.
+- **Watchers** (`watchers/<id>/pack.yaml`, and the user's own under `workspace/_custom/watchers/<id>/`) are **declarative source definitions** — detect config, optional harvest handler, declarative probe, auth pointer, schedule / capture-mode defaults — per `contracts/watchlist.md`. `tools/watchlist.py` implements the detect types once (`url`, `path`, `cmd`, `subagent`, `gmail`, `harvest`) plus lifecycle, throttling, budgets, and reporting; a pack needs code only when it feeds a typed index, in which case its own `watchers/<id>/handler.py` implements `IngestorBase.run` from `tools/ingest/_base.py` (`simplefin` today; `tools/ingest/` holds only the base contract and the standalone CSV importer). The registry is `Sources/Watchlist/<Title_Case>.ref.md` (one file per watched source; every `.ref.md` under `Sources/` is a watcher); the `watch` skill is the user-facing front-end; the cadence skills run `check --cycle <cycle>`.
 - **Contracts** (`contracts/*.md`) are **multi-actor protocols** that several skills, tools, or agent roles must implement so they can interoperate. *Every harvest MUST do X* / *every memory file is one of three shapes* / *every entity has a `<kind>:<slug>` handle*. Each contract is one .md file; skills cite the specific one they need (`contracts/<slug>.md`) and read only that file. Indexed by `contracts/_manifest.yaml`.
 - **Rules** (`rules/*.yaml`) are **machine-readable rule catalogues** the framework's tools enforce — currently the skill anti-pattern catalogue used by `tools/anti_patterns.py`. Users can extend them at `workspace/_custom/rules/<file>.yaml`.
 
@@ -246,8 +244,8 @@ The frameworks were designed for the pre-AI era when capture / organize / distil
 | `_memory/accounts-index.yaml` | account labels + last-4 (full creds in vault) | same; full creds NEVER stored here, always vault_ref |
 | `_memory/contacts.yaml` | phone numbers, addresses | same |
 | `Outbox/handoff/` | aggregated estate-handoff packet | print + safe-deposit-box; encrypted USB |
-| `Sources/documents/pets/*` | vet records (often contain home address) | encrypted destination |
-| `Sources/Watchlist/<id>.ref.md` `auth` / pack `auth.ref` | references to credentials | not the credentials themselves; references to a vault or a `_memory/sensitive/` file |
+| the `Sources/` folder you keep pet records in (e.g. `Sources/Pets/`) | vet records (often contain home address) | encrypted destination |
+| pack `auth.ref` (a `Sources/Watchlist/<Title_Case>.ref.md` carries no auth field) | references to credentials | not the credentials themselves; references to a vault or a `_memory/sensitive/` file |
 
 In MVP, no built-in encryption. Roadmap entry "Sensitive-store options" (`docs/roadmap.md`) tracks the path to native encryption support.
 
@@ -268,13 +266,13 @@ Built-in multi-user / sync is on the roadmap (LOE-L: "Multi-user vault with last
 | Memory schema | 32 YAML templates, all v1, all schema-validated |
 | Domain templates | 5-file (info / status / history / rolodex / sources) + per-domain `parent`, `visibility`, `provenance` |
 | Project templates | 5-file with charter; can be instantiated from a workflow |
-| Sources templates | `.ref.md` template + `Sources/` folder convention with cache |
+| Sources templates | `ref.md` watcher template (`ref_version: 2`) + `Sources/` folder convention (documents, `.meta.md` sidecars, `Watchlist/` registry; no cache) |
 | Workflow templates | 5 starter workflows + `_schema.yaml` |
 | Skills | ~50 skills documented + indexed in `skills/_manifest.yaml`; long ones carry an auto-generated step index |
 | Contracts | 39 multi-actor contracts under `contracts/`, indexed by `contracts/_manifest.yaml` |
 | Rules | machine-readable rule catalogues (anti-patterns shipped) + `workspace/_custom/rules/` user overlay |
-| Tools | ~30 shipped + tested (workspace_init, validate, render_status, render_report, world, sources_cache, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, ...) |
-| Watchlist | `tools/watchlist.py` (six detect types, lifecycle, throttle + budget enforcement, `--report`), `Sources/Watchlist/` registry, `_memory/watchlist-state.yaml`, 4 shipped packs (`simplefin`, `gmail`, `url`, `cmd`, `path`, `subagent`) + `_custom/watchers/` overlay, `IngestorBase` harvest contract, standalone `csv` importer |
+| Tools | ~30 shipped + tested (workspace_init, validate, render_status, render_report, world, sources_index, watchlist, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, ...) |
+| Watchlist | `tools/watchlist.py` (six detect types, lifecycle, throttle + budget enforcement, `--report`), `Sources/Watchlist/` registry, `_memory/watchlist-state.yaml`, six shipped packs (`simplefin`, `gmail`, `url`, `cmd`, `path`, `subagent`) + `_custom/watchers/` overlay, `IngestorBase` harvest contract, standalone `csv` importer |
 | World graph | `_memory/world.yaml` derived state; `tools/world.py related <handle>` |
 | Events stream | quarterly-partitioned `_memory/events/<YYYY-Qn>.yaml`; cross-entity timeline queries |
 | Tests | ~100 pytest tests; all passing |

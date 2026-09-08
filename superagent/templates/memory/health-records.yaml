@@ -148,7 +148,7 @@ vaccines:
     site: ""
     notes: ""
 
-# --- Lab results / imaging summaries (append-only summaries; PDFs go in Sources/documents/medical/<member>/) ---
+# --- Lab results / imaging summaries (append-only summaries; PDFs go under Sources/<your-folders>/, e.g. Sources/Medical/<member>/) ---
 results:
   # Each row:
   #   date              — ISO 8601
@@ -157,7 +157,7 @@ results:
   #   ordered_by        — Contact id
   #   abnormal          — true | false (true = surface in next monthly review)
   #   summary           — One-paragraph summary (the user's takeaway)
-  #   path              — Optional path to the PDF / scan in Sources/documents/medical/<member>/
+  #   path              — Optional path to the PDF / scan under Sources/ (your layout, e.g. Sources/Medical/<member>/)
   #   notes             — Free text
   - date: null
     member: ""

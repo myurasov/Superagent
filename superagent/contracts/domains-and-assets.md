@@ -216,7 +216,7 @@ Assets are physical things you own (vehicles, electronics, appliances, jewelry, 
 
 1. Ask: name, kind (vehicle / appliance / electronics / jewelry / tool / instrument / collectible / other), domain (which Domain owns it — Vehicles, Home, Hobbies, …), purchase date, purchase price, serial / VIN if applicable, warranty expiration if applicable, notes.
 2. Append a row to `_memory/assets-index.yaml`.
-3. **Source documents** (titles, registrations, warranties, vault-grade receipts) → invoke `add-source --to-domain <domain> --asset <asset-slug>` for each. Files land in `Sources/documents/<category>/<asset-slug>/`; pointers added to `Domains/<Domain>/sources.md`. NEVER under `Domains/<X>/` directly.
+3. **Source documents** (titles, registrations, warranties, vault-grade receipts) → invoke `add-source --to-domain <domain> --asset <asset-slug>` for each. Files land under `Sources/<your-folders>/` — the `Sources/` layout is the user's (`contracts/sources.md` § 15.1), e.g. `Sources/Vehicles/<asset-slug>/`; pointers added to `Domains/<Domain>/sources.md`. NEVER under `Domains/<X>/` directly.
 4. **Working files** (context photos, scratch worksheets, agent-rendered briefings) → `Domains/<Domain>/Resources/<asset-slug>/` (lazy; created on first write).
 4. If the asset has a recurring maintenance schedule (vehicle oil change, HVAC filter change, septic pump-out), the skill prompts to add maintenance rows to `bills.yaml` (one-shot or recurring) AND to the domain's `status.md` `Next Steps` section.
 
@@ -224,7 +224,7 @@ Assets are physical things you own (vehicles, electronics, appliances, jewelry, 
 
 `Resources/` is created lazily, inside the relevant `Domains/<domain>/` (or `Projects/<slug>/`) folder, the first time a working file is written. There is no workspace-wide `Resources/`.
 
-`Resources/` holds **drafts, working files, photos-as-references, and agent-generated artifacts** that are NOT meant to leave the workspace (`Outbox/` is for those) and NOT vault-grade canonical records (`Sources/documents/<category>/` is for those).
+`Resources/` holds **drafts, working files, photos-as-references, and agent-generated artifacts** that are NOT meant to leave the workspace (`Outbox/` is for those) and NOT vault-grade canonical records (`Sources/<your-folders>/` is for those).
 
 Per-asset / per-event sub-folders inside a domain's `Resources/` are encouraged (e.g. `Domains/Vehicles/Resources/blue-camry-2018/` for fuel-log CSVs and label photos; `Domains/Home/Resources/hvac/` for leak photos and scratch quote-comparisons).
 
@@ -245,7 +245,7 @@ The same 5-file structure applies to Projects (`Projects/<slug>/`).
 ### 6.7 Archival rules
 
 - A **domain** with no `history.md` entry in 12 months and no open tasks → surfaced by `doctor` for archive into `workspace/Archive/<YYYY-MM>/Domains/`.
-- An **asset** that the user marks `status: disposed` (sold, donated, lost, replaced) → moved to `_memory/assets-index.yaml.disposed[]` (kept for tax / insurance history) and the corresponding `Domains/<X>/Resources/<asset-slug>/` working folder moved to `Archive/`. The asset's source documents in `Sources/documents/<category>/<asset-slug>/` stay where they are (immutable per § 15.2); the user moves them manually if desired.
+- An **asset** that the user marks `status: disposed` (sold, donated, lost, replaced) → moved to `_memory/assets-index.yaml.disposed[]` (kept for tax / insurance history) and the corresponding `Domains/<X>/Resources/<asset-slug>/` working folder moved to `Archive/`. The asset's source documents under `Sources/<your-folders>/` (e.g. `Sources/Vehicles/<asset-slug>/`) stay where they are (immutable per § 15.2); the user moves them manually if desired.
 - A **completed appointment / paid bill / past important date** → retained in indexes for 12 months (so the year-over-year skills work), then rotated by `doctor` into year-stamped archive YAMLs (`bills-2024.yaml`, etc.).
 
 Archival is **always reversible** — moving back from `Archive/` is a single `mv` command.

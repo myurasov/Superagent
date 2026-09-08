@@ -59,9 +59,9 @@ DEFAULT_DOMAINS = [
 ]
 
 # `templates/memory/*.yaml` files that are NOT seeded into a new workspace.
-# `data-sources.yaml` was retired by 0.19.0 (sources are `.ref.md` files under
-# `Sources/Watchlist/`, run state lives in `watchlist-state.yaml`); the guard
-# holds even while the old template file lingers in the tree.
+# `data-sources.yaml` was retired by 0.19.0 (sources are watcher `.ref.md`
+# files under `Sources/Watchlist/`, run state lives in `watchlist-state.yaml`);
+# the guard holds even while the old template file lingers in the tree.
 RETIRED_MEMORY_TEMPLATES = frozenset({"data-sources.yaml"})
 
 # Watcher registry folder (relative to the workspace) and the memory singleton
@@ -74,27 +74,32 @@ WATCHLIST_STATE_DEFAULT = (
     "# [Do not change manually — managed by Superagent]\n"
     "# Superagent memory: machine-owned run state of the watchlist\n"
     "# (contracts/watchlist.md). Keyed by watcher id = the filename stem of\n"
-    "# `Sources/Watchlist/<id>.ref.md`. Only `tools/watchlist.py` writes here.\n"
+    "# `Sources/Watchlist/<Title_Case>.ref.md`, lowercased. Only\n"
+    "# `tools/watchlist.py` writes here.\n"
     "\n"
     "schema_version: 1\n"
     "watchers: {}\n"
 )
 WATCHLIST_README_DEFAULT = """# `Sources/Watchlist/` -- the watcher registry
 
-Every `<id>.ref.md` in this folder is a normal Sources reference (canonical
-frontmatter per `superagent/templates/sources/ref.md`) that ALSO carries a
-`watch:` block. The filename stem is the watcher id, its state key, and its
-handle (`watch:<id>`). Rename = move the file.
+Every `.ref.md` in this folder is a WATCHER DEFINITION (`ref_version: 2`,
+template `superagent/templates/sources/ref.md`): `title`, `description`,
+`related_*`, `tags`, provenance, and the `watch:` block. Filenames are
+Title_Case (`Simplefin.ref.md`, `Home_Assistant-Hub.ref.md`); the watcher
+id is the stem lowercased (`simplefin`) -- its state key and its handle
+(`watch:simplefin`). Files resolve case-insensitively; rename = move the file.
 
 - The folder name is reserved (`config.preferences.watchlist.path`); its
   contents are yours -- hand-author, edit, or delete any ref here.
-- `kind` / `source` stay the ref's locator. `watch.type` defaults from `kind`
-  (`url` -> `url`, `cli` -> `cmd`, `file` -> `path`, `manual` -> `subagent`);
-  `watch.pack: <id>` uses a shipped pack instead (`superagent/watchers/<id>/`
-  or `workspace/_custom/watchers/<id>/`).
-- `ttl_minutes` governs read freshness for `sources fetch` only -- never
-  change detection. Detect keeps its own fingerprint in
-  `_memory/watchlist-state.yaml`, which only the watchlist tool writes.
+- `watch.pack: <id>` inherits a shipped pack (`superagent/watchers/<id>/`) or
+  a custom one (`workspace/_custom/watchers/<id>/`); a bare watcher sets
+  `watch.type` (`url` / `path` / `cmd` / `subagent`) and its locator inside
+  `watch:` (`url:` / `path:` / `cmd:` / `prompt:`). One of `pack` / `type`
+  is required; nothing defaults from a `kind` any more.
+- Document metadata is NOT a ref: it lives in `<doc>.<ext>.meta.md` next to
+  the document, anywhere else under `Sources/`.
+- Detect keeps its fingerprints in `_memory/watchlist-state.yaml`, which
+  only the watchlist tool writes.
 - `enabled: false` pauses a watcher. `cmd` watchers run only when
   `config.preferences.watchlist.allow_cmd` is true.
 
@@ -135,6 +140,14 @@ def render_domain_file(template: str, domain_name: str) -> str:
         .replace("{{DOC_1_ADDED}}", "—")
         .replace("{{DOC_1_NOTES}}", "no entries yet")
         .replace("{{DOCUMENTS_TABLE_ROWS}}", "")
+        # `## Watchers` table (0.20.0; the 0.19.0 `## References` placeholders
+        # below it are kept so an older custom template still renders).
+        .replace("{{WATCH_1_TITLE}}", "—")
+        .replace("{{WATCH_1_PATH}}", "—")
+        .replace("{{WATCH_1_TYPE}}", "—")
+        .replace("{{WATCH_1_TARGET}}", "—")
+        .replace("{{WATCH_1_NOTES}}", "no entries yet")
+        .replace("{{WATCHERS_TABLE_ROWS}}", "")
         .replace("{{REF_1_TITLE}}", "—")
         .replace("{{REF_1_PATH}}", "—")
         .replace("{{REF_1_KIND}}", "—")

@@ -31,17 +31,31 @@ that runs a command shows the command text so it is visible in a briefing.
 
 ## Example
 
+Pack instance (the locator comes through `watch.params`):
+
 ```yaml
-# Sources/Watchlist/lab-main-head.ref.md
+# Sources/Watchlist/Lab-Main-Head.ref.md  →  watch:lab-main-head
 ---
-ref_version: 1
+ref_version: 2
 title: "Lab repo — main HEAD"
-kind: cli
-source: "git ls-remote https://github.com/example/lab.git HEAD"
 watch:
   pack: cmd
   params:
     cmd: "git ls-remote https://github.com/example/lab.git HEAD"
+  min_check_interval_minutes: 360
+---
+```
+
+Bare watcher (no pack; the locator is `watch.cmd`):
+
+```yaml
+# Sources/Watchlist/Lab-Main-Head.ref.md  →  watch:lab-main-head
+---
+ref_version: 2
+title: "Lab repo — main HEAD"
+watch:
+  type: cmd
+  cmd: "git ls-remote https://github.com/example/lab.git HEAD"
   min_check_interval_minutes: 360
 ---
 ```

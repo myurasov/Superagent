@@ -86,10 +86,7 @@ When generating a path from a user-supplied string (e.g. an email subject, a con
 
 | Name | Purpose |
 |---|---|
-| `_cache/` | Sources fetch cache (under `Sources/`). |
 | `_summary.md` | Agent-generated folder summary. Captures OCR / extraction of nearby files so future skills don't re-OCR. |
-| `_meta.yaml` | Cache-row metadata (under `_cache/<hash>/`). |
-| `_toc.yaml` | Cache-row chunk table-of-contents (under `_cache/<hash>/`). |
 | `_custom/` | Per-user overlay (under `workspace/`). |
 
 When slugifying or sweep-renaming, the agent MUST preserve a single leading `_` if the original name began with `_`. Trim only EXCESS leading underscores (`___foo` → `_foo`). The right-side trim of `_` and `-` continues to apply normally.

@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import inspect
 import json
 import re
 import shutil
@@ -211,6 +212,69 @@ def _leading_comments(text: str) -> str:
     while out and not out[-1].strip():
         out.pop()
     return ("\n".join(out) + "\n\n") if out else ""
+
+
+# ---------------------------------------------------------------------------
+# 0.19.0-era reference-file helpers. PRIVATE on purpose: this migration reads
+# the 0.18.x shapes it converts (`.ref.md` AND `.ref.txt` references, a
+# `<doc>.ref.md` sidecar beside its document) and must not depend on a later
+# release's index rules -- since 0.20.0 `tools/sources_index.py` knows only
+# registry `.ref.md` watchers and `<doc>.<ext>.meta.md` sidecars.
+# ---------------------------------------------------------------------------
+
+REF_SUFFIXES = (".ref.md", ".ref.txt")
+_FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
+
+
+def is_ref_file(path: Path) -> bool:
+    """True for a 0.18.x reference file (`.ref.md` or `.ref.txt`)."""
+    return any(path.name.endswith(suffix) for suffix in REF_SUFFIXES)
+
+
+def ref_stem(path: str | Path) -> str | None:
+    """The ref filename minus its `.ref.md` / `.ref.txt` suffix, or None if not a ref."""
+    name = Path(path).name
+    for suffix in REF_SUFFIXES:
+        if name.endswith(suffix):
+            return name[: -len(suffix)] or None
+    return None
+
+
+def companion_document(ref_path: Path) -> Path | None:
+    """The document a ref describes: form A `<doc>.<ext>.ref.md` beside `<doc>.<ext>`,
+    or form B `<stem>.ref.md` beside `<stem>.<ext>`; None for a standalone ref."""
+    stem = ref_stem(ref_path)
+    if stem is None:
+        return None
+    parent = ref_path.parent
+    full = parent / stem
+    if full.is_file() and not is_ref_file(full):
+        return full
+    try:
+        siblings = sorted(p for p in parent.iterdir()
+                          if p.is_file() and p.name != ref_path.name and not is_ref_file(p)
+                          and p.stem == stem)
+    except OSError:
+        return None
+    return siblings[0] if siblings else None
+
+
+def parse_canonical_ref(path: Path) -> tuple[dict[str, Any] | None, str]:
+    """(frontmatter, body) for a canonical ref; (None, raw text) otherwise. Never raises."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None, ""
+    m = _FRONTMATTER_RE.match(text)
+    if not m:
+        return None, text
+    try:
+        fm = yaml.safe_load(m.group(1))
+    except yaml.YAMLError:
+        return None, text
+    if not isinstance(fm, dict):
+        return None, text
+    return fm, m.group(2).strip()
 
 
 # ---------------------------------------------------------------------------
@@ -386,10 +450,10 @@ def _source_points_at_sibling(ref_path: Path, workspace: Path, source: Any) -> b
 
 def classify_ref(ref_path: Path, workspace: Path) -> tuple[str, str, dict[str, Any] | None]:
     """Return (`standalone` | `sidecar` | `noncanonical`, reason, frontmatter)."""
-    companion = si.companion_document(ref_path)
+    companion = companion_document(ref_path)
     if companion is not None:
         return "sidecar", f"sibling document {companion.name}", None
-    fm, _body = si.parse_canonical_ref(ref_path)
+    fm, _body = parse_canonical_ref(ref_path)
     if fm is None:
         return "noncanonical", "no canonical frontmatter (normalize before watching)", None
     if any(k in fm for k in PAYMENT_KEYS):
@@ -462,7 +526,7 @@ def candidate_refs(workspace: Path, registry: Path) -> list[Path]:
     reg = registry.resolve()
     for root in ref_scan_roots(workspace):
         for path in sorted(root.rglob("*")):
-            if not path.is_file() or not si.is_ref_file(path):
+            if not path.is_file() or not is_ref_file(path):
                 continue
             try:
                 resolved = path.resolve()
@@ -710,7 +774,7 @@ class Migration:
                 self._say(f"keep {rel} ({reason})")
                 continue
             assert fm is not None
-            stem = si.ref_stem(ref.name) or ref.stem
+            stem = ref_stem(ref.name) or ref.stem
             dest = self.registry / f"{ref_id(stem)}.ref.md"
             if dest.exists():
                 self._say(f"keep {rel} (target {self._rel(dest)} already exists; resolve by hand)")
@@ -813,7 +877,12 @@ class Migration:
         idx_path = si.index_path(self.ws)
         if idx_path.exists():
             self._checkpoint(idx_path)
-        si.refresh(self.ws, force=True)
+        # The installed index tool does the refresh (whatever release it is);
+        # its indexing warnings are echoed when it offers the `warn` hook (0.20.0+).
+        kwargs: dict[str, Any] = {}
+        if "warn" in inspect.signature(si.refresh).parameters:
+            kwargs["warn"] = lambda m: self._say(f"index: {m}")
+        si.refresh(self.ws, force=True, **kwargs)
         self._say("_memory/sources-index.yaml: refreshed (derived)")
 
     def step_config(self) -> None:

@@ -79,11 +79,16 @@ def test_logging_snippet_skill_is_manifest_stem(logging_row: dict) -> None:
     assert logging_row["skill"] == "sources"
 
 
-def test_logging_snippet_action_covers_each_cache_verb(logging_row: dict) -> None:
+def test_logging_snippet_action_covers_each_read_verb(logging_row: dict) -> None:
+    # 0.20.0: the skill is read-only over documents, sidecars and watchers —
+    # `open` / `show` / `rescan`. The retired cache verbs (fetch / refresh /
+    # evict) must not come back through the logging placeholder.
     action = logging_row["action"]
     assert isinstance(action, str)
-    for verb in ("fetch", "refresh", "evict"):
+    for verb in ("open", "show", "rescan"):
         assert verb in action, f"action placeholder does not cover `{verb}`: {action!r}"
+    for retired in ("fetch", "evict"):
+        assert retired not in action, f"retired cache verb `{retired}` is back: {action!r}"
 
 
 def test_logging_snippet_defaults(logging_row: dict) -> None:

@@ -1,80 +1,93 @@
 ---
-# Reference file — points at where a piece of data actually lives.
+# Watcher definition — one file per watcher under `Sources/Watchlist/`
+# (or wherever `config.preferences.watchlist.path` points).
 #
-# Place ANYWHERE under `Sources/` (the layout is yours). The file extension
-# can be `.ref.md` (this template, with YAML frontmatter) OR `.ref.txt`
-# (any plaintext "Key: value" or bare-URL form — the agent normalizes it
-# to this canonical shape on first use, with your permission).
+# A `.ref.md` IS A WATCHER AND NOTHING ELSE (ref_version 2, since 0.20.0).
+# The older reference locator (`kind` / `source` / `ttl_minutes` / `sensitive` /
+# `auth_ref` / `chunk_for_large` / `normalized_at`) is gone: a file that still
+# carries one of those keys is rejected on load with a pointer at the 0.20.0
+# migration. Document metadata is NOT a ref — it lives in `<doc>.<ext>.meta.md`
+# next to the document, anywhere under `Sources/`.
 #
-# Skills resolve this file to fetch the underlying data via the matching
-# ingestor; the result is cached at `Sources/_cache/<hash>/` (or wherever
-# `config.preferences.sources.cache_path` points).
+# FILENAME: Title_Case of the id — capitalize the first letter of every `_`-
+# or `-`-delimited token: `Simplefin.ref.md`, `Home_Assistant-Hub.ref.md`,
+# `Gmail-Bills.ref.md`. THE STEM LOWERCASED IS THE ID (`simplefin`,
+# `home_assistant-hub`): the state key and the handle (`watch:<id>`),
+# matching `^[a-z0-9][a-z0-9_-]{0,62}$`. Files resolve case-insensitively;
+# two files whose lowercase stems collide are a load error. Renaming the file
+# renames the watcher (the tool warns about the orphaned state row and
+# offers to carry it across). A watcher is also called an "ext-source".
+#
+# INHERITANCE RULE: a `watch.` key that is PRESENT — even as `null` — is
+# set on this row. A key that is ABSENT inherits: pack default, then
+# `config.preferences.watchlist`, then the built-in default. That is why
+# most keys below are commented out — uncomment only what you mean to pin.
 
-ref_version: 1
+ref_version: 2
 
-# --- What this points at ---
+# --- What this watches ---
 title: "<short title>"
-description: "<one-line description of what this contains>"
+description: "<one line: what changes here and why you care>"
 
-# --- Where to get it (kind + source are REQUIRED) ---
-kind: ""
-  # one of:
-  #   mcp     — fetched via a configured MCP tool call
-  #   cli     — fetched by running a shell command
-  #   url     — fetched by HTTP GET (no auth or simple token)
-  #   api     — fetched via authenticated API call (token in vault)
-  #   file    — read from a local file path (outside Sources/)
-  #   vault   — pulled from a password manager / secure notes vault
-  #   manual  — must be fetched by the user (e.g. portal that requires 2FA);
-  #             ingest is impossible programmatically; skill prompts user
-source: ""
-  # The source identifier. Format depends on `kind`:
-  #   mcp:    "<server>/<tool>?param1=value1&param2=value2"
-  #            e.g. "user-MaaS Outlook/outlook_get_message?id=AAMkAG..."
-  #   cli:    full shell command to run
-  #            e.g. "rem list --json --list 'Errands'"
-  #   url:    full URL
-  #            e.g. "https://example.gov/forms/1040.pdf"
-  #   api:    URL + a hint of auth (full creds in vault, never here)
-  #            e.g. "https://api.fidelity.com/v1/accounts/<acct>/balances"
-  #   file:   absolute or ~-relative path
-  #            e.g. "~/Documents/old-tax-returns/2020.pdf"
-  #   vault:  vault item reference
-  #            e.g. "1Password://Personal/2024-tax-pin"
-  #   manual: human-readable instructions
-  #            e.g. "Log in to mychart.kp.org → Records → Visit notes → Apr 2026"
-
-# --- Optional: auth / parameters ---
-auth_ref: ""
-  # Vault reference to credentials needed (e.g. "1Password://Personal/fidelity-api").
-  # Skills resolve via the password manager; never store creds in this file.
-
-params: {}
-  # Additional source-specific parameters (key/value).
-
-# --- Caching policy ---
-ttl_minutes: 1440         # how long the cached fetch stays fresh (default 24h; 0 = never cache)
-sensitive: false          # if true, cache is encrypted (when sensitive-store is enabled)
-chunk_for_large: true     # split fetched data into chunks if > config.sources.chunk_threshold_kb
-
-# --- Cross-references ---
-related_domain: ""        # domain id from domains-index.yaml
-related_project: ""       # project id from projects-index.yaml
-related_asset: ""         # asset id from assets-index.yaml
-related_account: ""       # account id from accounts-index.yaml
+# --- Cross-references (become world.yaml edges from `watch:<id>`) ---
+related_domain: ""
+related_project: ""
+related_asset: ""
+related_account: ""
 
 # --- Provenance ---
-added_by: "user"          # user | <skill-name> | <ingestor-name>
-added_at: null            # ISO 8601 datetime
-normalized_at: null       # ISO 8601 datetime (set by the normalizer when this file
-                          # was rewritten from a freeform .ref.txt / loose form)
+added_by: "user"            # user | watch | <skill-name> | <migration version>
+added_at: null              # ISO 8601 datetime
 
-# --- Tagging ---
 tags: []
+
+# --- The watch block (contracts/watchlist.md § 2 for every field) ---
+# ONE of `pack` / `type` is REQUIRED. Nothing defaults from anything else.
+watch:
+  enabled: true             # false = paused: state frozen, never checked, never aged
+  # pack: gmail             # inherit detect / harvest / probe / auth / defaults from a pack:
+                            #   shipped: simplefin | gmail | url | cmd | path | subagent; or a
+                            #   folder under workspace/_custom/watchers/. Overrides `type`.
+  # type: url               # a BARE (packless) watcher: url | path | cmd | subagent, with its
+                            #   locator below. `gmail` and `harvest` need a pack.
+                            #   (`index_query` is reserved and rejected this release)
+  # --- locator of a bare watcher (one of these, matching `type`) ---
+  # url: "https://example.gov/status"    # type url: the page to fetch (http/https, no credentials)
+  # path: "~/Downloads/statements"       # type path: a local file or directory
+  # cmd: "git ls-remote https://x HEAD"  # type cmd: the shell command (refused until
+                                         #   config allow_cmd: true)
+  # prompt: >-                           # type subagent: read-only prompt asking for ONE line
+  #   Read ... return ONE line: the delta, or "no change".
+  # query: "label:Bills newer_than:30d"  # gmail: overrides a `pack: gmail` instance's query
+  # --- pack instances supply their locator through params instead ---
+  # params:                 # values for a parameterized pack's {{name}} placeholders
+  #   query: "label:Bills newer_than:30d"      # gmail
+  #   url: "https://example.gov/status"        # url
+  #   selector: "#status-panel"                # url (optional)
+  #   prompt: "Read ... return ONE line ..."   # subagent (read-only!)
+  #   cmd: "git ls-remote https://x HEAD"      # cmd
+  #   path: "~/Downloads/statements"           # path
+  # --- lifecycle ---
+  # status: active          # write this line to REVIVE an evicted watcher — the edit's
+                            #   mtime is the signal; the next run re-arms it
+  # cycles: [daily-update]  # fastest cadence that checks it: daily-update | weekly-review | monthly-review;
+                            #   cycles nest — a weekly run also checks daily watchers, monthly checks all
+  # evict_after_days: 14    # days without a detected change before mark-only eviction;
+                            #   null = never (right for an infrastructure feed such as a bank)
+  # expires: "2026-12-31"   # hard end of life — evicted the day after
+  # min_check_interval_minutes: 720   # throttle regardless of cycle (720 = at most twice a day)
+  # schedule: weekly        # daily | weekly | monthly | manual — cadence hint; maps to `cycles`
+                            #   when `cycles` is absent
+  # capture_mode: manual    # automatic | manual — manual: a cadence check NEVER dispatches
+                            #   this watcher's harvest; only `harvest --id <id>` after your yes
+  # --- url hardening (type url / pack url) ---
+  # selector: "#status-panel"       # CSS selector scoping the fingerprint to one element
+  # ignore_patterns: ["\\d{2}:\\d{2}:\\d{2}"]   # regexes removed before hashing (clocks, counters, tokens)
+  # min_change_interval_minutes: 1440          # a flapping page alerts at most once per window
 ---
 
 # Notes
 
-<!-- Free-text. Why this exists, what to look for in it, how to interpret. -->
-<!-- The agent reads this section AFTER the frontmatter, BEFORE fetching, to
-     decide whether to fetch at all (sometimes the notes answer the question). -->
+<!-- Free text. Why this is watched, what a change would mean, who to tell. -->
+<!-- Never parsed by the tool; shown by `list` / show. A subagent's stamped
+     note lives in _memory/watchlist-state.yaml, not here. -->

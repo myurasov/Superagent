@@ -113,9 +113,10 @@ def test_init_seeds_watchlist_registry_and_state(initialized_workspace: Path) ->
 def test_init_does_not_force_sources_subfolders(initialized_workspace: Path) -> None:
     """Sources/ ships with ONLY README.md; layout is user-defined.
 
-    The agent reserves only `Sources/_cache/` (created lazily on first fetch)
-    and `Sources/README.md`. Documents and references live wherever the user
-    puts them. See contracts/sources.md \u00a7 15.1.
+    The agent reserves only `Sources/README.md` and the `Sources/Watchlist/`
+    registry. Documents (and their `.meta.md` sidecars) live wherever the user
+    puts them. The 0.19.0 fetch cache (`Sources/_cache/`) is retired and is
+    never created. See contracts/sources.md.
     """
     sources = initialized_workspace / "Sources"
     assert sources.is_dir()
@@ -124,7 +125,7 @@ def test_init_does_not_force_sources_subfolders(initialized_workspace: Path) -> 
     assert [p.name for p in sources.iterdir() if p.is_dir()] == ["Watchlist"]
     assert not (sources / "documents").exists(), "Sources/documents/ no longer auto-created"
     assert not (sources / "references").exists(), "Sources/references/ no longer auto-created"
-    assert not (sources / "_cache").exists(), "Sources/_cache/ should be lazy-created on first fetch"
+    assert not (sources / "_cache").exists(), "Sources/_cache/ was retired in 0.20.0; never created"
 
 
 def test_init_does_not_pre_create_outbox_subfolders(

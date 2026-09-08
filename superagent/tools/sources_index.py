@@ -8,25 +8,37 @@ The filesystem under `Sources/` (and per-project `Projects/<slug>/Sources/`)
 is the source of truth; `_memory/sources-index.yaml` is a derived view that
 this module rebuilds on demand.
 
+`Sources/` holds three things (since 0.20.0): the user's DOCUMENTS (any
+file), optional document SIDECARS `<doc>.<ext>.meta.md` carrying metadata for
+the document next to them, and the WATCHER registry `Sources/Watchlist/`
+(`config.preferences.watchlist.path`) whose `<Title_Case>.ref.md` files are
+watcher definitions (`contracts/watchlist.md`). Every `.ref.md` is a watcher;
+one found outside the registry is a "stray" indexing warning and is not
+indexed. `.ref.txt` is not read by anything.
+
 Key invariants:
   - Hand-curated fields in the index (`notes`, `tags`, `sensitive`,
     `related_*`, `last_accessed`, `read_count`) are PRESERVED across refreshes.
-  - The cache subtree (`Sources/_cache/`, or wherever `cache_path` is set)
-    and `Sources/README.md` are excluded from the index.
+  - `README.md` files and dotfiles are excluded. A leftover `_cache/` folder
+    (the 0.19.0 fetch cache, retired) is skipped so it never pollutes the index.
   - Refreshes are lazy: if no file under `Sources/` has an mtime newer than
     `last_filesystem_scan`, the routine no-ops.
   - Missing files are kept for one cycle with `present: false` before being
     dropped, so an accidental `rm` doesn't immediately destroy hand-curated
     notes / cross-references.
-  - Watchers (`Sources/Watchlist/<id>.ref.md`, per `contracts/watchlist.md`)
-    are indexed like any other reference; their frontmatter `watch:` mapping
-    is lifted into the row as `watch` so `sources list` / `search` see them.
-    The mapping is carried across refreshes and only dropped when the file
-    itself parses without a `watch:` block.
+  - A sidecar is metadata FOR its document: the document gets the row (kind
+    `document`, keyed by the document's path) with the sidecar's frontmatter
+    applied; the sidecar itself has no row. A sidecar with no document next
+    to it is an "orphan" warning and is not indexed.
+  - Watchers are rows of kind `watcher`, keyed by the ref path; their
+    frontmatter `watch:` mapping is lifted into the row as `watch` so
+    `sources list` / `search` and `tools/world.py` see them. The mapping is
+    carried across refreshes and only dropped when the file itself parses
+    without a `watch:` block.
 
 CLI:
   uv run python -m superagent.tools.sources_index refresh [--force]
-  uv run python -m superagent.tools.sources_index list   [--kind document|reference] [--category X]
+  uv run python -m superagent.tools.sources_index list   [--kind document|watcher] [--category X]
   uv run python -m superagent.tools.sources_index get    <id>
   uv run python -m superagent.tools.sources_index by-path <path>
   uv run python -m superagent.tools.sources_index touch  <id>     # mark last_accessed=now, read_count++
@@ -41,19 +53,33 @@ import hashlib
 import json
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from superagent.tools.validate import DEFAULT_WATCHLIST_PATH, META_SUFFIX, REF_SUFFIX
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-REF_SUFFIXES = (".ref.md", ".ref.txt")
 SOURCES_DIRNAME = "Sources"
 RESERVED_NAMES = {"README.md"}
-DEFAULT_CACHE_REL = "Sources/_cache"
+# The 0.19.0 fetch cache lived at `Sources/_cache/`; retired in 0.20.0. A
+# leftover folder is skipped so its raw payloads never become "documents".
+LEGACY_CACHE_DIRNAME = "_cache"
+# Row kinds. `document` = a user file (with or without a `.meta.md` sidecar);
+# `watcher` = a `.ref.md` in the registry (contracts/watchlist.md).
+KIND_DOCUMENT = "document"
+KIND_WATCHER = "watcher"
+ROW_KINDS = (KIND_DOCUMENT, KIND_WATCHER)
+# Internal marker for a scanned path that yields no row of its own (a sidecar
+# whose document carries the metadata, a stray ref, an orphan sidecar).
+_SKIP = "_skip"
+
+Warn = Callable[[str], None]
 
 # Field names that the user may hand-curate; refresh MUST preserve them.
 # `title` is derived from the filename by default (`title_from_filename`) but
@@ -126,15 +152,31 @@ def save_yaml(path: Path, data: dict[str, Any]) -> None:
 
 
 def load_config(workspace: Path) -> dict[str, Any]:
-    """Load `_memory/config.yaml.preferences.sources` with defaults."""
+    """Load the `_memory/config.yaml` preferences this module reads, with defaults.
+
+    `preferences.sources.auto_refresh_index` (read-side hint for skills) and
+    `preferences.watchlist.path` (where the registry lives, so its `.ref.md`
+    files index as watchers rather than strays).
+    """
     cfg = load_yaml(workspace / "_memory" / "config.yaml")
-    prefs = (cfg.get("preferences") or {}).get("sources") or {}
+    prefs = cfg.get("preferences") or {}
+    sources = prefs.get("sources") or {} if isinstance(prefs, dict) else {}
+    watchlist = prefs.get("watchlist") or {} if isinstance(prefs, dict) else {}
+    registry = DEFAULT_WATCHLIST_PATH
+    if isinstance(watchlist, dict) and isinstance(watchlist.get("path"), str) and watchlist["path"].strip():
+        registry = watchlist["path"].strip()
     return {
-        "cache_path": str(prefs.get("cache_path", DEFAULT_CACHE_REL)),
-        "auto_refresh_index": bool(prefs.get("auto_refresh_index", True)),
-        "normalize_policy": str(prefs.get("normalize_policy", "ask")),
-        "normalize_policy_batch": str(prefs.get("normalize_policy_batch", "keep")),
+        "auto_refresh_index": bool(sources.get("auto_refresh_index", True))
+        if isinstance(sources, dict) else True,
+        "watchlist_path": registry,
     }
+
+
+def registry_dir(workspace: Path, config: dict[str, Any] | None = None) -> Path:
+    """The watcher registry folder (`config.preferences.watchlist.path`, default `Sources/Watchlist`)."""
+    config = config or load_config(workspace)
+    p = Path(config["watchlist_path"]).expanduser()
+    return p if p.is_absolute() else workspace / p
 
 
 # ---------------------------------------------------------------------------
@@ -156,44 +198,64 @@ def id_for_path(rel_path: str) -> str:
 
 
 def is_ref_file(path: Path) -> bool:
-    """True if `path` is a reference file (`.ref.md` or `.ref.txt`)."""
-    name = path.name
-    return any(name.endswith(suffix) for suffix in REF_SUFFIXES)
+    """True if `path` is a watcher ref (`<stem>.ref.md`; suffix matched case-insensitively)."""
+    name = path.name.lower()
+    return name.endswith(REF_SUFFIX) and len(name) > len(REF_SUFFIX)
 
 
-def companion_document(ref_path: Path) -> Path | None:
-    """For a ref file, return the document it describes if a sidecar pair exists.
+def is_meta_file(path: Path) -> bool:
+    """True if `path` is a document sidecar (`<doc>.<ext>.meta.md`)."""
+    name = path.name.lower()
+    return name.endswith(META_SUFFIX) and len(name) > len(META_SUFFIX)
 
-    Two sidecar conventions are recognized:
-      Form A — `<full-doc-name>.ref.md` (e.g. `camry-title.pdf` paired with
-               `camry-title.pdf.ref.md`). Stem-of-the-ref equals the
-               document's full filename.
-      Form B — `<stem>.ref.md` next to `<stem>.<ext>` (e.g. `camry-title.ref.md`
-               paired with `camry-title.pdf`). Stem-of-the-ref matches one
-               document file in the same directory by `path.stem`.
+
+def _sidecar_stem(path: Path) -> str | None:
+    """The document name a sidecar-shaped filename points at, or None.
+
+    Accepts `.meta.md` (the 0.20.0 sidecar) AND `.ref.md` so the 0.19.0
+    migration and the stray-ref warning can still ask "does this legacy
+    `<doc>.ref.md` sit next to its document?".
     """
-    name = ref_path.name
-    for suffix in REF_SUFFIXES:
-        if not name.endswith(suffix):
-            continue
-        stem = name[: -len(suffix)]
-        parent = ref_path.parent
-        # Form A: `<stem>` exists as a file in the same directory.
-        full_match = parent / stem
-        if full_match.is_file() and not is_ref_file(full_match):
-            return full_match
-        # Form B: a sibling whose `.stem` equals our ref-stem (no suffix collision).
-        siblings = [
-            p for p in parent.iterdir()
-            if p.is_file()
-            and p.name != ref_path.name
-            and not is_ref_file(p)
-            and p.stem == stem
-        ]
-        if siblings:
-            return siblings[0]
-        return None
+    name = path.name
+    for suffix in (META_SUFFIX, REF_SUFFIX):
+        if name.lower().endswith(suffix) and len(name) > len(suffix):
+            return name[: -len(suffix)]
     return None
+
+
+def companion_document(sidecar_path: Path) -> Path | None:
+    """For a sidecar, return the document it describes if the pair exists.
+
+    Two conventions are recognized:
+      Form A — `<full-doc-name>.meta.md` (e.g. `camry-title.pdf` paired with
+               `camry-title.pdf.meta.md`). Stem-of-the-sidecar equals the
+               document's full filename. This is the canonical form.
+      Form B — `<stem>.meta.md` next to `<stem>.<ext>` (e.g. `camry-title.meta.md`
+               paired with `camry-title.pdf`). Stem-of-the-sidecar matches one
+               document file in the same directory by `path.stem`.
+    A legacy `<doc>.ref.md` name is resolved the same way (see `_sidecar_stem`).
+    """
+    stem = _sidecar_stem(sidecar_path)
+    if stem is None:
+        return None
+    parent = sidecar_path.parent
+
+    def _is_document(p: Path) -> bool:
+        return p.is_file() and not is_ref_file(p) and not is_meta_file(p)
+
+    # Form A: `<stem>` exists as a file in the same directory.
+    full_match = parent / stem
+    if _is_document(full_match):
+        return full_match
+    # Form B: a sibling whose `.stem` equals our sidecar stem (no suffix collision).
+    try:
+        siblings = sorted(
+            p for p in parent.iterdir()
+            if p.name != sidecar_path.name and _is_document(p) and p.stem == stem
+        )
+    except OSError:
+        return None
+    return siblings[0] if siblings else None
 
 
 def category_from_path(rel_path: str) -> str:
@@ -212,44 +274,39 @@ def category_from_path(rel_path: str) -> str:
 
 def title_from_filename(path: Path) -> str:
     """Pretty default title from a filename."""
-    stem = path.name
-    for suffix in REF_SUFFIXES:
-        if stem.endswith(suffix):
-            stem = stem[: -len(suffix)]
-            break
-    else:
+    stem = _sidecar_stem(path)
+    if stem is None:
         stem = path.stem
+    elif is_meta_file(path):
+        stem = Path(stem).stem or stem   # `manual.pdf.meta.md` -> `manual`
     return stem.replace("-", " ").replace("_", " ").strip() or path.name
 
 
 def ref_stem(path: str | Path) -> str | None:
-    """The ref filename minus its `.ref.md` / `.ref.txt` suffix, or None if not a ref.
+    """The ref filename minus its `.ref.md` suffix, or None if not a ref.
 
-    For a watcher this is the watcher id (state key + `watch:<id>` handle),
-    per `contracts/watchlist.md`.
+    For a watcher this stem LOWERCASED is the watcher id (state key +
+    `watch:<id>` handle) — `tools/watchlist.py::id_from_stem`; the file on
+    disk is Title_Case (`Home_Assistant-Hub.ref.md`).
     """
-    name = Path(path).name
-    for suffix in REF_SUFFIXES:
-        if name.endswith(suffix):
-            stem = name[: -len(suffix)]
-            return stem or None
-    return None
+    p = Path(path)
+    if not is_ref_file(p):
+        return None
+    return p.name[: -len(REF_SUFFIX)] or None
 
 
 # ---------------------------------------------------------------------------
-# Reference parsing (canonical YAML frontmatter only; liberal parsing lives
-# in sources_normalize.py and is invoked separately).
+# Frontmatter parsing (watcher refs and `.meta.md` sidecars share the shape)
 # ---------------------------------------------------------------------------
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
 
 
 def parse_canonical_ref(path: Path) -> tuple[dict[str, Any] | None, str]:
-    """Parse a ref file's YAML frontmatter.
+    """Parse a markdown file's YAML frontmatter.
 
-    Returns `(frontmatter_dict, body)` if the file is in canonical form, or
-    `(None, raw_body)` if not. NEVER raises — non-canonical files are passed
-    through and will be handled by the normalizer when the user reads them.
+    Returns `(frontmatter_dict, body)` when the file opens with a `---` block
+    that parses to a mapping, or `(None, raw_body)` otherwise. NEVER raises.
     """
     try:
         body = path.read_text()
@@ -271,12 +328,6 @@ def parse_canonical_ref(path: Path) -> tuple[dict[str, Any] | None, str]:
 # Filesystem walk
 # ---------------------------------------------------------------------------
 
-def _excluded_dirs(workspace: Path, config: dict[str, Any]) -> set[Path]:
-    """Resolved paths that the walker must skip (cache + reserved subdirs)."""
-    cache_path = workspace / config["cache_path"]
-    return {cache_path.resolve()}
-
-
 def iter_source_roots(workspace: Path) -> list[Path]:
     """Yield the Sources/ root + every Projects/<slug>/Sources/ that exists."""
     roots: list[Path] = []
@@ -292,37 +343,32 @@ def iter_source_roots(workspace: Path) -> list[Path]:
     return roots
 
 
-def walk_sources(workspace: Path, config: dict[str, Any]) -> list[Path]:
+def walk_sources(workspace: Path, config: dict[str, Any] | None = None) -> list[Path]:
     """Walk every Sources/ root under the workspace. Return file paths.
 
-    Excludes: cache subtree, README.md files, dotfiles, the `_cache/`
-    name anywhere directly under a sources root.
+    Excludes: README.md files, dotfiles, and anything inside a leftover
+    `_cache/` directory (the retired 0.19.0 fetch cache). `config` is
+    accepted for call-site compatibility and unused.
     """
-    excluded = _excluded_dirs(workspace, config)
+    del config
     files: list[Path] = []
     for root in iter_source_roots(workspace):
-        for path in root.rglob("*"):
+        for path in sorted(root.rglob("*")):
             if not path.is_file():
-                continue
-            try:
-                resolved = path.resolve()
-            except OSError:
-                continue
-            if any(str(resolved).startswith(str(ex)) for ex in excluded):
                 continue
             if path.name in RESERVED_NAMES:
                 continue
             if path.name.startswith("."):
                 continue
-            # Skip anything inside a `_cache/` directory anywhere under Sources/.
-            if any(part == "_cache" for part in path.relative_to(root).parts):
+            if any(part == LEGACY_CACHE_DIRNAME for part in path.relative_to(root).parts):
                 continue
             files.append(path)
     return files
 
 
-def max_mtime(workspace: Path, config: dict[str, Any]) -> dt.datetime | None:
-    """Return the newest mtime under Sources/ (excluding cache). None if empty."""
+def max_mtime(workspace: Path, config: dict[str, Any] | None = None) -> dt.datetime | None:
+    """Return the newest mtime under Sources/. None if empty."""
+    del config
     newest: dt.datetime | None = None
     for root in iter_source_roots(workspace):
         for path in root.rglob("*"):
@@ -372,16 +418,42 @@ def _project_slug_from_path(rel_path: str) -> str | None:
     return None
 
 
-def build_filesystem_row(workspace: Path, path: Path) -> dict[str, Any]:
+def sidecar_for(document: Path) -> Path | None:
+    """The `.meta.md` sidecar describing `document`, if one exists next to it.
+
+    Form A (`<doc>.<ext>.meta.md`) wins over Form B (`<stem>.meta.md`).
+    """
+    for candidate in (
+        document.with_name(document.name + META_SUFFIX),   # Form A: manual.pdf.meta.md
+        document.with_name(document.stem + META_SUFFIX),   # Form B: manual.meta.md
+    ):
+        if candidate != document and candidate.is_file():
+            return candidate
+    return None
+
+
+def _in_registry(path: Path, registry: Path) -> bool:
+    try:
+        return path.parent.resolve() == registry.resolve()
+    except OSError:
+        return False
+
+
+def build_filesystem_row(workspace: Path, path: Path, *, registry: Path | None = None,
+                         warn: Warn | None = None) -> dict[str, Any]:
     """Build a fresh row from filesystem state for one path.
 
-    Sidecar pattern: if `path` is a non-ref document AND a `<stem>.ref.md` /
-    `<stem>.ref.txt` exists next to it, the row's metadata comes from that
-    sidecar (kind stays `document`).
-
-    Standalone ref: if `path` is a `.ref.md` / `.ref.txt` with no sibling
-    non-ref document, the row's `kind` is `reference`.
+    - A DOCUMENT (any file that is neither a ref nor a sidecar) gets a
+      `document` row; if a `.meta.md` sidecar sits next to it (`sidecar_for`)
+      the sidecar's frontmatter is applied to the document's row.
+    - A `.meta.md` SIDECAR has no row of its own (`kind: _skip`). One with no
+      document next to it is an orphan: warned about, not indexed.
+    - A `.ref.md` inside the registry is a WATCHER row (`kind: watcher`) with
+      its `watch:` mapping lifted; a `.ref.md` anywhere else is a stray:
+      warned about ("stray .ref.md outside the registry"), not indexed.
     """
+    warn = warn or (lambda msg: None)
+    registry = registry if registry is not None else registry_dir(workspace)
     rel_path = workspace_relative(workspace, path)
     row = _empty_row()
     row["path"] = rel_path
@@ -393,43 +465,51 @@ def build_filesystem_row(workspace: Path, path: Path) -> dict[str, Any]:
     if project_slug:
         row["related_project"] = project_slug
 
+    if is_meta_file(path):
+        # The DOCUMENT is the source; the sidecar is metadata for it and the
+        # document's row pulls it in via `sidecar_for`.
+        row["kind"] = _SKIP
+        if companion_document(path) is None:
+            warn(f"{rel_path}: orphan sidecar — no document next to it (expected "
+                 f"`<doc>.<ext>{META_SUFFIX}` beside its document); not indexed")
+        return row
     if is_ref_file(path):
-        companion = companion_document(path)
-        if companion is not None:
-            # The DOCUMENT is the source; the .ref.md is just metadata for it.
-            # Skip the standalone reference row — the document's row will pull
-            # the metadata in via the sidecar lookup below.
-            row["kind"] = "_skip_ref_with_companion"
+        if not _in_registry(path, registry):
+            hint = (f"; document metadata belongs in `{path.name[: -len(REF_SUFFIX)]}{META_SUFFIX}`"
+                    if companion_document(path) is not None else
+                    f"; document metadata belongs in `<doc>.<ext>{META_SUFFIX}`")
+            warn(f"{rel_path}: stray .ref.md outside the registry — a .ref.md is a watcher "
+                 f"definition ({workspace_relative(workspace, registry)}/){hint}; not indexed")
+            row["kind"] = _SKIP
             return row
-        row["kind"] = "reference"
+        row["kind"] = KIND_WATCHER
         fm, _body = parse_canonical_ref(path)
         if fm is not None:
             row["normalized"] = True
             _apply_frontmatter(row, fm)
         else:
             row["normalized"] = False
-    else:
-        row["kind"] = "document"
-        for suffix in REF_SUFFIXES:
-            for candidate in (
-                path.with_name(path.name + suffix),    # Form A: <doc>.ref.md
-                path.with_name(path.stem + suffix),    # Form B: <stem>.ref.md
-            ):
-                if candidate == path:
-                    continue
-                if candidate.is_file():
-                    fm, _body = parse_canonical_ref(candidate)
-                    if fm is not None:
-                        _apply_frontmatter(row, fm)
-                    break
-            else:
-                continue
-            break
+        return row
+    if _in_registry(path, registry) and path.name not in RESERVED_NAMES:
+        # A watcher definition parked under the wrong name (or any stray file)
+        # would otherwise become a bogus "document" row and never be watched.
+        warn(f"{rel_path}: not a .ref.md — not a watcher; rename it to "
+             f"`<Title_Case>{REF_SUFFIX}` (id = stem lowercased) or move it out of the "
+             f"registry ({workspace_relative(workspace, registry)}/); not indexed")
+        row["kind"] = _SKIP
+        return row
+
+    row["kind"] = KIND_DOCUMENT
+    sidecar = sidecar_for(path)
+    if sidecar is not None:
+        fm, _body = parse_canonical_ref(sidecar)
+        if fm is not None:
+            _apply_frontmatter(row, fm)
     return row
 
 
 def _apply_frontmatter(row: dict[str, Any], fm: dict[str, Any]) -> None:
-    """Pull canonical fields from a parsed `.ref.md` frontmatter into `row`."""
+    """Pull canonical fields from a parsed frontmatter (ref or sidecar) into `row`."""
     if isinstance(fm.get("title"), str) and fm["title"]:
         row["title"] = fm["title"]
     if isinstance(fm.get("category"), str) and fm["category"]:
@@ -442,7 +522,7 @@ def _apply_frontmatter(row: dict[str, Any], fm: dict[str, Any]) -> None:
         row["sensitive"] = fm["sensitive"]
     if isinstance(fm.get("tags"), list):
         row["tags"] = list(fm["tags"])
-    # Watcher configuration (contracts/watchlist.md § 5.1). Lifted verbatim;
+    # Watcher configuration (contracts/watchlist.md § 2). Lifted verbatim;
     # the ref file stays the source of truth, this is a derived view of it.
     if isinstance(fm.get(WATCH_FIELD), dict):
         row[WATCH_FIELD] = copy.deepcopy(fm[WATCH_FIELD])
@@ -521,7 +601,7 @@ def diff_and_merge(existing: list[dict[str, Any]], scanned: list[dict[str, Any]]
     # Pass 1: id-matched rows (path unchanged), then path-matched rows whose
     # existing id differs from the derived one (path rewritten in place).
     for sid, srow in by_id_scanned.items():
-        if srow.get("kind") == "_skip_ref_with_companion":
+        if srow.get("kind") == _SKIP:
             continue
         if sid in by_id_existing:
             merged.append(merge_existing(srow, by_id_existing[sid]))
@@ -552,7 +632,7 @@ def diff_and_merge(existing: list[dict[str, Any]], scanned: list[dict[str, Any]]
     for sid, srow in by_id_scanned.items():
         if sid in matched_scanned:
             continue
-        if srow.get("kind") == "_skip_ref_with_companion":
+        if srow.get("kind") == _SKIP:
             continue
         basename = Path(srow.get("path") or "").name
         if not basename:
@@ -572,7 +652,7 @@ def diff_and_merge(existing: list[dict[str, Any]], scanned: list[dict[str, Any]]
 
     # Pass 3: remaining unmatched-scanned rows -> add as new.
     for sid, srow in by_id_scanned.items():
-        if srow.get("kind") == "_skip_ref_with_companion":
+        if srow.get("kind") == _SKIP:
             continue
         if sid in matched_scanned or sid in renamed_scanned_ids:
             continue
@@ -621,8 +701,7 @@ def save_index(workspace: Path, data: dict[str, Any]) -> None:
 def needs_refresh(workspace: Path, index: dict[str, Any]) -> bool:
     """True if the filesystem has changed since `last_filesystem_scan`."""
     last_scan = parse_iso(index.get("last_filesystem_scan"))
-    config = load_config(workspace)
-    newest = max_mtime(workspace, config)
+    newest = max_mtime(workspace)
     if newest is None:
         return last_scan is None
     if last_scan is None:
@@ -630,18 +709,25 @@ def needs_refresh(workspace: Path, index: dict[str, Any]) -> bool:
     return newest > last_scan
 
 
-def refresh(workspace: Path, *, force: bool = False) -> dict[str, Any]:
+def _warn_stderr(msg: str) -> None:
+    print(f"sources_index: {msg}", file=sys.stderr)
+
+
+def refresh(workspace: Path, *, force: bool = False, warn: Warn | None = None) -> dict[str, Any]:
     """Bring `sources-index.yaml` in sync with the filesystem.
 
     Cheap when nothing changed (one mtime walk + one yaml load + comparison).
-    Returns the resulting index dict.
+    Indexing warnings (stray `.ref.md` outside the registry, orphan `.meta.md`
+    sidecars) go to `warn` — stderr by default. Returns the resulting index dict.
     """
     index = load_index(workspace)
     if not force and not needs_refresh(workspace, index):
         return index
+    warn = warn or _warn_stderr
     config = load_config(workspace)
+    registry = registry_dir(workspace, config)
     files = walk_sources(workspace, config)
-    scanned = [build_filesystem_row(workspace, p) for p in files]
+    scanned = [build_filesystem_row(workspace, p, registry=registry, warn=warn) for p in files]
     existing = list(index.get("sources") or [])
     existing = [r for r in existing if (r or {}).get("id")]
     merged = diff_and_merge(existing, scanned)
@@ -732,7 +818,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                    help="Ignore mtime check; always rescan.")
 
     L = sub.add_parser("list", help="List all rows.")
-    L.add_argument("--kind", choices=["document", "reference"], default=None)
+    L.add_argument("--kind", choices=list(ROW_KINDS), default=None)
     L.add_argument("--category", type=str, default=None)
     L.add_argument("--present-only", action="store_true",
                    help="Skip rows whose file disappeared.")
@@ -770,12 +856,15 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.cmd == "refresh":
-        index = refresh(workspace, force=args.force)
+        warnings: list[str] = []
+        index = refresh(workspace, force=args.force, warn=warnings.append)
         rows = index.get("sources") or []
         present = sum(1 for r in rows if r.get("present", True))
         absent = len(rows) - present
         print(f"Index has {len(rows)} row(s); {present} present, {absent} missing.")
         print(f"Last scan: {index.get('last_filesystem_scan')}")
+        for w in warnings:
+            print(f"WARN  {w}")
         return 0
 
     if args.cmd == "list":

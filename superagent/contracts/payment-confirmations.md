@@ -4,7 +4,7 @@
 
 Governs how Superagent captures, files, indexes, and cross-links the artifact produced whenever **money changes hands** on the user's behalf or with the user's involvement.
 
-The contract is universal: anytime a skill helps with a payment (`bills mark-paid`, `subscriptions update`, `vehicle-log` for a service paid, `add-appointment` for a copay, `expenses`, `draft-email` answering "here is my payment confirmation", an `ingest` run that surfaces a fresh charge, or a future "auto-pay this bill" workflow) it must follow this contract — no exceptions for "small" payments.
+The contract is universal: anytime a skill helps with a payment (`bills mark-paid`, `subscriptions update`, `vehicle-log` for a service paid, `add-appointment` for a copay, `expenses`, `draft-email` answering "here is my payment confirmation", a harvest run (the `simplefin` watcher) that surfaces a fresh charge, or a future "auto-pay this bill" workflow) it must follow this contract — no exceptions for "small" payments.
 
 ---
 
@@ -25,7 +25,7 @@ The skill should NOT skip capture because the artifact "is just sitting in email
 
 Save the original confirmation when one exists (PDF / HTML / image / email source). When no native artifact is available (the user reports a payment verbally, or pastes raw text), the agent generates a markdown stub and saves that instead.
 
-Every saved artifact (or stub) MUST carry these fields, either in the native document or in an accompanying frontmatter / sidecar `.ref.md`:
+Every saved artifact (or stub) MUST carry these fields, either in the native document's frontmatter (markdown stubs) or in an accompanying `<doc>.<ext>.meta.md` sidecar (`contracts/sources.md` § 15.3):
 
 - `payee` — who got paid
 - `amount` and `currency`
@@ -85,7 +85,7 @@ Filename convention: same `YYYY-MM-DD-<payee>-<purpose>.<ext>`. After saving, ap
 
 ### 3.3 Cross-domain payments (when both could apply)
 
-If a payment relates to **a project that itself sits inside a major domain** — e.g. a property-tax payment made via a `Projects/property-tax-<year>/` project, a medical-procedure payment under `Projects/<surgery-recovery>/`, a tuition payment under `Projects/<school-year>/` — save the **canonical copy** to `Sources/<Domain>/...` and **cross-link** from the project's `history.md` and (optionally) a `.ref.md` pointer in `Projects/<project>/Resources/`. Do NOT duplicate the binary file.
+If a payment relates to **a project that itself sits inside a major domain** — e.g. a property-tax payment made via a `Projects/property-tax-<year>/` project, a medical-procedure payment under `Projects/<surgery-recovery>/`, a tuition payment under `Projects/<school-year>/` — save the **canonical copy** to `Sources/<Domain>/...` and **cross-link** from the project's `history.md` and the project's `sources.md` catalogue (a row whose Path names the `Sources/` copy). Do NOT duplicate the binary file, and do not leave a pointer file in `Resources/` — a `.ref.md` is a watcher, never a pointer.
 
 ### 3.4 Tie-breaker
 
@@ -117,7 +117,7 @@ Every save MUST trigger the following side-effects, in order:
     - Resolve the funding account by `(institution, number_last4)` matching the receipt artifact's payment-method line, OR by the user's explicit account choice in the conversation, OR by the `pay_from_account` field on `bills.yaml.<bill>` / `subscriptions.yaml.<sub>` when set.
     - Schema for the appended row is documented in § 4.3 below.
     - Set `status: pending` on initial save; flip to `posted` either on next finance harvest reconciliation pass or on explicit user confirmation. `failed` / `reversed` are surfaced to triage skills.
-    - For payments with NO funding account on file (cash, money order, peer-to-peer with no bank trace), skip this step but log the reason in the artifact's frontmatter `notes`.
+    - For payments with NO funding account on file (cash, money order, peer-to-peer with no bank trace), skip this step but log the reason in the artifact's frontmatter (or `.meta.md` sidecar) `notes`.
 
 4. **Append to `interaction-log.yaml`** with `kind: payment_confirmation_saved`, citing:
    - `path` — saved artifact path (workspace-relative)
@@ -127,7 +127,7 @@ Every save MUST trigger the following side-effects, in order:
 
 5. **Events stream** (per `contracts/events-stream.md`) — no explicit mirror: the events stream is a derived view, so the `history.md` / `interaction-log.yaml` entry written above materializes as an event on the next `tools/events_derive.py rebuild`. When the save wrote to neither, add an `interaction-log.yaml` entry so the payment reaches the timeline.
 
-6. **Provenance** — write the `provenance` block on the saved artifact's frontmatter (or sidecar `.ref.md`) per `contracts/provenance.md`. For ingestor-sourced confirmations, also include the `ingestion_log_row` reference.
+6. **Provenance** — write the `provenance` block on the saved artifact's frontmatter (or its `.meta.md` sidecar) per `contracts/provenance.md`. For ingestor-sourced confirmations, also include the `ingestion_log_row` reference.
 
 7. **Sensitive routing** — if the artifact contains a full account number, full card number, SSN, or medical detail beyond a generic receipt line, route per `contracts/sensitive-tier.md` (rename file with `.sensitive.<ext>` suffix and/or move under a `_memory/sensitive/`-routed path). Default visibility is `private` per `contracts/visibility.md`; mark `household` only when the user has explicitly enabled household-shared receipts.
 
@@ -191,7 +191,7 @@ Before writing a new confirmation, run the local-first read order (`contracts/lo
 
 When a project's lifecycle moves to `completed → archived` (per `contracts/projects.md`), the `projects` skill MUST scan `Projects/<project>/Resources/` for payment confirmations and ask the user, per artifact, whether to:
 
-- **Promote to Sources** (capital improvements, tax-relevant receipts, warranty-relevant invoices, professional-development claims) — moves the file under the appropriate `Sources/<Domain>/`, updates `documents-index.yaml`, leaves a `.ref.md` breadcrumb at the original project path.
+- **Promote to Sources** (capital improvements, tax-relevant receipts, warranty-relevant invoices, professional-development claims) — moves the file (and its `.meta.md` sidecar, if any) under the appropriate `Sources/<Domain>/`, updates `documents-index.yaml`, and rewrites the project's `sources.md` row and `history.md` link to the new path (no breadcrumb file is left behind — a `.ref.md` is a watcher, never a pointer).
 - **Leave in project archive** (genuinely time-bound and uninteresting once the project closes).
 - **Discard** (rare; only on explicit user request, never auto).
 
@@ -235,7 +235,7 @@ Skills that touch payments MUST cite this contract in their frontmatter / steps:
 - `appointments.md` post-visit → save copay/receipt per this contract; if paid from a tracked account, add the account-side mirror.
 - `vehicle-log` service entries → save invoice per this contract; mirror the account side when the funding account is known.
 - `expenses` skill → all expense entries flow through this contract; ingestor-sourced rows already write the account-side mirror by virtue of being keyed on the account.
-- `ingest` (finance ingestors) → when a charge matches an open bill/sub/appt, the auto-capture pass invokes this contract; the account-side row is the ingestor's NATIVE shape, the entity-side append is the symmetric mirror.
+- `watch` harvest (the `simplefin` watcher's handler) → when a harvested charge matches an open bill/sub/appt, the auto-capture pass invokes this contract; the account-side row is the handler's NATIVE shape, the entity-side append is the symmetric mirror.
 - `draft-email` when sending a "here is my proof of payment" reply → save the user's outgoing-payment artifact first; mirror to the funding account.
 - `add-account` → scaffolds an empty `transactions[]` list on every new account row.
 

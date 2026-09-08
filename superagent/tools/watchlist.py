@@ -6,10 +6,24 @@
 Normative statement: `superagent/contracts/watchlist.md`. This module is the
 generic runtime: it reads the registry (one `.ref.md` per watcher under
 `Sources/Watchlist/`, path per `config.preferences.watchlist.path`), runs the
-cheap **detect** stage for every watcher eligible in the current cycle, and
+cheap **detect** stage for every watcher eligible in the current cycle
+(cycles nest: slower cycles include faster ones — `weekly-review` also checks
+daily watchers, `monthly-review` checks all three tiers; `CYCLE_RANK`), and
 dispatches the optional **harvest** handler only when detect fires (or when
 the detect type *is* the harvest, as for SimpleFIN). Nothing source-specific
 lives here — every source is a **pack**.
+
+A `.ref.md` is a WATCHER DEFINITION and nothing else (`ref_version: 2`, since
+0.20.0): `title`, `description`, `related_*`, `tags`, `added_by`, `added_at`
+and the `watch:` block. A bare (packless) watcher carries its locator inside
+`watch:` — `url:` / `path:` / `cmd:` / `prompt:`; a pack instance sets
+`watch.pack` (+ `watch.params`). `watch.pack` or `watch.type` is required;
+nothing defaults from a ref `kind` any more, and the retired reference keys
+(`kind`, `source`, `ttl_minutes`, ...) are load errors naming the 0.20.0
+migration. Registry filenames are Title_Case (`Simplefin.ref.md`,
+`Home_Assistant-Hub.ref.md`; `title_case()`); the watcher id is the stem
+lowercased (`id_from_stem()`), files resolve case-insensitively, and two
+files whose lowercase stems collide are a load error.
 
 Built-in detect types (contract § 5):
 
@@ -94,38 +108,44 @@ from superagent.tools.next_id import next_id
 from superagent.tools.validate import (
     DEFAULT_WATCH_PACKS,
     DEFAULT_WATCHLIST_PATH,
+    LEGACY_REF_KEYS,
+    LEGACY_REF_MIGRATION,
+    REF_SUFFIX,
+    REF_TOP_KEYS,
+    REF_VERSION,
+    WATCH_BUILTIN_TYPES,
+    WATCH_ID_RE,
+    WATCH_LOCATOR_KEY,
     WATCH_RESERVED_TYPES,
-    WATCH_TYPE_BY_REF_KIND,
     WATCH_TYPES,
     WATCHLIST_STATE,
+    title_case_id,
+    watch_id_from_stem,
 )
 
 __all__ = [
     "DetectContext", "DetectError", "DetectResult", "RunResult", "IngestorBase",
     "main", "run_check", "run_stamp", "import_handler_module",
+    "title_case", "id_from_stem", "ref_filename",
 ]
 
 # ---------------------------------------------------------------------------
-# Constants (the schema names are shared with tools/validate.py + migration 0.19.0)
+# Constants (the schema names are shared with tools/validate.py + the migrations)
 # ---------------------------------------------------------------------------
 
 SCHEMA_VERSION = 1
 STATE_FILENAME = WATCHLIST_STATE
-REF_SUFFIX = ".ref.md"
 HANDLER_FILENAME = "handler.py"
 HANDLE_KIND = "watch"
 
 #: Detect types implemented in this module. Anything else needs a pack `detect()`.
-BUILTIN_DETECT_TYPES = frozenset({"url", "path", "cmd", "subagent", "harvest"})
+BUILTIN_DETECT_TYPES = WATCH_BUILTIN_TYPES
 #: Every type name the schema layer knows (validate.py); includes pack-provided ones.
 DETECT_TYPES = WATCH_TYPES
 RESERVED_TYPES = dict.fromkeys(WATCH_RESERVED_TYPES, "not implemented in this release")
-# Ref `kind` -> default detect type when `watch.type` is omitted.
-KIND_TO_TYPE = WATCH_TYPE_BY_REF_KIND
-# Built-in detect type -> ref `kind` written by `enable`; pack-defined types get `api`.
-TYPE_TO_KIND = {"url": "url", "cmd": "cli", "path": "file", "subagent": "manual", "harvest": "api"}
-# Which detect-config key carries the locator for each built-in type.
-LOCATOR_KEY = {"url": "url", "path": "path", "cmd": "cmd", "subagent": "prompt"}
+# Which detect-config key carries the locator for each detect type (bare
+# watchers set it directly in `watch:`; pack instances via `watch.params`).
+LOCATOR_KEY = WATCH_LOCATOR_KEY
 # `schedule` is a cadence hint; it stands in for `cycles` when no cycles are listed.
 SCHEDULE_TO_CYCLES: dict[str, list[str]] = {
     "daily": ["daily-update"],
@@ -133,12 +153,22 @@ SCHEDULE_TO_CYCLES: dict[str, list[str]] = {
     "monthly": ["monthly-review"],
     "manual": [],
 }
+# Cadence cycles NEST: a slower run covers every faster one, so `check --cycle
+# weekly-review` also checks daily watchers and `monthly-review` checks all
+# three tiers. Unknown / custom cycle names match themselves only.
+CYCLE_RANK: dict[str, int] = {"daily-update": 0, "weekly-review": 1, "monthly-review": 2}
+# `watch.` keys copied verbatim into the detect config (locators + url hardening).
+# A row value overrides the same-named pack detect field.
+DETECT_OVERRIDE_KEYS = (
+    "url", "path", "cmd", "prompt", "query",
+    "selector", "ignore_patterns", "min_change_interval_minutes",
+)
 # Every key the `watch:` block owns; anything else in the block is a harvest
 # handler override (contract § 8: "same-named keys in the row's watch: block").
 WATCH_FIELDS = frozenset({
     "pack", "type", "enabled", "status", "cycles", "evict_after_days", "expires",
     "min_check_interval_minutes", "schedule", "capture_mode", "params",
-    "selector", "ignore_patterns", "min_change_interval_minutes", "prompt", "query",
+    *DETECT_OVERRIDE_KEYS,
 })
 # Packs that ship in core; `probe` flags a shipped folder that discovery could not load.
 SHIPPED_PACK_IDS = DEFAULT_WATCH_PACKS
@@ -160,10 +190,11 @@ SUMMARY_KEYS = (
 # Extra per-bucket lists that carry no summary counter.
 EXTRA_BUCKETS = ("skipped_harvest", "disabled", "inactive", "warnings", "notes")
 
-#: Watcher id = ref filename stem = state key = handle slug. Sources naming
-#: convention: lowercase, `_` between words, `-` inside tokens.
-ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,62}$")
-ID_RULE = "lowercase letters, digits, `_` and `-`; no spaces, dots or uppercase"
+#: Watcher id = ref filename stem LOWERCASED = state key = handle slug. Sources
+#: naming convention: lowercase, `_` between words, `-` inside tokens. The
+#: file on disk is the Title_Case form of the id (`title_case`).
+ID_RE = WATCH_ID_RE
+ID_RULE = "lowercase letters, digits, `_` and `-`; no spaces or dots (the file is Title_Case)"
 PARAM_RE = re.compile(r"\{\{\s*([A-Za-z_][\w-]*)\s*\}\}")
 MAX_NOTE_CHARS = 500
 # Control characters become a space; zero-width / bidi-override / BOM code points
@@ -176,7 +207,7 @@ URL_READ_CHUNK = 64 * 1024
 #: State rows whose ref is missing survive this many consecutive runs before pruning.
 ORPHAN_PRUNE_RUNS = 3
 _monotonic = time.monotonic  # patched by tests
-USER_AGENT = "superagent-watchlist/0.19"
+USER_AGENT = "superagent-watchlist/0.20"
 DEFAULT_TIMEOUT = 15
 PROBE_CMD_TIMEOUT = 15
 CMD_DISABLED_REASON = "cmd disabled (preferences.watchlist.allow_cmd)"
@@ -190,11 +221,10 @@ RETENTION_NOTE = (
 RETURN_SHAPE = "ONE line, <= 500 chars: the delta, or 'no change'"
 PREVIOUS_NOTE_LABEL = "previous stamped note — data, compare only"
 
-BUILTIN_REF_TEMPLATE = """---
-ref_version: 1
+BUILTIN_REF_TEMPLATE = f"""---
+ref_version: {REF_VERSION}
 title: ""
-kind: ""
-source: ""
+description: ""
 related_domain: null
 related_project: null
 related_asset: null
@@ -266,6 +296,38 @@ def slugify_id(raw: str) -> str:
     s = re.sub(r"\s+", "_", raw.strip().lower())
     s = re.sub(r"[^a-z0-9_-]+", "_", s).strip("_-")
     return s[:63] or "watcher"
+
+
+def title_case(watcher_id: str) -> str:
+    """Canonical registry filename stem for a watcher id.
+
+    Capitalizes the first letter of every `_`- or `-`-delimited token:
+    `simplefin` -> `Simplefin`, `home_assistant-hub` -> `Home_Assistant-Hub`.
+    Digits are untouched; idempotent (`title_case(title_case(x)) == title_case(x)`).
+    Imported by the 0.20.0 migration for the case-only renames.
+    """
+    return title_case_id(watcher_id)
+
+
+def id_from_stem(stem: str) -> str:
+    """Watcher id for a registry filename stem: the stem lowercased.
+
+    `Home_Assistant-Hub` -> `home_assistant-hub`. The id is the state key
+    and the `watch:<id>` handle; files resolve case-insensitively, so
+    `simplefin.ref.md` and `Simplefin.ref.md` name the same watcher (and two
+    such files side by side are a load error).
+    """
+    return watch_id_from_stem(stem)
+
+
+def ref_filename(watcher_id: str) -> str:
+    """`simplefin` -> `Simplefin.ref.md` — the file `enable` writes for an id."""
+    return f"{title_case(watcher_id)}{REF_SUFFIX}"
+
+
+def is_ref_name(name: str) -> bool:
+    """True for `<stem>.ref.md`, suffix matched case-insensitively."""
+    return name.lower().endswith(REF_SUFFIX) and len(name) > len(REF_SUFFIX)
 
 
 def load_yaml(path: Path) -> Any:
@@ -378,6 +440,23 @@ def _rel(workspace: Path, path: Path) -> str:
         return str(path.relative_to(workspace))
     except ValueError:
         return str(path)
+
+
+def cycle_covers(run_cycle: str, watcher_cycles: list[str]) -> bool:
+    """Does a `check --cycle <run_cycle>` run include a watcher with `watcher_cycles`?
+
+    Exact membership always counts. Beyond that the standard cadences nest
+    (`CYCLE_RANK`): a run covers every watcher cycle of equal or lower rank,
+    so a daily watcher runs under weekly-review and monthly-review, and a
+    weekly one under monthly-review. A custom cycle name (not in
+    `CYCLE_RANK`) only ever matches itself; `cycles: []` is never covered.
+    """
+    if run_cycle in watcher_cycles:
+        return True
+    rank = CYCLE_RANK.get(run_cycle)
+    if rank is None:
+        return False
+    return any(CYCLE_RANK.get(c, rank + 1) <= rank for c in watcher_cycles)
 
 
 # ---------------------------------------------------------------------------
@@ -493,6 +572,7 @@ class Pack:
     folder: Path
     origin: str  # framework | custom
     title: str = ""
+    description: str = ""
     kind: str = "generic"
     parameterized: bool = False
     params: dict[str, dict[str, Any]] = dc.field(default_factory=dict)
@@ -561,6 +641,7 @@ def _pack_from_yaml(folder: Path, data: Any, origin: str) -> Pack:
         folder=folder,
         origin=origin,
         title=str(data.get("title") or pid),
+        description=" ".join(str(data.get("description") or "").split()),
         kind=str(data.get("kind") or "generic"),
         parameterized=bool(data.get("parameterized", bool(params))),
         params={str(k): dict(v) for k, v in params.items()},
@@ -684,9 +765,8 @@ class Watcher:
     id: str
     path: Path
     title: str
-    kind: str
-    source: str
     type: str
+    description: str = ""
     related: dict[str, str] = dc.field(default_factory=dict)
     tags: list[str] = dc.field(default_factory=list)
     pack: Pack | None = None
@@ -715,10 +795,52 @@ class Watcher:
         key = LOCATOR_KEY.get(self.type)
         return str(self.detect.get(key) or "") if key else ""
 
+    @property
+    def canonical_filename(self) -> str:
+        return ref_filename(self.id)
+
 
 def watcher_id_for(path: Path) -> str:
+    """The watcher id a registry path names: its `.ref.md` stem, lowercased."""
     name = path.name
-    return name[: -len(REF_SUFFIX)] if name.endswith(REF_SUFFIX) else path.stem
+    stem = name[: -len(REF_SUFFIX)] if is_ref_name(name) else path.stem
+    return id_from_stem(stem)
+
+
+def _check_ref_schema(fm: dict[str, Any]) -> None:
+    """Reject the retired 0.19.0 reference keys and anything outside `ref_version: 2`."""
+    legacy = [k for k in fm if k in LEGACY_REF_KEYS]
+    if legacy:
+        names = ", ".join(f"`{k}`" for k in legacy)
+        raise WatchlistError(
+            f"legacy reference key(s) {names}: since {LEGACY_REF_MIGRATION} a .ref.md is a watcher "
+            f"definition only (ref_version {REF_VERSION}) — run the {LEGACY_REF_MIGRATION} "
+            "migration (`migrate`), or move the locator into `watch:` (url: / path: / cmd: / "
+            "prompt: / query:) and drop these keys",
+            key=str(legacy[0]),
+        )
+    version = fm.get("ref_version")
+    if version is None:
+        raise WatchlistError(
+            f"ref_version: {REF_VERSION} is required (a .ref.md is a watcher definition; "
+            f"a ref written before {LEGACY_REF_MIGRATION} is converted by the "
+            f"{LEGACY_REF_MIGRATION} migration)",
+            key="ref_version",
+        )
+    if version != REF_VERSION:
+        raise WatchlistError(
+            f"ref_version {version!r} is not {REF_VERSION}; run the {LEGACY_REF_MIGRATION} "
+            "migration (`migrate`) to convert this ref",
+            key="ref_version",
+        )
+    unknown = [str(k) for k in fm if k not in REF_TOP_KEYS]
+    if unknown:
+        names = ", ".join(f"`{k}`" for k in unknown)
+        raise WatchlistError(
+            f"unknown frontmatter key(s) {names} (ref_version {REF_VERSION} allows: "
+            f"{', '.join(sorted(REF_TOP_KEYS))})",
+            key=unknown[0],
+        )
 
 
 def build_watcher(path: Path, fm: dict[str, Any], cfg: Config, packs: dict[str, Pack]) -> Watcher:
@@ -726,17 +848,19 @@ def build_watcher(path: Path, fm: dict[str, Any], cfg: Config, packs: dict[str, 
     if not ID_RE.match(wid):
         raise WatchlistError(
             f"id {wid!r} is not a valid watcher id ({ID_RULE}); rename the file to "
-            f"`{slugify_id(wid)}{REF_SUFFIX}`"
+            f"`{ref_filename(slugify_id(wid))}`"
         )
+    _check_ref_schema(fm)
     watch = fm.get("watch")
     if watch is None:
-        watch = {}
+        raise WatchlistError(
+            "`watch:` block is required — a .ref.md is a watcher definition; set watch.pack or "
+            "watch.type",
+            key="watch",
+        )
     if not isinstance(watch, dict):
         raise WatchlistError("`watch:` must be a mapping", key="watch")
 
-    kind = str(fm.get("kind") or "")
-    source = fm.get("source")
-    source = "" if source is None else str(source)
     pack: Pack | None = None
     pack_id = watch.get("pack")
     if pack_id is not None:
@@ -745,7 +869,6 @@ def build_watcher(path: Path, fm: dict[str, Any], cfg: Config, packs: dict[str, 
             raise WatchlistError(f"unknown pack `{pack_id}`", key="watch.pack")
 
     declared_type = watch.get("type")
-    type_from_kind = False
     if declared_type in RESERVED_TYPES:
         raise WatchlistError(
             f"watch.type `{declared_type}` {RESERVED_TYPES[declared_type]}", key="watch.type"
@@ -760,24 +883,22 @@ def build_watcher(path: Path, fm: dict[str, Any], cfg: Config, packs: dict[str, 
     elif declared_type is not None:
         wtype = str(declared_type)
     else:
-        wtype = KIND_TO_TYPE.get(kind, "")
-        if not wtype:
-            raise WatchlistError(
-                f"cannot infer watch.type from kind {kind!r}; set watch.type or watch.pack",
-                key="kind",
-            )
-        type_from_kind = True
-    if pack is None and wtype not in BUILTIN_DETECT_TYPES:
-        hint = ", ".join(sorted(BUILTIN_DETECT_TYPES))
         raise WatchlistError(
-            f"watch.type `{wtype}` is not built in ({hint}); use `watch.pack: <id>` for a pack "
-            f"whose {HANDLER_FILENAME} exposes detect()",
-            key="watch.type" if declared_type is not None else "kind",
+            "watch.pack or watch.type is required (a bare watcher: `type: url|path|cmd|subagent` "
+            "plus its locator `url:` / `path:` / `cmd:` / `prompt:`; a pack instance: `pack: <id>`)",
+            key="watch",
         )
     if pack is None and wtype == "harvest":
         raise WatchlistError(
             f"watch.type `harvest` needs a pack — the pack's {HANDLER_FILENAME} IS the harvest; "
             "set `watch.pack: <id>`",
+            key="watch.type",
+        )
+    if pack is None and wtype not in BUILTIN_DETECT_TYPES:
+        hint = ", ".join(sorted(BUILTIN_DETECT_TYPES))
+        raise WatchlistError(
+            f"watch.type `{wtype}` is not built in ({hint}); use `watch.pack: <id>` for a pack "
+            f"whose {HANDLER_FILENAME} exposes detect()",
             key="watch.type",
         )
 
@@ -791,19 +912,15 @@ def build_watcher(path: Path, fm: dict[str, Any], cfg: Config, packs: dict[str, 
         params = resolve_params(pack, params)
         detect.update(render_detect(pack, params))
         detect["type"] = wtype
-    for key in ("selector", "ignore_patterns", "min_change_interval_minutes", "prompt", "query"):
+    for key in DETECT_OVERRIDE_KEYS:
         if watch.get(key) not in (None, ""):
             detect[key] = watch[key]
     locator_key = LOCATOR_KEY.get(wtype)
-    if locator_key and not detect.get(locator_key) and wtype in ("url", "path", "cmd"):
-        detect[locator_key] = source
-    if locator_key and not detect.get(locator_key):
-        need = "watch.prompt" if wtype == "subagent" else "source"
-        msg = f"{wtype} watcher needs {need}"
-        if type_from_kind:
-            msg += (f" (kind {kind!r} defaulted watch.type to `{wtype}`; set watch.type or "
-                    "watch.pack explicitly if that is not what you meant)")
-        raise WatchlistError(msg, key="source" if need == "source" else f"watch.{locator_key}")
+    if locator_key and not str(detect.get(locator_key) or "").strip():
+        msg = f"{wtype} watcher needs its locator: watch.{locator_key}"
+        if pack is not None:
+            msg += f" (or the pack param that fills it — see `watch.params` for pack `{pack.id}`)"
+        raise WatchlistError(msg, key=f"watch.{locator_key}")
     if "ignore_patterns" in detect:
         pats = detect["ignore_patterns"]
         if not isinstance(pats, list):
@@ -894,9 +1011,8 @@ def build_watcher(path: Path, fm: dict[str, Any], cfg: Config, packs: dict[str, 
         id=wid,
         path=path,
         title=str(fm.get("title") or wid),
-        kind=kind,
-        source=source,
         type=wtype,
+        description=" ".join(str(fm.get("description") or "").split()),
         related=related,
         tags=tags,
         pack=pack,
@@ -918,24 +1034,77 @@ def build_watcher(path: Path, fm: dict[str, Any], cfg: Config, packs: dict[str, 
     )
 
 
+def registry_files(folder: Path) -> list[Path]:
+    """Every top-level `*.ref.md` in the registry, suffix matched case-insensitively."""
+    if not folder.is_dir():
+        return []
+    return sorted((p for p in folder.iterdir() if p.is_file() and is_ref_name(p.name)),
+                  key=lambda p: p.name.lower())
+
+
+def registry_stray_files(folder: Path) -> list[str]:
+    """Files in the registry that are neither `README.md` nor a `.ref.md` — not watchers.
+
+    A watcher definition parked under the wrong suffix (`Foo.md`) would
+    otherwise be silently nothing: never loaded, never checked, never
+    converted by a migration. `check` and `list` surface these as warnings.
+    """
+    if not folder.is_dir():
+        return []
+    out: list[str] = []
+    for p in sorted(folder.iterdir(), key=lambda q: q.name.lower()):
+        if (not p.is_file() or p.name.startswith(".") or p.name == "README.md"
+                or is_ref_name(p.name)):
+            continue
+        out.append(
+            f"{p.name}: not a .ref.md — not a watcher; rename it to "
+            f"`{ref_filename(id_from_stem(p.name.split('.')[0]))}` (id = stem lowercased) "
+            "or move it out of the registry"
+        )
+    return out
+
+
+def find_ref(folder: Path, watcher_id: str) -> Path | None:
+    """The registry file for `watcher_id`, whatever its case on disk (None if absent)."""
+    wid = id_from_stem(watcher_id)
+    for path in registry_files(folder):
+        if watcher_id_for(path) == wid:
+            return path
+    return None
+
+
 def load_registry(
     workspace: Path, cfg: Config, packs: dict[str, Pack]
 ) -> tuple[list[Watcher], list[dict[str, Any]]]:
-    """Parse every `<id>.ref.md` in the registry folder. Errors never abort.
+    """Parse every `*.ref.md` in the registry folder. Errors never abort.
 
-    Each error is `{id, file, line, error}` with `error` in the contract's
-    `<file>:<line>: <message>` form. `README.md` and anything that is not a
-    `.ref.md` are not watchers and are ignored.
+    The id is the filename stem lowercased (`Simplefin.ref.md` -> `simplefin`);
+    two files whose lowercase stems collide are both reported as errors and
+    neither loads. Each error is `{id, file, line, error}` with `error` in
+    the contract's `<file>:<line>: <message>` form. `README.md`, `.meta.md`
+    sidecars and anything that is not a `.ref.md` are not watchers.
     """
     folder = registry_dir(workspace, cfg)
     watchers: list[Watcher] = []
     errors: list[dict[str, Any]] = []
     if not folder.is_dir():
         return watchers, errors
-    for path in sorted(folder.glob(f"*{REF_SUFFIX}")):
+    paths = registry_files(folder)
+    by_id: dict[str, list[Path]] = {}
+    for path in paths:
+        by_id.setdefault(watcher_id_for(path), []).append(path)
+    for path in paths:
         rel = _rel(workspace, path)
+        wid = watcher_id_for(path)
         text = ""
         try:
+            siblings = by_id[wid]
+            if len(siblings) > 1:
+                raise WatchlistError(
+                    f"watcher id `{wid}` is claimed by {len(siblings)} files "
+                    f"({', '.join(p.name for p in siblings)}); ids resolve case-insensitively "
+                    f"— rename one (canonical: `{ref_filename(wid)}`)"
+                )
             text = path.read_text(encoding="utf-8")
             fm, _body = parse_frontmatter(text)
             if fm is None:
@@ -943,10 +1112,10 @@ def load_registry(
             watchers.append(build_watcher(path, fm, cfg, packs))
         except WatchlistError as exc:
             line = _line_of_key(text, exc.key)
-            errors.append({"id": watcher_id_for(path), "file": rel, "line": line,
+            errors.append({"id": wid, "file": rel, "line": line,
                            "error": f"{rel}:{line}: {exc}"})
         except OSError as exc:
-            errors.append({"id": watcher_id_for(path), "file": rel, "line": 1,
+            errors.append({"id": wid, "file": rel, "line": 1,
                            "error": f"{rel}:1: cannot read: {exc}"})
     return watchers, errors
 
@@ -1021,6 +1190,21 @@ def state_lock(workspace: Path) -> Iterator[None]:
             fcntl.flock(fh, fcntl.LOCK_UN)
 
 
+def _icloud_placeholder(registry: Path, watcher_id: str) -> Path | None:
+    """`.<Stem>.ref.md.icloud` for the watcher, whatever the stem's case on disk."""
+    if not registry.is_dir():
+        return None
+    suffix = f"{REF_SUFFIX}.icloud"
+    for path in registry.iterdir():
+        name = path.name
+        if not (name.startswith(".") and name.lower().endswith(suffix)):
+            continue
+        stem = name[1: -len(suffix)]
+        if id_from_stem(stem) == watcher_id:
+            return path
+    return None
+
+
 def prune_state(state: dict[str, Any], watcher_ids: set[str], *,
                 registry: Path | None = None, now_s: str = "") -> tuple[list[str], list[str]]:
     """Age rows whose ref disappeared; prune after `ORPHAN_PRUNE_RUNS` consecutive runs.
@@ -1043,8 +1227,8 @@ def prune_state(state: dict[str, Any], watcher_ids: set[str], *,
             row.pop("orphaned_at", None)
     for wid in orphans:
         row = rows[wid]
-        placeholder = (registry / f".{wid}{REF_SUFFIX}.icloud") if registry is not None else None
-        if placeholder is not None and placeholder.exists():
+        placeholder = _icloud_placeholder(registry, wid) if registry is not None else None
+        if placeholder is not None:
             warnings.append(
                 f"`{wid}`: ref is an iCloud placeholder ({placeholder.name}) — not downloaded, "
                 "not deleted; state kept as-is"
@@ -1771,7 +1955,7 @@ def subagent_dispatch_spec(watcher: Watcher, row: dict[str, Any]) -> dict[str, A
         "previous_note_label": PREVIOUS_NOTE_LABEL,
         "last_changed": row.get("last_changed"),
         "last_checked": row.get("last_checked"),
-        "source": watcher.source,
+        "description": watcher.description,
         "return_shape": RETURN_SHAPE,
         "stamp_command": stamp_command(watcher.id),
     }
@@ -2010,7 +2194,7 @@ def check_one(ctx: CheckContext, payload: dict[str, Any], watcher: Watcher,
                     min_check_interval_minutes=watcher.min_check_interval_minutes,
                 ))
                 return
-        if ctx.cycle not in watcher.cycles:
+        if not cycle_covers(ctx.cycle, watcher.cycles):
             _bucket(payload, "skipped_cycle", _item(watcher, cycles=watcher.cycles))
             return
 
@@ -2070,6 +2254,8 @@ def run_check(ctx: CheckContext) -> dict[str, Any] | None:
     watchers, reg_errors = load_registry(ctx.workspace, ctx.cfg, packs)
     for err in reg_errors:
         _bucket(payload, "errors", err)
+    reg_rel = _rel(ctx.workspace, folder)
+    payload["warnings"].extend(f"{reg_rel}/{msg}" for msg in registry_stray_files(folder))
     if ctx.only_id is not None and not any(w.id == ctx.only_id for w in watchers):
         _bucket(payload, "errors", {"id": ctx.only_id, "error": f"no watcher `{ctx.only_id}`"})
     with state_lock(ctx.workspace):
@@ -2194,8 +2380,8 @@ def _parse_kv(pairs: list[str]) -> dict[str, str]:
 
 
 def render_ref(framework: Path, fields: dict[str, Any]) -> str:
-    """Frontmatter + Notes body from `templates/sources/watch.ref.md` (or the builtin)."""
-    template_path = framework / "templates" / "sources" / "watch.ref.md"
+    """Frontmatter + Notes body from `templates/sources/ref.md` (or the builtin)."""
+    template_path = framework / "templates" / "sources" / "ref.md"
     text = BUILTIN_REF_TEMPLATE
     if template_path.is_file():
         with contextlib.suppress(OSError):
@@ -2216,52 +2402,66 @@ def render_ref(framework: Path, fields: dict[str, Any]) -> str:
             fm["watch"] = merged
         else:
             fm[key] = value
-    fm.setdefault("ref_version", 1)
+    fm.setdefault("ref_version", REF_VERSION)
+    fm["ref_version"] = REF_VERSION
+    for legacy in LEGACY_REF_KEYS:
+        fm.pop(legacy, None)
     front = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True, default_flow_style=False)
     body = body if body.strip() else "\n# Notes\n"
     return f"---\n{front}---\n{body.lstrip(chr(10))}"
 
 
-def _source_for(pack: Pack, detect: dict[str, Any], params: dict[str, Any]) -> str:
-    """Contract § 4: the ref's `source` derives from the pack's detect type."""
+def _describe(pack: Pack, detect: dict[str, Any], params: dict[str, Any]) -> str:
+    """One-line `description` for an `enable`d ref: what this instance points at.
+
+    A non-parameterized pack (e.g. `simplefin`) contributes its own
+    description; a parameterized one is described by its locator (the URL,
+    the command, the query, the prompt's first line) so the ref is legible
+    in `list` and in a briefing without opening it.
+    """
+    if not pack.parameterized:
+        return pack.description or pack.title
     dtype = pack.detect_type
-    if dtype == "harvest":
-        return pack.id
     if dtype in LOCATOR_KEY:
-        locator = str(detect.get(LOCATOR_KEY[dtype]) or "")
+        locator = str(detect.get(LOCATOR_KEY[dtype]) or "").strip()
         if dtype == "subagent":
-            first_line = locator.strip().splitlines()[0] if locator.strip() else ""
-            return first_line[:120] or pack.id
-        return locator or pack.id
-    # Pack-defined type: `<pack id>:<primary param>` (the first required param).
+            first_line = locator.splitlines()[0] if locator else ""
+            return first_line[:120] or pack.title
+        return locator or pack.title
+    # Pack-defined type: `<pack id>: <primary param>` (the first required param).
     primary = next((n for n, spec in pack.params.items() if spec.get("required")), None)
-    value = str(params.get(primary) or "") if primary else ""
-    return f"{pack.id}:{value}" if value else pack.id
+    value = str(params.get(primary) or "").strip() if primary else ""
+    return f"{pack.title}: {value}" if value else pack.title
 
 
 def enable_pack(workspace: Path, framework: Path, *, pack_id: str, watcher_id: str | None,
                 params: dict[str, str], title: str | None) -> Path:
+    """Write `<Title_Case id>.ref.md` for a pack (contract § 4). Never overwrites.
+
+    The existence check is case-insensitive, like loading: `--id simplefin`
+    refuses when `simplefin.ref.md` or `SIMPLEFIN.ref.md` is already there.
+    """
     cfg = load_config(workspace)
     packs, _ = discover_packs(framework, workspace)
     pack = packs.get(pack_id)
     if pack is None:
         known = ", ".join(sorted(packs)) or "(none)"
         raise WatchlistError(f"unknown pack `{pack_id}`; available: {known}")
-    wid = watcher_id or pack.id
+    wid = id_from_stem(watcher_id or pack.id)
     if not ID_RE.match(wid):
         raise WatchlistError(
             f"id {wid!r} is not a valid watcher id ({ID_RULE}); try `--id {slugify_id(wid)}`"
         )
     folder = registry_dir(workspace, cfg)
-    target = folder / f"{wid}{REF_SUFFIX}"
-    if target.exists():
-        raise WatchlistError(f"{_rel(workspace, target)} already exists")
+    existing = find_ref(folder, wid)
+    if existing is not None:
+        raise WatchlistError(f"{_rel(workspace, existing)} already exists (id `{wid}`)")
+    target = folder / ref_filename(wid)
     resolved = resolve_params(pack, dict(params))
     detect = render_detect(pack, resolved)
     fields: dict[str, Any] = {
         "title": title or (pack.title if wid == pack.id else f"{wid} ({pack.title})"),
-        "kind": TYPE_TO_KIND.get(pack.detect_type, "api"),
-        "source": _source_for(pack, detect, resolved),
+        "description": _describe(pack, detect, resolved),
         "added_by": "watch",
         "added_at": now_iso(),
         "watch": {"pack": pack.id, "enabled": True},
@@ -2443,7 +2643,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     c = sub.add_parser("check", help="Run detect for every watcher eligible in a cycle.")
-    c.add_argument("--cycle", required=True, help="daily-update | weekly-review | monthly-review | ...")
+    c.add_argument("--cycle", required=True,
+                   help="daily-update | weekly-review | monthly-review | ... (slower cycles include "
+                        "faster ones: weekly-review also checks daily watchers)")
     c.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="seconds per url/cmd fetch")
     c.add_argument("--report", action="store_true", help="print briefing markdown instead of JSON")
     c.add_argument("--no-harvest", action="store_true", help="detect only; never dispatch harvest")
@@ -2528,6 +2730,8 @@ def main(argv: list[str] | None = None) -> int:
             print("[]" if args.json else f"watchlist off: {cfg.path}/ does not exist")
             return 0
         rows = list_rows(workspace, framework, status=args.status)
+        for msg in registry_stray_files(registry_dir(workspace, cfg)):
+            print(f"warning: {cfg.path}/{msg}", file=sys.stderr)
         if args.json:
             _emit(rows)
         else:

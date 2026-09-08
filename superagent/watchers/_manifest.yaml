@@ -5,7 +5,7 @@
 # A pack is a self-contained folder `superagent/watchers/<id>/` holding
 # `pack.yaml` (declarative detect / harvest / probe / auth / defaults) plus,
 # only when the watcher needs real code, a same-folder `handler.py` and an
-# optional `README.md`. A registry row (`Sources/Watchlist/<id>.ref.md`)
+# optional `README.md`. A registry row (`Sources/Watchlist/<Title_Case>.ref.md`)
 # inherits a pack with `watch.pack: <id>` and overrides only what it needs.
 #
 # The same folder shape works as a user overlay at
@@ -19,7 +19,7 @@ packs:
   - id: simplefin
     path: watchers/simplefin/pack.yaml
     kind: api
-    one_line: "SimpleFIN Bridge bank and brokerage feed — detect is the harvest call; weekly, manual capture, budgeted."
+    one_line: "SimpleFIN Bridge bank and brokerage feed — detect is the harvest call; daily, automatic capture, budgeted (24/day)."
   - id: gmail
     path: watchers/gmail/pack.yaml
     kind: api

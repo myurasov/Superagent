@@ -43,7 +43,7 @@ Projects/<slug>/
   rolodex.md    — project-scoped contact directory
   sources.md    — curated catalogue of Sources/ entries for this project
   Resources/    — optional, lazily created — drafts, working files, agent artifacts
-  Sources/      — optional project-scoped reference library (per § 15.7)
+  Sources/      — optional project-scoped reference library (per `contracts/sources.md` § 15.9)
 ```
 
 Templates: `superagent/templates/projects/<file>.md`.
@@ -120,6 +120,6 @@ This is how a kitchen-reno Project shows up in BOTH `Domains/Home/status.md` AND
 2. Update `_memory/projects-index.yaml.<row>.path` to point at the new location.
 3. Move the row from `projects-index.yaml.projects[]` to `projects-index.yaml.archived[]`.
 4. Tasks for this project remain in `_memory/todo.yaml` but are no longer surfaced (filtered by status: completed / cancelled).
-5. The cache under `Projects/<slug>/Sources/_cache/` is dropped to disk savings; the documents and references stay (they're in `Sources/`, not in `_cache/`).
+5. `Projects/<slug>/Sources/` (documents + `.meta.md` sidecars) moves with the project; the index rows follow the path move (`contracts/sources.md` § 15.6). A watcher tied to the project lives in the one workspace registry (`Sources/Watchlist/`) — set `watch.expires` to the target date so it retires with the project, or pause it with `enabled: false`.
 
 Reversible: `mv Archive/<YYYY-MM>/Projects/<slug>/ Projects/<slug>/` and update the index. Cancelled projects follow the same archival path; they just never had completion criteria.

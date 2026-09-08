@@ -14,10 +14,21 @@
 #
 # What gets recomputed:
 #   - path, kind, category (heuristic from path), title (from filename if
-#     not set in a sibling .ref.md), present
+#     not set in the document's `.meta.md` sidecar / the ref frontmatter),
+#     present, watch
 #
-# `Sources/_cache/` is excluded from this index (it's agent territory, not a
-# user-facing source). The cache contract lives in `contracts/sources.md` § 15.4.
+# Three things live under `Sources/` and reach this index:
+#   - DOCUMENTS: any user file. Row kind `document`, keyed by the document's path.
+#   - SIDECARS: `<doc>.<ext>.meta.md` next to a document carries its metadata
+#     (title, related_*, tags, sensitive, notes). The sidecar has NO row of its
+#     own — its frontmatter is folded into the document's row. A sidecar with
+#     no document next to it is an "orphan" refresh warning, not a row.
+#   - WATCHERS: `Sources/Watchlist/<Title_Case>.ref.md` (contracts/watchlist.md).
+#     Row kind `watcher`, keyed by the ref path, with the `watch:` mapping lifted
+#     into the row. Every `.ref.md` is a watcher; one outside the registry is a
+#     "stray .ref.md outside the registry" refresh warning, not a row.
+# README.md files, dotfiles and a leftover `_cache/` (retired 0.19.0 fetch
+# cache) are excluded.
 
 schema_version: 1
 last_filesystem_scan: null    # ISO 8601 of the last `sources_index refresh` walk
@@ -25,13 +36,15 @@ last_filesystem_scan: null    # ISO 8601 of the last `sources_index refresh` wal
 sources:
   # Each source:
   #   id              — Stable slug. Default form `src-<sha1(workspace-relative-path)[:10]>`;
-  #                      preserved across content moves when the new file carries the same id
-  #                      in a sibling `.ref.md` or by content-hash + filename match.
-  #   kind            — document | reference
-  #                      document  → file at `path` is the source.
-  #                      reference → `path` is a `.ref.md` / `.ref.txt` file describing
-  #                                   where to fetch external data.
-  #   title           — Display title (filename stem if not set in ref frontmatter).
+  #                      preserved across content moves by filename match (and kept when
+  #                      a row's `path` is rewritten in place, e.g. by a migration).
+  #   kind            — document | watcher
+  #                      document → file at `path` is the source (metadata from an
+  #                                 optional `<doc>.<ext>.meta.md` sidecar).
+  #                      watcher  → `path` is a `Sources/Watchlist/<Title_Case>.ref.md`
+  #                                 watcher definition; see `watch` below.
+  #   title           — Display title (filename stem if not set in the sidecar / ref
+  #                      frontmatter).
   #   path            — Workspace-relative path under Sources/.
   #   category        — Free-text tag (auto-derived from the first sub-folder under
   #                      Sources/; user-overridable). Drives nothing structural.
@@ -47,10 +60,16 @@ sources:
   #                      row is kept for one cycle in case the user wants to recover
   #                      its notes/cross-refs. Permanently dropped on next refresh
   #                      if still missing.
-  #   normalized      — bool. Only meaningful for kind: reference. True once the file
-  #                      is in canonical YAML-frontmatter form.
+  #   normalized      — bool. Only meaningful for kind: watcher. True when the ref's
+  #                      YAML frontmatter parsed on the last refresh; a transiently
+  #                      broken file keeps its previously lifted `watch` mapping.
   #   tags            — Short labels.
   #   notes           — Free-form (where the physical original lives, why we keep it).
+  #   watch           — kind: watcher only. The ref's `watch:` mapping (pack / type /
+  #                      locator / cycles / ...), lifted verbatim as a derived view so
+  #                      `sources list`, `search` and `tools/world.py` (`watch:<id>`
+  #                      nodes) see watchers without opening the file. The ref stays
+  #                      the source of truth; `tools/watchlist.py` never reads this.
   - id: ""
     kind: ""
     title: ""

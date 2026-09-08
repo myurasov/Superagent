@@ -85,7 +85,7 @@ Find files in `Domains/<domain>/Resources/` and `Projects/<slug>/Resources/` whe
 
 Surface; offer `archive` (move to `Archive/<YYYY-MM>/_doctor-resources/`) or `keep`.
 
-**Note**: `doctor` NEVER touches user-curated content under `Sources/` (the agent manages only `Sources/_cache/`; `Sources/Watchlist/` is a reserved name whose watcher refs are user-editable — `doctor` may report an evicted or unreachable watcher from `_memory/watchlist-state.yaml` but never deletes the ref; everything else is read-only per `contracts/sources.md` § 15.7). The strict pass for stale Sources is the user's job, surfaced via `monthly-review` § 7d as a candidate list, never auto-actioned.
+**Note**: `doctor` NEVER touches user-curated content under `Sources/` (nothing there is agent-managed; `Sources/Watchlist/` is a reserved name whose watcher refs are user-editable — `doctor` may report an evicted or unreachable watcher from `_memory/watchlist-state.yaml` but never deletes the ref; everything else is read-only per `contracts/sources.md` § 15.7). The strict pass for stale Sources is the user's job, surfaced via `monthly-review` § 7d as a candidate list, never auto-actioned.
 
 ## 4. Duplicates
 

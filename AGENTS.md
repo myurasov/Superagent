@@ -132,7 +132,7 @@ When the agent first opens (or first acts in) `workspace/` in a session:
 ## Before any file or MCP operation
 
 - **Always read `workspace/_memory/config.yaml` first** to resolve `preferences.workspace_path`, the user profile, MCP and CLI tool flags, automation preferences, and watchlist defaults (`preferences.watchlist`). Do not assume a hardcoded `workspace/` path except as the documented default when config is missing.
-- **Always read the `Sources/Watchlist/` registry** (or `config.preferences.watchlist.path`) **and `workspace/_memory/watchlist-state.yaml`** before invoking any watcher, harvest, or skill that reads MCPs / CLI tools. The folder is the single source of truth for which sources are configured (one `<id>.ref.md` per watcher); the state file records when each last ran and its budget counters.
+- **Always read the `Sources/Watchlist/` registry** (or `config.preferences.watchlist.path`) **and `workspace/_memory/watchlist-state.yaml`** before invoking any watcher, harvest, or skill that reads MCPs / CLI tools. The folder is the single source of truth for which sources are configured (one `<Title_Case>.ref.md` per watcher; id = stem lowercased); the state file records when each last ran and its budget counters.
 
 ---
 
@@ -176,7 +176,7 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 | **important-dates** | Add / list birthdays, anniversaries, document expirations, recurring deadlines. |
 | **add-domain / add-project / add-asset / add-contact / add-account / add-bill / add-subscription / add-appointment / add-important-date / add-document / add-source** | Capture skills — bootstrap a single new entity with the right template + index row. |
 | **projects** | List, show, complete, pause, resume, cancel, archive Projects. Per-project burn-down. |
-| **sources** | List, search, fetch (through cache), refresh the Sources/ library. |
+| **sources** | List, search, open documents (with their `.meta.md` sidecars) and watchers in `Sources/`; rescan the derived index. |
 | **ad-hoc-task** | Start / resume an ad-hoc task (investigation, setup, research, engineering scratch with no Domain/Project home) under a dated folder `tasks/<YYYY>/<MM>/<YYYY-MM-DD>-<slug>/` at the repo root — outside `workspace/`. |
 | **browserctl** | Launch and drive Chromium via the `browserctl` CLI — per-project persistent profiles on stable CDP ports, snapshots / screenshots / eval. Replaces the Playwright MCP (Chromium only). Per-web-app driving knowledge accumulates in `workspace/_custom/skills/browserctl.<app>.md`, kept live-updated in the same turn whenever a flow breaks or a better path is found. |
 | **log-event** | One-shot capture: "log this medical visit", "log this car service", "log this home repair" — appends to the right `history.md` and updates indexes. |
@@ -205,11 +205,11 @@ The full skill catalog (machine-readable, with one-liners + triggers) lives in [
 
 Superagent's value scales with the breadth of authorized data sources. External sources live on the **watchlist** — detect ("did it move?") is declarative and cheap; harvest (pull + normalize into a typed index) runs only where a handler exists. The contracts are `contracts/watchlist.md` (watchers, packs, lifecycle) and `contracts/ingestion.md` (harvest handlers); the one-paragraph summary:
 
-- **Every source** is a ref: `Sources/Watchlist/<id>.ref.md` (normal ref frontmatter plus a `watch:` block — `pack` or `type`, `enabled`, `cycles`, `schedule`, `capture_mode`, budgets, auth pointer). Filename stem = id = handle `watch:<id>`.
+- **Every source** is a watcher ref: `Sources/Watchlist/<Title_Case>.ref.md` (`ref_version: 2` — `title`, `related_*`, `tags`, provenance, plus a `watch:` block carrying `pack` or `type`, the locator — `url:` / `path:` / `cmd:` / `prompt:` / `query:`, or pack `params` — `enabled`, `cycles`, `schedule`, `capture_mode`). No `kind` / `source` / `ttl_minutes`. Filename stem lowercased = id = handle `watch:<id>`. Every `.ref.md` under `Sources/` is a watcher.
 - **Packs** are self-contained folders in `superagent/watchers/<id>/` (shipped: `simplefin`, `gmail`, `url`, `cmd`, `path`, `subagent`) or `workspace/_custom/watchers/<id>/`; a pack is completely self-sufficient — any source-specific code (a **harvest handler** implementing `IngestorBase.run`, or a code-backed `detect()`) lives in the pack's own `handler.py`, never under `superagent/tools/`.
 - **State** is machine-owned in `workspace/_memory/watchlist-state.yaml` (fingerprint, `last_checked`, `last_success`, `error_streak`, `last_harvest`, `calls_today`); harvest runs still append a row to `workspace/_memory/ingestion-log.yaml`.
 - **Every watcher and harvest** is **read-only** upstream unless explicitly documented otherwise. It pulls; it does not push, delete, or modify upstream state.
-- **Every harvest** is **idempotent** within its window — re-running over the same window must not duplicate rows in any index or any domain `history.md`. `capture_mode: manual` harvests never run from a cadence `check`; budgets are enforced before dispatch.
+- **Every harvest** is **idempotent** within its window — re-running over the same window must not duplicate rows in any index or any domain `history.md`. `capture_mode: manual` harvests never run from a cadence `check`; budgets are enforced before dispatch. The shipped `simplefin` pack defaults to daily / automatic (`cycles: [daily-update]`, 24 calls/day, 60 min apart); `harvest --id simplefin` is the on-demand pull.
 - **Quick-start works with no watcher enabled.** Init never silently turns on a source; it probes the shipped packs, lists what's available, and asks.
 - **Heavy backfill is opt-in and deferred.** Pulling a year of bank data is a separate, explicit `harvest --id <id>` invocation.
 
@@ -278,25 +278,22 @@ A Project links UP to one or more Domains via `related_domains: [..]`. Tasks in 
 
 ### Sources/
 
-**Sources** = the workspace's reference library: documents the user owns + pointers (`.ref.md` / `.ref.txt`) to external data. Three foundational rules (per `contracts/sources.md`):
+**Sources** = the workspace's reference library: documents the user owns (each optionally described by a `<doc>.<ext>.meta.md` sidecar) + the watcher registry (`Sources/Watchlist/`). Three foundational rules (per `contracts/sources.md`):
 
-1. **Layout is user-defined.** The agent reserves only `Sources/README.md`, `Sources/_cache/`, and the `Sources/Watchlist/` name (the watcher registry — reserved name, user-editable contents; per `contracts/watchlist.md`); everything else is the user's territory. Drop files anywhere; organize folders any way.
+1. **Layout is user-defined.** The agent reserves only `Sources/README.md` and the `Sources/Watchlist/` name (the watcher registry — reserved name, user-editable contents; per `contracts/watchlist.md`); everything else is the user's territory. Drop files anywhere; organize folders any way. Nothing under `Sources/` is agent-managed or auto-evicted.
 2. **Index is derived.** `_memory/sources-index.yaml` is rebuilt from the filesystem on demand by `tools/sources_index.py refresh` (mtime-lazy — near-no-op when nothing changed). Hand-curated fields (notes, tags, sensitive, related_*, last_accessed, read_count) are preserved across refreshes.
-3. **Local-first.** Every skill that needs source data reads the cache first; only goes to live MCP / API when the cache is stale or missing. Reads `_summary.md` + `_toc.yaml` first; only pulls relevant chunks of `raw.<ext>` when needed.
+3. **Local-first.** A document is read from its path — sidecar first, then the file, never a large file whole. An external thing is never fetched on demand: it is **watched** — its "did it move?" state lives in `_memory/watchlist-state.yaml` and a harvest's records land in a typed `_memory/` index, which is where skills read them.
 
 ```
 Sources/
   README.md                                 # user-facing docs (template)
-  _cache/<source-hash>/                     # agent-managed (TTL + LRU)
-    _meta.yaml _summary.md _toc.yaml raw.<ext> chunks/
-  Watchlist/<id>.ref.md                     # watcher registry (reserved name; refs with a watch: block)
+  Watchlist/<Title_Case>.ref.md             # watcher registry (reserved name; id = stem lowercased)
   <whatever-folders-you-want>/<files>       # user-curated; any layout
     <doc>.<ext>                             # documents
-    <doc>.<ext>.ref.md                      # optional sidecar metadata
-    <name>.ref.md  /  <name>.ref.txt        # standalone references
+    <doc>.<ext>.meta.md                     # optional sidecar metadata for that document
 ```
 
-Reference files (`.ref.md` / `.ref.txt`) describe `kind` (mcp / cli / url / api / file / vault / manual) + `source` (the identifier) + `ttl_minutes`. The canonical form is YAML frontmatter (`superagent/templates/sources/ref.md`); hand-authored loose `Key: value` or bare-URL forms are accepted and **normalized on first use** with the user's permission (`tools/sources_normalize.py`; default policy `ask`). The agent resolves a ref by computing `sha256(kind + source)`, checking the cache (default `Sources/_cache/<hash>/`, override via `config.preferences.sources.cache_path`), fetching only if necessary.
+**A `.ref.md` is a watcher definition and nothing else** (`ref_version: 2`, template `superagent/templates/sources/ref.md`): `title`, `related_*`, `tags`, provenance, and a `watch:` block that carries the detect settings and the locator (`url:` / `path:` / `cmd:` / `prompt:` / `query:`, or pack `params`). There is no `kind` / `source` / `ttl_minutes` vocabulary, no `.ref.txt`, and no fetch cache. Document metadata goes in the `.meta.md` sidecar, so the rule has no exception.
 
 Filenames inside Domain / Project folders are lowercase and hyphenated; sub-folders for events, trips, sub-efforts follow the same rule.
 
@@ -442,11 +439,10 @@ The always-on floor in `rules/token-economy.md` binds at every level, including 
 
 Per `contracts/local-first-read-order.md` (codifies QW-7), every skill that needs data MUST consult the local copy first and fall through to a live MCP / API only when the local copy is genuinely insufficient:
 
-1. **Local index** (`_memory/<index>.yaml`) for structured rows — bills, subscriptions, appointments, important dates, contacts, accounts, assets, documents, health records.
-2. **Local Sources cache** (`<cache_path>/<hash>/`, default `Sources/_cache/`) for cached external content — read `_summary.md` first, then `_toc.yaml`, then only the relevant chunk(s) from `raw.<ext>` or `chunks/`. Refresh the derived index first via `tools/sources_index.py refresh`.
-3. **Domain / Project history.md** for narrative recall.
-4. **Events stream** (`_memory/events/<YYYY-Qn>.yaml` via `tools/log_window.py`) for cross-entity timeline queries.
-5. **Live MCP / CLI source** ONLY when **all** are true: (a) the local read returned no candidates that match the question; AND (b) the time window the question is asking about extends past the source's `last_success` / `last_harvest` in `watchlist-state.yaml`; AND (c) freshness genuinely matters for the question.
+1. **Local index** (`_memory/<index>.yaml`) for structured rows — bills, subscriptions, appointments, important dates, contacts, accounts, assets, documents, health records, sources (refresh the derived Sources index first via `tools/sources_index.py refresh`; a document is then read from its path, a watcher's state from `_memory/watchlist-state.yaml`).
+2. **Domain / Project history.md** for narrative recall.
+3. **Events stream** (`_memory/events/<YYYY-Qn>.yaml` via `tools/log_window.py`) for cross-entity timeline queries.
+4. **Live MCP / CLI source** ONLY when **all** are true: (a) the local read returned no candidates that match the question; AND (b) the time window the question is asking about extends past the source's `last_success` / `last_harvest` in `watchlist-state.yaml`; AND (c) freshness genuinely matters for the question.
 
 When the live call happens, capture-through MUST run (per the ingestion contract in `contracts/ingestion.md`) so the next read is local.
 

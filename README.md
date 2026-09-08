@@ -80,11 +80,13 @@ Capabilities grouped by intent. Full skill list (~50) lives at `superagent/skill
 
 ## Data sources
 
-Quick-start works with **zero** watchers. External sources live on the **watchlist**: one `.ref.md` per watched source under `Sources/Watchlist/`, checked by the cadence skills, with a "did it move?" detect step gating any expensive pull. Four watcher packs ship today:
+Quick-start works with **zero** watchers. External sources live on the **watchlist**: one `.ref.md` per watched source under `Sources/Watchlist/`, checked by the cadence skills, with a "did it move?" detect step gating any expensive pull. Six watcher packs ship today (`simplefin`, `gmail`, `url`, `cmd`, `path`, `subagent`):
 
-- **SimpleFIN** — bank, credit-card, and brokerage transactions (weekly harvest into `transactions.yaml`)
+- **SimpleFIN** — bank, credit-card, and brokerage transactions (daily automatic harvest into `transactions.yaml`, budget-gated; `harvest --id simplefin` on demand)
 - **Gmail** — live query for new mail matching a label or search; results land in the local email archive
-- **Web page** — any URL (ETag / Last-Modified first, then a scoped content hash)
+- **Web page** (`url`) — any URL (ETag / Last-Modified first, then a scoped content hash)
+- **Command** (`cmd`) — the stdout of a read-only shell command; off until `allow_cmd: true`
+- **Path** — a local file or folder, fingerprinted by content or by newest mtime + entry count
 - **Subagent** — anything an agent can read (a portal behind a login, a PDF that gets re-issued)
 
 Plus a standalone CSV importer for bank statements. Anything else is a one-file `url` / `cmd` / `subagent` watcher, or a self-contained pack folder you drop into `workspace/_custom/watchers/<id>/` — no framework code touched.

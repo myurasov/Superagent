@@ -20,4 +20,4 @@ provenance:
 
 **Surface contract**: when the agent makes a factual claim sourced from the workspace, prefer to cite the provenance:
 
-> "Yes — HVAC was installed in 2019 (source: install-receipt at `Sources/documents/warranties/hvac/install-2019.pdf`, verified 2024-03-12)."
+> "Yes — HVAC was installed in 2019 (source: install-receipt at `Sources/Warranties/hvac/install-2019.pdf`, verified 2024-03-12)."

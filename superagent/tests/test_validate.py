@@ -233,40 +233,134 @@ def test_check_watchlist_state_shape() -> None:
                for e in check_watchlist_state({"schema_version": 1, "watchers": {"a": "x"}}))
 
 
-def _watch_ref(body: str) -> str:
-    return ("---\nref_version: 1\ntitle: t\nkind: url\nsource: \"https://example.com\"\n"
-            + body + "---\n")
+def _watch_ref(body: str, *, head: str = "---\nref_version: 2\ntitle: t\n") -> str:
+    """A `ref_version: 2` watcher ref: frontmatter head + the caller's `watch:` block."""
+    return head + body + "---\n"
+
+
+def test_ref_helpers_title_case_and_ids() -> None:
+    from superagent.tools import validate as v
+
+    assert v.title_case_id("simplefin") == "Simplefin"
+    assert v.title_case_id("home_assistant-hub") == "Home_Assistant-Hub"
+    assert v.title_case_id("Home_Assistant-Hub") == "Home_Assistant-Hub"
+    assert v.watch_id_from_stem("Home_Assistant-Hub") == "home_assistant-hub"
+    assert v.ref_stem("Gmail-Bills.ref.md") == "Gmail-Bills" and v.ref_stem("x.REF.MD") == "x"
+    assert v.is_ref_name("A.ref.md") and not v.is_ref_name(".ref.md") and not v.is_ref_name("a.meta.md")
+    assert v.WATCH_ID_RE.match("home_assistant-hub") and not v.WATCH_ID_RE.match("Home_Assistant-Hub")
+    assert v.REF_SUFFIX == ".ref.md" and v.META_SUFFIX == ".meta.md"
+    assert v.LEGACY_REF_MIGRATION == "0.20.0"
+    assert "watch" in v.REF_TOP_KEYS and not (v.REF_TOP_KEYS & v.LEGACY_REF_KEYS)
+    assert v.WATCH_LOCATOR_KEY == {"url": "url", "path": "path", "cmd": "cmd", "subagent": "prompt",
+                                   "gmail": "query"}
+    assert set(v.WATCH_BUILTIN_TYPES) == {"url", "path", "cmd", "subagent", "harvest"}
+    # Retained for the migrations only (v1 kind -> watch.type conversion).
+    assert v.WATCH_TYPE_BY_REF_KIND == {"url": "url", "cli": "cmd", "file": "path", "manual": "subagent"}
 
 
 def test_validate_watchlist_refs_schema(framework_dir: Path, initialized_workspace: Path) -> None:
     from superagent.tools.validate import validate_watchlist_refs
 
     reg = initialized_workspace / "Sources" / "Watchlist"
-    (reg / "good-url.ref.md").write_text(_watch_ref("watch:\n  enabled: true\n"))  # type from kind
-    (reg / "good-pack.ref.md").write_text(_watch_ref("watch:\n  pack: simplefin\n  capture_mode: manual\n"))
-    (reg / "bad-reserved.ref.md").write_text(_watch_ref("watch:\n  type: index_query\n"))
-    (reg / "bad-pack.ref.md").write_text(_watch_ref("watch:\n  pack: nope\n"))
-    (reg / "bad-shape.ref.md").write_text(
-        _watch_ref("watch:\n  type: url\n  enabled: yes please\n  cycles: daily\n  capture_mode: sometimes\n"))
-    (reg / "no-block.ref.md").write_text(_watch_ref(""))
-    (reg / "bare-subagent.ref.md").write_text(_watch_ref("watch:\n  type: subagent\n"))
-    (reg / "bare-harvest.ref.md").write_text(_watch_ref("watch:\n  type: harvest\n"))
-    # Not watchers: loose .ref.txt, nested files, README.md — the tool never loads them.
-    (reg / "loose.ref.txt").write_text("https://example.com\n")
+    (reg / "Good-Url.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://example.com\n"))
+    (reg / "Good-Pack.ref.md").write_text(_watch_ref("watch:\n  pack: simplefin\n  capture_mode: manual\n"))
+    (reg / "Bad-Reserved.ref.md").write_text(_watch_ref("watch:\n  type: index_query\n"))
+    (reg / "Bad-Pack.ref.md").write_text(_watch_ref("watch:\n  pack: nope\n"))
+    (reg / "Bad-Shape.ref.md").write_text(_watch_ref(
+        "watch:\n  type: url\n  url: https://e.com\n  enabled: yes please\n  cycles: [1, 2]\n"
+        "  capture_mode: sometimes\n"))
+    (reg / "No-Block.ref.md").write_text(_watch_ref(""))
+    (reg / "No-Type.ref.md").write_text(_watch_ref("watch:\n  enabled: true\n"))
+    (reg / "Bare-Subagent.ref.md").write_text(_watch_ref("watch:\n  type: subagent\n"))
+    (reg / "Bare-Url.ref.md").write_text(_watch_ref("watch:\n  type: url\n"))
+    (reg / "Bare-Gmail.ref.md").write_text(_watch_ref("watch:\n  type: gmail\n  query: x\n"))
+    (reg / "Bare-Harvest.ref.md").write_text(_watch_ref("watch:\n  type: harvest\n"))
+    # The 0.19.0 reference shape: legacy keys and ref_version 1 point at the migration.
+    (reg / "Legacy.ref.md").write_text(_watch_ref(
+        "watch:\n  type: url\n  url: https://e.com\n",
+        head="---\nref_version: 1\ntitle: t\nkind: url\nsource: \"https://example.com\"\nttl_minutes: 60\n"))
+    (reg / "Typo.ref.md").write_text(_watch_ref("relatd_domain: home\nwatch:\n  type: url\n  url: https://e.com\n"))
+    (reg / "Bad Id.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
+    (reg / "No-Front.ref.md").write_text("just text\n")
+    # Not watchers: a .meta.md, nested files, README.md — the tool never loads them.
+    (reg / "manual.pdf.meta.md").write_text("---\ntitle: sidecar, not a watcher\n---\n")
     (reg / "sub").mkdir()
-    (reg / "sub" / "nested.ref.md").write_text(_watch_ref("watch:\n  type: index_query\n"))
-    oks, errs = validate_watchlist_refs(initialized_workspace, framework_dir)
-    assert sorted(oks) == ["Sources/Watchlist/good-pack.ref.md", "Sources/Watchlist/good-url.ref.md"]
+    (reg / "sub" / "Nested.ref.md").write_text(_watch_ref("watch:\n  type: index_query\n"))
+    oks, errs, warns = validate_watchlist_refs(initialized_workspace, framework_dir)
+    assert sorted(oks) == ["Sources/Watchlist/Good-Pack.ref.md", "Sources/Watchlist/Good-Url.ref.md"]
     joined = "\n".join(errs)
-    assert "bad-reserved.ref.md: watch.type 'index_query' is reserved" in joined
-    assert "bad-pack.ref.md: watch.pack 'nope' is not a known pack" in joined
-    assert "bad-shape.ref.md: watch.enabled must be bool" in joined
-    assert "bad-shape.ref.md: watch.cycles must be a list" in joined
-    assert "bad-shape.ref.md: watch.capture_mode must be one of" in joined
-    assert "no-block.ref.md: registry ref has no 'watch:' block" in joined
-    assert "bare-subagent.ref.md: a bare subagent watcher needs watch.prompt" in joined
-    assert "bare-harvest.ref.md: watch.type 'harvest' needs a pack" in joined
-    assert "loose.ref.txt" not in joined and "nested.ref.md" not in joined
+    assert "Bad-Reserved.ref.md: watch.type 'index_query' is reserved" in joined
+    assert "Bad-Pack.ref.md: watch.pack 'nope' is not a known pack" in joined
+    assert "Bad-Shape.ref.md: watch.enabled must be bool" in joined
+    assert "Bad-Shape.ref.md: watch.cycles must be a list" in joined
+    assert "Bad-Shape.ref.md: watch.capture_mode must be one of" in joined
+    assert "No-Block.ref.md: registry ref has no 'watch:' block" in joined
+    assert "No-Type.ref.md: watch.pack or watch.type is required" in joined
+    assert "Bare-Subagent.ref.md: a bare subagent watcher needs watch.prompt" in joined
+    assert "Bare-Url.ref.md: a bare url watcher needs watch.url" in joined
+    assert "Bare-Gmail.ref.md: watch.type 'gmail' is provided by a pack" in joined
+    assert "Bare-Harvest.ref.md: watch.type 'harvest' needs a pack" in joined
+    assert "Legacy.ref.md: legacy reference key(s) 'kind', 'source', 'ttl_minutes'" in joined
+    assert "0.20.0 migration" in joined and "Legacy.ref.md: ref_version 1 is not 2" in joined
+    assert "Typo.ref.md: unknown frontmatter key(s) 'relatd_domain'" in joined
+    assert "Bad Id.ref.md: id 'bad id'" in joined and "must match" in joined
+    assert "No-Front.ref.md: missing or unparseable YAML frontmatter" in joined
+    assert "meta.md" not in joined and "Nested.ref.md" not in joined
+    # The nested ref is a stray (warning, never an error); the sidecar in the registry is ignored.
+    assert any("sub/Nested.ref.md: stray .ref.md outside the registry" in w for w in warns)
+    assert not any(w.startswith("Sources/Watchlist/manual.pdf.meta.md") for w in warns)
+
+
+def test_validate_watchlist_refs_title_case_and_collisions(framework_dir: Path,
+                                                          initialized_workspace: Path,
+                                                          monkeypatch) -> None:
+    from superagent.tools import validate as v
+
+    reg = initialized_workspace / "Sources" / "Watchlist"
+    (reg / "lowercase_name.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
+    (reg / "Fine.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
+    oks, errs, warns = v.validate_watchlist_refs(initialized_workspace, framework_dir)
+    assert errs == []
+    assert sorted(oks) == ["Sources/Watchlist/Fine.ref.md", "Sources/Watchlist/lowercase_name.ref.md"], (
+        "a non-Title_Case file still validates (loaded case-insensitively)"
+    )
+    assert warns == ["Sources/Watchlist/lowercase_name.ref.md: filename is not Title_Case; canonical "
+                     "name is Lowercase_Name.ref.md (loaded case-insensitively)"]
+    # Two files whose lowercase stems collide (presented via the listing so the test does not
+    # depend on a case-sensitive filesystem): both are errors, neither is OK.
+    (reg / "FINE.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
+    monkeypatch.setattr(v, "watch_ref_files", lambda registry: [reg / "FINE.ref.md", reg / "Fine.ref.md",
+                                                                 reg / "lowercase_name.ref.md"])
+    oks, errs, warns = v.validate_watchlist_refs(initialized_workspace, framework_dir)
+    assert oks == ["Sources/Watchlist/lowercase_name.ref.md"]
+    assert len(errs) == 2 and all("watcher id 'fine' is claimed by 2 files" in e for e in errs)
+
+
+def test_stray_ref_and_ref_txt_warnings(framework_dir: Path, initialized_workspace: Path) -> None:
+    from superagent.tools.validate import stray_ref_warnings, watchlist_path
+
+    ws = initialized_workspace
+    (ws / "Sources" / "Vehicles").mkdir(parents=True)
+    (ws / "Sources" / "Vehicles" / "manual.pdf").write_text("%PDF\n")
+    (ws / "Sources" / "Vehicles" / "manual.pdf.ref.md").write_text("---\ntitle: legacy sidecar\n---\n")
+    (ws / "Sources" / "Vehicles" / "manual.pdf.meta.md").write_text("---\ntitle: fine sidecar\n---\n")
+    (ws / "Sources" / "notes").mkdir()
+    (ws / "Sources" / "notes" / "loose.ref.txt").write_text("https://example.com\n")
+    (ws / "Projects" / "x" / "Sources").mkdir(parents=True)
+    (ws / "Projects" / "x" / "Sources" / "Portal.ref.md").write_text("---\ntitle: misplaced\n---\n")
+    # Payment-confirmation sidecars live under a project's Resources/ (contracts/payment-confirmations.md).
+    (ws / "Projects" / "x" / "Resources" / "orders").mkdir(parents=True)
+    (ws / "Projects" / "x" / "Resources" / "orders" / "receipt.pdf").write_text("%PDF\n")
+    (ws / "Projects" / "x" / "Resources" / "orders" / "receipt.pdf.ref.md").write_text("---\npayee: x\n---\n")
+    (ws / "Sources" / "Watchlist" / "Ok.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
+    warns = stray_ref_warnings(ws, watchlist_path(ws))
+    assert len(warns) == 4
+    assert any(w.startswith("Projects/x/Resources/orders/receipt.pdf.ref.md: stray .ref.md")
+               and "receipt.pdf.meta.md" in w for w in warns), "Resources/ is swept too"
+    assert any(w.startswith("Sources/Vehicles/manual.pdf.ref.md: stray .ref.md outside the registry")
+               and "manual.pdf.meta.md" in w for w in warns)
+    assert any(w.startswith("Sources/notes/loose.ref.txt: `.ref.txt` is no longer supported") for w in warns)
+    assert any(w.startswith("Projects/x/Sources/Portal.ref.md: stray .ref.md") for w in warns)
 
 
 def test_validate_main_reports_registry_errors(framework_dir: Path, initialized_workspace: Path,
@@ -274,15 +368,22 @@ def test_validate_main_reports_registry_errors(framework_dir: Path, initialized_
     from superagent.tools.validate import main as validate_main
 
     reg = initialized_workspace / "Sources" / "Watchlist"
-    (reg / "ok.ref.md").write_text(_watch_ref("watch:\n  type: url\n"))
+    (reg / "Ok.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
     assert validate_main(["--workspace", str(initialized_workspace),
                           "--framework", str(framework_dir)]) == 0
-    (reg / "bad.ref.md").write_text(_watch_ref("watch:\n  type: index_query\n"))
+    out = capsys.readouterr().out
+    assert "OK     Sources/Watchlist/Ok.ref.md" in out and "WARN" not in out
+    (reg / "Bad.ref.md").write_text(_watch_ref("watch:\n  type: index_query\n"))
+    (reg / "shouting.ref.md").write_text(_watch_ref("watch:\n  type: url\n  url: https://e.com\n"))
+    (initialized_workspace / "Sources" / "loose.ref.txt").write_text("https://e.com\n")
     rc = validate_main(["--workspace", str(initialized_workspace), "--framework", str(framework_dir)])
     out = capsys.readouterr().out
     assert rc == 1
-    assert "ERROR  Sources/Watchlist/bad.ref.md" in out
-    assert "OK     Sources/Watchlist/ok.ref.md" in out
+    assert "ERROR  Sources/Watchlist/Bad.ref.md" in out
+    assert "OK     Sources/Watchlist/Ok.ref.md" in out
+    assert "WARN   Sources/Watchlist/shouting.ref.md: filename is not Title_Case" in out
+    assert "WARN   Sources/loose.ref.txt: `.ref.txt` is no longer supported" in out
+    assert "2 warning(s)" in out, "registry warnings count as soft checks"
 
 
 def test_validate_passes_without_data_sources_yaml(framework_dir: Path,

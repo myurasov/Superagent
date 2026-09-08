@@ -33,7 +33,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 |---|---|
 | `info.md` | Per-member profile (you + spouse + kids), insurance carrier + plan + member id last-4, primary care + dentist + specialists, current conditions, allergies, current medications. |
 | `status.md` | Health goals (annual physical scheduled? prescription refills caught up? overdue cleanings?), open follow-ups from recent appointments. |
-| `history.md` | Every doctor / dentist / vet visit; every notable health event; lab results summaries (the actual PDFs go in `Sources/documents/medical/<member>/` via `add-source --to-domain health`); medication changes. |
+| `history.md` | Every doctor / dentist / vet visit; every notable health event; lab results summaries (the actual PDFs go under `Sources/<your-folders>/` — e.g. `Sources/Medical/<member>/` — via `add-source --to-domain health`); medication changes. |
 | `rolodex.md` | Doctors, dentists, optometrists, mental-health professionals, specialists, pharmacy, urgent care. |
 
 **Skills that write here**: `add-contact` (provider) → `rolodex.md`; `add-appointment` (medical) → `history.md` after completion; `health-log` → `_memory/health-records.yaml` plus `history.md`; `appointments mark-complete` → `history.md` + `_memory/health-records.yaml.visits[]`.
@@ -157,9 +157,9 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 | `history.md` | Per-trip: dates, locations, who went, flights, hotels, highlights, lessons learned. |
 | `rolodex.md` | Travel agent (if you have one), preferred hotel reps, pet-sitter, house-sitter, neighbour for "watch the house". |
 
-**Per-trip sub-folders** are encouraged: `Travel/<YYYY-trip-slug>/` with its own `info.md` / `status.md` / `history.md` / `sources.md` / `Resources/`. Vault-grade itineraries / boarding passes / passport scans go in `Sources/documents/travel/<trip-slug>/` and are pointed at from the trip's `sources.md`. Working photos and trip-prep drafts go in `Resources/`.
+**Per-trip sub-folders** are encouraged: `Travel/<YYYY-trip-slug>/` with its own `info.md` / `status.md` / `history.md` / `sources.md` / `Resources/`. Vault-grade itineraries / boarding passes / passport scans go under `Sources/<your-folders>/` (e.g. `Sources/Travel/<trip-slug>/`) and are pointed at from the trip's `sources.md`. Working photos and trip-prep drafts go in `Resources/`.
 
-**Skills that write here**: `add-document` (passport / visa) → `documents-index.yaml` + `info.md`; `add-important-date` (document expirations) → `important-dates.yaml`; email ingestor (flight confirmations) → `appointments.yaml` (kind: travel) + `history.md`.
+**Skills that write here**: `add-document` (passport / visa) → `documents-index.yaml` + `info.md`; `add-important-date` (document expirations) → `important-dates.yaml`; the `gmail` watcher (a targeted live query for flight confirmations — no bulk fetch) → `appointments.yaml` (kind: travel) + `history.md`.
 
 ---
 

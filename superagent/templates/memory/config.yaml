@@ -54,11 +54,12 @@ preferences:
   # data sources (see contracts/watchlist.md). Absent block = these defaults.
   # Per-watcher settings live in the registry refs, not here.
   watchlist:
-    # Registry folder, workspace-relative: one `<id>.ref.md` per watcher.
+    # Registry folder, workspace-relative: one `<Title_Case>.ref.md` per watcher (id = stem lowercased).
     # Reserved name inside Sources/; contents are user-editable.
     path: "Sources/Watchlist"
-    # Default cadence runs a watcher is checked on when its ref sets none:
-    # daily-update | weekly-review | monthly-review.
+    # Default cadence a watcher is checked on when its ref sets none:
+    # daily-update | weekly-review | monthly-review. Cycles nest: a weekly
+    # run also checks daily watchers; a monthly run checks all three tiers.
     cycles: [daily-update]
     # Days without a detected change before a watcher is MARKED evicted
     # (never deleted; revive with `watch.status: active`). null = never.
@@ -96,37 +97,20 @@ preferences:
     log_user_queries: true           # populate _memory/user-queries.jsonl (used by Supertailor)
     redact_outbound: true            # outbound surfaces go through scrub pipeline
 
-  # Sources / cache configuration (see contracts/sources.md).
+  # Sources library (see contracts/sources.md). `Sources/` holds the user's
+  # documents, their optional `<doc>.<ext>.meta.md` sidecars, and the watcher
+  # registry `Sources/Watchlist/` (configured under `watchlist:` below). The
+  # 0.19.0 fetch cache (`Sources/_cache/`, `cache_*` / chunk / normalize keys)
+  # was retired in 0.20.0; leftover keys here are inert.
   sources:
-    # Where the fetched-content cache lives. Default is `Sources/_cache/`
-    # (relative to workspace). Override to e.g. an external volume:
-    #   cache_path: "/Volumes/SuperagentVault/sources-cache"
-    cache_path: "Sources/_cache"
-    # Hard cap on cache size in MB. When exceeded, LRU eviction runs.
-    cache_max_mb: 500
-    # Default TTL for cached fetches (overridable per-ref).
-    default_ttl_minutes: 1440
-    # When a cached fetch's raw size exceeds this threshold, the cache is
-    # split into chunks (under `<cache_path>/<hash>/chunks/`) for cheaper retrieval.
-    chunk_threshold_kb: 100
-    # Target chunk size when splitting (rough; respects natural boundaries).
-    chunk_target_kb: 8
-    # Always read _summary.md + _toc.yaml first; only pull raw / chunks
-    # when the agent decides the content is needed.
-    summary_first: true
-    # When true, agent treats user-curated content under Sources/ as
-    # read-only (only `_cache/` is auto-managed). The `doctor` skill
-    # never touches Sources/ in either case.
+    # When true, the agent treats user-curated content under Sources/ as
+    # read-only: it files new documents and writes `.meta.md` sidecars, but
+    # never rewrites or moves your files. The `doctor` skill never touches
+    # Sources/ in either case.
     user_files_read_only: true
-    # Auto-refresh the index on read (mtime-based; cheap when nothing changed).
+    # Auto-refresh the derived index (`_memory/sources-index.yaml`) on read
+    # (mtime-based; cheap when nothing changed).
     auto_refresh_index: true
-    # What to do when the agent encounters a non-canonical .ref file:
-    #   ask     — interactive prompt (rewrite / sibling / keep / skip) [default]
-    #   keep    — never silently rewrite; use parsed values for this read only
-    #   rewrite — silently rewrite in place, with .original backup
-    normalize_policy: "ask"
-    # Same, but for non-interactive batch tools (e.g. a refresh sweep).
-    normalize_policy_batch: "keep"
 
   # Project surfacing (see contracts/projects.md).
   projects:
@@ -260,14 +244,14 @@ preferences:
 # --- Data sources (which MCPs / CLI tools you've authorized) ---
 # This block carries the COARSE flag (have you set up the auth at all?). The detailed
 # per-source configuration lives in the watchlist registry (one
-# `Sources/Watchlist/<id>.ref.md` per source; see contracts/watchlist.md) and its run
+# `Sources/Watchlist/<Title_Case>.ref.md` per source, id = stem lowercased; see contracts/watchlist.md) and its run
 # state in `_memory/watchlist-state.yaml`.
 #
 # init() flips an entry from `false` to `true` after a successful health check.
 data_sources_configured:
   # Only sources with a shipped watcher pack are listed. Any other source is a
   # pack you author or install under `workspace/_custom/watchers/<id>/` plus one
-  # `Sources/Watchlist/<id>.ref.md`; `watch enable <pack>` adds its flag row here.
+  # `Sources/Watchlist/<Title_Case>.ref.md` (id = stem lowercased); `watch enable <pack>` adds its flag row here.
   email:
     gmail: false                 # Gmail MCP authorized (the `gmail` pack reuses its token)
   finance:

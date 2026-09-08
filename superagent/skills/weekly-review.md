@@ -12,7 +12,7 @@ triggers:
   - week in review
 mcp_required: []
 mcp_optional:
-  - the simplefin watcher (weekly harvest) or a CSV import for the Bookkeeper pass
+  - the simplefin watcher (harvested daily by `daily-update`; rows already in `transactions.yaml`) or a CSV import for the Bookkeeper pass
   - any health / fitness watcher for the Coach pass
 cli_required: []
 cli_optional: []
@@ -62,13 +62,13 @@ Per `contracts/watchlist.md`:
 uv run python -m superagent.tools.watchlist check --cycle weekly-review --report
 ```
 
-No `Sources/Watchlist/` folder = skip silently. Dispatch any `dispatch[]` specs as read-only subagents and `stamp` each outcome (same procedure as `daily-update` § 3). Fold the `--report` markdown into the review under **Alerts**.
+No `Sources/Watchlist/` folder = skip silently. Cycles nest (`contracts/watchlist.md` § 2): this one run covers the weekly watchers (`cycles` include `weekly-review` / `schedule: weekly`) **and every daily watcher**, so the review never needs `daily-update` run first; each watcher's own throttle keeps a same-day double check from re-fetching. Dispatch any `dispatch[]` specs as read-only subagents and `stamp` each outcome (same procedure as `daily-update` § 3). Fold the `--report` markdown into the review under **Alerts**.
 
-`simplefin` lands in this cycle (`schedule: weekly`) with `capture_mode: manual`, so `check` never harvests it on its own. When the `simplefin` watcher is enabled and its `watchlist-state.yaml` row shows `last_harvest` null or older than 7 days, ask once:
+`simplefin` (pack defaults `cycles: [daily-update]`, `schedule: daily`, `capture_mode: automatic`) is therefore covered by this check too: if the daily run already pulled today, the budget gate (≤ 24 calls/day, 60 min apart) makes this a no-op; otherwise `check` harvests it now and the rows are in `_memory/transactions.yaml` before the bookkeeper pass. A `budget_exceeded` result is reported, never retried. A `simplefin` row the user pinned to `capture_mode: manual` is never dispatched by `check` — it arrives as a `kind: harvest` dispatch spec; ask once —
 
-> "Pull this week's bank / brokerage transactions from SimpleFIN now? (yes / skip)"
+> "The bank / brokerage feed has not been pulled since <date>. Pull it now? (yes / skip)"
 
-On yes (budget-gated — ≤ 24 calls/day; the run row lands in `ingestion-log.yaml`):
+— and on yes run the on-demand harvest (the run row lands in `ingestion-log.yaml`):
 
 ```bash
 uv run python -m superagent.tools.watchlist harvest --id simplefin

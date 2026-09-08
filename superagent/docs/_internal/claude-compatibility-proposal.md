@@ -477,9 +477,9 @@ The whole arc is independent of any user data — every workspace just sees a ma
 
 ## References
 
-- NV-Co-SA `1.35.0` migration file: `/Users/misha/icloud/NV-Co-SA-MY/co-sa/migrations/1.35.0.md`.
-- NV-Co-SA `.claudeignore` reference: `/Users/misha/icloud/NV-Co-SA-MY/.claudeignore`.
-- NV-Co-SA `auth-mcps` skill (informative; not adopted): `/Users/misha/icloud/NV-Co-SA-MY/co-sa/skills/auth-mcps.md`.
-- NV-Co-SA per-IDE MCP templates: `/Users/misha/icloud/NV-Co-SA-MY/.mcp.json.claude`, `/Users/misha/icloud/NV-Co-SA-MY/.cursor/mcp.json.cursor`.
+- NV-Co-SA `1.35.0` migration file: `<sibling-repo>/.../migrations/1.35.0.md`.
+- NV-Co-SA `.claudeignore` reference: `<sibling-repo>/.claudeignore`.
+- NV-Co-SA `auth-mcps` skill (informative; not adopted): `<sibling-repo>/.../skills/auth-mcps.md`.
+- NV-Co-SA per-IDE MCP templates: `<sibling-repo>/.mcp.json.claude`, `<sibling-repo>/.cursor/mcp.json.cursor`.
 - Superagent versioning contract: `superagent/contracts/versioning.md`.
 - Superagent framework-artifacts contract: `superagent/contracts/framework-artifacts.md`.

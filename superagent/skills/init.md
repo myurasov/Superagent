@@ -142,7 +142,7 @@ Run `uv run python superagent/tools/workspace_init.py`. The script:
 2. Creates `workspace/_memory/` and copies every YAML template from `superagent/templates/memory/` into it (only if the destination file doesn't exist; never overwrite user data). The shipped `domains-index.yaml` template **registers** the 13 default domains so capture skills can route to them; `watchlist-state.yaml` is seeded empty (machine-owned run state for the watchlist, per `contracts/watchlist.md`).
 3. Creates `workspace/Domains/` (the directory only — per-domain folders are LAZY per `contracts/domains-and-assets.md` § 6.4a; they materialize the first time data lands for a given domain). Drops the explanatory `Domains/README.md` template explaining the convention.
 4. Creates `workspace/Projects/` (empty; populated as the user adds projects via `add-project`).
-5. Creates `workspace/Sources/` with `documents/`, `references/`, `_cache/`, and `Watchlist/` subdirectories (per the immutability + caching contract in `contracts/sources.md`; `Watchlist/` is the watcher registry — a reserved name with user-editable contents, one `<id>.ref.md` per watcher).
+5. Creates `workspace/Sources/` with its `README.md` and the `Watchlist/` registry folder (per `contracts/sources.md`: the layout under `Sources/` is user-defined — documents plus optional `<doc>.<ext>.meta.md` sidecars, no enforced subfolders and no cache; `Watchlist/` is the watcher registry — a reserved name with user-editable contents, one `<Title_Case>.ref.md` per watcher).
 6. Creates `workspace/Inbox/`, `workspace/Outbox/`, `workspace/Archive/`, and drops the explanatory README from `superagent/templates/folder-readmes/` into each.
 7. Creates `workspace/_custom/` with empty `rules/`, `skills/`, `agents/`, `templates/`, `tools/`, `watchers/` subdirectories (per the custom-overlay contract; `watchers/<id>/` holds user-authored watcher packs).
 8. Creates the workspace-level `workspace/todo.md` from `superagent/templates/todo.md` (with no rows yet).
@@ -221,7 +221,7 @@ If the user picks **yes** (per `contracts/watchlist.md`; the `watch` skill is th
 2. **Prioritize** by the user's pain points from Q3 ("Finances" / "Subscriptions" → `simplefin`; "Email triage" / "Bills" / "Important dates" → `gmail`) and by value-per-minute-of-setup.
 3. **For each available pack**, ask:
 
-   > "I found **<pack>** set up. Enabling it registers a watcher in `Sources/Watchlist/` that <one-line summary — e.g. checks live for new mail matching a query / pulls bank and brokerage transactions weekly>. **Enable now / enable later / skip**?"
+   > "I found **<pack>** set up. Enabling it registers a watcher in `Sources/Watchlist/` that <one-line summary — e.g. checks live for new mail matching a query / pulls bank and brokerage transactions daily and automatically, budget-gated>. **Enable now / enable later / skip**?"
 
    On "enable now":
 
@@ -229,7 +229,7 @@ If the user picks **yes** (per `contracts/watchlist.md`; the `watch` skill is th
    uv run python -m superagent.tools.watchlist enable <pack> --id <id> [--param key=value]
    ```
 
-   `gmail` is parameterized — ask for the query and pick a stable id (`--id gmail-bills --param query="label:Bills newer_than:30d"`). The command writes `Sources/Watchlist/<id>.ref.md` from the template; the pack's `schedule` / `capture_mode` defaults are preserved (`simplefin` stays weekly + manual).
+   `gmail` is parameterized — ask for the query and pick a stable id (`--id gmail-bills --param query="label:Bills newer_than:30d"`). The command writes `Sources/Watchlist/<Title_Case>.ref.md` (`--id simplefin` → `Simplefin.ref.md`) from the template; the pack's `schedule` / `capture_mode` defaults apply (`simplefin`: daily, automatic, budget-gated at 24 calls/day — say so in one line so the user knows the feed will be pulled by every `daily-update`).
 4. **For each `needs setup` pack the user expressed interest in**, point at `superagent/docs/data-sources.md#<pack>` (`superagent/watchers/simplefin/claim.py` for SimpleFIN; the Gmail MCP auth flow for Gmail) and say: *"I can pick this up any time — say `watch probe`."*
 5. Anything without a pack (a portal, a permit page, a status URL) is a bare `url` / `subagent` watcher — offer the `watch` skill later rather than here.
 
@@ -241,7 +241,7 @@ If the user picks **yes** (per `contracts/watchlist.md`; the `watch` skill is th
    uv run python -m superagent.tools.watchlist check --cycle daily-update --report
    ```
 
-2. For `simplefin` (`capture_mode: manual`) offer the first harvest explicitly — never silently: *"Pull the first 90 days of transactions now? (yes / later)"* → `uv run python -m superagent.tools.watchlist harvest --id simplefin`. Surface the one-line summary from the `ingestion-log.yaml` row it appends.
+2. For `simplefin` the baseline check above already ran the first incremental harvest (pack default `capture_mode: automatic`, 30-day window, budget-gated) — surface the one-line summary from the `ingestion-log.yaml` row it appended. Offer the backfill explicitly — never silently: *"Pull the last year of transactions now? (yes / later)"* → `uv run python -m superagent.tools.watchlist harvest --id simplefin --backfill`.
 3. On failure, log the error and keep going — no watcher's failure aborts the rest.
 
 ## 6. Update `model-context.yaml`
@@ -351,7 +351,7 @@ Append an entry to `_memory/interaction-log.yaml`:
 | `superagent/tools/ide.py` | IDE-detection helper (`current` / `is-claude` / `is-cursor` / `env`) |
 | `superagent/tools/watchlist.py` | Watchlist CLI (`probe` / `enable` / `list` / `check` / `harvest` / `stamp`) |
 | `superagent/watchers/<id>/` | Shipped watcher packs (`pack.yaml` + optional `handler.py`); user packs live in `workspace/_custom/watchers/<id>/` |
-| `superagent/tools/ingest/*.py` | Harvest handlers (`simplefin`) + the standalone CSV importer |
+| `superagent/tools/ingest/*.py` | `_base.py` (the `IngestorBase` harvest-handler contract) + the standalone CSV importer only; harvest handlers live in their pack, `superagent/watchers/<id>/handler.py` |
 | `superagent/docs/data-sources.md` | Setup notes for the shipped packs (SimpleFIN, Gmail) and CSV import |
 | `superagent/skills/_manifest.yaml` | Full skill catalogue with one-liners + triggers (machine-readable) |
 | `CLAUDE.md` | Claude Code entry point (pure `@AGENTS.md` re-export) |

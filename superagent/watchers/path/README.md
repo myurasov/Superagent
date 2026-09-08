@@ -17,22 +17,36 @@ volume cannot evict the watcher.
 - Do not watch a file that a harvest handler writes (for example
   `_memory/transactions.yaml`): the watcher would fire on the harvest's own
   write and look like a real signal.
-- A `kind: file` ref without `watch.pack` gets this detect type by default
-  (`file` -> `path`), so the pack is only needed when you want its defaults.
+- A bare `type: path` watcher (no `watch.pack`) uses the same detect; the
+  pack is only needed when you want its defaults.
 
 ## Example
 
+Pack instance (the locator comes through `watch.params`):
+
 ```yaml
-# Sources/Watchlist/bank-exports.ref.md
+# Sources/Watchlist/Bank-Exports.ref.md  →  watch:bank-exports
 ---
-ref_version: 1
+ref_version: 2
 title: "Bank CSV exports folder"
-kind: file
-source: "~/Downloads/bank-exports"
 related_domain: finances
 watch:
   pack: path
   params:
     path: "~/Downloads/bank-exports"
+---
+```
+
+Bare watcher (no pack; the locator is `watch.path`):
+
+```yaml
+# Sources/Watchlist/Bank-Exports.ref.md  →  watch:bank-exports
+---
+ref_version: 2
+title: "Bank CSV exports folder"
+related_domain: finances
+watch:
+  type: path
+  path: "~/Downloads/bank-exports"
 ---
 ```

@@ -19,8 +19,8 @@ If a file is for *your own* use (a chart, a briefing, a draft you'll keep iterat
 | Domain narrative (info.md / status.md / history.md / rolodex.md / sources.md) | `Domains/<domain>/` |
 | Project narrative | `Projects/<project>/` |
 | Memory / state files (YAML) | `_memory/` |
-| Source documents — receipts, scans, vital records | `Sources/documents/<category>/` |
-| External-data pointers (.ref.md) | `Sources/references/<category>/` |
+| Source documents — receipts, scans, vital records | `Sources/<your-folders>/` (the layout under `Sources/` is yours) |
+| Things to watch for change (`.ref.md` watchers) | `Sources/Watchlist/` (via the `watch` skill) |
 | Drafts you keep working on, agent-rendered briefings for your own use, working photos / sketches | `Domains/<X>/Resources/` or `Projects/<X>/Resources/` |
 | Files in transit, pending classification | `Inbox/` |
 

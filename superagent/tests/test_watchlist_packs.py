@@ -10,7 +10,7 @@ import pytest
 import yaml
 
 from superagent.tools import watchlist as wl
-from superagent.tools.ingest._base import ProbeStatus
+from superagent.tools.ingest._base import ProbeStatus, RunResult, now_iso
 
 
 @pytest.fixture
@@ -34,8 +34,10 @@ def write_pack(root: Path, pack_id: str, manifest: dict[str, Any], *, folder: st
     return d
 
 
-def write_ref(ws: Path, wid: str, fm: dict[str, Any]) -> Path:
-    path = ws / "Sources" / "Watchlist" / f"{wid}.ref.md"
+def write_ref(ws: Path, wid: str, watch: dict[str, Any], *, title: str = "t") -> Path:
+    """A `ref_version: 2` ref at the Title_Case filename for `wid`."""
+    path = ws / "Sources" / "Watchlist" / wl.ref_filename(wid)
+    fm = {"ref_version": 2, "title": title, "watch": watch}
     path.write_text(f"---\n{yaml.safe_dump(fm, sort_keys=False)}---\n# Notes\n")
     return path
 
@@ -58,6 +60,7 @@ URL_PACK: dict[str, Any] = {
 def test_discovery_scans_framework_and_custom(ws: Path, fw: Path) -> None:
     write_pack(fw, "url", URL_PACK)
     write_pack(ws / "_custom", "mine", {"title": "Mine", "kind": "local",
+                                        "description": "  my\n  local  thing ",
                                         "detect": {"type": "path", "path": "/tmp/x"}})
     packs, errors = wl.discover_packs(fw, ws, announce=lambda m: None)
     assert errors == []
@@ -65,6 +68,7 @@ def test_discovery_scans_framework_and_custom(ws: Path, fw: Path) -> None:
     assert packs["url"].origin == "framework" and packs["mine"].origin == "custom"
     assert packs["url"].parameterized is True
     assert packs["url"].defaults["min_check_interval_minutes"] == 720
+    assert packs["mine"].description == "my local thing"
 
 
 def test_custom_pack_overrides_framework_with_verbatim_announcement(ws: Path, fw: Path, capsys: Any) -> None:
@@ -145,10 +149,8 @@ def test_custom_pack_defines_its_own_detect_type_and_function_harvest(ws: Path, 
     mod = pack.handler_module()
     assert pack.handler_module() is mod, "handler modules are cached per path"
 
-    write_ref(ws, "news", {"ref_version": 1, "title": "News", "kind": "api", "source": "feedwatch:news",
-                           "watch": {"pack": "feedwatch", "params": {"channel": "news"}}})
-    write_ref(ws, "dead", {"ref_version": 1, "title": "Dead", "kind": "api", "source": "feedwatch:down",
-                           "watch": {"pack": "feedwatch", "params": {"channel": "down"}}})
+    write_ref(ws, "news", {"pack": "feedwatch", "params": {"channel": "news"}}, title="News")
+    write_ref(ws, "dead", {"pack": "feedwatch", "params": {"channel": "down"}}, title="Dead")
     (ws / "feed-news.txt").write_text("a")
 
     def run(**kw: Any) -> dict[str, Any]:
@@ -176,11 +178,14 @@ def test_custom_pack_defines_its_own_detect_type_and_function_harvest(ws: Path, 
     log = yaml.safe_load((ws / "_memory" / "ingestion-log.yaml").read_text())
     assert log["runs"][-1]["source"] == "feed"
 
-    # `enable` derives kind api / source "<pack>:<primary param>" for a pack-defined type.
+    # `enable` describes a pack-defined type as "<pack title>: <primary param>"; no kind/source.
     target = wl.enable_pack(ws, fw, pack_id="feedwatch", watcher_id="sports",
                             params={"channel": "sports"}, title=None)
+    assert target.name == "Sports.ref.md"
     fm, _ = wl.parse_frontmatter(target.read_text())
-    assert fm is not None and fm["kind"] == "api" and fm["source"] == "feedwatch:sports"
+    assert fm is not None and fm["ref_version"] == 2
+    assert fm["description"] == "Feed: sports"
+    assert "kind" not in fm and "source" not in fm
 
 
 # ---------------------------------------------------------------------------
@@ -191,14 +196,11 @@ def test_custom_pack_defines_its_own_detect_type_and_function_harvest(ws: Path, 
 def test_params_templating_defaults_and_required(ws: Path, fw: Path) -> None:
     write_pack(fw, "url", URL_PACK)
     packs, _ = wl.discover_packs(fw, ws, announce=lambda m: None)
-    write_ref(ws, "ok", {"ref_version": 1, "title": "ok", "kind": "url", "source": "https://e.com",
-                         "watch": {"pack": "url", "params": {"url": "https://e.com/a", "selector": "#s"}}})
-    write_ref(ws, "missing", {"ref_version": 1, "title": "m", "kind": "url", "source": "x",
-                              "watch": {"pack": "url"}})
-    write_ref(ws, "conflict", {"ref_version": 1, "title": "c", "kind": "url", "source": "x",
-                               "watch": {"pack": "url", "type": "path", "params": {"url": "https://x"}}})
-    write_ref(ws, "nopack", {"ref_version": 1, "title": "n", "kind": "url", "source": "x",
-                             "watch": {"pack": "ghost"}})
+    write_ref(ws, "ok", {"pack": "url", "params": {"url": "https://e.com/a", "selector": "#s"}}, title="ok")
+    write_ref(ws, "missing", {"pack": "url"}, title="m")
+    write_ref(ws, "conflict", {"pack": "url", "type": "path", "params": {"url": "https://x"}}, title="c")
+    write_ref(ws, "nopack", {"pack": "ghost"}, title="n")
+    write_ref(ws, "empty", {"pack": "url", "params": {"url": ""}}, title="e")
     watchers, errors = wl.load_registry(ws, wl.load_config(ws), packs)
     assert [w.id for w in watchers] == ["ok"]
     ok = watchers[0]
@@ -209,20 +211,19 @@ def test_params_templating_defaults_and_required(ws: Path, fw: Path) -> None:
     assert "missing required param `url`" in by_id["missing"]
     assert "conflicts with pack" in by_id["conflict"]
     assert "unknown pack `ghost`" in by_id["nopack"]
+    assert "url watcher needs its locator: watch.url" in by_id["empty"] and "pack `url`" in by_id["empty"]
 
 
 def test_row_overrides_pack_defaults_and_unknown_placeholder_errors(ws: Path, fw: Path) -> None:
     write_pack(fw, "url", URL_PACK)
     write_pack(fw, "typo", {"title": "t", "detect": {"type": "url", "url": "{{nope}}"}})
     packs, _ = wl.discover_packs(fw, ws, announce=lambda m: None)
-    write_ref(ws, "ov", {"ref_version": 1, "title": "o", "kind": "url", "source": "x",
-                         "watch": {"pack": "url", "params": {"url": "https://x"},
-                                   "evict_after_days": None, "cycles": ["weekly-review"],
-                                   "min_check_interval_minutes": 5, "selector": "#row"}})
-    write_ref(ws, "ty", {"ref_version": 1, "title": "t", "kind": "url", "source": "x",
-                         "watch": {"pack": "typo"}})
-    write_ref(ws, "sch", {"ref_version": 1, "title": "s", "kind": "url", "source": "x",
-                          "watch": {"pack": "url", "params": {"url": "https://x"}, "schedule": "weekly"}})
+    write_ref(ws, "ov", {"pack": "url", "params": {"url": "https://x"},
+                         "evict_after_days": None, "cycles": ["weekly-review"],
+                         "min_check_interval_minutes": 5, "selector": "#row"}, title="o")
+    write_ref(ws, "ty", {"pack": "typo"}, title="t")
+    write_ref(ws, "sch", {"pack": "url", "params": {"url": "https://x"}, "schedule": "weekly"}, title="s")
+    write_ref(ws, "loc", {"pack": "url", "params": {"url": "https://x"}, "url": "https://row-wins"}, title="l")
     watchers, errors = wl.load_registry(ws, wl.load_config(ws), packs)
     sch = next(w for w in watchers if w.id == "sch")
     assert sch.cycles == ["weekly-review"], "row schedule beats the pack's default cycles"
@@ -231,6 +232,8 @@ def test_row_overrides_pack_defaults_and_unknown_placeholder_errors(ws: Path, fw
     assert ov.cycles == ["weekly-review"]
     assert ov.min_check_interval_minutes == 5
     assert ov.detect["selector"] == "#row", "row value overrides the pack detect field"
+    loc = next(w for w in watchers if w.id == "loc")
+    assert loc.detect["url"] == "https://row-wins", "a row locator overrides the templated one"
     assert any("unknown pack param `nope`" in e["error"] for e in errors)
 
 
@@ -303,7 +306,9 @@ def test_shipped_packs_load_and_match_manifest(framework_dir: Path, ws: Path) ->
     assert "handler" not in packs["simplefin"].harvest, "folder-default handler.py is canonical"
     assert packs["simplefin"].handler_path == framework_dir / "watchers" / "simplefin" / "handler.py"
     assert (framework_dir / "watchers" / "simplefin" / "claim.py").is_file()
-    assert packs["simplefin"].defaults["capture_mode"] == "manual"
+    assert packs["simplefin"].defaults["capture_mode"] == "automatic"
+    assert packs["simplefin"].defaults["schedule"] == "daily"
+    assert packs["simplefin"].defaults["cycles"] == ["daily-update"]
     assert packs["simplefin"].budget["max_calls_per_day"] == 24
     assert packs["gmail"].detect == {"type": "gmail", "query": "{{query}}"}
     assert packs["gmail"].provides_detect and not packs["gmail"].harvest
@@ -342,61 +347,105 @@ def test_enable_each_shipped_pack_yields_a_loadable_ref(framework_dir: Path, ws:
                    params={"cmd": "git ls-remote https://example.com/r HEAD"}, title=None)
     wl.enable_pack(ws, framework_dir, pack_id="path", watcher_id="drop_folder",
                    params={"path": "~/Downloads/statements"}, title=None)
+    registry = ws / "Sources" / "Watchlist"
+    assert sorted(p.name for p in registry.iterdir()) == [
+        "Drop_Folder.ref.md", "Gmail-Bills.ref.md", "Permit.ref.md", "Portal.ref.md",
+        "README.md", "Repo.ref.md", "Simplefin.ref.md",
+    ], "enable writes Title_Case filenames"
     packs, _ = wl.discover_packs(framework_dir, ws, announce=lambda m: None)
     watchers, errors = wl.load_registry(ws, wl.load_config(ws), packs)
     assert errors == []
     by_id = {w.id: w for w in watchers}
-    assert by_id["simplefin"].kind == "api" and by_id["simplefin"].source == "simplefin"
+    assert set(by_id) == {"simplefin", "gmail-bills", "permit", "portal", "repo", "drop_folder"}
     assert by_id["simplefin"].type == "harvest"
-    assert by_id["simplefin"].capture_mode == "manual" and by_id["simplefin"].schedule == "weekly"
-    assert by_id["simplefin"].cycles == ["weekly-review"]
+    assert by_id["simplefin"].capture_mode == "automatic" and by_id["simplefin"].schedule == "daily"
+    assert by_id["simplefin"].cycles == ["daily-update"]
     assert by_id["simplefin"].evict_after_days is None
-    assert by_id["gmail-bills"].kind == "api"
-    assert by_id["gmail-bills"].source == "gmail:label:Bills newer_than:30d"
+    assert by_id["simplefin"].min_check_interval_minutes == 60
+    assert by_id["simplefin"].description.startswith("Aggregated bank")
     assert by_id["gmail-bills"].detect["query"] == "label:Bills newer_than:30d"
+    assert by_id["gmail-bills"].description == "label:Bills newer_than:30d"
     assert by_id["gmail-bills"].min_check_interval_minutes == 60
-    assert by_id["permit"].kind == "url" and by_id["permit"].source == "https://permits.example/x"
+    assert by_id["permit"].detect["url"] == "https://permits.example/x"
     assert by_id["permit"].detect["selector"] == "#status"
-    assert by_id["portal"].kind == "manual" and by_id["portal"].source == "Read the portal."
+    assert by_id["permit"].description == "https://permits.example/x"
     assert by_id["portal"].detect["prompt"] == "Read the portal.\nReturn one line."
-    assert by_id["repo"].kind == "cli"
-    assert by_id["repo"].source == "git ls-remote https://example.com/r HEAD"
-    assert by_id["drop_folder"].kind == "file" and by_id["drop_folder"].type == "path"
-    assert by_id["drop_folder"].source == "~/Downloads/statements"
+    assert by_id["portal"].description == "Read the portal."
+    assert by_id["repo"].type == "cmd" and by_id["repo"].locator == "git ls-remote https://example.com/r HEAD"
+    assert by_id["drop_folder"].type == "path" and by_id["drop_folder"].locator == "~/Downloads/statements"
     for w in watchers:
         fm, _ = wl.parse_frontmatter(w.path.read_text())
-        assert fm is not None and fm["added_by"] == "watch" and fm["added_at"]
+        assert fm is not None and fm["ref_version"] == 2
+        assert fm["added_by"] == "watch" and fm["added_at"]
         assert not any(isinstance(v, str) and v.startswith("<") and v.endswith(">") for v in fm.values())
+        assert not (set(fm) & {"kind", "source", "ttl_minutes", "sensitive", "auth_ref"})
 
 
-def test_simplefin_acceptance_b4(framework_dir: Path, ws: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Weekly / manual simplefin: daily-update -> skipped_cycle; weekly-review -> one
-    harvest dispatch spec and ZERO handler calls."""
+def _fake_simplefin_handler(calls: list[dict[str, Any]]) -> Any:
+    class _Handler:
+        def run(self, config_row: dict[str, Any], dry_run: bool = False) -> RunResult:
+            calls.append({"row": dict(config_row), "dry_run": dry_run})
+            return RunResult(source="simplefin", started_at=now_iso(), finished_at=now_iso(),
+                             items_pulled=1, items_inserted=1)
+    return _Handler()
+
+
+def test_simplefin_daily_automatic_and_budget_gated(framework_dir: Path, ws: Path,
+                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    """0.20.0: the daily-update check pulls SimpleFIN itself (capture_mode automatic,
+    schedule daily); the budget and the 60-minute throttle are what protect the API."""
     wl.enable_pack(ws, framework_dir, pack_id="simplefin", watcher_id=None, params={}, title=None)
+    calls: list[dict[str, Any]] = []
+    monkeypatch.setattr(wl, "load_handler", lambda pack, workspace: _fake_simplefin_handler(calls))
 
-    def _boom(*args: Any, **kwargs: Any) -> Any:
-        raise AssertionError("handler must never be called by a cadence check")
-
-    monkeypatch.setattr(wl, "load_handler", _boom)
-
-    def run(cycle: str) -> dict[str, Any]:
-        ctx = wl.CheckContext(workspace=ws, framework=framework_dir, cfg=wl.load_config(ws), cycle=cycle)
+    def run(cycle: str, **kw: Any) -> dict[str, Any]:
+        ctx = wl.CheckContext(workspace=ws, framework=framework_dir, cfg=wl.load_config(ws), cycle=cycle, **kw)
         payload = wl.run_check(ctx)
         assert payload is not None
         return payload
 
     daily = run("daily-update")
-    assert [i["id"] for i in daily["skipped_cycle"]] == ["simplefin"]
-    assert daily["summary"]["dispatch"] == 0 and daily["summary"]["harvested"] == 0
+    assert daily["summary"]["harvested"] == 1 and daily["summary"]["dispatch"] == 0
+    assert [i["id"] for i in daily["changed"]] == ["simplefin"], "first pull inserted rows"
+    assert len(calls) == 1 and calls[0]["row"]["recency_window_days"] == 30
+    row = wl.load_state(ws)["watchers"]["simplefin"]
+    assert row["last_harvest"] and row["calls_today"] == 1
+
+    # Same hour again: the throttle (pack default 60 min) skips it before the budget.
+    again = run("daily-update")
+    assert [i["id"] for i in again["skipped_throttled"]] == ["simplefin"]
+    assert len(calls) == 1
+    # Slower cycles include the daily watcher (nested cycles) — still budget-gated.
+    state = wl.load_state(ws)
+    state["watchers"]["simplefin"]["last_checked"] = "2000-01-01T00:00:00+00:00"
+    wl.save_state(ws, state)
     weekly = run("weekly-review")
-    assert weekly["summary"]["harvested"] == 0
-    assert weekly["summary"]["dispatch"] == 1
-    spec = weekly["dispatch"][0]
+    assert [i["id"] for i in weekly["budget_exceeded"]] == ["simplefin"], "60 min not elapsed since last_harvest"
+    assert weekly["skipped_cycle"] == [] and len(calls) == 1
+    state = wl.load_state(ws)
+    state["watchers"]["simplefin"]["last_harvest"] = "2000-01-01T00:00:00+00:00"
+    wl.save_state(ws, state)
+    monthly = run("monthly-review")
+    assert monthly["summary"]["harvested"] == 1 and len(calls) == 2
+
+    # `--no-harvest` never calls the handler; neither does a manual row (the tool never widens).
+    state = wl.load_state(ws)
+    state["watchers"]["simplefin"].update(last_checked="2000-01-01T00:00:00+00:00",
+                                         last_harvest="2000-01-01T00:00:00+00:00")
+    wl.save_state(ws, state)
+    quiet = run("daily-update", no_harvest=True)
+    assert [i["id"] for i in quiet["skipped_harvest"]] == ["simplefin"] and len(calls) == 2
+    ref = ws / "Sources" / "Watchlist" / "Simplefin.ref.md"
+    fm, body = wl.parse_frontmatter(ref.read_text())
+    assert fm is not None
+    fm["watch"]["capture_mode"] = "manual"
+    ref.write_text(f"---\n{yaml.safe_dump(fm, sort_keys=False)}---\n{body}")
+    manual = run("daily-update")
+    assert manual["summary"]["harvested"] == 0 and manual["summary"]["dispatch"] == 1
+    spec = manual["dispatch"][0]
     assert spec["kind"] == "harvest" and spec["id"] == "simplefin"
     assert spec["command"].endswith("harvest --id simplefin")
-    assert wl.load_state(ws)["watchers"]["simplefin"].get("last_harvest") is None
-    # --dry-run must also dispatch nothing for a manual row (migration validate step).
-    ctx = wl.CheckContext(workspace=ws, framework=framework_dir, cfg=wl.load_config(ws),
-                          cycle="weekly-review", dry_run=True)
-    payload = wl.run_check(ctx)
-    assert payload is not None and payload["summary"]["harvested"] == 0
+    assert len(calls) == 2, "a manual row is never pulled by a cadence check"
+    # Explicit request works regardless of cadence (budget permitting).
+    rc, payload = wl.run_explicit_harvest(ws, framework_dir, watcher_id="simplefin", dry_run=False)
+    assert rc == 0 and payload["summary"]["harvested"] == 1 and len(calls) == 3

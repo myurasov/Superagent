@@ -12,7 +12,7 @@ schema_version: 1
 runs:
   # Each run:
   #   id                — Stable id "ingest-<YYYYMMDD>-<NNN>".
-  #   source            — Watcher id: the filename stem of Sources/Watchlist/<id>.ref.md
+  #   source            — Watcher id: the lowercased filename stem of Sources/Watchlist/<Title_Case>.ref.md
   #                        (its run state lives in watchlist-state.yaml).
   #   started_at        — ISO 8601.
   #   finished_at       — ISO 8601.

@@ -8,6 +8,10 @@ a temp *framework* dir (so the shipped packs under `superagent/watchers/`
 never leak in) and never touches the network: url tests monkeypatch
 `_http_open` or run a loopback `http.server`; gmail tests swap
 `GMAIL_CLIENT_FACTORY` for a fake.
+
+Refs are `ref_version: 2` watcher definitions (0.20.0): no `kind` / `source`;
+a bare watcher carries its locator inside `watch:`; the file on disk is the
+Title_Case form of the id and loads case-insensitively.
 """
 from __future__ import annotations
 
@@ -34,7 +38,7 @@ from superagent.tools import watchlist as wl
 
 @pytest.fixture
 def fw(tmp_path: Path) -> Path:
-    """A fake framework dir: empty `watchers/`, no watch.ref.md template."""
+    """A fake framework dir: empty `watchers/`, no `templates/sources/ref.md`."""
     root = tmp_path / "framework"
     (root / "watchers").mkdir(parents=True)
     (root / "templates" / "sources").mkdir(parents=True)
@@ -48,12 +52,49 @@ def ws(initialized_workspace: Path) -> Path:
     return initialized_workspace
 
 
-def write_ref(ws: Path, wid: str, fm: dict[str, Any], body: str = "# Notes\n") -> Path:
-    path = ws / "Sources" / "Watchlist" / f"{wid}.ref.md"
+def ref_path(ws: Path, wid: str) -> Path:
+    """The canonical (Title_Case) registry file for a watcher id."""
+    return ws / "Sources" / "Watchlist" / wl.ref_filename(wid)
+
+
+def write_ref(ws: Path, wid: str, fm: dict[str, Any], body: str = "# Notes\n", *,
+              filename: str | None = None) -> Path:
+    """Write a ref; the filename is the Title_Case form of `wid` unless overridden."""
+    path = ws / "Sources" / "Watchlist" / (filename or wl.ref_filename(wid))
     path.parent.mkdir(parents=True, exist_ok=True)
     front = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True)
     path.write_text(f"---\n{front}---\n{body}", encoding="utf-8")
     return path
+
+
+def v2(title: str = "t", *, watch: dict[str, Any], **extra: Any) -> dict[str, Any]:
+    """A `ref_version: 2` frontmatter mapping."""
+    return {"ref_version": 2, "title": title, **extra, "watch": watch}
+
+
+def url_ref(url: str, *, title: str = "t", watch: dict[str, Any] | None = None,
+            **extra: Any) -> dict[str, Any]:
+    return v2(title, watch={"type": "url", "url": url, **(watch or {})}, **extra)
+
+
+def path_ref(path: str | Path, *, title: str = "t", watch: dict[str, Any] | None = None,
+             **extra: Any) -> dict[str, Any]:
+    return v2(title, watch={"type": "path", "path": str(path), **(watch or {})}, **extra)
+
+
+def cmd_ref(cmd: str, *, title: str = "t", watch: dict[str, Any] | None = None,
+            **extra: Any) -> dict[str, Any]:
+    return v2(title, watch={"type": "cmd", "cmd": cmd, **(watch or {})}, **extra)
+
+
+def subagent_ref(prompt: str, *, title: str = "t", watch: dict[str, Any] | None = None,
+                 **extra: Any) -> dict[str, Any]:
+    return v2(title, watch={"type": "subagent", "prompt": prompt, **(watch or {})}, **extra)
+
+
+def pack_ref(pack: str, *, title: str = "t", watch: dict[str, Any] | None = None,
+             **extra: Any) -> dict[str, Any]:
+    return v2(title, watch={"pack": pack, **(watch or {})}, **extra)
 
 
 def set_config(ws: Path, **watchlist_prefs: Any) -> None:
@@ -94,6 +135,12 @@ def ids(items: list[dict[str, Any]]) -> list[str]:
 
 def read_yaml(path: Path) -> Any:
     return yaml.safe_load(path.read_text())
+
+
+def load(ws: Path, packs: dict[str, Any] | None = None) -> tuple[list[Any], dict[str, str]]:
+    """`load_registry` with errors keyed by id."""
+    watchers, errors = wl.load_registry(ws, wl.load_config(ws), packs or {})
+    return watchers, {e["id"]: e["error"] for e in errors}
 
 
 class FakeResp:
@@ -186,80 +233,178 @@ def test_shared_constants_come_from_validate() -> None:
     from superagent.tools import validate
 
     assert wl.DETECT_TYPES is validate.WATCH_TYPES
-    assert wl.KIND_TO_TYPE is validate.WATCH_TYPE_BY_REF_KIND
+    assert wl.BUILTIN_DETECT_TYPES is validate.WATCH_BUILTIN_TYPES
+    assert wl.LOCATOR_KEY is validate.WATCH_LOCATOR_KEY
+    assert wl.ID_RE is validate.WATCH_ID_RE
+    assert wl.REF_SUFFIX == validate.REF_SUFFIX == ".ref.md"
     assert set(wl.RESERVED_TYPES) == set(validate.WATCH_RESERVED_TYPES)
     assert wl.DEFAULT_CONFIG["path"] == validate.DEFAULT_WATCHLIST_PATH
+    legacy = {"kind", "source", "ttl_minutes", "sensitive", "auth_ref", "chunk_for_large", "normalized_at"}
+    assert legacy == validate.LEGACY_REF_KEYS
+    assert validate.REF_VERSION == 2
+    assert not hasattr(wl, "KIND_TO_TYPE"), "kind->type defaulting is gone in 0.20.0"
+    assert not hasattr(wl, "TYPE_TO_KIND"), "enable no longer writes a `kind`"
+    assert {"url", "path", "cmd", "prompt", "query"} <= wl.WATCH_FIELDS
+
+
+def test_title_case_and_id_helpers() -> None:
+    """The helpers the 0.20.0 migration imports for its case-only renames."""
+    assert wl.title_case("simplefin") == "Simplefin"
+    assert wl.title_case("home_assistant-hub") == "Home_Assistant-Hub"
+    assert wl.title_case("gmail-bills") == "Gmail-Bills"
+    assert wl.title_case("2fa_codes") == "2fa_Codes", "digits are left alone"
+    assert wl.title_case("Home_Assistant-Hub") == "Home_Assistant-Hub", "idempotent"
+    assert wl.id_from_stem("Home_Assistant-Hub") == "home_assistant-hub"
+    assert wl.id_from_stem("Simplefin") == wl.id_from_stem("SIMPLEFIN") == "simplefin"
+    assert wl.ref_filename("home_assistant-hub") == "Home_Assistant-Hub.ref.md"
+    for wid in ("simplefin", "home_assistant-hub", "gmail-bills", "a1_b2-c3"):
+        assert wl.id_from_stem(wl.title_case(wid)) == wid, "title_case round-trips through id_from_stem"
+        assert wl.ID_RE.match(wid)
+    assert wl.watcher_id_for(Path("Sources/Watchlist/Home_Assistant-Hub.ref.md")) == "home_assistant-hub"
+    assert wl.watcher_id_for(Path("x/Permit.REF.MD")) == "permit", "suffix matched case-insensitively"
 
 
 @pytest.mark.parametrize(
-    ("kind", "expected"),
-    [("url", "url"), ("cli", "cmd"), ("file", "path"), ("manual", "subagent")],
+    ("wtype", "locator"),
+    [("url", "url"), ("path", "path"), ("cmd", "cmd"), ("subagent", "prompt")],
 )
-def test_type_defaults_from_ref_kind(ws: Path, kind: str, expected: str) -> None:
-    fm: dict[str, Any] = {"ref_version": 1, "title": "t", "kind": kind, "source": "x"}
-    if kind == "manual":
-        fm["watch"] = {"prompt": "look"}
-    write_ref(ws, "k-test", fm)
-    watchers, errors = wl.load_registry(ws, wl.load_config(ws), {})
-    assert errors == []
-    assert watchers[0].type == expected
-
-
-def test_kind_without_locator_is_a_file_line_error(ws: Path) -> None:
-    write_ref(ws, "api-x", {"ref_version": 1, "title": "t", "kind": "api", "source": "x"})
-    write_ref(ws, "no-kind", {"ref_version": 1, "title": "t", "source": "x"})
-    watchers, errors = wl.load_registry(ws, wl.load_config(ws), {})
+def test_bare_watcher_takes_its_locator_from_the_watch_block(ws: Path, wtype: str, locator: str) -> None:
+    write_ref(ws, "bare", v2(watch={"type": wtype, locator: "https://e.com/x"}))
+    watchers, errors = load(ws)
+    assert errors == {}
+    assert watchers[0].type == wtype
+    assert watchers[0].detect[locator] == "https://e.com/x"
+    assert watchers[0].locator == "https://e.com/x"
+    # Without the locator the ref is a file:line error naming the missing key.
+    write_ref(ws, "bare", v2(watch={"type": wtype}))
+    watchers, errors = load(ws)
     assert watchers == []
-    by_id = {e["id"]: e for e in errors}
-    assert by_id["api-x"]["error"].startswith("Sources/Watchlist/api-x.ref.md:")
-    # `api` / `mcp` / `vault` refs have NO default detect type (contract § 2):
-    # they must name a pack or an explicit type.
-    assert "cannot infer watch.type from kind 'api'" in by_id["api-x"]["error"]
-    assert by_id["api-x"]["line"] >= 1
-    assert "cannot infer watch.type" in by_id["no-kind"]["error"]
+    assert f"{wtype} watcher needs its locator: watch.{locator}" in errors["bare"]
+
+
+def test_legacy_reference_keys_are_rejected_with_the_migration_hint(ws: Path) -> None:
+    """A .ref.md is a watcher definition only: `kind` / `source` / ... are load errors."""
+    write_ref(ws, "api-x", {"ref_version": 1, "title": "t", "kind": "url", "source": "https://e.com",
+                            "watch": {"type": "url", "url": "https://e.com"}})
+    write_ref(ws, "ttl", v2(watch={"type": "url", "url": "https://e.com"}, ttl_minutes=60,
+                            sensitive=True))
+    write_ref(ws, "old-version", {"ref_version": 1, "title": "t",
+                                  "watch": {"type": "url", "url": "https://e.com"}})
+    write_ref(ws, "typo", v2(watch={"type": "url", "url": "https://e.com"}, relatd_domain="home"))
+    write_ref(ws, "ok", v2(watch={"type": "url", "url": "https://e.com"}, description="fine",
+                           related_domain="home", tags=["a"], added_by="user", added_at=None))
+    watchers, errors = load(ws)
+    assert [w.id for w in watchers] == ["ok"]
+    assert errors["api-x"].startswith("Sources/Watchlist/Api-X.ref.md:")
+    assert "legacy reference key(s) `kind`, `source`" in errors["api-x"]
+    assert "0.20.0 migration" in errors["api-x"] and "watcher definition only" in errors["api-x"]
+    line = int(errors["api-x"].split(":")[1])
+    assert "kind:" in ref_path(ws, "api-x").read_text().splitlines()[line - 1], "line points at the key"
+    assert "`ttl_minutes`, `sensitive`" in errors["ttl"]
+    assert "ref_version 1 is not 2" in errors["old-version"] and "0.20.0 migration" in errors["old-version"]
+    assert "unknown frontmatter key(s) `relatd_domain`" in errors["typo"]
+
+
+def test_watch_block_and_pack_or_type_are_required(ws: Path) -> None:
+    write_ref(ws, "no-block", {"ref_version": 2, "title": "t"})
+    write_ref(ws, "no-type", v2(watch={"enabled": True}))
+    write_ref(ws, "not-map", {"ref_version": 2, "title": "t", "watch": "url"})
+    watchers, errors = load(ws)
+    assert watchers == []
+    assert "`watch:` block is required" in errors["no-block"]
+    assert "watch.pack or watch.type is required" in errors["no-type"]
+    assert "must be a mapping" in errors["not-map"]
 
 
 def test_index_query_is_rejected(ws: Path) -> None:
-    write_ref(ws, "iq", {"ref_version": 1, "title": "t", "kind": "file", "source": "x",
-                         "watch": {"type": "index_query", "file": "_memory/bills.yaml"}})
-    watchers, errors = wl.load_registry(ws, wl.load_config(ws), {})
+    write_ref(ws, "iq", v2(watch={"type": "index_query", "file": "_memory/bills.yaml"}))
+    watchers, errors = load(ws)
     assert watchers == []
-    assert "not implemented in this release" in errors[0]["error"]
+    assert "not implemented in this release" in errors["iq"]
     # The reported line points at the offending key inside the watch block.
-    text = (ws / "Sources" / "Watchlist" / "iq.ref.md").read_text().splitlines()
-    assert "type: index_query" in text[errors[0]["line"] - 1]
+    line = int(errors["iq"].split(":")[1])
+    assert "type: index_query" in ref_path(ws, "iq").read_text().splitlines()[line - 1]
 
 
 def test_bad_id_and_bad_frontmatter_are_reported_not_fatal(ws: Path, fw: Path) -> None:
-    (ws / "Sources" / "Watchlist" / "Bad_Name.ref.md").write_text(
-        "---\ntitle: x\nkind: url\nsource: https://e.com\n---\n"
-    )
-    (ws / "Sources" / "Watchlist" / "dot.name.ref.md").write_text(
-        "---\ntitle: x\nkind: url\nsource: https://e.com\n---\n"
-    )
-    (ws / "Sources" / "Watchlist" / "no-front.ref.md").write_text("just text\n")
-    (ws / "Sources" / "Watchlist" / "README.md").write_text("# not a watcher\n")
-    write_ref(ws, "home_assistant-hub", {"ref_version": 1, "title": "ok", "kind": "file",
-                                           "source": str(ws / "_memory" / "config.yaml")})
+    reg = ws / "Sources" / "Watchlist"
+    (reg / "Bad Name.ref.md").write_text("---\nref_version: 2\ntitle: x\nwatch: {type: url, url: https://e.com}\n---\n")
+    (reg / "dot.name.ref.md").write_text("---\nref_version: 2\ntitle: x\nwatch: {type: url, url: https://e.com}\n---\n")
+    (reg / "no-front.ref.md").write_text("just text\n")
+    (reg / "README.md").write_text("# not a watcher\n")
+    (reg / "manual.pdf.meta.md").write_text("---\ntitle: not a watcher either\n---\n")
+    write_ref(ws, "home_assistant-hub", path_ref(ws / "_memory" / "config.yaml", title="ok"))
+    assert ref_path(ws, "home_assistant-hub").name == "Home_Assistant-Hub.ref.md"
     payload = check(ws, fw)
     assert payload["summary"]["errors"] == 3
-    assert sorted(e["id"] for e in payload["errors"]) == ["Bad_Name", "dot.name", "no-front"]
-    bad = next(e for e in payload["errors"] if e["id"] == "Bad_Name")
-    assert "not a valid watcher id" in bad["error"] and "bad_name.ref.md" in bad["error"]
-    assert ids(payload["unchanged"]) == ["home_assistant-hub"], "underscores are fine"
+    assert sorted(e["id"] for e in payload["errors"]) == ["bad name", "dot.name", "no-front"]
+    bad = next(e for e in payload["errors"] if e["id"] == "bad name")
+    assert "not a valid watcher id" in bad["error"] and "`Bad_Name.ref.md`" in bad["error"]
+    assert ids(payload["unchanged"]) == ["home_assistant-hub"], "underscores are fine; id is lowercased"
+
+
+def test_registry_loads_case_insensitively_and_collisions_are_errors(ws: Path, fw: Path) -> None:
+    target = ws / "t.txt"
+    target.write_text("1")
+    # Lowercase (pre-0.20.0) and SHOUTING filenames both resolve to the lowercase id.
+    write_ref(ws, "legacy_name", path_ref(target), filename="legacy_name.ref.md")
+    write_ref(ws, "loud", path_ref(target), filename="LOUD.ref.md")
+    watchers, errors = load(ws)
+    assert errors == {}
+    assert sorted(w.id for w in watchers) == ["legacy_name", "loud"]
+    assert {w.handle for w in watchers} == {"watch:legacy_name", "watch:loud"}
+    by_id = {w.id: w for w in watchers}
+    assert by_id["legacy_name"].path.name == "legacy_name.ref.md", "the file is read where it is"
+    assert by_id["legacy_name"].canonical_filename == "Legacy_Name.ref.md"
+    payload = check(ws, fw)
+    assert sorted(ids(payload["unchanged"])) == ["legacy_name", "loud"]
+    assert set(rows(ws)) == {"legacy_name", "loud"}, "state keyed by the lowercase id"
+    assert (ws / "Sources" / "Watchlist" / "LOUD.ref.md").exists(), "never renamed by the tool"
+
+
+
+def test_case_only_stem_collision_is_a_load_error(ws: Path, fw: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Two files whose lowercase stems collide: both are errors, neither loads.
+
+    On a case-insensitive filesystem (macOS default) `LOUD.ref.md` and
+    `Loud.ref.md` are one physical file, so the directory listing is
+    monkeypatched to present both names; on a case-sensitive one they are two
+    real files. The tool's collision logic runs identically either way.
+    """
+    target = ws / "t.txt"
+    target.write_text("1")
+    reg = ws / "Sources" / "Watchlist"
+    write_ref(ws, "keep", path_ref(target))
+    write_ref(ws, "loud", path_ref(target), filename="LOUD.ref.md")
+    write_ref(ws, "loud", path_ref(target), filename="Loud.ref.md")
+    listing = [reg / "Keep.ref.md", reg / "LOUD.ref.md", reg / "Loud.ref.md"]
+    monkeypatch.setattr(wl, "registry_files", lambda folder: listing)
+    watchers, errs = wl.load_registry(ws, wl.load_config(ws), {})
+    assert [w.id for w in watchers] == ["keep"]
+    collision = [e for e in errs if e["id"] == "loud"]
+    assert len(collision) == 2
+    assert all("claimed by 2 files" in e["error"] and "`Loud.ref.md`" in e["error"] for e in collision)
+    assert {e["file"] for e in collision} == {"Sources/Watchlist/LOUD.ref.md", "Sources/Watchlist/Loud.ref.md"}
+    patch_state(ws, "loud", fingerprint="sha256:kept")
+    payload = check(ws, fw)
+    assert payload["summary"]["errors"] == 2
+    assert ids(payload["unchanged"]) == ["keep"]
+    row = rows(ws)["loud"]
+    assert row["fingerprint"] == "sha256:kept" and "orphan_runs" not in row, (
+        "an errored id counts as known: its state row is not aged"
+    )
+    # `find_ref` (the `enable` existence check) sees the id whatever the case on disk.
+    assert wl.find_ref(reg, "LOUD") is not None and wl.find_ref(reg, "keep") == reg / "Keep.ref.md"
+    assert wl.find_ref(reg, "ghost") is None
 
 
 def test_schedule_stands_in_for_cycles_and_null_keys_pin(ws: Path) -> None:
-    write_ref(ws, "sched", {"ref_version": 1, "title": "t", "kind": "url",
-                            "source": "https://e.com", "watch": {"schedule": "weekly"}})
-    write_ref(ws, "manual", {"ref_version": 1, "title": "t", "kind": "url",
-                             "source": "https://e.com", "watch": {"schedule": "manual"}})
-    write_ref(ws, "pinned", {"ref_version": 1, "title": "t", "kind": "url",
-                             "source": "https://e.com",
-                             "watch": {"evict_after_days": None, "cycles": None,
-                                       "min_check_interval_minutes": None}})
-    watchers, errors = wl.load_registry(ws, wl.load_config(ws), {})
-    assert errors == []
+    write_ref(ws, "sched", url_ref("https://e.com", watch={"schedule": "weekly"}))
+    write_ref(ws, "manual", url_ref("https://e.com", watch={"schedule": "manual"}))
+    write_ref(ws, "pinned", url_ref("https://e.com", watch={"evict_after_days": None, "cycles": None,
+                                                           "min_check_interval_minutes": None}))
+    watchers, errors = load(ws)
+    assert errors == {}
     by_id = {w.id: w for w in watchers}
     assert by_id["sched"].cycles == ["weekly-review"] and by_id["sched"].schedule == "weekly"
     assert by_id["manual"].cycles == []
@@ -268,14 +413,15 @@ def test_schedule_stands_in_for_cycles_and_null_keys_pin(ws: Path) -> None:
     assert by_id["pinned"].min_check_interval_minutes is None
 
 
-def test_related_fields_and_handle(ws: Path) -> None:
-    write_ref(ws, "rel", {"ref_version": 1, "title": "t", "kind": "url", "source": "https://e.com",
-                          "related_domain": "home", "related_project": "solar", "tags": ["a"]})
-    watchers, _ = wl.load_registry(ws, wl.load_config(ws), {})
+def test_related_fields_description_and_handle(ws: Path) -> None:
+    write_ref(ws, "rel", url_ref("https://e.com", related_domain="home", related_project="solar",
+                                 tags=["a"], description="  the permit\n portal "))
+    watchers, _ = load(ws)
     w = watchers[0]
     assert w.handle == "watch:rel"
     assert w.related == {"related_domain": "home", "related_project": "solar"}
     assert w.tags == ["a"]
+    assert w.description == "the permit portal"
 
 
 # ---------------------------------------------------------------------------
@@ -286,8 +432,7 @@ def test_related_fields_and_handle(ws: Path) -> None:
 def test_path_file_baseline_then_change_writes_effects(ws: Path, fw: Path) -> None:
     target = ws / "watched.txt"
     target.write_text("v1")
-    write_ref(ws, "doc", {"ref_version": 1, "title": "A doc", "kind": "file",
-                          "source": str(target), "related_domain": "home"})
+    write_ref(ws, "doc", path_ref(target, title="A doc", related_domain="home"))
     first = check(ws, fw)
     assert first["summary"]["checked"] == 1
     assert ids(first["unchanged"]) == ["doc"]
@@ -302,7 +447,8 @@ def test_path_file_baseline_then_change_writes_effects(ws: Path, fw: Path) -> No
     world = read_yaml(ws / "_memory" / "world.yaml")
     edges = {(e["from"], e["to"], e["kind"]) for e in world["edges"]}
     assert ("watch:doc", "domain:home", "related_domain") in edges
-    assert any(n["id"] == "watch:doc" and n["kind"] == "watch" for n in world["nodes"])
+    node = next(n for n in world["nodes"] if n["id"] == "watch:doc")
+    assert node["kind"] == "watch" and node["path"] == "Sources/Watchlist/Doc.ref.md"
     world_text = (ws / "_memory" / "world.yaml").read_text()
 
     second = check(ws, fw)
@@ -337,7 +483,7 @@ def test_path_file_baseline_then_change_writes_effects(ws: Path, fw: Path) -> No
 def test_one_live_alert_per_watcher_prior_moves_to_archive(ws: Path, fw: Path) -> None:
     target = ws / "w.txt"
     target.write_text("1")
-    write_ref(ws, "w", {"ref_version": 1, "title": "W", "kind": "file", "source": str(target)})
+    write_ref(ws, "w", path_ref(target, title="W"))
     ctx_path = ws / "_memory" / "context.yaml"
     ctx = read_yaml(ctx_path)
     ctx["alerts"] = ["unrelated alert stays"]
@@ -359,7 +505,7 @@ def test_path_dir_fingerprint_tracks_entries(ws: Path, fw: Path) -> None:
     folder = ws / "drop"
     folder.mkdir()
     (folder / "a.csv").write_text("a")
-    write_ref(ws, "drop", {"ref_version": 1, "title": "t", "kind": "file", "source": str(folder)})
+    write_ref(ws, "drop", path_ref(folder))
     check(ws, fw)
     assert state_row(ws, "drop")["fingerprint"].startswith("dir:")
     (folder / "b.csv").write_text("b")
@@ -368,8 +514,7 @@ def test_path_dir_fingerprint_tracks_entries(ws: Path, fw: Path) -> None:
 
 
 def test_path_missing_is_unreachable(ws: Path, fw: Path) -> None:
-    write_ref(ws, "gone", {"ref_version": 1, "title": "t", "kind": "file",
-                           "source": str(ws / "nope.txt")})
+    write_ref(ws, "gone", path_ref(ws / "nope.txt"))
     payload = check(ws, fw)
     assert ids(payload["unreachable"]) == ["gone"]
     row = state_row(ws, "gone")
@@ -388,7 +533,7 @@ def test_path_missing_is_unreachable(ws: Path, fw: Path) -> None:
 
 def test_url_conditional_get_and_304(ws: Path, fw: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls = fake_http(monkeypatch, FakeResp(b"<h1>A</h1>", {"ETag": '"abc"', "Last-Modified": "Mon"}))
-    write_ref(ws, "page", {"ref_version": 1, "title": "t", "kind": "url", "source": "https://e.com/x"})
+    write_ref(ws, "page", url_ref("https://e.com/x"))
     payload = check(ws, fw)
     assert calls[0]["method"] == "GET" and calls[0]["headers"] == {}
     row = state_row(ws, "page")
@@ -427,17 +572,14 @@ def test_url_content_hash_strips_noise_and_scopes_selector(
         ).encode()
 
     fake_http(monkeypatch, FakeResp(page("1", "pending")))
-    write_ref(ws, "permit", {"ref_version": 1, "title": "t", "kind": "url",
-                             "source": "https://permits.example/x"})
+    write_ref(ws, "permit", url_ref("https://permits.example/x"))
     check(ws, fw)
     fake_http(monkeypatch, FakeResp(page("2", "pending")))
     assert ids(check(ws, fw)["unchanged"]) == ["permit"], "script/comment stamps are stripped"
     fake_http(monkeypatch, FakeResp(page("3", "pending", footer="v2")))
     assert ids(check(ws, fw)["changed"]) == ["permit"], "visible footer text flaps without a selector"
 
-    write_ref(ws, "permit", {"ref_version": 1, "title": "t", "kind": "url",
-                             "source": "https://permits.example/x",
-                             "watch": {"selector": "#status-panel"}})
+    write_ref(ws, "permit", url_ref("https://permits.example/x", watch={"selector": "#status-panel"}))
     fake_http(monkeypatch, FakeResp(page("4", "pending", footer="v3")))
     payload = check(ws, fw)
     assert ids(payload["changed"]) == ["permit"], "scoping changes the fingerprint once"
@@ -454,9 +596,8 @@ def test_url_content_hash_strips_noise_and_scopes_selector(
 def test_url_ignore_patterns_and_min_change_interval(
     ws: Path, fw: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    write_ref(ws, "flap", {"ref_version": 1, "title": "t", "kind": "url", "source": "https://e.com",
-                           "watch": {"ignore_patterns": [r"\d{2}:\d{2}:\d{2}"],
-                                     "min_change_interval_minutes": 1440}})
+    write_ref(ws, "flap", url_ref("https://e.com", watch={"ignore_patterns": [r"\d{2}:\d{2}:\d{2}"],
+                                                         "min_change_interval_minutes": 1440}))
     fake_http(monkeypatch, FakeResp(b"<p>clock 10:00:01</p><p>A</p>"))
     check(ws, fw)
     fake_http(monkeypatch, FakeResp(b"<p>clock 10:00:02</p><p>A</p>"))
@@ -478,10 +619,9 @@ def test_url_ignore_patterns_and_min_change_interval(
 
 def test_url_errors_are_unreachable(ws: Path, fw: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     fake_http(monkeypatch, HTTPError("https://e.com", 500, "boom", None, None))  # type: ignore[arg-type]
-    write_ref(ws, "down", {"ref_version": 1, "title": "t", "kind": "url", "source": "https://e.com"})
-    write_ref(ws, "ftp", {"ref_version": 1, "title": "t", "kind": "url", "source": "ftp://e.com"})
-    write_ref(ws, "creds", {"ref_version": 1, "title": "t", "kind": "url",
-                            "source": "https://user:pw@e.com/x"})
+    write_ref(ws, "down", url_ref("https://e.com"))
+    write_ref(ws, "ftp", url_ref("ftp://e.com"))
+    write_ref(ws, "creds", url_ref("https://user:pw@e.com/x"))
     payload = check(ws, fw)
     assert sorted(ids(payload["unreachable"])) == ["creds", "down", "ftp"]
     errors = {i["id"]: i["error"] for i in payload["unreachable"]}
@@ -508,7 +648,7 @@ def test_url_against_loopback_http_server(ws: Path, fw: Path) -> None:
     thread.start()
     try:
         url = f"http://127.0.0.1:{server.server_port}/status"
-        write_ref(ws, "loop", {"ref_version": 1, "title": "t", "kind": "url", "source": url})
+        write_ref(ws, "loop", url_ref(url))
         check(ws, fw, timeout=5)
         body["html"] = b"<html><script>x=2</script><h1>Hello</h1></html>"
         assert ids(check(ws, fw, timeout=5)["unchanged"]) == ["loop"]
@@ -523,7 +663,7 @@ def test_url_body_read_respects_the_timeout_budget(ws: Path, fw: Path, monkeypat
     fake_http(monkeypatch, FakeResp(b"<p>" + b"x" * (3 * wl.URL_READ_CHUNK) + b"</p>"))
     clock = iter([0.0, 0.0, 1.0, 100.0, 100.0, 100.0, 100.0])  # deadline, then reads
     monkeypatch.setattr(wl, "_monotonic", lambda: next(clock, 100.0))
-    write_ref(ws, "slow", {"ref_version": 1, "title": "t", "kind": "url", "source": "https://e.com/slow"})
+    write_ref(ws, "slow", url_ref("https://e.com/slow"))
     payload = check(ws, fw, timeout=5)
     assert ids(payload["unreachable"]) == ["slow"]
     assert "exceeded the 5s timeout budget" in payload["unreachable"][0]["error"]
@@ -535,11 +675,10 @@ def test_url_body_read_respects_the_timeout_budget(ws: Path, fw: Path, monkeypat
 
 
 def test_bare_harvest_type_needs_a_pack(ws: Path) -> None:
-    write_ref(ws, "bare_h", {"ref_version": 1, "title": "t", "kind": "api", "source": "x",
-                             "watch": {"type": "harvest"}})
-    watchers, errors = wl.load_registry(ws, wl.load_config(ws), {})
+    write_ref(ws, "bare_h", v2(watch={"type": "harvest"}))
+    watchers, errors = load(ws)
     assert watchers == []
-    assert "needs a pack" in errors[0]["error"]
+    assert "needs a pack" in errors["bare_h"]
 
 
 def test_validate_passes_after_a_real_check(ws: Path, framework_dir: Path, capsys: Any) -> None:
@@ -555,6 +694,8 @@ def test_validate_passes_after_a_real_check(ws: Path, framework_dir: Path, capsy
     out = capsys.readouterr().out
     assert rc == 0, out
     assert "ERROR" not in out
+    assert "OK     Sources/Watchlist/Doc.ref.md" in out
+    assert "WARN" not in out, "a Title_Case ref file raises no naming warning"
 
 
 def test_select_html_simple_selectors() -> None:
@@ -575,7 +716,7 @@ def test_select_html_simple_selectors() -> None:
 
 
 def test_cmd_disabled_by_default(ws: Path, fw: Path) -> None:
-    write_ref(ws, "gh", {"ref_version": 1, "title": "t", "kind": "cli", "source": "echo hi"})
+    write_ref(ws, "gh", cmd_ref("echo hi"))
     payload = check(ws, fw)
     assert ids(payload["unreachable"]) == ["gh"]
     assert payload["unreachable"][0]["error"] == wl.CMD_DISABLED_REASON
@@ -585,8 +726,8 @@ def test_cmd_allowed_hashes_stdout_and_requires_exit_zero(ws: Path, fw: Path) ->
     set_config(ws, allow_cmd=True)
     data = ws / "data.txt"
     data.write_text("one")
-    write_ref(ws, "cat", {"ref_version": 1, "title": "t", "kind": "cli", "source": f"cat '{data}'"})
-    write_ref(ws, "fail", {"ref_version": 1, "title": "t", "kind": "cli", "source": "exit 3"})
+    write_ref(ws, "cat", cmd_ref(f"cat '{data}'"))
+    write_ref(ws, "fail", cmd_ref("exit 3"))
     payload = check(ws, fw)
     assert ids(payload["unchanged"]) == ["cat"]
     assert ids(payload["unreachable"]) == ["fail"]
@@ -603,11 +744,10 @@ def test_cmd_allowed_hashes_stdout_and_requires_exit_zero(ws: Path, fw: Path) ->
 
 
 def test_subagent_dispatch_then_stamp_cycle(ws: Path, fw: Path) -> None:
-    write_ref(ws, "portal", {
-        "ref_version": 1, "title": "Installer portal", "kind": "manual",
-        "source": "sign in per browserctl notes", "related_project": "solar",
-        "watch": {"prompt": "Read the milestone page; return a ONE-LINE delta."},
-    })
+    write_ref(ws, "portal", subagent_ref(
+        "Read the milestone page; return a ONE-LINE delta.", title="Installer portal",
+        description="sign in per browserctl notes", related_project="solar",
+    ))
     payload = check(ws, fw)
     assert payload["summary"]["dispatch"] == 1
     assert payload["summary"]["checked"] == 0
@@ -619,7 +759,8 @@ def test_subagent_dispatch_then_stamp_cycle(ws: Path, fw: Path) -> None:
     assert wl.RETENTION_NOTE in spec["prompt"]
     assert spec["previous_note"] is None
     assert spec["previous_note_label"] == wl.PREVIOUS_NOTE_LABEL
-    assert spec["source"] == "sign in per browserctl notes"
+    assert spec["description"] == "sign in per browserctl notes"
+    assert "source" not in spec, "no `source` field since 0.20.0"
     assert spec["return_shape"] == wl.RETURN_SHAPE
     assert "stamp --id portal" in spec["stamp_command"]
     assert wl.render_report(payload) != "", "a dispatch is never quiet"
@@ -663,8 +804,7 @@ def test_subagent_dispatch_then_stamp_cycle(ws: Path, fw: Path) -> None:
 
 
 def test_subagent_about_to_be_evicted_is_not_dispatched(ws: Path, fw: Path) -> None:
-    write_ref(ws, "portal", {"ref_version": 1, "title": "P", "kind": "manual", "source": "x",
-                             "watch": {"prompt": "look", "evict_after_days": 7}})
+    write_ref(ws, "portal", subagent_ref("look", title="P", watch={"evict_after_days": 7}))
     assert check(ws, fw)["summary"]["dispatch"] == 1
     patch_state(ws, "portal", baseline_at=iso_ago(days=8), last_success=iso_ago(days=2))
     payload = check(ws, fw)
@@ -681,9 +821,9 @@ def test_subagent_about_to_be_evicted_is_not_dispatched(ws: Path, fw: Path) -> N
 
 
 def test_subagent_without_prompt_is_a_registry_error(ws: Path) -> None:
-    write_ref(ws, "np", {"ref_version": 1, "title": "t", "kind": "manual", "source": "x"})
-    _, errors = wl.load_registry(ws, wl.load_config(ws), {})
-    assert "needs watch.prompt" in errors[0]["error"]
+    write_ref(ws, "np", v2(watch={"type": "subagent"}))
+    _, errors = load(ws)
+    assert "subagent watcher needs its locator: watch.prompt" in errors["np"]
 
 
 # ---------------------------------------------------------------------------
@@ -731,15 +871,15 @@ def test_gmail_fingerprint_capture_and_get_cap(
     gm = gmail_handler(framework_dir, ws)
     fake = FakeGmail(_msgs(15))
     monkeypatch.setattr(gm, "CLIENT_FACTORY", lambda: fake)
-    write_ref(ws, "gmail_bills", {"ref_version": 1, "title": "Bills mail", "kind": "api",
-                                  "source": "gmail:label:Bills newer_than:30d",
-                                  "watch": {"pack": "gmail",
-                                            "params": {"query": "label:Bills newer_than:30d"}}})
+    write_ref(ws, "gmail_bills", pack_ref("gmail", title="Bills mail",
+                                          watch={"params": {"query": "label:Bills newer_than:30d"}}))
+    assert ref_path(ws, "gmail_bills").name == "Gmail_Bills.ref.md"
     packs, _ = wl.discover_packs(framework_dir, ws, announce=lambda m: None)
     watchers, errors = wl.load_registry(ws, wl.load_config(ws), packs)
     assert errors == []
     assert watchers[0].type == "gmail"
     assert watchers[0].detect["query"] == "label:Bills newer_than:30d"
+    assert watchers[0].locator == "label:Bills newer_than:30d"
     assert watchers[0].min_check_interval_minutes == 60, "pack default throttle"
 
     payload = check(ws, framework_dir)
@@ -784,9 +924,8 @@ def test_gmail_result_count_decrement_is_not_a_change(
     gm = gmail_handler(framework_dir, ws)
     fake = FakeGmail(_msgs(5))
     monkeypatch.setattr(gm, "CLIENT_FACTORY", lambda: fake)
-    write_ref(ws, "gm", {"ref_version": 1, "title": "t", "kind": "api", "source": "gmail:x",
-                         "watch": {"pack": "gmail", "params": {"query": "label:Bills newer_than:30d"},
-                                   "min_check_interval_minutes": None}})
+    write_ref(ws, "gm", pack_ref("gmail", watch={"params": {"query": "label:Bills newer_than:30d"},
+                                                 "min_check_interval_minutes": None}))
     check(ws, framework_dir)
     fp = state_row(ws, "gm")["fingerprint"]
     fake.messages.pop()  # the oldest message aged out of the window
@@ -802,8 +941,7 @@ def test_gmail_missing_token_is_unreachable_with_hint(
     gm = gmail_handler(framework_dir, ws)
     monkeypatch.setattr(gm, "DEFAULT_CREDENTIALS_PATH", tmp_path / "absent" / "credentials.json")
     monkeypatch.setattr(gm, "CLIENT_FACTORY", gm.default_client_factory)
-    write_ref(ws, "gm", {"ref_version": 1, "title": "t", "kind": "api", "source": "gmail:is:unread",
-                         "watch": {"pack": "gmail", "params": {"query": "is:unread"}}})
+    write_ref(ws, "gm", pack_ref("gmail", watch={"params": {"query": "is:unread"}}))
     payload = check(ws, framework_dir)
     assert ids(payload["unreachable"]) == ["gm"]
     err = payload["unreachable"][0]["error"]
@@ -819,8 +957,7 @@ def test_gmail_empty_result_and_dry_run_skips_capture(
     gm = gmail_handler(framework_dir, ws)
     fake = FakeGmail([])
     monkeypatch.setattr(gm, "CLIENT_FACTORY", lambda: fake)
-    write_ref(ws, "gm", {"ref_version": 1, "title": "t", "kind": "api", "source": "x",
-                         "watch": {"pack": "gmail", "params": {"query": "label:Nothing"}}})
+    write_ref(ws, "gm", pack_ref("gmail", watch={"params": {"query": "label:Nothing"}}))
     check(ws, framework_dir)
     assert state_row(ws, "gm")["fingerprint"] == "gmail:none"
     fake.messages = _msgs(2)
@@ -831,13 +968,25 @@ def test_gmail_empty_result_and_dry_run_skips_capture(
     assert state_row(ws, "gm")["fingerprint"] == "gmail:none", "dry-run never writes state"
 
 
+def test_gmail_row_query_overrides_the_pack_param(
+    ws: Path, framework_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`watch.query` on a `pack: gmail` row overrides the templated `params.query`."""
+    gm = gmail_handler(framework_dir, ws)
+    fake = FakeGmail([])
+    monkeypatch.setattr(gm, "CLIENT_FACTORY", lambda: fake)
+    write_ref(ws, "gm", pack_ref("gmail", watch={"params": {"query": "label:A"}, "query": "label:B"}))
+    packs, _ = wl.discover_packs(framework_dir, ws, announce=lambda m: None)
+    watchers, errors = wl.load_registry(ws, wl.load_config(ws), packs)
+    assert errors == [] and watchers[0].detect["query"] == "label:B"
+
+
 def test_pack_defined_type_needs_a_pack(ws: Path, fw: Path) -> None:
     """`gmail` is not built into core: a bare `watch.type: gmail` row is rejected."""
-    write_ref(ws, "bare", {"ref_version": 1, "title": "t", "kind": "api", "source": "gmail:x",
-                           "watch": {"type": "gmail", "query": "x"}})
-    watchers, errors = wl.load_registry(ws, wl.load_config(ws), {})
+    write_ref(ws, "bare", v2(watch={"type": "gmail", "query": "x"}))
+    watchers, errors = load(ws)
     assert watchers == []
-    assert "not built in" in errors[0]["error"] and "handler.py" in errors[0]["error"]
+    assert "not built in" in errors["bare"] and "handler.py" in errors["bare"]
 
 
 # ---------------------------------------------------------------------------
@@ -884,6 +1033,7 @@ def make_harvest_pack(ws: Path, control: Path, *, capture_mode: str = "automatic
     (folder / "handler.py").write_text(HANDLER_SRC)
     manifest: dict[str, Any] = {
         "watcher_version": 1, "id": pack_id, "title": "Fake bank", "kind": "api",
+        "description": "A fake bank feed.",
         "detect": {"type": detect_type},
         "harvest": {"defaults": {"control": str(control), "recency_window_days": 30},
                     "writes": ["transactions.yaml"], "affected_domains": []},
@@ -907,10 +1057,8 @@ def test_harvest_type_runs_handler_logs_and_alerts(ws: Path, fw: Path) -> None:
     control = ws / "control.txt"
     control.write_text("3")
     make_harvest_pack(ws, control, budget={"max_window_days": 7})
-    write_ref(ws, "bank", {"ref_version": 1, "title": "Bank", "kind": "api", "source": "fakebank",
-                           "related_domain": "finances",
-                           "watch": {"pack": "fakebank", "params": {"extra": "yes"},
-                                     "include_pending": False}})
+    write_ref(ws, "bank", pack_ref("fakebank", title="Bank", related_domain="finances",
+                                   watch={"params": {"extra": "yes"}, "include_pending": False}))
     payload = check(ws, fw)
     assert payload["summary"]["harvested"] == 1
     assert payload["summary"]["checked"] == 1
@@ -965,8 +1113,7 @@ def test_harvest_errors_raise_one_tailor_signal(ws: Path, fw: Path) -> None:
     control = ws / "control.txt"
     control.write_text("77")
     make_harvest_pack(ws, control)
-    write_ref(ws, "bank", {"ref_version": 1, "title": "Bank", "kind": "api", "source": "fakebank",
-                           "watch": {"pack": "fakebank"}})
+    write_ref(ws, "bank", pack_ref("fakebank", title="Bank"))
     payload = check(ws, fw)
     run_id = payload["harvested"][0]["run_id"]
     signals = [s for s in read_yaml(ws / "_memory" / "action-signals.yaml")["signals"] if s.get("id")]
@@ -984,8 +1131,7 @@ def test_harvest_dry_run_passes_through_and_writes_nothing(ws: Path, fw: Path) -
     control = ws / "control.txt"
     control.write_text("2")
     make_harvest_pack(ws, control)
-    write_ref(ws, "bank", {"ref_version": 1, "title": "Bank", "kind": "api", "source": "fakebank",
-                           "watch": {"pack": "fakebank"}})
+    write_ref(ws, "bank", pack_ref("fakebank", title="Bank"))
     payload = check(ws, fw, dry_run=True)
     assert payload["summary"]["harvested"] == 1
     assert payload["harvested"][0]["run_id"] is None
@@ -1006,8 +1152,7 @@ def test_budget_max_calls_and_min_interval_leave_state_untouched(ws: Path, fw: P
     control = ws / "control.txt"
     control.write_text("1")
     make_harvest_pack(ws, control, budget={"max_calls_per_day": 2, "min_interval_minutes": 60})
-    write_ref(ws, "bank", {"ref_version": 1, "title": "Bank", "kind": "api", "source": "fakebank",
-                           "watch": {"pack": "fakebank"}})
+    write_ref(ws, "bank", pack_ref("fakebank", title="Bank"))
     check(ws, fw)
     before = state_row(ws, "bank")
     payload = check(ws, fw)
@@ -1036,8 +1181,7 @@ def test_capture_mode_manual_emits_harvest_dispatch_never_calls_handler(ws: Path
     control = ws / "control.txt"
     control.write_text("5")
     make_harvest_pack(ws, control, capture_mode="manual")
-    write_ref(ws, "bank", {"ref_version": 1, "title": "Bank", "kind": "api", "source": "fakebank",
-                           "watch": {"pack": "fakebank"}})
+    write_ref(ws, "bank", pack_ref("fakebank", title="Bank"))
     payload = check(ws, fw)
     assert payload["summary"]["harvested"] == 0
     assert payload["summary"]["checked"] == 0
@@ -1057,8 +1201,7 @@ def test_capture_mode_manual_emits_harvest_dispatch_never_calls_handler(ws: Path
     assert payload["summary"]["dispatch"] == 1 and payload["summary"]["harvested"] == 0
 
     # A registry row may override the pack's manual default explicitly.
-    write_ref(ws, "bank", {"ref_version": 1, "title": "Bank", "kind": "api", "source": "fakebank",
-                           "watch": {"pack": "fakebank", "capture_mode": "automatic"}})
+    write_ref(ws, "bank", pack_ref("fakebank", title="Bank", watch={"capture_mode": "automatic"}))
     assert check(ws, fw)["summary"]["harvested"] == 1
 
 
@@ -1066,8 +1209,7 @@ def test_explicit_harvest_bypasses_capture_mode_but_not_budget(ws: Path, fw: Pat
     control = ws / "control.txt"
     control.write_text("4")
     make_harvest_pack(ws, control, capture_mode="manual", budget={"max_calls_per_day": 1})
-    write_ref(ws, "bank", {"ref_version": 1, "title": "Bank", "kind": "api", "source": "fakebank",
-                           "watch": {"pack": "fakebank"}})
+    write_ref(ws, "bank", pack_ref("fakebank", title="Bank"))
     rc, payload = wl.run_explicit_harvest(ws, fw, watcher_id="bank", dry_run=False)
     assert rc == 0
     assert payload["summary"]["harvested"] == 1
@@ -1087,8 +1229,7 @@ def test_explicit_harvest_backfill_flag_and_dry_run_budget(ws: Path, fw: Path) -
     control = ws / "control.txt"
     control.write_text("0")
     make_harvest_pack(ws, control, budget={"max_calls_per_day": 2})
-    write_ref(ws, "bank", {"ref_version": 1, "title": "Bank", "kind": "api", "source": "fakebank",
-                           "watch": {"pack": "fakebank"}})
+    write_ref(ws, "bank", pack_ref("fakebank", title="Bank"))
     rc, payload = wl.run_explicit_harvest(ws, fw, watcher_id="bank", dry_run=False, backfill=True)
     assert rc == 0 and payload["backfill"] is True
     assert "('backfill', True)" in handler_calls(ws)[-1]
@@ -1108,8 +1249,7 @@ def test_no_harvest_flag_and_detect_gated_harvest(ws: Path, fw: Path) -> None:
     control = ws / "control.txt"
     control.write_text("2")
     make_harvest_pack(ws, control, detect_type="path")
-    write_ref(ws, "drop", {"ref_version": 1, "title": "Drop", "kind": "file", "source": str(control),
-                           "watch": {"pack": "fakebank"}})
+    write_ref(ws, "drop", pack_ref("fakebank", title="Drop"))
     payload = check(ws, fw)
     assert ids(payload["unchanged"]) == ["drop"]
     assert payload["summary"]["harvested"] == 0, "baseline does not harvest"
@@ -1133,8 +1273,7 @@ def _file_watcher(ws: Path, wid: str = "doc", **watch: Any) -> Path:
     target = ws / f"{wid}.txt"
     if not target.exists():
         target.write_text("v1")
-    write_ref(ws, wid, {"ref_version": 1, "title": wid, "kind": "file", "source": str(target),
-                        "watch": watch})
+    write_ref(ws, wid, path_ref(target, title=wid, watch=watch))
     return target
 
 
@@ -1156,7 +1295,7 @@ def test_evict_after_quiet_window_then_inactive_then_revive(ws: Path, fw: Path) 
     # `status: active` in the ref, edited after the eviction, revives + re-baselines.
     ref = _file_watcher(ws, evict_after_days=7, status="active")
     future = (dt.datetime.now() + dt.timedelta(seconds=5)).timestamp()
-    os.utime(ws / "Sources" / "Watchlist" / "doc.ref.md", (future, future))
+    os.utime(ref_path(ws, "doc"), (future, future))
     (ws / "doc.txt").write_text("v9")
     payload = check(ws, fw)
     assert any("revived" in w for w in payload["warnings"])
@@ -1263,6 +1402,48 @@ def test_cycles_skip_and_only_id_override(ws: Path, fw: Path) -> None:
     assert payload["summary"]["errors"] == 1
 
 
+def test_cycle_covers_nests_the_standard_cadences() -> None:
+    assert wl.CYCLE_RANK == {"daily-update": 0, "weekly-review": 1, "monthly-review": 2}
+    daily, weekly, monthly = ["daily-update"], ["weekly-review"], ["monthly-review"]
+    assert wl.cycle_covers("daily-update", daily)
+    assert wl.cycle_covers("weekly-review", daily) and wl.cycle_covers("monthly-review", daily)
+    assert wl.cycle_covers("weekly-review", weekly) and wl.cycle_covers("monthly-review", weekly)
+    assert not wl.cycle_covers("daily-update", weekly) and not wl.cycle_covers("daily-update", monthly)
+    assert not wl.cycle_covers("weekly-review", monthly)
+    assert wl.cycle_covers("monthly-review", ["weekly-review", "daily-update"])
+    # Custom names match themselves only; `[]` is never covered.
+    assert wl.cycle_covers("quarterly", ["quarterly"])
+    assert not wl.cycle_covers("quarterly", daily) and not wl.cycle_covers("monthly-review", ["quarterly"])
+    assert not wl.cycle_covers("daily-update", []) and not wl.cycle_covers("monthly-review", [])
+
+
+def test_slower_cycles_include_faster_watchers(ws: Path, fw: Path) -> None:
+    """The user never has to run the cadences one after another (nested cycles)."""
+    _file_watcher(ws, wid="daily", cycles=["daily-update"])
+    _file_watcher(ws, wid="weekly", cycles=["weekly-review"])
+    _file_watcher(ws, wid="monthly", cycles=["monthly-review"])
+    _file_watcher(ws, wid="custom", cycles=["quarterly"])
+    _file_watcher(ws, wid="never", cycles=[])
+    payload = check(ws, fw, cycle="daily-update")
+    assert ids(payload["unchanged"]) == ["daily"]
+    assert sorted(ids(payload["skipped_cycle"])) == ["custom", "monthly", "never", "weekly"]
+    payload = check(ws, fw, cycle="weekly-review")
+    assert sorted(ids(payload["unchanged"])) == ["daily", "weekly"]
+    assert sorted(ids(payload["skipped_cycle"])) == ["custom", "monthly", "never"]
+    payload = check(ws, fw, cycle="monthly-review")
+    assert sorted(ids(payload["unchanged"])) == ["daily", "monthly", "weekly"]
+    assert sorted(ids(payload["skipped_cycle"])) == ["custom", "never"]
+    payload = check(ws, fw, cycle="quarterly")
+    assert ids(payload["unchanged"]) == ["custom"], "a custom cycle name only matches itself"
+    assert sorted(ids(payload["skipped_cycle"])) == ["daily", "monthly", "never", "weekly"]
+    # The throttle gate (first) is what keeps a daily watcher from being hit twice on a
+    # day when daily and weekly both run.
+    _file_watcher(ws, wid="daily", cycles=["daily-update"], min_check_interval_minutes=60)
+    payload = check(ws, fw, cycle="weekly-review")
+    assert ids(payload["skipped_throttled"]) == ["daily"]
+    assert "daily" not in ids(payload["unchanged"])
+
+
 def test_orphaned_state_rows_age_three_runs_before_pruning(ws: Path, fw: Path) -> None:
     _file_watcher(ws, wid="new_name")
     state = wl.load_state(ws)
@@ -1284,7 +1465,7 @@ def test_orphaned_state_rows_age_three_runs_before_pruning(ws: Path, fw: Path) -
 def test_orphan_counter_resets_when_the_ref_returns(ws: Path, fw: Path) -> None:
     target = _file_watcher(ws, wid="blip")
     check(ws, fw)
-    ref = ws / "Sources" / "Watchlist" / "blip.ref.md"
+    ref = ref_path(ws, "blip")
     text = ref.read_text()
     ref.unlink()
     check(ws, fw)
@@ -1298,15 +1479,38 @@ def test_orphan_counter_resets_when_the_ref_returns(ws: Path, fw: Path) -> None:
     assert target.exists()
 
 
+def test_case_only_rename_of_the_ref_keeps_the_state_row(ws: Path, fw: Path) -> None:
+    """`simplefin.ref.md` -> `Simplefin.ref.md` (the 0.20.0 migration) is not a rename of the watcher."""
+    target = ws / "s.txt"
+    target.write_text("1")
+    write_ref(ws, "same_id", path_ref(target), filename="same_id.ref.md")
+    check(ws, fw)
+    fp = rows(ws)["same_id"]["fingerprint"]
+    old = ws / "Sources" / "Watchlist" / "same_id.ref.md"
+    tmp = old.with_name("same_id.ref.md.renaming")
+    old.rename(tmp)
+    tmp.rename(ref_path(ws, "same_id"))
+    payload = check(ws, fw)
+    assert payload["warnings"] == []
+    assert ids(payload["unchanged"]) == ["same_id"]
+    assert rows(ws)["same_id"]["fingerprint"] == fp and "orphan_runs" not in rows(ws)["same_id"]
+
+
 def test_icloud_placeholder_never_ages_the_state_row(ws: Path, fw: Path) -> None:
     _file_watcher(ws, wid="cloudy")
     check(ws, fw)
-    ref = ws / "Sources" / "Watchlist" / "cloudy.ref.md"
+    ref = ref_path(ws, "cloudy")
     ref.unlink()
-    (ws / "Sources" / "Watchlist" / ".cloudy.ref.md.icloud").write_bytes(b"placeholder")
+    (ws / "Sources" / "Watchlist" / ".Cloudy.ref.md.icloud").write_bytes(b"placeholder")
     for _ in range(4):
         payload = check(ws, fw)
     assert "cloudy" in rows(ws)
+    assert "orphan_runs" not in rows(ws)["cloudy"]
+    assert any("iCloud placeholder" in w for w in payload["warnings"])
+    # The placeholder is matched case-insensitively too (a pre-0.20.0 lowercase name).
+    (ws / "Sources" / "Watchlist" / ".Cloudy.ref.md.icloud").rename(
+        ws / "Sources" / "Watchlist" / ".cloudy.ref.md.icloud")
+    payload = check(ws, fw)
     assert "orphan_runs" not in rows(ws)["cloudy"]
     assert any("iCloud placeholder" in w for w in payload["warnings"])
 
@@ -1359,9 +1563,13 @@ def test_cli_check_json_and_exit_codes(ws: Path, fw: Path, capsys: Any) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert set(wl.SUMMARY_KEYS) <= set(payload["summary"])
     assert payload["cycle"] == "daily-update"
-    (ws / "Sources" / "Watchlist" / "broken.ref.md").write_text("---\nkind: api\nsource: x\n---\n")
+    # A pre-0.20.0 reference-shaped ref is a registry error, not a silent skip.
+    (ws / "Sources" / "Watchlist" / "Broken.ref.md").write_text("---\nkind: api\nsource: x\n---\n")
     rc = wl.main(["--workspace", str(ws), "--framework", str(fw), "check", "--cycle", "daily-update"])
     assert rc == 1, "registry errors surface in the exit code"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["errors"][0]["id"] == "broken"
+    assert "legacy reference key(s)" in payload["errors"][0]["error"]
 
 
 def test_cli_stamp_requires_exactly_one_outcome(ws: Path, fw: Path) -> None:
@@ -1373,8 +1581,7 @@ def test_cli_stamp_requires_exactly_one_outcome(ws: Path, fw: Path) -> None:
 
 
 def test_cli_stamp_list_enable_probe(ws: Path, fw: Path, capsys: Any) -> None:
-    write_ref(ws, "portal", {"ref_version": 1, "title": "Portal", "kind": "manual", "source": "x",
-                             "watch": {"prompt": "look"}})
+    write_ref(ws, "portal", subagent_ref("look", title="Portal"))
     base = ["--workspace", str(ws), "--framework", str(fw)]
     assert wl.main([*base, "stamp", "--id", "portal", "--changed", "--note", "milestone 3 done"]) == 0
     res = json.loads(capsys.readouterr().out)
@@ -1384,12 +1591,13 @@ def test_cli_stamp_list_enable_probe(ws: Path, fw: Path, capsys: Any) -> None:
     listed = json.loads(capsys.readouterr().out)
     assert listed[0]["id"] == "portal" and listed[0]["status"] == "active"
     assert listed[0]["last_outcome"] == "changed"
+    assert listed[0]["file"] == "Sources/Watchlist/Portal.ref.md"
     assert wl.main([*base, "list", "--status", "evicted"]) == 0
     assert "(none)" in capsys.readouterr().out
     assert wl.main([*base, "list"]) == 0
     assert "portal" in capsys.readouterr().out
 
-    # enable: unknown pack -> 2; a pack from the fake framework -> file written.
+    # enable: unknown pack -> 2; a pack from the fake framework -> Title_Case file written.
     assert wl.main([*base, "enable", "nope", "--id", "x"]) == 2
     assert "unknown pack" in capsys.readouterr().err
     pack_dir = fw / "watchers" / "url"
@@ -1404,26 +1612,34 @@ def test_cli_stamp_list_enable_probe(ws: Path, fw: Path, capsys: Any) -> None:
     }))
     assert wl.main([*base, "enable", "url", "--id", "permit", "--param",
                     "url=https://permits.example/x", "--title", "Permit portal"]) == 0
-    assert "created Sources/Watchlist/permit.ref.md" in capsys.readouterr().out
-    fm, body = wl.parse_frontmatter((ws / "Sources" / "Watchlist" / "permit.ref.md").read_text())
+    assert "created Sources/Watchlist/Permit.ref.md" in capsys.readouterr().out
+    fm, body = wl.parse_frontmatter((ws / "Sources" / "Watchlist" / "Permit.ref.md").read_text())
     assert fm is not None
-    assert fm["title"] == "Permit portal" and fm["kind"] == "url"
-    assert fm["source"] == "https://permits.example/x"
+    assert fm["ref_version"] == 2
+    assert fm["title"] == "Permit portal"
+    assert fm["description"] == "https://permits.example/x", "a parameterized pack is described by its locator"
+    assert not any(k in fm for k in ("kind", "source", "ttl_minutes", "sensitive")), "no legacy keys written"
     assert fm["watch"] == {"pack": "url", "enabled": True, "params": {"url": "https://permits.example/x"}}
     assert fm["added_by"] == "watch" and fm["added_at"]
     assert "# Notes" in body
+    # The existence check is case-insensitive: `permit` and `PERMIT` both name Permit.ref.md.
     assert wl.main([*base, "enable", "url", "--id", "permit", "--param", "url=https://x"]) == 2
     assert "already exists" in capsys.readouterr().err
+    assert wl.main([*base, "enable", "url", "--id", "PERMIT", "--param", "url=https://x"]) == 2
+    err = capsys.readouterr().err
+    assert "Sources/Watchlist/Permit.ref.md already exists" in err
     assert wl.main([*base, "enable", "url", "--id", "nourl"]) == 2
     assert "missing required param `url`" in capsys.readouterr().err
     assert wl.main([*base, "enable", "url", "--id", "Bad Id", "--param", "url=https://x"]) == 2
     err = capsys.readouterr().err
     assert "not a valid watcher id" in err and "--id bad_id" in err
     assert wl.main([*base, "enable", "url", "--id", "ok_id-x", "--param", "url=https://x"]) == 0
-    capsys.readouterr()
+    assert "created Sources/Watchlist/Ok_Id-X.ref.md" in capsys.readouterr().out
+    assert (ws / "Sources" / "Watchlist" / "Ok_Id-X.ref.md").is_file()
 
     watchers, errors = wl.load_registry(ws, wl.load_config(ws), wl.discover_packs(fw, ws)[0])
     assert errors == []
+    assert sorted(w.id for w in watchers) == ["ok_id-x", "permit", "portal"]
     permit = next(w for w in watchers if w.id == "permit")
     assert permit.type == "url" and permit.detect["url"] == "https://permits.example/x"
     assert "selector" not in permit.detect, "empty substituted value is unset"
@@ -1440,6 +1656,19 @@ def test_cli_stamp_list_enable_probe(ws: Path, fw: Path, capsys: Any) -> None:
     assert json.loads(capsys.readouterr().out)[0]["status"] == "error"
 
 
+def test_enable_uses_the_framework_template_and_writes_v2(ws: Path, framework_dir: Path) -> None:
+    """With the real `templates/sources/ref.md`, `enable` writes a ref the loader accepts."""
+    target = wl.enable_pack(ws, framework_dir, pack_id="simplefin", watcher_id=None, params={}, title=None)
+    assert target == ws / "Sources" / "Watchlist" / "Simplefin.ref.md"
+    fm, _ = wl.parse_frontmatter(target.read_text())
+    assert fm is not None and fm["ref_version"] == 2
+    assert "kind" not in fm and "source" not in fm and "ttl_minutes" not in fm
+    assert fm["description"].startswith("Aggregated bank"), "a non-parameterized pack lends its description"
+    packs, _ = wl.discover_packs(framework_dir, ws, announce=lambda m: None)
+    watchers, errors = wl.load_registry(ws, wl.load_config(ws), packs)
+    assert errors == [] and watchers[0].id == "simplefin"
+
+
 def test_ext_sources_alias_reexports_main() -> None:
     from superagent.tools import ext_sources
 
@@ -1450,5 +1679,57 @@ def test_sanitize_note() -> None:
     assert wl.sanitize_note(None) == ""
     assert wl.sanitize_note("a\x01b\nc\t d") == "a b c d"
     assert len(wl.sanitize_note("x" * 1000)) == wl.MAX_NOTE_CHARS
-    assert wl.sanitize_note("a\u200bb\u200fc\u202ed\u2066e\u2069f\ufeffg") == "abcdefg"
-    assert wl.sanitize_note("\u2028line\u2029break") == "linebreak"
+    assert wl.sanitize_note("a​b‏c‮d⁦e⁩f﻿g") == "abcdefg"
+    assert wl.sanitize_note(" line break") == "linebreak"
+
+
+# ---------------------------------------------------------------------------
+# 0.20.0 adversarial-review fixes
+# ---------------------------------------------------------------------------
+
+
+def test_ref_version_is_required_not_defaulted(ws: Path) -> None:
+    """Review finding: a ref with no `ref_version` used to load as a clean schema-2 watcher."""
+    write_ref(ws, "no-version", {"title": "t", "watch": {"type": "url", "url": "https://e.com"}})
+    write_ref(ws, "ok", v2(watch={"type": "url", "url": "https://e.com"}))
+    watchers, errors = load(ws)
+    assert [w.id for w in watchers] == ["ok"]
+    assert "ref_version: 2 is required" in errors["no-version"]
+    assert "0.20.0 migration" in errors["no-version"]
+
+
+def test_non_ref_file_in_the_registry_is_warned_about_not_ignored(ws: Path, fw: Path, capsys: Any) -> None:
+    """Review finding: a watcher definition parked as `HA.md` was silently nothing."""
+    write_ref(ws, "ok", url_ref("https://e.com"))
+    stray = ws / "Sources" / "Watchlist" / "Ha.md"
+    stray.write_text("---\nref_version: 1\ntitle: parked\nkind: cli\nsource: 'echo hi'\n---\n")
+    (ws / "Sources" / "Watchlist" / "README.md").write_text("# registry\n")
+    (ws / "Sources" / "Watchlist" / ".DS_Store").write_bytes(b"\x00")
+    notes = wl.registry_stray_files(ws / "Sources" / "Watchlist")
+    assert len(notes) == 1, notes
+    assert notes[0].startswith("Ha.md: not a .ref.md — not a watcher; rename it to `Ha.ref.md`")
+    payload = check(ws, fw, dry_run=True)
+    assert [w for w in payload["warnings"] if w.startswith("Sources/Watchlist/Ha.md: not a .ref.md")]
+    assert ids(payload["errors"]) == [], "a stray file is a warning, never an error"
+    rc = wl.main(["list", "--workspace", str(ws), "--framework", str(fw)])
+    assert rc == 0
+    err = capsys.readouterr().err
+    assert "warning: Sources/Watchlist/Ha.md: not a .ref.md" in err
+
+
+def test_cycle_string_and_null_are_accepted_by_loader_and_validator(ws: Path) -> None:
+    """Review finding: the loader coerced `cycles: weekly-review`; `tools.validate` rejected it."""
+    from superagent.tools import validate as v
+
+    write_ref(ws, "str-cycles", url_ref("https://e.com", watch={"cycles": "weekly-review"}))
+    write_ref(ws, "null-cycles", url_ref("https://e.com", watch={"cycles": None}))
+    watchers, errors = load(ws)
+    assert errors == {}
+    by_id = {w.id: w for w in watchers}
+    assert by_id["str-cycles"].cycles == ["weekly-review"]
+    assert by_id["null-cycles"].cycles == []
+    packs = set(wl.DEFAULT_WATCH_PACKS)
+    assert v.check_watch_block({"type": "url", "url": "https://e.com", "cycles": "weekly-review"}, packs, "x") == []
+    assert v.check_watch_block({"type": "url", "url": "https://e.com", "cycles": None}, packs, "x") == []
+    bad = v.check_watch_block({"type": "url", "url": "https://e.com", "cycles": [1]}, packs, "x")
+    assert bad and "watch.cycles must be a list of cadence names" in bad[0]

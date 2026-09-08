@@ -20,7 +20,7 @@ writes:
   #   id              — "uw-YYYY-MM-DD-NNN".
   #   ts              — ISO 8601.
   #   skill           — Which skill initiated the write.
-  #   source          — Watcher id (filename stem of Sources/Watchlist/<id>.ref.md),
+  #   source          — Watcher id (lowercased filename stem of Sources/Watchlist/<Title_Case>.ref.md),
   #                      or the pack id when no per-row watcher exists.
   #   target          — Specific target identifier (e.g.
   #                      "google_calendar:primary/event/<id>",

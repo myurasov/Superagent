@@ -12,8 +12,9 @@
     sources.md  — curated catalogue of Sources/ entries for this domain
     Resources/  — optional, lazily created — drafts, working files,
                   agent-generated artifacts (not for sending out).
-  Source documents NEVER live directly under Domains/. They live in
-  `Sources/documents/<category>/` and are pointed at from `sources.md`.
+  Source documents NEVER live directly under Domains/. They live under
+  `Sources/<your-folders>/` (the Sources/ layout is user-defined) and are
+  pointed at from `sources.md`.
 
   Sub-section contract:
     ## Overview         — one-paragraph narrative of what this domain covers

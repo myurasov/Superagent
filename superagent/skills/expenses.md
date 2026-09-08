@@ -51,7 +51,7 @@ Stop here.
 Read order (per `contracts/local-first-read-order.md`) — **local ledger first, always, before any live source or browser session**:
 1. `_memory/accounts-index.yaml.<acct>.transactions[]` — per-account chronological history (mandated by `contracts/payment-confirmations.md § 4 step 3a`); already covers user-reported + agent-initiated payments.
 2. `_memory/transactions.yaml` — cross-account harvest-normalized output (the `simplefin` harvest is the canonical writer; `csv.py --file` writes the same shape).
-3. Live harvest (`uv run python -m superagent.tools.watchlist harvest --id simplefin` — budget-gated, and `capture_mode: manual` means ask first) only when the question's window extends past `last_harvest` on the `simplefin` row of `_memory/watchlist-state.yaml`. A bank-portal `browserctl` session is a last resort — only when the user explicitly asks or the account is not covered by the feed — and is announced as such.
+3. Live harvest (`uv run python -m superagent.tools.watchlist harvest --id simplefin` — budget-gated; `daily-update` already runs it daily, so this is the on-demand path, and a row the user pinned to `capture_mode: manual` means ask first) only when the question's window extends past `last_harvest` on the `simplefin` row of `_memory/watchlist-state.yaml`. A bank-portal `browserctl` session is a last resort — only when the user explicitly asks or the account is not covered by the feed — and is announced as such.
 
 When totalling or counting, skip rows flagged `stale_pending: true` or carrying `superseded_by` — they are pending twins of a posted transaction and would double-count.
 
@@ -100,8 +100,8 @@ Single-charge lookup ("was I charged twice", "did <merchant> charge me", "did th
 
 1. Resolve the merchant / amount / date window from the ask (default window: trailing 30 days).
 2. Filter § 0 read-order sources 1–2 (`accounts-index.yaml.<acct>.transactions[]`, then `_memory/transactions.yaml`) by payee substring, amount tolerance ±5%, and window; skip `stale_pending` / `superseded_by` rows so a pending+posted pair does not read as a double charge.
-3. Answer from the ledger: matched rows (date, amount, account, `pending` flag), or "no matching charge in the ledger as of `last_ingest` <date>".
-4. Only if there is no match AND the window extends past the source's `last_ingest`, run the SimpleFin pull (§ 0 step 3) and re-check. Never open a bank-portal `browserctl` session for this intent unless the user asks for it explicitly.
+3. Answer from the ledger: matched rows (date, amount, account, `pending` flag), or "no matching charge in the ledger as of `last_harvest` <date>".
+4. Only if there is no match AND the window extends past the source's `last_harvest` (in `_memory/watchlist-state.yaml`), run the SimpleFin pull (§ 0 step 3) and re-check. Never open a bank-portal `browserctl` session for this intent unless the user asks for it explicitly.
 
 ## 2. Capture user-defined categorization rules
 

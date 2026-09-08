@@ -6,18 +6,19 @@ The SimpleFIN Bridge feed, wrapped as a watcher. Contract: `contracts/watchlist.
 
 SimpleFIN has no cheap "did anything move?" endpoint that this pack uses today, so `detect.type: harvest` — the check *is* the pull, and the handler's delta (transactions inserted or updated, balances changed) is the fingerprint. That means the "skip harvest when quiet" saving does not apply here; what the watchlist buys for this source is one lifecycle, one state file, one report, and pre-dispatch budget enforcement. A lighter `/accounts?balances-only=1` detect is a later optimization, not a day-one requirement.
 
-## Live cadence — preserved, not widened
+## Cadence — daily and automatic, budget-protected
 
-The pack defaults mirror the cadence the source ran on as an ingestor, and the tool is not allowed to widen them on its own:
+Since 0.20.0 the pack defaults capture the feed **daily, automatically**, plus on explicit request. The budget is what protects the API, not the cadence:
 
 | Setting | Value | Why |
 |---|---|---|
-| `schedule` / `cycles` | `weekly` / `[weekly-review]` | A bank feed does not need daily polling; the weekly bookkeeper pass is where the rows are read. |
-| `capture_mode` | `manual` | A cadence `check` never dispatches this harvest. It emits a dispatch spec and the `watch` skill asks; only `harvest --id simplefin` after an explicit yes pulls. |
+| `schedule` / `cycles` | `daily` / `[daily-update]` | The daily briefing sees fresh transactions and balances; a bank feed is cheap to pull once a day. |
+| `capture_mode` | `automatic` | The `daily-update` check dispatches the harvest itself (budget permitting). `harvest --id simplefin` pulls on demand at any time; `--backfill` widens the window. |
 | `budget` | 24 calls/day, 60 min apart, 90-day window | SimpleFIN's documented ceilings. Enforced BEFORE the call; a withheld harvest is counted as `budget_exceeded` and state is left untouched. |
+| `min_check_interval_minutes` | `60` | A second `check` inside the hour is `skipped_throttled` before it reaches the budget. |
 | `evict_after_days` | `null` | Two quiet weeks means no spending, not a dead source. |
 
-A registry row (`Sources/Watchlist/simplefin.ref.md`) may override any of these, and the fold-in migration validates that the effective values after migration equal the pre-migration ones.
+A registry row (`Sources/Watchlist/Simplefin.ref.md`) may override any of these in its `watch:` block. The tool never widens `capture_mode` or shortens `schedule` on its own initiative — daily / automatic is a pack default the user set (applied to the live ref by the 0.20.0 migration), which is why the 0.19.0 "never widen" rule still holds.
 
 ## Known incident risk: a slow `/accounts` means a bad connection
 

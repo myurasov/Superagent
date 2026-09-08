@@ -85,7 +85,7 @@ The Supertailor's hygiene pass surfaces every watcher with `error_streak > 0` or
 
 Notion / Obsidian / spreadsheets are **canvases** — they give you tools to organize information you put in. They don't read your inbox or know your bills are due.
 
-Superagent is a **system** — it has opinions about what to track, defaults for how to track it, and watchers that fill in the data so you don't have to. You can absolutely use Notion or Obsidian alongside Superagent (point a `path` or `cmd` watcher at the vault, or a `.ref.md` under `Sources/` at the pages you care about — your existing notes become Superagent-readable). What you can't do with a canvas is have the canvas wake you up when a bill is due.
+Superagent is a **system** — it has opinions about what to track, defaults for how to track it, and watchers that fill in the data so you don't have to. You can absolutely use Notion or Obsidian alongside Superagent (point a `path` or `cmd` watcher at the vault, or a `url` watcher at the pages you care about — you are told when your existing notes move, and the agent reads them from disk). What you can't do with a canvas is have the canvas wake you up when a bill is due.
 
 ## How does it compare to commercial AI life-managers like eeva, Kora, Okto, Alfred:Home?
 
@@ -144,7 +144,7 @@ Multiple safety nets:
 
 ## Which data sources are supported?
 
-The framework ships with ~49 skills documented as markdown instruction sets, ~30 Python tools (workspace_init, validate, render_status, log_user_query, world, sources_cache, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, watchlist, …), and a **watchlist** of external sources (`contracts/watchlist.md`) with four shipped watcher packs: `simplefin` (bank / brokerage harvest), `gmail` (live query for new mail, capture-through into the local archive), `url` (any URL), and `subagent` (anything an agent can read — the escape hatch). A standalone CSV importer (`tools/ingest/csv.py --file`) covers bank statements. Setup notes: `docs/data-sources.md`.
+The framework ships with ~49 skills documented as markdown instruction sets, ~30 Python tools (workspace_init, validate, render_status, log_user_query, world, sources_index, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, watchlist, …), and a **watchlist** of external sources (`contracts/watchlist.md`) with six shipped watcher packs: `simplefin` (bank / brokerage harvest), `gmail` (live query for new mail, capture-through into the local archive), `url` (any URL), `cmd` (the stdout of a read-only shell command; gated by `allow_cmd`), `path` (a local file or folder), and `subagent` (anything an agent can read — the escape hatch). A standalone CSV importer (`tools/ingest/csv.py --file`) covers bank statements. Setup notes: `docs/data-sources.md`.
 
 There is deliberately **no catalogue of stubs**. A source Superagent does not know about is a one-file `url` / `cmd` / `subagent` row under `Sources/Watchlist/`, or — when it feeds a typed index and needs real normalization — a self-contained pack folder (`pack.yaml` + optional `handler.py` implementing `IngestorBase.run`) dropped into `workspace/_custom/watchers/<id>/`, no framework code touched. Sharing a watcher is copying its folder.
 
@@ -159,7 +159,7 @@ If your skill turns out to be useful for everyone, the Supertailor's strategic p
 `docs/roadmap.md` has the full plan with LOE tiers (T-shirt sizes XS / S / M / L / XL). High-level shape:
 
 - **XS / S (this quarter)**: more shipped watcher packs on the watchlist (calendar, health export) and a `csv-drop` folder watcher. Polish the daily / weekly / monthly briefings based on real usage.
-- **M (next quarter)**: cache-composed detect (one conditional GET serving both `sources fetch` and change detection). Native encryption support. iOS Shortcut pack.
+- **M (next quarter)**: a cheaper `/accounts`-only detect for the bank feed. Native encryption support. iOS Shortcut pack.
 - **L (next year)**: multi-user vault with proper conflict resolution. Voice-first capture (audio in, transcribe, route to the right skill). Family-mode (shared Domains, per-user private Domains). A polished read-only mobile UI.
 - **XL (vision)**: a full evolution into "the personal-life equivalent of an AI engineering co-pilot — proactive, calibrated, ambient, indispensable".
 

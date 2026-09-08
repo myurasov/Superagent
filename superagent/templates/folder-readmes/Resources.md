@@ -17,15 +17,15 @@ Use the right home instead:
 
 | File | Where it goes |
 |---|---|
-| **Finished documents** (insurance card scan, signed will, tax return PDF, vehicle title, appliance manual, warranty receipt) | `Sources/documents/<category>/` — the immutable canonical store. Then add a row to this domain's `sources.md`. |
-| **External-data pointers** (provider portals, MCP-fetchable records, frequently-referenced URLs) | `Sources/references/<category>/<name>.ref.md` |
+| **Finished documents** (insurance card scan, signed will, tax return PDF, vehicle title, appliance manual, warranty receipt) | `Sources/<your-folders>/` — the immutable canonical store; the layout under `Sources/` is yours (e.g. `Sources/Vehicles/<asset-slug>/`). Then add a row to this domain's `sources.md`. |
+| **Things to watch for change** (a provider portal, a status page, a feed) | `Sources/Watchlist/<Title_Case>.ref.md` via the `watch` skill; a URL merely worth remembering goes in the domain's `info.md` / `rolodex.md` |
 | **Things to send / give to someone else** (drafts ready to copy-paste into email, printable checklists for a contractor, exports for a tax preparer) | `Outbox/` |
 
 The crisp test:
 
 > **Would I want this file in five years even if this Domain or Project went away?**
 >
-> - Yes → `Sources/documents/`
+> - Yes → `Sources/` (in whichever of your folders fits)
 > - No → `Resources/`
 
 ## Sub-folder convention
@@ -53,7 +53,7 @@ Projects/kitchen-reno-2026/Resources/
   before-photos/                 # before-renovation state
 ```
 
-The corresponding *finished* records (the actual signed contract, the final cost-tracking PDF, the receipt for the chosen contractor) go in `Sources/documents/<category>/` and are pointed at from the domain's / project's `sources.md`.
+The corresponding *finished* records (the actual signed contract, the final cost-tracking PDF, the receipt for the chosen contractor) go under `Sources/<your-folders>/` (user-defined layout) and are pointed at from the domain's / project's `sources.md`.
 
 ## Hand-managed
 

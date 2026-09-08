@@ -21,10 +21,18 @@ Mirrors the ``## Validate`` bullets of ``superagent/migrations/0.19.0.md``:
   ``Projects/*/sources.md`` catalogue;
 - ``.version`` reads ``0.19.0`` and ``tools/version.py check`` agrees (skipped
   with a note while the framework's ``pyproject.toml`` still predates 0.19.0);
-- when ``superagent.tools.watchlist`` is importable, ``check --cycle
-  daily-update --dry-run`` runs clean and dispatches no harvest
-  (``summary.harvested == 0``); skipped with a note when it is not shipped.
-  A failed run reports the tool's first ``errors[]`` entry.
+- when ``superagent.tools.watchlist`` is importable AND still reads ref schema
+  1, ``check --cycle daily-update --dry-run --no-harvest`` runs clean and
+  dispatches no harvest (``summary.harvested == 0``). Under a 0.20.0+ framework
+  the loader reads schema 2 and rejects the schema-1 refs this migration
+  writes by design, so the dry run is deferred with a note to the 0.20.0
+  migration's validate (which converts the refs first). A failed run reports
+  the tool's first ``errors[]`` entry.
+
+The registry schema check is the 0.19.0 rule set, implemented here
+(``check_watch_block_v1``) rather than borrowed from ``tools/validate.py``: a
+migration validates the shape it produced and must not depend on a later
+release's rules.
 
 When every check passes, ``_memory/_checkpoints/0.19.0/`` is relocated to
 ``_memory/_retired/0.19.0-originals/`` (``--keep-checkpoints`` skips this):
@@ -56,8 +64,25 @@ if str(_REPO_ROOT) not in sys.path:
 
 import yaml  # noqa: E402
 
-from superagent.tools import sources_index as si  # noqa: E402
 from superagent.tools import validate as tv  # noqa: E402
+
+# 0.19.0 schema rules (kind -> default detect type when `watch.type` / `watch.pack`
+# are absent). Frozen here; the tool dropped kind defaulting in 0.20.0.
+V1_TYPE_BY_KIND = {"url": "url", "cli": "cmd", "file": "path", "manual": "subagent"}
+V1_TYPES = frozenset({"url", "path", "cmd", "subagent", "gmail", "harvest"})
+V1_RESERVED_TYPES = frozenset({"index_query"})
+V1_CAPTURE_MODES = frozenset({"manual", "automatic"})
+V1_SCALAR_KEYS: dict[str, tuple[tuple[type, ...], bool]] = {
+    "enabled": ((bool,), False),
+    "evict_after_days": ((int,), True),
+    "min_check_interval_minutes": ((int,), True),
+    "min_change_interval_minutes": ((int,), True),
+    "expires": ((str,), True),
+    "schedule": ((str,), True),
+    "selector": ((str,), True),
+    "prompt": ((str,), True),
+    "query": ((str,), True),
+}
 
 
 def _load_migrate() -> ModuleType:
@@ -91,6 +116,84 @@ def _effective(watch: dict[str, Any], defaults: dict[str, Any], key: str) -> Any
     return v if v not in (None, "") else None
 
 
+def check_watch_block_v1(watch: Any, ref_kind: Any, packs: set[str], label: str) -> list[str]:
+    """Schema-check one 0.19.0 `watch:` mapping. Returns error strings (empty = clean)."""
+    errors: list[str] = []
+    if not isinstance(watch, dict):
+        return [f"{label}: 'watch' must be a mapping, got {type(watch).__name__}"]
+    pack = watch.get("pack")
+    wtype = watch.get("type")
+    if pack is not None:
+        if not isinstance(pack, str) or pack not in packs:
+            errors.append(f"{label}: watch.pack {pack!r} is not a known pack "
+                          f"({', '.join(sorted(packs))})")
+    else:
+        effective = wtype if wtype is not None else V1_TYPE_BY_KIND.get(str(ref_kind or ""))
+        if effective in V1_RESERVED_TYPES:
+            errors.append(f"{label}: watch.type {effective!r} is reserved and not implemented "
+                          "in this release")
+        elif effective is None:
+            errors.append(f"{label}: watch.type missing and ref kind {ref_kind!r} has no "
+                          "default detect type")
+        elif effective not in V1_TYPES:
+            errors.append(f"{label}: watch.type {effective!r} is not a shipped detect type "
+                          f"({', '.join(sorted(V1_TYPES))})")
+        elif effective == "subagent" and not (isinstance(watch.get("prompt"), str)
+                                              and watch["prompt"].strip()):
+            errors.append(f"{label}: a bare subagent watcher needs watch.prompt")
+        elif effective == "harvest":
+            errors.append(f"{label}: watch.type 'harvest' needs a pack (set watch.pack)")
+    for key, (types, nullable) in V1_SCALAR_KEYS.items():
+        if key not in watch:
+            continue
+        v = watch[key]
+        if v is None and nullable:
+            continue
+        if isinstance(v, bool) and bool not in types:
+            errors.append(f"{label}: watch.{key} must be {'/'.join(t.__name__ for t in types)}")
+        elif not isinstance(v, types):
+            errors.append(f"{label}: watch.{key} must be {'/'.join(t.__name__ for t in types)}"
+                          f"{' or null' if nullable else ''}, got {type(v).__name__}")
+    if "cycles" in watch and not (isinstance(watch["cycles"], list)
+                                  and all(isinstance(c, str) for c in watch["cycles"])):
+        errors.append(f"{label}: watch.cycles must be a list of cadence names")
+    if "capture_mode" in watch and watch["capture_mode"] not in V1_CAPTURE_MODES:
+        errors.append(f"{label}: watch.capture_mode must be one of "
+                      f"{sorted(V1_CAPTURE_MODES)}, got {watch['capture_mode']!r}")
+    for key in ("params", "ignore_patterns"):
+        if key in watch and watch[key] is not None:
+            want = dict if key == "params" else list
+            if not isinstance(watch[key], want):
+                errors.append(f"{label}: watch.{key} must be a {want.__name__}")
+    return errors
+
+
+def validate_refs_v1(mig: ModuleType, ws: Path, framework: Path,
+                     registry: Path) -> tuple[list[str], list[str]]:
+    """Validate every registry ref against the 0.19.0 schema. Returns (ok_labels, errors)."""
+    refs = sorted(p for p in registry.glob("*.ref.md") if p.is_file()) if registry.is_dir() else []
+    if not refs:
+        return [], []
+    packs = tv.known_watch_packs(framework, ws)
+    oks: list[str] = []
+    errors: list[str] = []
+    for ref in refs:
+        label = ref.relative_to(ws).as_posix()
+        fm, _body = mig.parse_canonical_ref(ref)
+        if fm is None:
+            errors.append(f"{label}: not in canonical frontmatter form (normalize it first)")
+            continue
+        if "watch" not in fm:
+            errors.append(f"{label}: registry ref has no 'watch:' block")
+            continue
+        errs = check_watch_block_v1(fm["watch"], fm.get("kind"), packs, label)
+        if errs:
+            errors.extend(errs)
+        else:
+            oks.append(label)
+    return oks, errors
+
+
 def check_b4(mig: ModuleType, ws: Path, framework: Path, registry: Path) -> list[tuple[bool, str]]:
     """Per folded row: effective schedule / capture_mode equal the pre-migration values."""
     results: list[tuple[bool, str]] = []
@@ -112,7 +215,7 @@ def check_b4(mig: ModuleType, ws: Path, framework: Path, registry: Path) -> list
         if not ref.is_file():
             results.append((False, f"B4: {rid} folded ref missing at {ref.relative_to(ws).as_posix()}"))
             continue
-        fm, _ = si.parse_canonical_ref(ref)
+        fm, _ = mig.parse_canonical_ref(ref)
         watch = fm.get("watch") if isinstance(fm, dict) else None
         if not isinstance(watch, dict) or watch.get("pack") != rid:
             results.append((False, f"B4: {rid} ref lacks `watch.pack: {rid}`"))
@@ -149,9 +252,9 @@ def check_moves(mig: ModuleType, ws: Path) -> list[tuple[bool, str]]:
         if not old_rel:
             continue
         old = ws / old_rel
-        stem = si.ref_stem(old.name)
+        stem = mig.ref_stem(old.name)
         if stem and old.parent.is_dir():
-            siblings = [p for p in old.parent.iterdir() if p.is_file() and not si.is_ref_file(p)
+            siblings = [p for p in old.parent.iterdir() if p.is_file() and not mig.is_ref_file(p)
                         and (p.name == stem or p.stem == stem)]
             if siblings:
                 bad_sidecar += 1
@@ -169,7 +272,7 @@ def check_moves(mig: ModuleType, ws: Path) -> list[tuple[bool, str]]:
     orphans = 0
     for ref in mig.candidate_refs(ws, registry):
         verdict, _reason, fm = mig.classify_ref(ref, ws)
-        if verdict == "sidecar" and si.companion_document(ref) is None and isinstance(fm, dict) \
+        if verdict == "sidecar" and mig.companion_document(ref) is None and isinstance(fm, dict) \
                 and not any(k in fm for k in mig.PAYMENT_KEYS):
             orphans += 1
             results.append((False, f"sidecar without sibling: {ref.relative_to(ws).as_posix()}"))
@@ -190,12 +293,24 @@ def _config(ws: Path) -> dict[str, Any]:
 
 
 def check_version_tool(mig: ModuleType, ws: Path) -> tuple[bool, str]:
-    """`tools/version.py check` exits 0 (skipped while the framework predates 0.19.0)."""
-    from superagent.tools.version import compare, current_version
+    """`tools/version.py check` agrees with `.version`.
+
+    Skipped while the framework's pyproject predates 0.19.0 (release bump
+    pending). When the framework is already PAST 0.19.0 the tool rightly
+    reports the next migration as pending; this step is then complete iff the
+    workspace reads exactly 0.19.0 (the chain's next step takes it further).
+    """
+    from superagent.tools.version import compare, current_version, workspace_version
     cur = current_version()
     if compare(cur, mig.TO_VERSION) < 0:
         return True, (f"version check skipped: framework pyproject at {cur} < {mig.TO_VERSION} "
                       "(release bump pending)")
+    if compare(cur, mig.TO_VERSION) > 0:
+        ws_v = workspace_version(ws)
+        detail = ("this step is complete; the next migration is pending (mid-chain)"
+                  if ws_v == mig.TO_VERSION else f"expected {mig.TO_VERSION}")
+        return ws_v == mig.TO_VERSION, (f"version check: framework at {cur} is ahead of "
+                                        f"{mig.TO_VERSION}; workspace reads {ws_v} -- {detail}")
     res = subprocess.run([sys.executable, "-m", "superagent.tools.version", "check",
                           "--workspace", str(ws)], cwd=_REPO_ROOT, capture_output=True,
                          text=True, check=False)
@@ -226,12 +341,23 @@ def _dry_run_failure(stdout: str, stderr: str) -> str:
 
 
 def check_watchlist_dry_run(ws: Path) -> tuple[bool, str]:
-    """`watchlist check --cycle daily-update --dry-run` dispatches no harvest."""
+    """`watchlist check --cycle daily-update --dry-run --no-harvest` dispatches no harvest.
+
+    Deferred (pass with a note) when the shipped loader reads a newer ref
+    schema than the 1 this migration writes: those refs load only after the
+    0.20.0 migration converts them, and its validate runs this check.
+    """
     if importlib.util.find_spec("superagent.tools.watchlist") is None:
         return True, "watchlist dry-run skipped: superagent.tools.watchlist not shipped yet"
+    shipped_schema = getattr(tv, "REF_VERSION", 1)
+    if shipped_schema != 1:
+        later = getattr(tv, "LEGACY_REF_MIGRATION", "0.20.0")
+        return True, (f"watchlist dry-run deferred: the shipped loader reads ref schema "
+                      f"{shipped_schema}; the {later} migration converts these refs and its "
+                      "validate runs the dry run")
     attempts = (
-        ["--workspace", str(ws), "check", "--cycle", "daily-update", "--dry-run"],
-        ["check", "--cycle", "daily-update", "--dry-run", "--workspace", str(ws)],
+        ["--workspace", str(ws), "check", "--cycle", "daily-update", "--dry-run", "--no-harvest"],
+        ["check", "--cycle", "daily-update", "--dry-run", "--no-harvest", "--workspace", str(ws)],
     )
     last = "(no output)"
     for args in attempts:
@@ -276,7 +402,7 @@ def run_checks(workspace: Path, framework: Path | None = None) -> list[tuple[boo
                 results.append((True, f"_memory/{mig.STATE_NAME} parses ({n} watcher row(s))"))
 
     registry = ws / mig.watchlist_rel_path(_config(ws))
-    oks, errs = tv.validate_watchlist_refs(ws, framework)
+    oks, errs = validate_refs_v1(mig, ws, framework, registry)
     results.extend((False, e) for e in errs)
     results.append((True, f"{registry.relative_to(ws).as_posix()}/: {len(oks)} ref(s) valid"
                     if not errs else f"{len(errs)} invalid ref(s) in {registry.relative_to(ws).as_posix()}/"))

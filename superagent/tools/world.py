@@ -316,12 +316,12 @@ def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dic
                 if isinstance(row, dict):
                     process_row(fname, kind, id_field, label_field, row, extra_tags)
 
-    # Watchers (contracts/watchlist.md § 8.3). A sources-index row carrying a
-    # `watch:` mapping is a `Sources/Watchlist/<id>.ref.md` watcher; besides
-    # its `source:<row id>` node it gets a `watch:<id>` node (id = ref
-    # filename stem) whose related_* fields become edges, plus an `indexed_as`
-    # edge back to the source row. `ensure_edge` callers that add the same
-    # edges between runs stay consistent with a full rebuild this way.
+    # Watchers (contracts/watchlist.md § 9). A sources-index row carrying a
+    # `watch:` mapping is a `Sources/Watchlist/<Title_Case>.ref.md` watcher;
+    # besides its `source:<row id>` node it gets a `watch:<id>` node (id = ref
+    # filename stem, lowercased) whose related_* fields become edges, plus an
+    # `indexed_as` edge back to the source row. `ensure_edge` callers that add
+    # the same edges between runs stay consistent with a full rebuild this way.
     sources_data = load_yaml(memory / "sources-index.yaml") or {}
     watch_rows = (sources_data.get("sources") or []) if isinstance(sources_data, dict) else []
     for row in watch_rows:
@@ -356,11 +356,17 @@ def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dic
 
 
 def watch_id_for_path(rel_path: Any) -> str | None:
-    """Watcher id for a registry ref path: the filename minus `.ref.md` / `.ref.txt`."""
+    """Watcher id for a registry ref path: the `.ref.md` stem, lowercased.
+
+    `Sources/Watchlist/Home_Assistant-Hub.ref.md` -> `home_assistant-hub`
+    (`tools/watchlist.py::id_from_stem`; the file on disk is Title_Case).
+    """
     if not isinstance(rel_path, str) or not rel_path.strip():
         return None
     from superagent.tools.sources_index import ref_stem
-    return ref_stem(rel_path)
+    from superagent.tools.watchlist import id_from_stem
+    stem = ref_stem(rel_path)
+    return id_from_stem(stem) if stem else None
 
 
 def _project_ids(memory: Path) -> set[str]:

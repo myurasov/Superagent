@@ -11,7 +11,7 @@
   Plus optional sub-folders:
     sources.md  — curated catalogue of Sources/ entries for this project
     Resources/  — drafts, working files, agent-generated artifacts
-    Sources/    — project-scoped `.ref.md` pointers + cached fetches
+    Sources/    — project-scoped documents (+ optional `.meta.md` sidecars)
 
   A Project is a TIME-BOUNDED effort with a clear goal — distinct from a
   Domain (ongoing area of responsibility). Examples:

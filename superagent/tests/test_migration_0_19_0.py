@@ -6,7 +6,11 @@ The fixture is an `initialized_workspace` dressed up as a 0.18.1 workspace:
 a `data-sources.yaml` with one shipped-pack row (simplefin, weekly / manual)
 and one unknown row, a standalone ref, a project-scoped standalone ref, two
 sidecars (a `.pdf.ref.md` metadata sidecar and a payment confirmation), a
-non-canonical `.ref.txt`, and catalogues referencing the standalone refs.
+non-canonical `.ref.txt`, and catalogues referencing the standalone refs. Its
+`sources-index.yaml` is written by hand in the 0.18.x shape (standalone refs
+are `reference` rows) because the installed index tool (0.20.0+) no longer
+indexes refs outside the registry. The migration is exercised under today's
+tools, including the 0.19.0 -> 0.20.0 chain and its full revert.
 Nothing here touches the real workspace.
 """
 from __future__ import annotations
@@ -16,6 +20,7 @@ import hashlib
 import importlib
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -24,12 +29,24 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MIG_DIR = REPO_ROOT / "superagent" / "migrations" / "0.19.0"
+MIG_DIR_020 = REPO_ROOT / "superagent" / "migrations" / "0.20.0"
 FRAMEWORK = REPO_ROOT / "superagent"
 NOW = dt.datetime(2026, 9, 7, 12, 0, 0, tzinfo=dt.UTC)
 
 
 def _load(name: str) -> ModuleType:
     spec = importlib.util.spec_from_file_location(f"mig_0_19_0_{name}", MIG_DIR / f"{name}.py")
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _load_020(name: str) -> ModuleType:
+    """The 0.20.0 helper scripts, for the chain tests."""
+    spec = importlib.util.spec_from_file_location(f"mig_0_20_0_chain_{name}",
+                                                  MIG_DIR_020 / f"{name}.py")
     assert spec is not None and spec.loader is not None
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -102,7 +119,7 @@ DATA_SOURCES = {
     ],
 }
 
-HABOX_REF = """---
+HUB_REF = """---
 ref_version: 1
 title: "Home Assistant - hub"
 description: "Local Home Assistant host"
@@ -172,6 +189,22 @@ def _write(p: Path, text: str) -> None:
     p.write_text(text, encoding="utf-8")
 
 
+def _index_row(rel: str, *, kind: str, title: str, normalized: bool = True, **fields) -> dict:
+    """One `sources-index.yaml` row in the 0.18.x shape."""
+    from superagent.tools import sources_index as si
+
+    row = {
+        "id": si.id_for_path(rel), "kind": kind, "title": title, "path": rel,
+        "category": si.category_from_path(rel),
+        "related_domain": None, "related_project": None, "related_asset": None,
+        "related_account": None, "sensitive": False, "added": "2026-08-25T23:31:33-07:00",
+        "last_accessed": None, "read_count": 0, "present": True, "normalized": normalized,
+        "tags": [], "notes": "",
+    }
+    row.update(fields)
+    return row
+
+
 def build_workspace(ws: Path, *, keep_state: bool = False) -> Path:
     """Dress an initialized workspace up as a 0.18.1 one with the fixture material."""
     from superagent.tools import sources_index as si
@@ -188,7 +221,7 @@ def build_workspace(ws: Path, *, keep_state: bool = False) -> Path:
     _write(ws / "_memory" / "config.yaml", CONFIG_TEXT)
     _write(ws / "_memory" / "data-sources.yaml",
            yaml.safe_dump(DATA_SOURCES, sort_keys=False, allow_unicode=True))
-    _write(ws / "Sources" / "Smart_Home" / "home_assistant-hub.ref.md", HABOX_REF)
+    _write(ws / "Sources" / "Smart_Home" / "home_assistant-hub.ref.md", HUB_REF)
     _write(ws / "Sources" / "Vehicles" / "manual.pdf", "%PDF-1.4 fake\n")
     _write(ws / "Sources" / "Vehicles" / "manual.pdf.ref.md", MANUAL_SIDECAR)
     _write(ws / "Sources" / "notes" / "loose.ref.txt", "https://example.com/loose\n")
@@ -198,13 +231,24 @@ def build_workspace(ws: Path, *, keep_state: bool = False) -> Path:
            PAYMENT_SIDECAR)
     _write(ws / "Projects" / "x" / "sources.md", PROJECT_CATALOGUE)
     _write(ws / "Domains" / "Home" / "sources.md", HOME_CATALOGUE)
-    # Index the tree, then hand-curate the standalone ref's row so the
-    # migration has curated fields to carry across the rename.
-    si.refresh(ws, force=True)
-    row = si.get_by_path(ws, "Sources/Smart_Home/home_assistant-hub.ref.md",
-                         refresh_first=False)
-    assert row is not None
-    si.update_row(ws, row["id"], {"notes": "hand note", "read_count": 3})
+    # The 0.18.x index, as that release's tool wrote it: standalone refs (and
+    # `.ref.txt`) are `reference` rows, the document beside a `.ref.md` sidecar
+    # carries the sidecar's metadata. The hub row is hand-curated so the
+    # migration has curated fields to carry across the move.
+    index = si.load_index(ws)
+    index["sources"] = [
+        _index_row("Sources/Smart_Home/home_assistant-hub.ref.md", kind="reference",
+                   title="Home Assistant - hub", related_domain="home", tags=["smart-home"],
+                   notes="hand note", read_count=3),
+        _index_row("Sources/Vehicles/manual.pdf", kind="document", title="Repair manual",
+                   related_domain="vehicles"),
+        _index_row("Sources/notes/loose.ref.txt", kind="reference", title="loose",
+                   normalized=False),
+        _index_row("Projects/x/Sources/portal.ref.md", kind="reference", title="Permit portal",
+                   related_project="x"),
+    ]
+    index["last_filesystem_scan"] = "2026-08-25T23:31:33-07:00"
+    si.save_index(ws, index)
     return ws
 
 
@@ -222,8 +266,7 @@ def _run(ws: Path, **kw) -> tuple[int, list[str]]:
 
 
 def _fm(path: Path) -> dict:
-    from superagent.tools.sources_index import parse_canonical_ref
-    fm, _ = parse_canonical_ref(path)
+    fm, _ = migrate.parse_canonical_ref(path)
     assert fm is not None, f"{path} is not canonical"
     return fm
 
@@ -258,14 +301,14 @@ def test_capture_mode_normalization() -> None:
 
 
 def test_inject_watch_block_is_idempotent_and_keeps_existing() -> None:
-    text, changed = migrate.inject_watch_block(HABOX_REF, "cmd")
+    text, changed = migrate.inject_watch_block(HUB_REF, "cmd")
     assert changed
     fm = yaml.safe_load(text.split("---")[1])
     assert fm["watch"] == {"type": "cmd", "enabled": False}
     assert "# inline comment must survive" in text
     again, changed2 = migrate.inject_watch_block(text, "cmd")
     assert not changed2 and again == text
-    custom = HABOX_REF.replace("---\n\n# Notes", "watch:\n  type: subagent\n---\n\n# Notes")
+    custom = HUB_REF.replace("---\n\n# Notes", "watch:\n  type: subagent\n---\n\n# Notes")
     kept, changed3 = migrate.inject_watch_block(custom, "cmd")
     assert not changed3 and kept == custom
 
@@ -433,7 +476,9 @@ def test_sources_index_row_carries_curated_fields_and_lifts_watch(initialized_wo
     assert sum(1 for r in index["sources"] if r.get("id") == original_id) == 1
     assert row["notes"] == "hand note" and row["read_count"] == 3
     assert row["watch"] == {"type": "cmd", "enabled": False}
-    assert row["present"] is True and row["kind"] == "reference"
+    # `reference` under the 0.19.0 tool, `watcher` under 0.20.0+: the row kind
+    # is the installed index's vocabulary, not the migration's.
+    assert row["present"] is True and row["kind"] in ("reference", "watcher")
     simplefin = rows["Sources/Watchlist/simplefin.ref.md"]
     assert simplefin["watch"]["pack"] == "simplefin"
     assert simplefin["related_domain"] == "finances"
@@ -500,6 +545,9 @@ def test_validate_passes_after_migration(initialized_workspace: Path) -> None:
     assert "B4: simplefin schedule 'weekly' -> 'weekly', capture_mode 'manual' -> 'manual'" in messages
     assert "strava unfolded" in messages
     assert "no sidecar moved (2 standalone ref(s) relocated)" in messages
+    # The installed loader reads ref schema 2: the live dry run is the 0.20.0
+    # validate's job, and this one says so instead of failing on schema-1 refs.
+    assert "watchlist dry-run deferred: the shipped loader reads ref schema 2" in messages
 
 
 def test_validate_fails_when_capture_mode_widened(initialized_workspace: Path) -> None:
@@ -627,11 +675,12 @@ def test_derived_prompt_and_subagent_block() -> None:
     assert migrate.derived_prompt({"kind": "vault"}, "pin_vault").startswith("Read pin_vault;")
 
 
-def test_moved_api_ref_gets_prompt_and_loads_in_watchlist_registry(
+def test_moved_api_ref_gets_prompt_and_loads_after_the_0_20_0_step(
     initialized_workspace: Path,
 ) -> None:
-    """S-1: a `kind: api` ref becomes a `subagent` watcher WITH a prompt, and every
-    migrated ref loads through the watchlist tool's own registry loader."""
+    """S-1: a `kind: api` ref becomes a `subagent` watcher WITH a prompt. The
+    installed loader reads ref schema 2, so the schema-1 refs this migration
+    writes load once the 0.20.0 step has converted them -- as in the real chain."""
     ws = build_workspace(initialized_workspace)
     _write(ws / "Sources" / "Finance" / "broker_api.ref.md", API_REF)
     code, lines = _run(ws)
@@ -642,6 +691,9 @@ def test_moved_api_ref_gets_prompt_and_loads_in_watchlist_registry(
     assert fm["watch"]["prompt"].startswith(
         "Read Broker API at https://api.example.com/v1/balances; compare against the previous note")
     assert any("derived read-only prompt" in ln for ln in lines)
+    out: list[str] = []
+    assert _load_020("migrate").run_migration(ws, framework=FRAMEWORK, skip_world=True, now=NOW,
+                                              out=out.append) == 0, "\n".join(out)
     wl = importlib.import_module("superagent.tools.watchlist")
     cfg = wl.load_config(ws)
     packs, pack_errors = wl.discover_packs(FRAMEWORK, ws, announce=lambda _m: None)
@@ -654,7 +706,38 @@ def test_moved_api_ref_gets_prompt_and_loads_in_watchlist_registry(
     assert api.type == "subagent" and api.enabled is False
     assert api.detect["prompt"] == fm["watch"]["prompt"]
     assert by_id["home_assistant-hub"].type == "cmd" and by_id["portal"].type == "url"
-    assert by_id["simplefin"].pack is not None and by_id["simplefin"].capture_mode == "manual"
+    assert by_id["home_assistant-hub"].locator == "ssh user@192.0.2.10"
+    assert by_id["simplefin"].pack is not None
+
+
+def test_chain_0_18_1_to_0_20_0_and_back_is_byte_identical(initialized_workspace: Path) -> None:
+    """A 0.18.x workspace runs 0.19.0 -> 0.20.0 under today's tools (each validate
+    included); revert 0.20.0 -> revert 0.19.0 then lands on the original bytes."""
+    m20, v20, r20 = (_load_020(name) for name in ("migrate", "validate", "revert"))
+    ws = build_workspace(initialized_workspace)
+    before = _snapshot(ws)
+    reg = ws / "Sources" / "Watchlist"
+    assert _run(ws)[0] == 0
+    assert validate.run_validate(ws, FRAMEWORK, out=lambda _m: None) == 0
+    assert (ws / ".version").read_text().strip() == "0.19.0"
+    lines: list[str] = []
+    assert m20.run_migration(ws, framework=FRAMEWORK, skip_world=True, now=NOW,
+                             out=lines.append) == 0, "\n".join(lines)
+    assert (ws / ".version").read_text().strip() == "0.20.0"
+    assert sorted(os.listdir(reg)) == ["Home_Assistant-Hub.ref.md", "Portal.ref.md", "README.md",
+                                       "Simplefin.ref.md"]
+    assert (ws / "Sources" / "Vehicles" / "manual.pdf.meta.md").is_file()
+    assert (ws / "Projects" / "x" / "Resources" / "orders" / "2026-01-01_order-1.pdf.meta.md").is_file()
+    v_lines: list[str] = []
+    assert v20.run_validate(ws, FRAMEWORK, out=v_lines.append) == 0, "\n".join(v_lines)
+    assert r20.run_revert(ws, framework=FRAMEWORK, out=lambda _m: None) == 0
+    assert (ws / ".version").read_text().strip() == "0.19.0"
+    assert sorted(os.listdir(reg)) == ["README.md", "home_assistant-hub.ref.md", "portal.ref.md",
+                                       "simplefin.ref.md"]
+    assert _fm(reg / "simplefin.ref.md")["watch"]["capture_mode"] == "manual"
+    assert revert.run_revert(ws, framework=FRAMEWORK, out=lambda _m: None) == 0
+    assert (ws / ".version").read_text().strip() == "0.18.1"
+    assert _snapshot(ws) == before
 
 
 def test_empty_source_folder_removed_and_restored(initialized_workspace: Path) -> None:
@@ -670,7 +753,7 @@ def test_empty_source_folder_removed_and_restored(initialized_workspace: Path) -
     ledger = yaml.safe_load((ws / "_memory" / "_retired" / "0.19.0-moves.yaml").read_text())
     assert ledger["removed_dirs"] == [{"path": "Sources/Smart_Home/"}]
     assert revert.run_revert(ws, framework=FRAMEWORK, out=lambda _m: None) == 0
-    assert (ws / "Sources" / "Smart_Home" / "home_assistant-hub.ref.md").read_text() == HABOX_REF
+    assert (ws / "Sources" / "Smart_Home" / "home_assistant-hub.ref.md").read_text() == HUB_REF
 
 
 def test_validate_relocates_checkpoints_and_revert_still_restores(
@@ -686,7 +769,7 @@ def test_validate_relocates_checkpoints_and_revert_still_restores(
     assert validate.run_validate(ws, FRAMEWORK, out=lines.append) == 0
     assert not (ws / "_memory" / "_checkpoints").exists()
     originals = ws / "_memory" / "_retired" / "0.19.0-originals"
-    assert (originals / "Sources" / "Smart_Home" / "home_assistant-hub.ref.md").read_text() == HABOX_REF
+    assert (originals / "Sources" / "Smart_Home" / "home_assistant-hub.ref.md").read_text() == HUB_REF
     assert (originals / "_memory" / "config.yaml").read_text() == CONFIG_TEXT
     assert (originals / "_seeded.txt").is_file()
     ledger = yaml.safe_load((ws / "_memory" / "_retired" / "0.19.0-moves.yaml").read_text())

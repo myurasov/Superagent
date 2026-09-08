@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-09-07T23:06:31-07:00'
+generated_at: '2026-09-08T02:02:17-07:00'
 skill_count: 54
 skills:
 - name: superagent-ad-hoc-task
@@ -233,24 +233,23 @@ skills:
 - name: superagent-add-source
   stem: add-source
   path: superagent/skills/add-source.md
-  one_line: Add a document or a `.ref.md` / `.ref.txt` reference to `Sources/`. The user picks (or accepts
-    a suggestion for) where the file goes — there is no enforced subfolder layout. The agent runs `sources_in
+  one_line: Add a document to `Sources/`, optionally with a `<doc>.<ext>.meta.md` sidecar carrying its
+    metadata. The user picks (or accepts a suggestion for) where the file goes — there is no enforced
+    subfolder l
   triggers:
   - add a source
   - add this to <domain>
   - add this to <project>
   - file this document
-  - add a reference
-  - capture this URL / file / vault item
   - put this in Sources
   mcp_required: []
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 249
-  h2_steps: 8
-  h3_subsections: 6
-  typical_token_cost: 3291
+  lines: 213
+  h2_steps: 9
+  h3_subsections: 4
+  typical_token_cost: 3041
   typical_files_read:
   - _memory/domains-index.yaml
   - _memory/projects-index.yaml
@@ -440,16 +439,16 @@ skills:
   lines: 360
   h2_steps: 27
   h3_subsections: 0
-  typical_token_cost: 4486
+  typical_token_cost: 4577
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
+  - _memory/transactions.yaml
   - _memory/appointments.yaml
   - _memory/bills.yaml
   - _memory/important-dates.yaml
   - _memory/todo.yaml
   - _memory/health-records.yaml
-  - Domains/Hobbies/status.md
   origin: framework
 - name: superagent-doctor
   stem: doctor
@@ -471,7 +470,7 @@ skills:
   lines: 229
   h2_steps: 20
   h3_subsections: 0
-  typical_token_cost: 2527
+  typical_token_cost: 2524
   typical_files_read:
   - _memory/domains-index.yaml
   - _memory/watchlist-state.yaml
@@ -603,7 +602,7 @@ skills:
   lines: 124
   h2_steps: 5
   h3_subsections: 7
-  typical_token_cost: 1484
+  typical_token_cost: 1517
   typical_files_read:
   - _memory/transactions.yaml
   - _memory/accounts-index.yaml
@@ -757,10 +756,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 99
+  lines: 97
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 1105
+  typical_token_cost: 1008
   typical_files_read:
   - _memory/sources-index.yaml
   - _memory/inbox-log.yaml
@@ -786,7 +785,7 @@ skills:
   lines: 365
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 6021
+  typical_token_cost: 6145
   typical_files_read:
   - _memory/config.yaml
   - _memory/insights.yaml
@@ -855,13 +854,13 @@ skills:
   - month-end review
   mcp_required: []
   mcp_optional:
-  - any watcher whose cycles include monthly-review
+  - any watcher on the watchlist (the monthly cycle covers the weekly and daily tiers too)
   cli_required: []
   cli_optional: []
   lines: 233
   h2_steps: 24
   h3_subsections: 0
-  typical_token_cost: 2298
+  typical_token_cost: 2401
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/documents-index.yaml
@@ -1049,17 +1048,18 @@ skills:
   lines: 126
   h2_steps: 9
   h3_subsections: 7
-  typical_token_cost: 993
+  typical_token_cost: 1037
   typical_files_read:
   - _memory/sources-index.yaml
-  - Sources/_cache/<*>/_summary.md
+  - _memory/watchlist-state.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-sources
   stem: sources
   path: superagent/skills/sources.md
-  one_line: List, search, fetch (through cache), refresh, and inspect entries in `Sources/`. The user-facing
-    front-end to the user-curated reference library + agent-managed cache (contracts/sources.md).
+  one_line: List, search, open, and inspect entries in `Sources/` — the documents the user owns, their
+    optional `.meta.md` sidecars, and the watchers registered in `Sources/Watchlist/`. The user-facing
+    read front
   triggers:
   - my sources
   - what sources do we have / what sources do I have
@@ -1067,23 +1067,21 @@ skills:
   - list sources
   - search sources
   - what's in Sources
-  - fetch source
-  - refresh source
   - rescan sources
   - what does my <X> say
   - find <doc>
   mcp_required: []
-  mcp_optional:
-  - any live fetcher for the ref kind (MCP / CLI / HTTP)
+  mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 223
-  h2_steps: 9
-  h3_subsections: 7
-  typical_token_cost: 2183
+  lines: 168
+  h2_steps: 8
+  h3_subsections: 6
+  typical_token_cost: 1998
   typical_files_read:
   - _memory/sources-index.yaml
   - _memory/watchlist-state.yaml
+  - _memory/transactions.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-subscriptions
@@ -1130,8 +1128,9 @@ skills:
   lines: 117
   h2_steps: 8
   h3_subsections: 4
-  typical_token_cost: 847
+  typical_token_cost: 861
   typical_files_read:
+  - _memory/watchlist-state.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-supertailor-review
@@ -1270,7 +1269,7 @@ skills:
   stem: watch
   path: superagent/skills/watch.md
   one_line: Register, list, pause, revive, check, and harvest watchers (ext-sources) — the change-detection
-    tier over `Sources/Watchlist/<id>.ref.md` (contracts/watchlist.md). Drives `tools/watchlist.py`, enables
+    tier over `Sources/Watchlist/<Title_Case>.ref.md` (contracts/watchlist.md; every `.ref.md` is a watcher,
   triggers:
   - watch this
   - add a watcher
@@ -1289,10 +1288,10 @@ skills:
   - gmail (the `gmail` pack reuses the Gmail MCP's saved OAuth token; no MCP call is made by the tool)
   cli_required: []
   cli_optional: []
-  lines: 152
+  lines: 153
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 3265
+  typical_token_cost: 3752
   typical_files_read:
   - _memory/config.yaml
   - _memory/interaction-log.yaml
@@ -1311,14 +1310,15 @@ skills:
   - week in review
   mcp_required: []
   mcp_optional:
-  - the simplefin watcher (weekly harvest) or a CSV import for the Bookkeeper pass
+  - the simplefin watcher (harvested daily by `daily-update`; rows already in `transactions.yaml`) or
+    a CSV import for the Bookkeeper pass
   - any health / fitness watcher for the Coach pass
   cli_required: []
   cli_optional: []
   lines: 267
   h2_steps: 22
   h3_subsections: 0
-  typical_token_cost: 2690
+  typical_token_cost: 2857
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md

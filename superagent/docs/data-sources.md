@@ -34,7 +34,7 @@ Every source decomposes into two stages:
 
 The watchlist owns **detect** for every source and invokes **harvest** only where a handler exists and the watcher's `capture_mode` allows it. One lifecycle — scheduling, throttling, failure streaks, eviction, budgets, reporting — implemented once.
 
-**Registry = a folder of reference files.** Each watcher is one `Sources/Watchlist/<id>.ref.md` (path overridable via `config.preferences.watchlist.path`). The frontmatter is the normal `Sources/` ref frontmatter (`kind` / `source` locator, `ttl_minutes`, `related_*`) plus a `watch:` block: `pack` or `type`, `enabled`, `cycles`, `evict_after_days`, `min_check_interval_minutes`, `schedule`, `capture_mode`, and pack `params`. The filename stem is the `id`, the state key, and the handle (`watch:<id>`). `Sources/Watchlist/` is a reserved *name* with user-editable *contents* — hand-author, edit, or delete refs freely; `sources_index.py refresh` indexes them like any other reference.
+**Registry = a folder of watcher files.** Each watcher is one `Sources/Watchlist/<Title_Case>.ref.md` (path overridable via `config.preferences.watchlist.path`); a `.ref.md` is a watcher definition and nothing else. Schema `ref_version: 2`: `title`, `description`, `related_*`, `tags`, `added_by` / `added_at`, and a `watch:` block that carries both the detect settings (`pack` or `type`, `enabled`, `cycles`, `evict_after_days`, `min_check_interval_minutes`, `schedule`, `capture_mode`) and **what** is watched — a `url:` / `path:` / `cmd:` / `prompt:` locator for a bare watcher (`type: url | path | cmd | subagent`), `params` for a pack instance (`gmail` is always a pack instance; `query` is its locator). There is no `kind` / `source` / `ttl_minutes`. The filename is Title_Case (`Simplefin.ref.md`, `Gmail-Bills.ref.md`); the `id` is the stem lowercased (`simplefin`, `gmail-bills`) — the state key and the handle (`watch:<id>`). `Sources/Watchlist/` is a reserved *name* with user-editable *contents* — hand-author, edit, or delete refs freely; `sources_index.py refresh` indexes them alongside your documents.
 
 **State = one machine-owned file.** `_memory/watchlist-state.yaml` holds per-watcher `status`, `last_checked`, `last_changed`, `last_success`, `fingerprint`, `error_streak`, `last_outcome`, and — for harvest-bearing watchers — `last_harvest`, `calls_today`. Never hand-edit it.
 
@@ -42,7 +42,7 @@ The watchlist owns **detect** for every source and invokes **harvest** only wher
 
 **Detect types** (implemented once in the tool): `url` (ETag / Last-Modified, then a scoped content hash), `path` (file hash or directory mtime + count), `cmd` (stdout hash; disabled unless `preferences.watchlist.allow_cmd: true`), `subagent` (the agent runs a read-only prompt and `stamp`s a one-line delta), `gmail` (a **live** Gmail API search using the token the Gmail MCP saved; results capture-through into the local email archive), `harvest` (the pack's handler *is* the detect). Outcomes: `changed | unchanged | indeterminate | unreachable`.
 
-**Cadence wiring.** `daily-update` runs `check --cycle daily-update`; `weekly-review` / `monthly-review` run their own cycles (`simplefin` lands in weekly). `whatsup` never checks — it reads the alerts the last check wrote to `context.yaml.alerts` and labels their age. Changed watchers append an `interaction-log.yaml` row (`action: watch_change_detected`, derived into the events stream as `kind: watch_changed`); harvest runs keep appending to `ingestion-log.yaml`.
+**Cadence wiring.** `daily-update` runs `check --cycle daily-update` (`simplefin` lands here — harvested daily and automatically, budget-gated); `weekly-review` / `monthly-review` run their own cycles, which nest — a weekly check also covers every daily watcher and a monthly check covers all three tiers, so the cadences never have to be run one after another (throttles and budgets make same-day overlap a no-op). `whatsup` never checks — it reads the alerts the last check wrote to `context.yaml.alerts` and labels their age. Changed watchers append an `interaction-log.yaml` row (`action: watch_change_detected`, derived into the events stream as `kind: watch_changed`); harvest runs keep appending to `ingestion-log.yaml`.
 
 **Packs** are self-contained folders: `superagent/watchers/<id>/pack.yaml` (detect config, optional `harvest.handler`, declarative `probe:`, `auth:`, `budget:`, `defaults:`) plus, only when real code is needed, a same-folder `handler.py` and `README.md`. The same folder shape works under `workspace/_custom/watchers/<id>/` — the user's overlay, discovered alongside the shipped packs; on an id collision the custom folder wins and the tool announces it: *"Using `_custom/watchers/<id>` (overrides framework pack)."*
 
@@ -52,9 +52,9 @@ The watchlist owns **detect** for every source and invokes **harvest** only wher
 # what is set up on this machine? (no args = every pack's probe: block; --all = every registered watcher; <id> = one)
 uv run python -m superagent.tools.watchlist probe
 
-# enable a pack — writes Sources/Watchlist/<id>.ref.md from the template
-uv run python -m superagent.tools.watchlist enable simplefin --id simplefin
-uv run python -m superagent.tools.watchlist enable gmail --id gmail-bills --param query="label:Bills newer_than:30d"
+# enable a pack — writes Sources/Watchlist/<Title_Case>.ref.md from the template
+uv run python -m superagent.tools.watchlist enable simplefin --id simplefin                                          # → Simplefin.ref.md
+uv run python -m superagent.tools.watchlist enable gmail --id gmail-bills --param query="label:Bills newer_than:30d"  # → Gmail-Bills.ref.md
 
 # inspect
 uv run python -m superagent.tools.watchlist list [--status active|evicted|disabled]
@@ -62,14 +62,30 @@ uv run python -m superagent.tools.watchlist list [--status active|evicted|disabl
 # run a cycle (cadence skills do this); --report renders the briefing block
 uv run python -m superagent.tools.watchlist check --cycle daily-update --report [--no-harvest] [--dry-run]
 
-# explicit harvest (the only way a capture_mode: manual watcher ever pulls)
-uv run python -m superagent.tools.watchlist harvest --id simplefin [--dry-run]
+# on-demand harvest (also the only way a watcher pinned to capture_mode: manual ever pulls)
+uv run python -m superagent.tools.watchlist harvest --id simplefin [--dry-run] [--backfill]
 
 # record a dispatched subagent's outcome
 uv run python -m superagent.tools.watchlist stamp --id <id> --changed|--unchanged|--unreachable --note "<one-line delta>"
 ```
 
-A source with no pack is a **bare ref**: drop a file into `Sources/Watchlist/` with a `watch:` block whose `type` is `url`, `path`, `cmd`, or `subagent` (it defaults from the ref's `kind`), or say "watch this page" and let the `watch` skill write it. `ttl_minutes` on the ref governs read freshness for `sources fetch` only — detect keeps its own fingerprint and never consults `_cache/`.
+A source with no pack is a **bare watcher**: drop a `<Title_Case>.ref.md` into `Sources/Watchlist/` with a `watch:` block whose `type` is `url`, `path`, `cmd`, or `subagent` and the one locator field that type needs inside `watch:` (`url:`, `path:`, `cmd:`, `prompt:`) — `gmail` is pack-provided and always a pack instance (`pack: gmail` + `params: {query: ...}`; a bare `type: gmail` is a load error) — or say "watch this page" and let the `watch` skill write it. For example:
+
+```yaml
+# Sources/Watchlist/Solar_Permit.ref.md  →  watch:solar_permit
+---
+ref_version: 2
+title: "City — solar permit status"
+related_project: solar
+watch:
+  type: url
+  url: "https://permits.example.gov/status?id=12345"
+  selector: "#status-panel"
+  evict_after_days: 30
+---
+```
+
+Nothing is fetched on demand and nothing is cached: detect keeps its fingerprint in `_memory/watchlist-state.yaml`, and a harvest's records land in the typed index the pack writes.
 
 ## Writing your own pack
 
@@ -106,16 +122,16 @@ These do not feed personal-life data into Superagent, but they are useful worksp
   - `_memory/watchlist-state.yaml` (`simplefin` row: `last_harvest`, `last_harvest_result`, `calls_today`).
   - `_memory/ingestion-log.yaml` (per-run rows).
 - **Reads / cross-links**: `accounts-index.yaml.<acct>.simplefin_account_id` — set this field on each account row to its SimpleFin account UUID so the reconciler can join transactions to bills' `pay_from_account` (`harvest --id simplefin --dry-run` lists the feed's accounts without writing).
-- **Defaults** (pack `defaults:`, preserved verbatim by the 0.19.0 fold-in): `schedule: weekly`, `capture_mode: manual`, `cycles: [weekly-review]`, `evict_after_days: null` (a quiet bank feed is quiet, not dead). `capture_mode: manual` means no cadence-triggered `check` ever dispatches this harvest — only an explicit `harvest --id simplefin` does; `weekly-review` § 1 asks before running it.
+- **Defaults** (pack `defaults:`, since 0.20.0): `schedule: daily`, `capture_mode: automatic`, `cycles: [daily-update]`, `evict_after_days: null` (a quiet bank feed is quiet, not dead), `min_check_interval_minutes: 60`. `daily-update`'s `check` harvests the feed every day on its own, within the budget below; `harvest --id simplefin` is the on-demand pull ("refresh my transactions"). Pin `capture_mode: manual` in `Simplefin.ref.md`'s `watch:` block to be asked before every pull instead — a present key beats the pack default, and the tool never changes it on its own.
 - **Budget** (enforced *before* dispatch): `max_calls_per_day: 24`, `min_interval_minutes: 60`, `max_window_days: 90`. A harvest withheld by budget is reported as `budget_exceeded` and state is left untouched so the next eligible run retries cleanly.
 - **Install**:
   1. Sign up at `bridge.simplefin.org` ($1.50/mo or $15/yr).
   2. Connect your bank institutions through their hosted UI.
   3. Generate a "Setup Token" for an app called `superagent`.
   4. `uv run python superagent/watchers/simplefin/claim.py <SETUP_TOKEN>` — claims the token into a long-lived Access URL stored at `workspace/_memory/sensitive/simplefin-credentials.yaml` (mode 600).
-  5. `uv run python -m superagent.tools.watchlist enable simplefin --id simplefin`.
+  5. `uv run python -m superagent.tools.watchlist enable simplefin --id simplefin` — writes `Sources/Watchlist/Simplefin.ref.md`.
 - **Probe** (declarative, `file_exists`): `_memory/sensitive/simplefin-credentials.yaml` exists; `setup_hint` points at `superagent/watchers/simplefin/claim.py`.
-- **Run**: `uv run python -m superagent.tools.watchlist harvest --id simplefin` (incremental delta with 3-day overlap). A full backfill is `uv run python -m superagent.tools.watchlist harvest --id simplefin --backfill` (budget-counted like any harvest). The handler's own CLI keeps only `--dry-run` and the local `--reconcile` repair and refuses live runs, so nothing bypasses the watchlist state.
+- **Run**: every `daily-update` (`check --cycle daily-update`) harvests it automatically; on demand, `uv run python -m superagent.tools.watchlist harvest --id simplefin` (incremental delta with 3-day overlap). A full backfill is `uv run python -m superagent.tools.watchlist harvest --id simplefin --backfill` (budget-counted like any harvest). The handler's own CLI keeps only `--dry-run` and the local `--reconcile` repair and refuses live runs, so nothing bypasses the watchlist state.
 - **Reconciliation**: `uv run python -m superagent.tools.reconcile_transactions [--days N] [--json]` — surfaces matched / missed bills and recurring-charge candidates not yet tracked in `bills.yaml` / `subscriptions.yaml`. The `weekly-review` skill calls this from its Bookkeeper pass.
 - **Pending → posted matching**: every run pairs each stored pending row with its later posted twin (same account, same sign, absolute amount delta ≤ $1.00, within the reconcile date window) and marks the pending row `superseded_by: <posted external_id>`. A pending row still orphaned after `stale_pending_days` (a pack `harvest.defaults` key, overridable in the `simplefin` ref's `watch:` block; handler default 14, measured from `transacted_at`) is flagged `stale_pending: true`. Both flags keep the row verbatim for audit; `reconcile_transactions` skips `superseded_by` and `stale_pending` rows so neither double-counts against bills.
 - **Caveats**:
@@ -181,10 +197,10 @@ Two complementary paths, both live, both feeding one local archive:
 
 ### url
 
-- **Pack**: `superagent/watchers/url/pack.yaml`; detect type `url`; parameterized by the target URL (the ref's `source`), optional `selector:` (CSS selector to scope the hash) and `ignore_patterns:` (regexes stripped before hashing).
+- **Pack**: `superagent/watchers/url/pack.yaml`; detect type `url`; parameterized by the target URL (`watch.params.url`), optional `selector:` (CSS selector to scope the hash) and `ignore_patterns:` (regexes stripped before hashing).
 - **Detect**: a conditional `GET` carrying the stored validators (`If-None-Match` / `If-Modified-Since`); `304` means unchanged with no body downloaded. A `200` body (capped at 2 MB, http/https only, no credentials in the URL) is always normalized and hashed — strip `<script>` / `<style>` / comments, apply `selector` / `ignore_patterns` — so a rotated `ETag` alone is never reported as a change. `min_change_interval_minutes` keeps a flapping page from alerting more than once per window.
 - **Install**: nothing. **Probe**: `always`.
-- **Enable**: `uv run python -m superagent.tools.watchlist enable url --id <slug> --param url=<https://...>`, or hand-author a bare `kind: url` ref in `Sources/Watchlist/` with `watch.type: url`.
+- **Enable**: `uv run python -m superagent.tools.watchlist enable url --id <slug> --param url=<https://...>`, or hand-author a bare ref in `Sources/Watchlist/` with `watch.type: url` and `watch.url:` (example under "Adding a source").
 - **Defaults**: `cycles: [daily-update]`, `evict_after_days: 30` (revive an evicted watcher with `status: active` in its ref).
 - **Caveats**: pages that embed CSRF tokens, session ids, or timestamps will churn without a `selector:` — scope the hash to the panel you actually care about. Sites that require a login are `subagent` territory.
 
@@ -192,8 +208,8 @@ Two complementary paths, both live, both feeding one local archive:
 
 - **Pack**: `superagent/watchers/cmd/pack.yaml`; detect type `cmd`; parameterized by `cmd` (required — the shell command, verbatim). Any CLI-reachable source becomes a watcher: `git ls-remote <url> HEAD`, `gh api ...`, a `curl` against a JSON status endpoint.
 - **Detect**: runs the command with a timeout, requires exit 0, fingerprints the sha256 of stdout. Non-zero exit or timeout is `unreachable`, never `changed`.
-- **Gate**: **off by default.** The tool refuses to run any `cmd` watcher until `config.preferences.watchlist.allow_cmd: true`; until then every check reports `unreachable` naming the flag. The same gate covers `probe.kind: cmd_exit_zero`. The command string comes only from the ref (`watch.params.cmd`) and is never templated from anything fetched over the network; it must be read-only.
-- **Enable**: `uv run python -m superagent.tools.watchlist enable cmd --id <slug> --param cmd="<command>"`, or hand-author a `kind: cli` ref (its `source` is the command) — `cli` defaults to `type: cmd`.
+- **Gate**: **off by default.** The tool refuses to run any `cmd` watcher until `config.preferences.watchlist.allow_cmd: true`; until then every check reports `unreachable` naming the flag. The same gate covers `probe.kind: cmd_exit_zero`. The command string comes only from the ref (`watch.params.cmd` on a pack instance, `watch.cmd` on a bare watcher) and is never templated from anything fetched over the network; it must be read-only.
+- **Enable**: `uv run python -m superagent.tools.watchlist enable cmd --id <slug> --param cmd="<command>"`, or hand-author a bare ref with `watch.type: cmd` and `watch.cmd:` (the command, verbatim).
 - **Defaults**: `cycles: [daily-update]`, `evict_after_days: 30`, `min_check_interval_minutes: 60` (raise it for rate-limited CLIs).
 
 ### path
@@ -201,7 +217,7 @@ Two complementary paths, both live, both feeding one local archive:
 - **Pack**: `superagent/watchers/path/pack.yaml`; detect type `path`; parameterized by `path` (required — absolute or `~`-relative file or directory).
 - **Detect**: a file is fingerprinted by the sha256 of its content; a directory by its newest modification time plus a recursive entry count, so a new export dropped into a folder registers on the next cycle. Local reads only; a missing path is `unreachable`.
 - **Install**: nothing. **Probe**: `always`.
-- **Enable**: `uv run python -m superagent.tools.watchlist enable path --id <slug> --param path=<~/Downloads/bank-exports>`, or hand-author a `kind: file` ref — `file` defaults to `type: path`.
+- **Enable**: `uv run python -m superagent.tools.watchlist enable path --id <slug> --param path=<~/Downloads/bank-exports>`, or hand-author a bare ref with `watch.type: path` and `watch.path:`.
 - **Defaults**: `cycles: [daily-update]`, `evict_after_days: 30`.
 - **Caveats**: never watch a file a harvest handler writes (for example `_memory/transactions.yaml`) — the watcher would fire on the harvest's own write. A folder watched for bank CSVs still needs a manual `tools/ingest/csv.py --file` import today; the `csv-drop` pack that would harvest it automatically is postponed.
 
@@ -210,7 +226,7 @@ Two complementary paths, both live, both feeding one local archive:
 - **Pack**: `superagent/watchers/subagent/pack.yaml`; detect type `subagent`; parameterized by `prompt` (required — what to look at and how to report; must be read-only and ask for ONE line: the delta, or "no change").
 - **Detect**: the tool never spawns agents. `check` emits a **dispatch spec** for each eligible watcher; the calling agent runs it as a read-only subagent per `rules/subagents.md` (read the thing, compare against the last stamped note, return ONE line; never submit a form or write upstream; capture-through anything legitimately encountered) and records the outcome with `stamp --id <id> --changed|--unchanged|--unreachable --note "<delta>"`. The stamped note is the next fingerprint; it is rendered as quoted data in briefings and never concatenated into a later prompt.
 - **Install**: nothing beyond whatever the prompt needs (typically a `browserctl` profile with a saved login — see `workspace/_custom/skills/browserctl.<app>.md`). **Probe**: `always`.
-- **Enable**: `uv run python -m superagent.tools.watchlist enable subagent --id <slug> --param prompt="<instructions>"`; or hand-author a `kind: manual` ref with `watch.type: subagent` and `prompt:`.
+- **Enable**: `uv run python -m superagent.tools.watchlist enable subagent --id <slug> --param prompt="<instructions>"`; or hand-author a bare ref with `watch.type: subagent` and `watch.prompt:`.
 - **Defaults**: `cycles: [daily-update]`, `evict_after_days: 45`; set `expires: YYYY-MM-DD` for a hard end-of-life (a portal for a project that finishes).
 - **Caveats**: prompt injection reaches further here than anywhere else — a watched page can try to steer the subagent. Prompts must be read-only; notes are length-capped and control-character-stripped by the tool. This is the escape hatch for the long tail, not the default: prefer `url` when the page is public.
 

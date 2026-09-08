@@ -175,7 +175,7 @@ After a `supertailor-review` run, the Supertailor prints a structured report:
 - 3 mechanical repairs proposed:
   1. Restore missing maintenance banner in Domains/Travel/info.md.
   2. Fix invalid YAML in `_memory/bills.yaml` (line 142, missing colon).
-  3. Re-link `Sources/documents/vehicles/blue-camry-2018/title.pdf` from `Domains/Vehicles/sources.md` (currently a broken pointer).
+  3. Re-link `Sources/Vehicles/blue-camry-2018/title.pdf` from `Domains/Vehicles/sources.md` (currently a broken pointer).
   → approve all / approve some / decline all?
 
 ## Strategic pass

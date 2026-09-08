@@ -30,7 +30,7 @@ _Last updated: {{LAST_UPDATED}}_
   - [How this file stays current](#how-this-file-stays-current)
   - [Workspace-level documents (relevant to this project)](#workspace-level-documents-relevant-to-this-project)
   - [Project-scoped documents](#project-scoped-documents)
-  - [References (external pointers)](#references-external-pointers)
+  - [Watchers](#watchers)
   - [Project-generated artifacts](#project-generated-artifacts)
 
 ---
@@ -47,7 +47,8 @@ _Last updated: {{LAST_UPDATED}}_
 ## Workspace-level documents (relevant to this project)
 
 <!-- Files under workspace `Sources/...` that you tagged to this project.
-     They survive the project being archived. -->
+     They survive the project being archived. A document's optional
+     `<doc>.<ext>.meta.md` sidecar is mentioned in Notes, never its own row. -->
 
 | Title | Path | Category | Added | Notes |
 |-------|------|----------|-------|-------|
@@ -72,15 +73,20 @@ _Last updated: {{LAST_UPDATED}}_
 
 ---
 
-## References (external pointers)
+## Watchers
 
-<!-- `.ref.md` files relevant to this project — workspace or project-scoped. -->
+<!-- `Sources/Watchlist/<Title_Case>.ref.md` watchers whose `related_project`
+     is this project (contracts/watchlist.md) — a permit portal, a vendor
+     status page, a Gmail query. Watchers always live in the one workspace
+     registry (never under Projects/<slug>/Sources/); give a project-bound one
+     `expires: <target date>` so it retires with the project. Handle:
+     `watch:<id>` (id = stem lowercased). -->
 
-| Title | Ref path | Kind | Source | Notes |
-|-------|----------|------|--------|-------|
-| {{REF_1_TITLE}} | {{REF_1_PATH}} | {{REF_1_KIND}} | {{REF_1_SOURCE}} | {{REF_1_NOTES}} |
+| Title | Ref path | Pack / type | Watches | Notes |
+|-------|----------|-------------|---------|-------|
+| {{WATCH_1_TITLE}} | {{WATCH_1_PATH}} | {{WATCH_1_TYPE}} | {{WATCH_1_TARGET}} | {{WATCH_1_NOTES}} |
 
-{{REFERENCES_TABLE_ROWS}}
+{{WATCHERS_TABLE_ROWS}}
 
 ---
 

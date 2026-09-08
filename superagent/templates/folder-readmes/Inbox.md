@@ -11,18 +11,18 @@ Drop incoming files here so they have a single, predictable landing pad before b
 
 ## Where things go from here
 
-Source documents NEVER end up under `Domains/<X>/` directly — they go to `Sources/documents/<category>/`, with a pointer added to the relevant domain's `sources.md`. The capture path is **`add-source --to-domain <id>` (or just "add this to <domain>" in chat)** — the agent files it correctly. The table below shows where each kind lands:
+Source documents NEVER end up under `Domains/<X>/` directly — they go under `Sources/<your-folders>/`, with a pointer added to the relevant domain's `sources.md`. The `Sources/` layout is **yours**: the agent reserves only `Sources/README.md` and `Sources/Watchlist/`; every other folder name and nesting is your choice (`contracts/sources.md` § 15.1). The capture path is **`add-source --to-domain <id>` (or just "add this to <domain>" in chat)** — the agent files it into the folder you name (or the one you already use for that kind of thing). The table below shows where each kind lands; the `Sources/` paths are examples, not a fixed scheme:
 
-| File type | Auto-routed to | Pointer in |
+| File type | Lands under `Sources/` (your layout — examples) | Pointer in |
 |---|---|---|
-| Insurance card / policy doc | `Sources/documents/insurance/` | `Domains/Finances/sources.md` |
-| Vehicle registration / title / receipt | `Sources/documents/vehicles/<vehicle-slug>/` | `Domains/Vehicles/sources.md` |
-| Medical record / lab result / vaccine card | `Sources/documents/medical/<member-slug>/` | `Domains/Health/sources.md` |
-| Appliance manual / warranty / receipt | `Sources/documents/warranties/<appliance-slug>/` | `Domains/Home/sources.md` |
-| Pet vaccination / vet record | `Sources/documents/pets/<pet-slug>/` | `Domains/Pets/sources.md` |
-| Travel itinerary / boarding pass / passport scan | `Sources/documents/travel/<trip-slug>/` | `Domains/Travel/sources.md` (or active trip `Projects/<trip-slug>/sources.md`) |
-| Tax return / W-2 / 1099 | `Sources/documents/taxes/<year>/` | `Domains/Finances/sources.md` AND `Projects/tax-<year>/sources.md` |
-| Reference material (article you want to keep) | `Sources/documents/reference/` (or your notes app of choice) | `Domains/Self/sources.md` |
+| Insurance card / policy doc | e.g. `Sources/Insurance/` | `Domains/Finances/sources.md` |
+| Vehicle registration / title / receipt | e.g. `Sources/Vehicles/<vehicle-slug>/` | `Domains/Vehicles/sources.md` |
+| Medical record / lab result / vaccine card | e.g. `Sources/Medical/<member-slug>/` | `Domains/Health/sources.md` |
+| Appliance manual / warranty / receipt | e.g. `Sources/Warranties/<appliance-slug>/` | `Domains/Home/sources.md` |
+| Pet vaccination / vet record | e.g. `Sources/Pets/<pet-slug>/` | `Domains/Pets/sources.md` |
+| Travel itinerary / boarding pass / passport scan | e.g. `Sources/Travel/<trip-slug>/` | `Domains/Travel/sources.md` (or active trip `Projects/<trip-slug>/sources.md`) |
+| Tax return / W-2 / 1099 | e.g. `Sources/Taxes/<year>/` | `Domains/Finances/sources.md` AND `Projects/tax-<year>/sources.md` |
+| Reference material (article you want to keep) | e.g. `Sources/Reference/` (or your notes app of choice) | `Domains/Self/sources.md` |
 | Working draft / scratch photo / quote spreadsheet | `Domains/<X>/Resources/` (or `Projects/<X>/Resources/`) | n/a (not a Source) |
 | Thing to send to someone | `Outbox/` after the agent drafts it | n/a |
 | Junk / one-off | Delete |

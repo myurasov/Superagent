@@ -57,9 +57,9 @@ Before any external call:
 
 - **`_memory/`**: grep across `interaction-log.yaml`, `insights.yaml`, `procedures.yaml` for topic mentions.
 - **Domain files**: scan `Domains/*/info.md`, `status.md`, `history.md` for mentions.
-- **Sources**: scan `_memory/sources-index.yaml` (canonical doc index) and grep `Sources/_cache/<*>/_summary.md` (cached external refs).
+- **Sources**: scan `_memory/sources-index.yaml` (canonical doc index) and grep the `*.meta.md` sidecars (document notes); for watched external things, read the watcher's row in `_memory/watchlist-state.yaml` (last change, stamped note) rather than fetching.
 - **Resources**: list relevant files in any `Resources/` folder by name (working drafts and previously-rendered briefings).
-- **Email / message mirrors**: search `_memory/emails/` and `_memory/slack/` (if those mirrors exist) for thread subjects matching.
+- **Email / message mirrors**: search `_memory/email/` (the capture-on-touch archive; scan `_messages.jsonl`) and `_memory/slack/` (if that mirror exists) for thread subjects matching.
 
 Always start with what's already known.
 

@@ -37,7 +37,7 @@ Projects/
     rolodex.md                     ← project-scoped contact directory
     sources.md                     ← curated catalogue of Sources/ entries
     Resources/                     ← optional: drafts, working files, agent-generated artifacts
-    Sources/                       ← optional: project-scoped `.ref.md` + cache
+    Sources/                       ← optional: project-scoped documents (+ `.meta.md` sidecars)
 ```
 
 The 4-file structure mirrors `Domains/`. The same skills (`add-contact` updates `rolodex.md`; `log-event` appends to `history.md`; ingestors capture into the relevant log) work for both.

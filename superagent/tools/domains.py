@@ -267,7 +267,11 @@ def list_status(workspace: Path) -> list[dict[str, Any]]:
 _TABLE_HEADER_WORDS = frozenset({
     "Name", "Role", "Phone", "Email", "Notes", "Last contacted",
     "Relationship", "Service", "URL", "Title", "Path", "Category", "Added",
-    "Ref path", "Kind", "Source",
+    # `## Watchers` table (templates/domains/sources.md, 0.20.0) ...
+    "Ref path", "Pack / type", "Watches",
+    # ... and the 0.19.0 `## References (external pointers)` headers, kept so
+    # a workspace scaffolded before 0.20.0 still reads as bare.
+    "Kind", "Source",
 })
 
 # Cell content that the framework templates render in placeholder table rows

@@ -8,8 +8,9 @@ Covers the declarative surface of the watchlist feature (contracts/watchlist.md)
   - each pack's `id` equals its folder name
   - `superagent/watchers/_manifest.yaml` lists exactly the folders present
   - `{{param}}` placeholders in `detect:` refer to declared params
-  - the `simplefin` pack preserves the live cadence (weekly / manual / budgeted)
-  - the watch ref template, the folder README and the state template parse
+  - the `simplefin` pack captures daily / automatically, budget-protected (0.20.0)
+  - the ref template (`templates/sources/ref.md`, a `ref_version: 2` watcher
+    definition), the folder README and the state template parse
   - the config template carries `preferences.watchlist` and no `ingestion_schedule`
   - no file under `superagent/watchers/` names the sibling framework
 
@@ -39,8 +40,11 @@ EXPECTED_PACKS = {"simplefin", "gmail", "url", "subagent", "cmd", "path"}
 WATCH_FIELDS = {
     "pack", "type", "enabled", "status", "cycles", "evict_after_days", "expires",
     "min_check_interval_minutes", "schedule", "capture_mode", "params", "selector",
-    "ignore_patterns", "min_change_interval_minutes", "prompt", "query",
+    "ignore_patterns", "min_change_interval_minutes", "url", "path", "cmd", "prompt", "query",
 }
+# 0.19.0 reference keys a `ref_version: 2` template must not carry.
+LEGACY_REF_KEYS = {"kind", "source", "ttl_minutes", "sensitive", "auth_ref", "chunk_for_large",
+                   "normalized_at"}
 PLACEHOLDER_RE = re.compile(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")
 # Built at runtime so this file never contains the forbidden token itself.
 FORBIDDEN_SIBLING = ("co" + "-sa").lower()
@@ -215,8 +219,8 @@ def test_auth_refs_are_pointers_not_secrets(framework_dir: Path) -> None:
         )
 
 
-def test_simplefin_pack_preserves_live_cadence(framework_dir: Path) -> None:
-    """B4: the fold-in must not widen the SimpleFIN cadence or drop its budget."""
+def test_simplefin_pack_defaults_daily_automatic_budgeted(framework_dir: Path) -> None:
+    """0.20.0: SimpleFIN is captured daily and automatically; the budget is unchanged."""
     data = _load_pack(_watchers_dir(framework_dir) / "simplefin")
     assert data["detect"]["type"] == "harvest"
     assert "handler" not in data["harvest"], "folder-default handler.py is canonical"
@@ -231,12 +235,19 @@ def test_simplefin_pack_preserves_live_cadence(framework_dir: Path) -> None:
     assert data["budget"]["min_interval_minutes"] == 60
     assert data["budget"]["max_window_days"] == 90
     d = data["defaults"]
-    assert d["cycles"] == ["weekly-review"]
+    assert d["cycles"] == ["daily-update"]
     assert d["evict_after_days"] is None
-    assert d["schedule"] == "weekly"
-    assert d["capture_mode"] == "manual"
+    assert d["schedule"] == "daily"
+    assert d["capture_mode"] == "automatic"
     assert d["min_check_interval_minutes"] == 60
-    assert (_watchers_dir(framework_dir) / "simplefin" / "README.md").is_file()
+    readme = (_watchers_dir(framework_dir) / "simplefin" / "README.md").read_text()
+    assert "daily" in readme and "automatic" in readme
+    assert "harvest --id simplefin" in readme, "on-demand pull documented"
+    assert "24 calls/day" in readme and "budget" in readme.lower(), "the budget protects the API"
+    assert "Simplefin.ref.md" in readme, "Title_Case registry filename"
+    manifest = yaml.safe_load((_watchers_dir(framework_dir) / "_manifest.yaml").read_text())
+    row = next(r for r in manifest["packs"] if r["id"] == "simplefin")
+    assert "daily" in row["one_line"] and "weekly" not in row["one_line"]
 
 
 def test_gmail_pack_is_live_and_parameterized(framework_dir: Path) -> None:
@@ -300,28 +311,34 @@ def test_no_watcher_file_references_other_frameworks(framework_dir: Path) -> Non
 
 # --- templates -----------------------------------------------------------------
 
-def test_watch_ref_template_parses_and_documents_watch_block(framework_dir: Path) -> None:
-    path = framework_dir / "templates" / "sources" / "watch.ref.md"
-    assert path.is_file(), "missing templates/sources/watch.ref.md"
+def test_ref_template_is_a_v2_watcher_definition(framework_dir: Path) -> None:
+    """`templates/sources/ref.md` IS the watcher template (0.20.0); `watch.ref.md` is gone."""
+    sources_templates = framework_dir / "templates" / "sources"
+    assert sorted(p.name for p in sources_templates.iterdir()) == ["ref.md"]
+    assert not (sources_templates / "watch.ref.md").exists()
+    path = sources_templates / "ref.md"
     text = path.read_text()
     assert text.startswith("---\n"), "template must open with the frontmatter fence"
     fm = _frontmatter(text)
-    for field in ("ref_version", "title", "description", "kind", "source", "ttl_minutes",
-                  "related_domain", "related_project", "added_by", "added_at", "tags", "watch"):
-        assert field in fm, f"watch.ref.md frontmatter missing {field!r}"
-    assert fm["ref_version"] == 1
+    for field in ("ref_version", "title", "description", "related_domain", "related_project",
+                  "related_asset", "related_account", "added_by", "added_at", "tags", "watch"):
+        assert field in fm, f"ref.md frontmatter missing {field!r}"
+    assert fm["ref_version"] == 2
+    assert not (set(fm) & LEGACY_REF_KEYS), "no kind / source / ttl_minutes in a v2 template"
     watch = fm["watch"]
     assert isinstance(watch, dict) and watch.get("enabled") is True
     # Optional keys are commented out (absent = inherit), but every field the
     # contract defines must be documented in the template text.
     for field in WATCH_FIELDS:
         assert re.search(rf"^\s*#?\s*{re.escape(field)}:", text, re.MULTILINE), (
-            f"watch.ref.md does not document watch.{field}"
+            f"ref.md does not document watch.{field}"
         )
-    for kind, dtype in (("url", "url"), ("cli", "cmd"), ("file", "path"), ("manual", "subagent")):
-        assert re.search(rf"{kind}\s*->\s*{dtype}", text), (
-            f"watch.ref.md must state the kind->type default {kind} -> {dtype}"
-        )
+    assert "Title_Case" in text, "the Title_Case filename rule is stated"
+    assert "Simplefin.ref.md" in text
+    assert "meta.md" in text, "points document metadata at .meta.md sidecars"
+    assert "0.20.0" in text, "names the migration that converts v1 refs"
+    assert not re.search(r"\bkind\s*->\s*\w+", text), "no kind->type defaulting is documented"
+    assert not re.search(r"^\s*#?\s*(kind|source|ttl_minutes):", text, re.MULTILINE)
     assert "# Notes" in text
 
 

@@ -12,10 +12,16 @@ Loads every YAML file under `<workspace>/_memory/`, verifies:
 
 Then validates the watcher registry (`Sources/Watchlist/`, or
 `config.preferences.watchlist.path`; per contracts/watchlist.md): every
-top-level `.ref.md` there must carry canonical frontmatter with a `watch:`
-mapping whose `pack` names a known pack or whose `type` (explicit, or defaulted
-from the ref `kind`) is a shipped detect type. `index_query` is reserved and
-rejected. A missing registry folder is fine (feature off).
+top-level `.ref.md` there is a WATCHER DEFINITION (`ref_version: 2`) and must
+carry frontmatter with a `watch:` mapping whose `pack` names a known pack or
+whose `type` is a built-in detect type with its locator present
+(`watch.url` / `watch.path` / `watch.cmd` / `watch.prompt`). The retired
+0.19.0 reference keys (`kind`, `source`, `ttl_minutes`, `sensitive`,
+`auth_ref`, `chunk_for_large`, `normalized_at`) are rejected with a pointer
+at the 0.20.0 migration. The filename stem lowercased is the watcher id
+(`^[a-z0-9][a-z0-9_-]{0,62}$`); two files whose lowercase stems collide are
+an error. `index_query` is reserved and rejected. A missing registry folder
+is fine (feature off).
 
 Soft checks (WARNINGS — reported, never affect the exit code):
   - `interaction-log.yaml` rows whose `skill` value is not a skill manifest
@@ -23,6 +29,10 @@ Soft checks (WARNINGS — reported, never affect the exit code):
     the legacy `superagent-<stem>` alias is counted separately as "prefixed".
   - `interaction-log.yaml` rows already written in the canonical shape (no
     legacy `timestamp` key) that lack `id` / `ts` / `skill`.
+  - a registry ref whose filename is not the canonical Title_Case form
+    (`Home_Assistant-Hub.ref.md`); the tool loads it case-insensitively.
+  - a stray `.ref.md` outside the registry (document metadata belongs in
+    `<doc>.<ext>.meta.md`), or a `.ref.txt` anywhere (no longer supported).
   Legacy rows are append-only history and are never rewritten; the warnings
   exist so drift in NEW appends is visible (per contracts/events-stream.md
   § "Canonical row shape").
@@ -35,6 +45,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -64,25 +75,56 @@ LIST_FILES: dict[str, str] = {
 }
 
 # ------------------------------------------------------- watchlist schema
-# Shared by this validator and by migration 0.19.0. The watchlist tool owns
-# the runtime semantics (contracts/watchlist.md); these are the names.
+# Shared by this validator, `tools/watchlist.py`, `tools/sources_index.py`
+# and the migrations (0.19.0, 0.20.0). The watchlist tool owns the runtime
+# semantics (contracts/watchlist.md); these are the names.
 
 WATCHLIST_STATE = "watchlist-state.yaml"
 # Top-level keys the tool writes to the state singleton (`save_state`); always allowed.
 WATCHLIST_STATE_TOP_KEYS = frozenset({"schema_version", "last_updated", "watchers"})
 DEFAULT_WATCHLIST_PATH = "Sources/Watchlist"
-# Detect types implemented in this release.
+# A registry file is `<Title_Case>.ref.md`; a document sidecar is `<doc>.<ext>.meta.md`.
+REF_SUFFIX = ".ref.md"
+META_SUFFIX = ".meta.md"
+# The ref schema this release reads. 1 = the 0.19.0 "reference + watch block"
+# shape (kind / source / ttl_minutes ...), converted by the 0.20.0 migration.
+REF_VERSION = 2
+LEGACY_REF_MIGRATION = "0.20.0"
+# Frontmatter keys of the retired pull-on-demand reference model. A ref that
+# still carries one is rejected on load with a pointer at the migration.
+LEGACY_REF_KEYS = frozenset({
+    "kind", "source", "ttl_minutes", "sensitive", "auth_ref", "chunk_for_large", "normalized_at",
+})
+# Every top-level key a `ref_version: 2` file may carry.
+REF_TOP_KEYS = frozenset({
+    "ref_version", "title", "description",
+    "related_domain", "related_project", "related_asset", "related_account",
+    "tags", "added_by", "added_at", "watch",
+})
+# Watcher id = filename stem lowercased = state key = `watch:<id>` handle.
+WATCH_ID_PATTERN = r"^[a-z0-9][a-z0-9_-]{0,62}$"
+WATCH_ID_RE = re.compile(WATCH_ID_PATTERN)
+# Detect types the schema layer knows in this release (built-in + pack-provided).
 WATCH_TYPES = frozenset({"url", "path", "cmd", "subagent", "gmail", "harvest"})
+# Detect types implemented inside `tools/watchlist.py`; anything else (e.g.
+# `gmail`) is provided by a pack's handler.py and needs `watch.pack`.
+WATCH_BUILTIN_TYPES = frozenset({"url", "path", "cmd", "subagent", "harvest"})
+# Which `watch.` key carries the locator for each detect type. A bare
+# (packless) watcher must set it; a pack instance supplies it via `params`.
+WATCH_LOCATOR_KEY = {
+    "url": "url", "path": "path", "cmd": "cmd", "subagent": "prompt", "gmail": "query",
+}
 # Reserved enum slot; the loader rejects it with "not implemented in this release".
 WATCH_RESERVED_TYPES = frozenset({"index_query"})
 # Packs that ship in core (`superagent/watchers/<id>/pack.yaml`). Discovery
 # reads the folders when they exist; this set is the fallback so validation
 # does not depend on the pack tree being present.
 DEFAULT_WATCH_PACKS = frozenset({"simplefin", "gmail", "url", "cmd", "path", "subagent"})
-# `watch.type` defaults from the ref's `kind` when omitted.
-# Ref `kind` -> default detect type when `watch.type` / `watch.pack` are
-# absent (contracts/watchlist.md § 2). `api`, `mcp`, `vault` deliberately
-# have NO default: those refs must name a pack or an explicit type.
+# LEGACY (0.19.0 ref schema). Ref `kind` -> the detect type it implied when
+# `watch.type` / `watch.pack` were absent. Retained ONLY for migrations that
+# convert `ref_version: 1` files (kind -> watch.type); neither the tool nor
+# this validator defaults from `kind` any more -- `watch.pack` or `watch.type`
+# is required.
 WATCH_TYPE_BY_REF_KIND = {
     "url": "url", "cli": "cmd", "file": "path", "manual": "subagent",
 }
@@ -96,6 +138,9 @@ WATCH_SCALAR_KEYS = {
     "expires": ((str,), True),
     "schedule": ((str,), True),
     "selector": ((str,), True),
+    "url": ((str,), True),
+    "path": ((str,), True),
+    "cmd": ((str,), True),
     "prompt": ((str,), True),
     "query": ((str,), True),
 }
@@ -222,19 +267,86 @@ def known_watch_packs(framework: Path, workspace: Path | None) -> set[str]:
     return packs or set(DEFAULT_WATCH_PACKS)
 
 
-def watch_ref_files(registry: Path) -> list[Path]:
-    """Every top-level `<id>.ref.md` in the registry folder — exactly what the tool loads.
+def is_ref_name(name: str) -> bool:
+    """True for `<stem>.ref.md`, matched case-insensitively (`X.Ref.MD` counts)."""
+    return name.lower().endswith(REF_SUFFIX) and len(name) > len(REF_SUFFIX)
 
-    Matches `tools/watchlist.py`'s scan: no `.ref.txt`, no sub-folders, and
-    `README.md` is documentation, not a watcher.
+
+def ref_stem(name: str) -> str:
+    """`Home_Assistant-Hub.ref.md` -> `Home_Assistant-Hub` (suffix matched case-insensitively)."""
+    return name[: -len(REF_SUFFIX)] if is_ref_name(name) else Path(name).stem
+
+
+def watch_id_from_stem(stem: str) -> str:
+    """The watcher id for a filename stem: lowercased (`Simplefin` -> `simplefin`)."""
+    return stem.lower()
+
+
+def title_case_id(watcher_id: str) -> str:
+    """Canonical filename stem for an id: capitalize each `_` / `-` token's first letter.
+
+    `simplefin` -> `Simplefin`; `home_assistant-hub` -> `Home_Assistant-Hub`.
+    Digits are left alone (`2fa_codes` -> `2fa_Codes`). Idempotent.
+    """
+    return re.sub(r"(^|[_-])([a-z])", lambda m: m.group(1) + m.group(2).upper(),
+                  watcher_id.lower())
+
+
+def watch_ref_files(registry: Path) -> list[Path]:
+    """Every top-level `*.ref.md` in the registry folder — exactly what the tool loads.
+
+    Matches `tools/watchlist.py`'s scan: suffix matched case-insensitively, no
+    sub-folders, and `README.md` / `.meta.md` files are not watchers.
     """
     if not registry.is_dir():
         return []
-    return sorted(p for p in registry.glob("*.ref.md") if p.is_file())
+    return sorted((p for p in registry.iterdir() if p.is_file() and is_ref_name(p.name)),
+                  key=lambda p: p.name.lower())
 
 
-def check_watch_block(watch: Any, ref_kind: Any, packs: set[str], label: str) -> list[str]:
-    """Schema-check one `watch:` mapping. Returns error strings (empty = clean)."""
+def check_ref_frontmatter(fm: Any, packs: set[str], label: str) -> list[str]:
+    """Schema-check one `ref_version: 2` frontmatter mapping (a watcher definition).
+
+    Legacy 0.19.0 reference keys are rejected by name, pointing at the 0.20.0
+    migration; the `watch:` block is then checked by `check_watch_block`.
+    """
+    if not isinstance(fm, dict):
+        return [f"{label}: frontmatter must be a mapping, got {type(fm).__name__}"]
+    errors: list[str] = []
+    legacy = [k for k in fm if k in LEGACY_REF_KEYS]
+    if legacy:
+        errors.append(
+            f"{label}: legacy reference key(s) {', '.join(repr(k) for k in legacy)} — since "
+            f"{LEGACY_REF_MIGRATION} a .ref.md is a watcher definition only (ref_version "
+            f"{REF_VERSION}); run the {LEGACY_REF_MIGRATION} migration (`migrate`) or move the "
+            "locator into watch: (url: / path: / cmd: / prompt: / query:)"
+        )
+    version = fm.get("ref_version")
+    if version is None:
+        errors.append(f"{label}: ref_version: {REF_VERSION} is required (a .ref.md is a watcher "
+                      f"definition; a ref written before {LEGACY_REF_MIGRATION} is converted by "
+                      f"the {LEGACY_REF_MIGRATION} migration)")
+    elif version != REF_VERSION:
+        errors.append(f"{label}: ref_version {version!r} is not {REF_VERSION}; run the "
+                      f"{LEGACY_REF_MIGRATION} migration (`migrate`) to convert this ref")
+    unknown = sorted(str(k) for k in fm if k not in REF_TOP_KEYS and k not in LEGACY_REF_KEYS)
+    if unknown:
+        errors.append(f"{label}: unknown frontmatter key(s) {', '.join(repr(k) for k in unknown)} "
+                      f"(ref_version {REF_VERSION} allows {', '.join(sorted(REF_TOP_KEYS))})")
+    if "watch" not in fm or fm["watch"] is None:
+        errors.append(f"{label}: registry ref has no 'watch:' block (set watch.pack or watch.type)")
+    else:
+        errors.extend(check_watch_block(fm["watch"], packs, label))
+    return errors
+
+
+def check_watch_block(watch: Any, packs: set[str], label: str) -> list[str]:
+    """Schema-check one `watch:` mapping. Returns error strings (empty = clean).
+
+    `watch.pack` or `watch.type` is required (nothing defaults from a ref
+    `kind` any more). A bare watcher must be a built-in type and carry its
+    locator (`WATCH_LOCATOR_KEY`) inside the block.
+    """
     errors: list[str] = []
     if not isinstance(watch, dict):
         return [f"{label}: 'watch' must be a mapping, got {type(watch).__name__}"]
@@ -244,22 +356,23 @@ def check_watch_block(watch: Any, ref_kind: Any, packs: set[str], label: str) ->
         if not isinstance(pack, str) or pack not in packs:
             errors.append(f"{label}: watch.pack {pack!r} is not a known pack "
                           f"({', '.join(sorted(packs))})")
+    elif wtype is None:
+        errors.append(f"{label}: watch.pack or watch.type is required")
+    elif wtype in WATCH_RESERVED_TYPES:
+        errors.append(f"{label}: watch.type {wtype!r} is reserved and not implemented "
+                      "in this release")
+    elif wtype not in WATCH_TYPES:
+        errors.append(f"{label}: watch.type {wtype!r} is not a shipped detect type "
+                      f"({', '.join(sorted(WATCH_TYPES))})")
+    elif wtype == "harvest":
+        errors.append(f"{label}: watch.type 'harvest' needs a pack (set watch.pack)")
+    elif wtype not in WATCH_BUILTIN_TYPES:
+        errors.append(f"{label}: watch.type {wtype!r} is provided by a pack, not built in; "
+                      f"set watch.pack: {wtype}")
     else:
-        effective = wtype if wtype is not None else WATCH_TYPE_BY_REF_KIND.get(str(ref_kind or ""))
-        if effective in WATCH_RESERVED_TYPES:
-            errors.append(f"{label}: watch.type {effective!r} is reserved and not implemented "
-                          "in this release")
-        elif effective is None:
-            errors.append(f"{label}: watch.type missing and ref kind {ref_kind!r} has no "
-                          "default detect type")
-        elif effective not in WATCH_TYPES:
-            errors.append(f"{label}: watch.type {effective!r} is not a shipped detect type "
-                          f"({', '.join(sorted(WATCH_TYPES))})")
-        elif effective == "subagent" and not (isinstance(watch.get("prompt"), str)
-                                              and watch["prompt"].strip()):
-            errors.append(f"{label}: a bare subagent watcher needs watch.prompt")
-        elif effective == "harvest":
-            errors.append(f"{label}: watch.type 'harvest' needs a pack (set watch.pack)")
+        locator = WATCH_LOCATOR_KEY[wtype]
+        if not (isinstance(watch.get(locator), str) and watch[locator].strip()):
+            errors.append(f"{label}: a bare {wtype} watcher needs watch.{locator}")
     for key, (types, nullable) in WATCH_SCALAR_KEYS.items():
         if key not in watch:
             continue
@@ -271,9 +384,13 @@ def check_watch_block(watch: Any, ref_kind: Any, packs: set[str], label: str) ->
         elif not isinstance(v, types):
             errors.append(f"{label}: watch.{key} must be {'/'.join(t.__name__ for t in types)}"
                           f"{' or null' if nullable else ''}, got {type(v).__name__}")
-    if "cycles" in watch and not (isinstance(watch["cycles"], list)
-                                  and all(isinstance(c, str) for c in watch["cycles"])):
-        errors.append(f"{label}: watch.cycles must be a list of cadence names")
+    if "cycles" in watch:
+        # Mirrors the loader: `null` = no cycles, a bare string = a one-item list.
+        cyc = watch["cycles"]
+        if isinstance(cyc, str):
+            cyc = [cyc]
+        if cyc is not None and not (isinstance(cyc, list) and all(isinstance(c, str) for c in cyc)):
+            errors.append(f"{label}: watch.cycles must be a list of cadence names (or one name, or null)")
     if "capture_mode" in watch and watch["capture_mode"] not in WATCH_CAPTURE_MODES:
         errors.append(f"{label}: watch.capture_mode must be one of "
                       f"{sorted(WATCH_CAPTURE_MODES)}, got {watch['capture_mode']!r}")
@@ -285,32 +402,99 @@ def check_watch_block(watch: Any, ref_kind: Any, packs: set[str], label: str) ->
     return errors
 
 
-def validate_watchlist_refs(workspace: Path, framework: Path) -> tuple[list[str], list[str]]:
-    """Validate every ref in the registry. Returns (ok_labels, errors)."""
+def _sources_roots(workspace: Path) -> list[Path]:
+    """`Sources/` plus every project's `Sources/` and `Resources/` (payment
+    confirmations and their sidecars live under `Resources/`, per
+    contracts/payment-confirmations.md)."""
+    roots = [workspace / "Sources"]
+    projects = workspace / "Projects"
+    if projects.is_dir():
+        for p in sorted(projects.iterdir()):
+            for sub in ("Sources", "Resources"):
+                if (p / sub).is_dir():
+                    roots.append(p / sub)
+    return [r for r in roots if r.is_dir()]
+
+
+def stray_ref_warnings(workspace: Path, registry: Path) -> list[str]:
+    """Soft checks over `Sources/` trees: `.ref.md` outside the registry, any `.ref.txt`.
+
+    Since 0.20.0 every `.ref.md` is a watcher and lives in the registry;
+    document metadata is `<doc>.<ext>.meta.md`. `.ref.txt` is not read by
+    anything any more.
+    """
+    warnings: list[str] = []
+    registry_resolved = registry.resolve() if registry.exists() else registry
+    for root in _sources_roots(workspace):
+        for path in sorted(root.rglob("*")):
+            if not path.is_file():
+                continue
+            rel = path.relative_to(workspace).as_posix()
+            name = path.name.lower()
+            if name.endswith(".ref.txt"):
+                warnings.append(f"{rel}: `.ref.txt` is no longer supported ({LEGACY_REF_MIGRATION}); "
+                                "convert it to a watcher ref in the registry or delete it")
+            elif is_ref_name(path.name) and path.parent.resolve() != registry_resolved:
+                stem = ref_stem(path.name)
+                # A legacy `<doc>.<ext>.ref.md` sidecar sitting next to its document: name the rename.
+                hint = (f"rename it to `{stem}{META_SUFFIX}`" if (path.parent / stem).is_file()
+                        else f"document metadata belongs in <doc>.<ext>{META_SUFFIX}")
+                warnings.append(
+                    f"{rel}: stray .ref.md outside the registry — a .ref.md is a watcher "
+                    f"definition ({registry.relative_to(workspace).as_posix()}/); {hint}"
+                )
+    return warnings
+
+
+def validate_watchlist_refs(workspace: Path, framework: Path,
+                            ) -> tuple[list[str], list[str], list[str]]:
+    """Validate every ref in the registry. Returns (ok_labels, errors, warnings).
+
+    Errors: schema (`check_ref_frontmatter`), an id that fails
+    `WATCH_ID_PATTERN` once lowercased, two files whose lowercase stems
+    collide. Warnings: a filename that is not the canonical Title_Case form,
+    plus `stray_ref_warnings` over the Sources trees.
+    """
     from superagent.tools.sources_index import parse_canonical_ref
 
     registry = watchlist_path(workspace)
     refs = watch_ref_files(registry)
+    warnings = stray_ref_warnings(workspace, registry)
     if not refs:
-        return [], []
+        return [], [], warnings
     packs = known_watch_packs(framework, workspace)
     oks: list[str] = []
     errors: list[str] = []
+    by_id: dict[str, list[Path]] = {}
+    for ref in refs:
+        by_id.setdefault(watch_id_from_stem(ref_stem(ref.name)), []).append(ref)
     for ref in refs:
         label = ref.relative_to(workspace).as_posix()
+        stem = ref_stem(ref.name)
+        wid = watch_id_from_stem(stem)
+        if not WATCH_ID_RE.match(wid):
+            errors.append(f"{label}: id {wid!r} (filename stem, lowercased) must match "
+                          f"{WATCH_ID_PATTERN}: lowercase letters, digits, `_` and `-` only")
+            continue
+        siblings = by_id[wid]
+        if len(siblings) > 1:
+            errors.append(f"{label}: watcher id {wid!r} is claimed by "
+                          f"{len(siblings)} files ({', '.join(p.name for p in siblings)}); "
+                          "ids resolve case-insensitively — rename one")
+            continue
+        if stem != title_case_id(wid):
+            warnings.append(f"{label}: filename is not Title_Case; canonical name is "
+                            f"{title_case_id(wid)}{REF_SUFFIX} (loaded case-insensitively)")
         fm, _body = parse_canonical_ref(ref)
         if fm is None:
-            errors.append(f"{label}: not in canonical frontmatter form (normalize it first)")
+            errors.append(f"{label}: missing or unparseable YAML frontmatter (`---` block)")
             continue
-        if "watch" not in fm:
-            errors.append(f"{label}: registry ref has no 'watch:' block")
-            continue
-        errs = check_watch_block(fm["watch"], fm.get("kind"), packs, label)
+        errs = check_ref_frontmatter(fm, packs, label)
         if errs:
             errors.extend(errs)
         else:
             oks.append(label)
-    return oks, errors
+    return oks, errors, warnings
 
 
 def validate_file(path: Path, framework: Path) -> list[str]:
@@ -485,8 +669,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  WARN   {w}")
 
     # Watcher registry (contracts/watchlist.md). Absent folder = feature off.
-    ref_oks, ref_errs = validate_watchlist_refs(workspace, framework)
-    if ref_oks or ref_errs:
+    ref_oks, ref_errs, ref_warns = validate_watchlist_refs(workspace, framework)
+    if ref_oks or ref_errs or ref_warns:
         print()
         print(f"Validating {len(ref_oks) + len(ref_errs)} watcher ref(s) in "
               f"{watchlist_path(workspace).relative_to(workspace).as_posix()}/\n")
@@ -494,7 +678,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  OK     {label}")
         for e in ref_errs:
             print(f"  ERROR  {e}")
+        for w in ref_warns:
+            print(f"  WARN   {w}")
         total_errors += len(ref_errs)
+        total_warnings += len(ref_warns)
 
     print()
     suffix = f" ({total_warnings} warning(s) — soft checks, exit code unaffected)" if total_warnings else ""
