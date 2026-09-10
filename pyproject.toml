@@ -1,13 +1,12 @@
 [project]
 name = "superagent"
-version = "0.20.1"
+version = "0.21.0"
 description = "Superagent — life AI assistant. Local-first. Self-improving."
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
 authors = [{ name = "Mikhail Yurasov", email = "me@yurasov.me" }]
 dependencies = [
     "pyyaml",
-    "openpyxl",
     "pypdf>=6.11.0",
     "pillow>=12.2.0",
     "pymupdf>=1.27.2.3",

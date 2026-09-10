@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-09-08T20:24:08+00:00'
+generated_at: '2026-09-10T03:31:07+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -147,6 +147,14 @@ migrations:
   file: 0.20.0.md
   title: 'Refs are watchers only: ref schema 2, Title_Case registry names, .meta.md
     sidecars, SimpleFIN daily'
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute
+- to_version: 0.21.0
+  from_version: 0.20.1
+  file: 0.21.0.md
+  title: 'Framework prune: retire workbooks, inbox triage, and ten dormant skills;
+    park their workspace artifacts'
   breaking: false
   revertible: true
   estimated_duration: <1 minute
