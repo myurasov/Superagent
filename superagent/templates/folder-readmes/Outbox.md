@@ -9,7 +9,7 @@ If a file is for *your own* use (a chart, a briefing, a draft you'll keep iterat
 - **Drafts of emails** ready to copy-paste into your email client (or hand-send via the recipient's preferred channel).
 - **Printable checklists** for a contractor, doctor visit, school event.
 - **Exports** for a recipient (the CSV your tax preparer wants; the spreadsheet your accountant requested; the PDF for an insurance claim).
-- **The `handoff/` packet** — the "if-hit-by-a-bus" document for an executor / spouse / trusted person.
+- **Rendered reports** (`reports/`) — the printable PDFs the `report` skill produces for a recipient.
 - **Briefings to share** with a partner / financial advisor / second opinion.
 
 ## What does NOT go here
@@ -36,7 +36,7 @@ Outbox/
   staging/                ← finalized; awaiting your "send"
   sent/                   ← user marked sent; immutable thereafter
   sealed/                 ← versioned snapshots; immutable on creation
-  handoff/                ← versioned snapshots of the executor packet
+  reports/                ← rendered PDFs from the `report` skill
   emails/<recipient>/     ← per-recipient drafted emails
   contractors/<job>/      ← per-job packets
   taxes/<year>/           ← year-end packets for the tax preparer
@@ -47,7 +47,7 @@ You don't have to use any specific sub-folder — the layout is loose. The agent
 ```
 uv run python -m superagent.tools.outbox ensure drafts
 uv run python -m superagent.tools.outbox ensure drafts/emails
-uv run python -m superagent.tools.outbox ensure handoff
+uv run python -m superagent.tools.outbox ensure reports
 ```
 
 To clean up empty sub-folders (e.g. after experimenting with a layout you didn't end up using):
@@ -77,4 +77,4 @@ You can trust that what's in `Outbox/` is safe to send.
 
 - `doctor` proposes archive of files in `sent/` older than 90 days, but never deletes — moved to `Archive/<YYYY-MM>/Outbox-sent/` for history.
 - `drafts/` files older than 30 days that haven't been promoted to `staging/` get surfaced in the next monthly review with a "still relevant?" prompt.
-- The `handoff/` sub-folder accumulates versioned snapshots — `monthly-review` or the explicit `handoff` skill creates new ones; old ones stay forever (they're an audit trail).
+- The `sealed/` sub-folder accumulates versioned snapshots; old ones stay forever (they're an audit trail).

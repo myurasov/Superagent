@@ -1,16 +1,16 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: tag taxonomy + canonical aliases.
 #
-# Implements: superagent/docs/_internal/ideas-better-structure.md item #11.
+# Contract: contracts/tags.md.
 #
 # Today, every YAML row may carry `tags: [...]` as free-form strings.
 # This file gives those tags structure: canonical names, aliases the agent
 # should canonicalize TO the canonical name, brief descriptions, and a
-# usage counter the `tags` skill maintains.
+# usage counter the agent maintains (recounted during a `doctor` pass).
 #
-# Shape: entity-shape (mutate-in-place). The `tags` skill is the canonical
-# writer; other skills can append a row when they introduce a new tag,
-# but should prefer to use existing canonical names.
+# Shape: entity-shape (mutate-in-place). Any skill that introduces a new
+# tag appends a row here (per contracts/tags.md auto-register), but should
+# prefer to use existing canonical names.
 
 schema_version: 1
 last_updated: null
@@ -27,7 +27,7 @@ tags:
   #   color           — Optional hex color for renderers.
   #   category        — Free-text grouping (e.g. "finance", "lifecycle",
   #                      "priority", "scope").
-  #   uses_count      — Maintained by the `tags` skill; how many entity rows
+  #   uses_count      — Recounted by the `doctor` pass; how many entity rows
   #                      currently carry this tag (across all index files).
   #   first_seen      — ISO 8601 date.
   #   last_seen       — ISO 8601 date.

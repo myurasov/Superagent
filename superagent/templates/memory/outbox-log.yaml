@@ -1,7 +1,7 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: outbox lifecycle log.
 #
-# Implements: superagent/docs/_internal/ideas-better-structure.md item #13 (Outbox lifecycle).
+# Contract: contracts/outbox-lifecycle.md.
 #
 # Tracks every artifact written to Outbox/ across its lifecycle
 # (drafts → staging → sent → sealed). Append-only; mutate only the row
@@ -11,7 +11,7 @@
 #   drafts/   — in-progress; agent may revise; mutable.
 #   staging/  — finalized; awaiting user "send"; mutable until sent.
 #   sent/     — user marked sent; immutable thereafter.
-#   sealed/   — snapshots (e.g. handoff-packet versions); immutable on creation.
+#   sealed/   — snapshots (e.g. versioned report packets); immutable on creation.
 
 schema_version: 1
 last_updated: null
@@ -21,7 +21,7 @@ artifacts:
   #   id              — Stable slug ("art-YYYY-MM-DD-NNN" or skill-derived).
   #   created_by      — Skill that produced the artifact.
   #   kind            — email | summary | brief | shopping-list | csv |
-  #                      handoff-packet | report | other.
+  #                      report | other.
   #   title           — Display title.
   #   path            — Workspace-relative path; advances with lifecycle:
   #                      Outbox/drafts/<...>  ->  staging/<...>  ->  sent/<...>

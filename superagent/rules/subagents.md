@@ -27,8 +27,8 @@ Typical delegate cases:
   domain's `info.md` + `history.md` + related Sources + the events stream.
 - Historical archive reads beyond the current delta window (email archive
   sweeps, old `events/<YYYY-Qn>.yaml` partitions, long `history.md` files).
-- Multi-domain sweeps (doctor, supertailor-review evidence gathering,
-  follow-up's dropped-ball hunt across every open commitment).
+- Multi-domain sweeps (doctor, supertailor-review evidence gathering, a
+  dropped-ball hunt across every open commitment).
 - Transcript / attachment / statement ingestion where the raw content is
   large but the capture is a few index rows.
 - Multi-file framework-code investigations.

@@ -17,4 +17,4 @@ BEFORE persisting the new YAML state, so the diff captures the actual transition
 
 **Rotation**: when `config.preferences.audit.rotate_yearly: true`, `doctor` rotates `<file>.history.jsonl` to `Archive/<YYYY>/<file>.history.jsonl` at year flip.
 
-**Reading**: `audit history --file <path> --row <id>` returns the chronological transitions. The `audit` skill is the user-facing front-end.
+**Reading**: `uv run python -m superagent.tools.audit history --file <path> [--row <id>] [--limit N] [--json]` returns the chronological transitions; `... audit list` names every `.history.jsonl` in the workspace. The tool CLI is the front-end — when the user asks "when did X change?", run it and quote the transitions (there is no separate skill).

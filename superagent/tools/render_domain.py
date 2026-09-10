@@ -349,26 +349,6 @@ def _refresh_status_md(workspace: Path, domain: str) -> list[str]:
     return []
 
 
-def _refresh_workbook(workspace: Path, domain: str) -> list[str]:
-    """Refresh `Domains/<Name>/<domain>.xlsx` via render_workbooks.
-
-    `render_workbooks` is mtime-lazy: a re-render is a no-op when no source
-    yaml has changed since the last build. Returns a list of error strings.
-    """
-    try:
-        from superagent.tools import render_workbooks as rw
-    except ImportError as exc:
-        return [f"render_workbooks import failed: {exc}"]
-    framework = Path(rw.__file__).resolve().parents[1]
-    try:
-        result = rw.render_domain(workspace, framework, domain.lower())
-    except Exception as exc:  # noqa: BLE001
-        return [f"render_workbooks({domain}): {exc}"]
-    if result.status == "error":
-        return [f"render_workbooks({domain}): {result.error}"]
-    return []
-
-
 def refresh(workspace: Path, domains: list[str] | None = None,
             *, check_only: bool = False) -> dict[str, Any]:
     """Public entry point used by ingestors and skills.
@@ -379,10 +359,8 @@ def refresh(workspace: Path, domains: list[str] | None = None,
       1. Marker blocks in `info.md` / `history.md` (this module).
       2. The `## Open` / `## Done` task tables in `status.md`
          (delegated to `render_status`).
-      3. The per-domain `.xlsx` workbook (delegated to `render_workbooks`,
-         mtime-lazy — no-op when source yaml has not changed).
 
-    All three stages are best-effort: errors are aggregated into the
+    Both stages are best-effort: errors are aggregated into the
     returned summary but never raised. The data is already safely in
     `_memory/*.yaml`; rendering is a derived view.
 
@@ -397,7 +375,6 @@ def refresh(workspace: Path, domains: list[str] | None = None,
         summary = refresh_domain(workspace, d, check_only=check_only)
         if not check_only:
             summary["errors"].extend(_refresh_status_md(workspace, d))
-            summary["errors"].extend(_refresh_workbook(workspace, d))
         out["domains"].append(summary)
         out["errors"].extend(summary["errors"])
     return out

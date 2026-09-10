@@ -20,6 +20,8 @@ subscriptions:
   #   cadence           — monthly | annual | quarterly | weekly | one-shot.
   #   next_renewal      — ISO 8601 date.
   #   pay_from_account  — id from accounts-index.
+  #   domain            — Owning domain id ("finances" by default; "business" for a work
+  #                        tool). tools/world.py derives the `scoped` edge from it.
   #   url               — Where to manage (cancel, change plan).
   #   started_at        — ISO 8601 date.
   #   trial_ends        — ISO 8601 date or null. For free trials, set this and
@@ -49,6 +51,7 @@ subscriptions:
     cadence: "monthly"
     next_renewal: null
     pay_from_account: null
+    domain: "finances"
     url: ""
     started_at: null
     trial_ends: null

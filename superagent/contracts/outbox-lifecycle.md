@@ -9,7 +9,7 @@ Implements superagent/docs/_internal/ideas-better-structure.md item #13. Backed 
 - `drafts/` — in-progress; agent may revise; mutable.
 - `staging/` — finalized; awaiting user "send"; mutable until sent.
 - `sent/` — user marked sent; immutable thereafter.
-- `sealed/` — snapshots (e.g. handoff packet versions); immutable on creation.
+- `sealed/` — snapshots (e.g. versioned report packets); immutable on creation.
 
 **Every artifact tracked**: append a row to `_memory/outbox-log.yaml.artifacts[]` on create + on each stage transition. The `artifact.path` field advances with the file as it moves between sub-folders.
 
@@ -24,7 +24,7 @@ Per the user's "no empty folders" principle (parallel to
 under `Outbox/` is **created on first write** — never speculatively at init
 time. Init ships `Outbox/` + `Outbox/README.md` flat; the conventional
 lifecycle sub-folders (and any artifact-kind sub-folders like `emails/`,
-`handoff/`, `contractors/`, `taxes/`) appear when (and only when) the agent
+`reports/`, `contractors/`, `taxes/`) appear when (and only when) the agent
 first writes an artifact at that location.
 
 The contract:
@@ -34,7 +34,7 @@ The contract:
   what the workspace has actually accumulated content for — no clutter.
 - The first time any skill is about to write to `Outbox/<subdir>/<file>`
   (any depth — `Outbox/drafts/foo.md`, `Outbox/drafts/emails/2026-05-13-x.md`,
-  `Outbox/handoff/handoff-20260513.md`, …) it MUST first call:
+  `Outbox/reports/2026-05-13_solar-summary.pdf`, …) it MUST first call:
 
       uv run python -m superagent.tools.outbox ensure <subdir>[/<sub>...]
 
@@ -59,7 +59,7 @@ The contract:
 
 Skills MUST cite this section in their first step when they write into
 `Outbox/`. Implicated skills (in MVP): `draft-email` (`Outbox/emails/`),
-`handoff` (`Outbox/handoff/`), and any future skill that emits a
+`report` (`Outbox/reports/`), and any future skill that emits a
 publicly-shareable artifact (per `AGENTS.md` § "Public artifact
 destination"). The agent may also call `ensure` proactively when it's
 about to drop a one-off artifact into `Outbox/drafts/` (the most common

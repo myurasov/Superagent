@@ -128,7 +128,7 @@ Read `_memory/health-records.yaml`:
 - **Active conditions with no visit in 6 months** for any chronic-care relationships.
 - **Lab results flagged abnormal** that haven't been follow-up booked.
 
-For each overdue item, suggest `add-appointment` or `appointments find-next-slot`.
+For each overdue item, suggest `appointments add` or `appointments find-next-slot`.
 
 ## 7. Domain hygiene
 

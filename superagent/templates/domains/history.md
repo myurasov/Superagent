@@ -12,9 +12,9 @@
     - Newest entry at the TOP of the Log section.
     - Each entry uses an H4 header `#### YYYY-MM-DD — <one-line title>`.
     - Body is free-form — bullets, paragraphs, sub-headers as needed.
-    - Skills like `log-event`, `health-log`, `vehicle-log`, `home-maintenance`,
-      `pet-care`, and `appointments` (on completion) append entries
-      automatically; manual entries are also welcome.
+    - Skills like `log-event`, `health-log`, `pet-care`, and `appointments`
+      (on completion) append entries automatically; manual entries are
+      also welcome.
     - Ingestors do NOT append H4 entries. They refresh an OPTIONAL
       auto-managed block instead (see below).
 

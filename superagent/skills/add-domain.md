@@ -5,7 +5,7 @@ description: >-
   13 defaults seeded by init. Appends a row to `_memory/domains-index.yaml`.
   Per `contracts/domains-and-assets.md` § 6.4a, the folder under
   `Domains/<Name>/` is LAZY — it materializes the first time real data lands
-  for the domain (via add-contact / add-asset / log-event / etc., or via the
+  for the domain (via add-contact / add / log-event / etc., or via the
   optional initial-entry step in this skill). Detection-driven suggestions
   (per § 6.4b) also route through this skill on user "yes".
 triggers:
@@ -107,7 +107,7 @@ If folder is still lazy:
 ```
 Registered domain "<Name>" in domains-index.yaml.
 Domains/<Name>/ will appear when the first row of data lands (via
-add-contact / add-asset / log-event / health-log / ... or by re-running this
+add-contact / add / log-event / health-log / ... or by re-running this
 skill and saying "yes" to the initial-entry prompt).
 ```
 

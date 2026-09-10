@@ -107,7 +107,6 @@ The crisp boundaries:
 Set `sensitive: true` in a document's `.meta.md` sidecar (or in its index row) for medical records, account statements, legal documents:
 
 - Outbound surfaces (`draft-email`, `summarize-thread`, anything that lands in `Outbox/`) redact the content.
-- The `handoff` skill picks up sensitive sources by default; non-sensitive ones are opt-in.
 - Anything carrying a full account number, SSN, or medical detail beyond a receipt line routes per `contracts/sensitive-tier.md` rather than sitting here in the clear.
 
 ## Privacy

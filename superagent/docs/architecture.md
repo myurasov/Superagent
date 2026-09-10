@@ -52,8 +52,8 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 │   ├── superagent.agent.md         ← role definitions (Superagent + helpers)
 │   ├── supertailor.agent.md        ← Supertailor's role (observer + proposer)
 │   ├── supercoder.agent.md         ← Supercoder's role (sole implementer)
-│   ├── skills/                     ← ~50 skills, one .md per skill + _manifest.yaml
-│   ├── contracts/                  ← 39 multi-actor contracts + _manifest.yaml
+│   ├── skills/                     ← 36 skills, one .md per skill + _manifest.yaml
+│   ├── contracts/                  ← 29 multi-actor contracts + _manifest.yaml
 │   ├── rules/                      ← machine-readable rule catalogues + _manifest.yaml
 │   ├── templates/
 │   │   ├── memory/                 ← YAML templates copied to _memory/ on init
@@ -82,7 +82,7 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
     │   ├── <your-folders>/         ←   documents + optional `<doc>.<ext>.meta.md` sidecars; never deleted by skills
     │   └── Watchlist/              ←   watcher registry: one `<name>.ref.md` per watched source (reserved name, user-editable)
     ├── Inbox/                      ← staging for incoming files
-    ├── Outbox/                     ← shareable artifacts (drafts, summaries, handoff packet)
+    ├── Outbox/                     ← shareable artifacts (drafts, summaries, rendered reports)
     ├── Archive/                    ← reversible archive (per `doctor` skill)
     └── todo.md                     ← cross-cutting task view
 ```
@@ -100,20 +100,20 @@ The two layers serve different access patterns:
 | `config.yaml` | profile, preferences, watchlist defaults | every skill |
 | `context.yaml` | rolling state (last_check, current_focus, alerts) | `whatsup`, `daily-update`, `weekly-review`, `monthly-review` |
 | `model-context.yaml` | model's accumulated learning across sessions | every skill (read at session start) |
-| `interaction-log.yaml` | append-only log of touchpoints (every interaction the agent records) | `follow-up`, `summarize-thread`, all cadence skills |
+| `interaction-log.yaml` | append-only log of touchpoints (every interaction the agent records) | `summarize-thread`, all cadence skills, the Supertailor |
 | `ingestion-log.yaml` | append-only per-run summaries of every harvest | `watch`, cadence skills, Supertailor |
-| `todo.yaml` | task list (P0-P3) | `todo`, `triage-overdue`, all cadence skills |
+| `todo.yaml` | task list (P0-P3) | `todo` (including its overdue-triage mode), all cadence skills |
 | `domains-index.yaml` | metadata about each domain folder | every skill |
 | `projects-index.yaml` | metadata about each project (charter, lifecycle, target_date) | `add-project`, `projects`, all cadence skills |
 | `sources-index.yaml` | metadata about each Sources/ entry (doc + ref) | `sources`, `add-source`, every skill that needs reference data |
-| `assets-index.yaml` | every owned physical thing | `add-asset`, `vehicle-log`, `home-maintenance`, `pet-care`, monthly-review |
-| `accounts-index.yaml` | every financial / utility / subscription account | `add-account`, `bills`, `expenses`, the simplefin harvest |
+| `assets-index.yaml` | every owned physical thing | `add` (asset), `log-event` (vehicle / home events), `pet-care`, monthly-review |
+| `accounts-index.yaml` | every financial / utility / subscription account | `add` (account), `bills`, `expenses`, the simplefin harvest |
 | `contacts.yaml` | every person | `add-contact`, every interaction skill |
 | `bills.yaml` | recurring bills | `bills`, `daily-update`, `monthly-review`, the reconciler |
 | `subscriptions.yaml` | recurring subscriptions | `subscriptions`, `monthly-review` |
 | `appointments.yaml` | scheduled appointments | `appointments`, `daily-update` |
 | `important-dates.yaml` | birthdays / anniversaries / deadlines | `important-dates`, `daily-update` |
-| `documents-index.yaml` | important documents (with expiration tracking) | `add-document`, `monthly-review`, `handoff` |
+| `documents-index.yaml` | important documents (with expiration tracking) | `add` (document), `monthly-review` |
 | `health-records.yaml` | medical events, meds, vitals, conditions | `health-log`, `appointments` (medical), monthly-review |
 | `watchlist-state.yaml` | machine-owned run state per watcher (fingerprint, last_checked, error_streak, budget counters); the registry itself is `Sources/Watchlist/<name>.ref.md` | `tools/watchlist.py`, `watch`, cadence skills |
 | `personal-signals.yaml` | self-development feedback (capture + surface) | `personal-signals`, `weekly-review`, Supertailor |
@@ -243,7 +243,7 @@ The frameworks were designed for the pre-AI era when capture / organize / distil
 | `_memory/health-records.yaml` | medications, conditions, family history | symlink to encrypted disk image; back up only via encrypted destination |
 | `_memory/accounts-index.yaml` | account labels + last-4 (full creds in vault) | same; full creds NEVER stored here, always vault_ref |
 | `_memory/contacts.yaml` | phone numbers, addresses | same |
-| `Outbox/handoff/` | aggregated estate-handoff packet | print + safe-deposit-box; encrypted USB |
+| `Outbox/sealed/` | sealed snapshots of shareable packets (tax-prep, contractor briefs) | print + safe-deposit-box; encrypted USB |
 | the `Sources/` folder you keep pet records in (e.g. `Sources/Pets/`) | vet records (often contain home address) | encrypted destination |
 | pack `auth.ref` (a `Sources/Watchlist/<name>.ref.md` carries no auth field) | references to credentials | not the credentials themselves; references to a vault or a `_memory/sensitive/` file |
 
@@ -255,7 +255,7 @@ If the user wants their partner / household to share Superagent state:
 
 1. **Shared workspace (full sharing)** — copy `workspace/` to a shared iCloud Drive / Dropbox / Syncthing folder. Both users point Superagent at the same workspace. Edit conflicts are last-write-wins (no merge logic in MVP); simultaneous editing is not recommended.
 2. **Federated workspace (per-user, with shared subset)** — each user has their own `workspace/`. Specific subfolders (e.g. `Domains/Family/`, `Domains/Home/`, `Domains/Pets/`) are symlinked into a shared cloud folder. Personal subfolders (Health, Career, Self) stay private.
-3. **Single-user with handoff** — one person runs Superagent; the partner gets the `handoff` packet annually for "if hit by a bus" continuity, and on demand for tax-prep / annual-review style snapshots.
+3. **Single-user with shared snapshots** — one person runs Superagent; the partner gets a rendered `report` (`Outbox/reports/`) on demand for tax-prep / annual-review style snapshots.
 
 Built-in multi-user / sync is on the roadmap (LOE-L: "Multi-user vault with last-write-wins + per-domain ACL").
 
@@ -268,10 +268,10 @@ Built-in multi-user / sync is on the roadmap (LOE-L: "Multi-user vault with last
 | Project templates | 5-file with charter; can be instantiated from a workflow |
 | Sources templates | `ref.md` watcher template (`ref_version: 2`) + `Sources/` folder convention (documents, `.meta.md` sidecars, `Watchlist/` registry; no cache) |
 | Workflow templates | 5 starter workflows + `_schema.yaml` |
-| Skills | ~50 skills documented + indexed in `skills/_manifest.yaml`; long ones carry an auto-generated step index |
-| Contracts | 39 multi-actor contracts under `contracts/`, indexed by `contracts/_manifest.yaml` |
+| Skills | every skill documented + indexed in `skills/_manifest.yaml` (the count is the manifest's); long ones carry an auto-generated step index |
+| Contracts | 29 multi-actor contracts under `contracts/`, indexed by `contracts/_manifest.yaml` |
 | Rules | machine-readable rule catalogues (anti-patterns shipped) + `workspace/_custom/rules/` user overlay |
-| Tools | ~30 shipped + tested (workspace_init, validate, render_status, render_report, world, sources_index, watchlist, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, ...) |
+| Tools | ~30 shipped + tested (workspace_init, validate, render_status, render_report, world, sources_index, watchlist, log_window, audit, events_derive, anti_patterns, home, skill_loader, icloud_dup_check, ...) |
 | Watchlist | `tools/watchlist.py` (six detect types, lifecycle, throttle + budget enforcement, `--report`), `Sources/Watchlist/` registry, `_memory/watchlist-state.yaml`, six shipped packs (`simplefin`, `gmail`, `url`, `cmd`, `path`, `subagent`) + `_custom/watchers/` overlay, `IngestorBase` harvest contract, standalone `csv` importer |
 | World graph | `_memory/world.yaml` derived state; `tools/world.py related <handle>` |
 | Events stream | quarterly-partitioned `_memory/events/<YYYY-Qn>.yaml`; cross-entity timeline queries |

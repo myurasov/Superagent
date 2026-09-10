@@ -49,5 +49,5 @@ The helper:
 
 - HEIC files in `workspace/Inbox/` are fine while they are in transit. The conversion happens at the moment the agent files them into `Sources/`.
 - HEIC files in `Outbox/` are not normally produced (the agent generates HTML / PDF / Markdown artifacts there); if a workflow ever does, the same JPEG-only policy applies before the artifact is published.
-- Historical mentions of HEIC filenames in append-only logs (`interaction-log.yaml`, `history.md`, `inbox-log.yaml`) are NOT rewritten. Those entries document what happened at the time of import; the policy is forward-only.
+- Historical mentions of HEIC filenames in append-only logs (`interaction-log.yaml`, `history.md`) are NOT rewritten. Those entries document what happened at the time of import; the policy is forward-only.
 - Bytes a watcher's harvest or a live capture pulls (an email attachment saved per `contracts/email-capture.md`, for instance) follow the upstream source's format; the agent does not transcode them.

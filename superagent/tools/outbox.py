@@ -9,7 +9,7 @@ This module is the helper any skill / tool calls before writing:
     from superagent.tools.outbox import ensure
     ensure(workspace, "drafts")              # mkdir Outbox/drafts/ if missing
     ensure(workspace, "drafts", "emails")    # mkdir Outbox/drafts/emails/
-    ensure(workspace, "handoff")             # mkdir Outbox/handoff/
+    ensure(workspace, "reports")             # mkdir Outbox/reports/
 
 The shipped `Outbox/` ships flat — `Outbox/README.md` + nothing else. The
 four lifecycle stages (drafts / staging / sent / sealed) are conventions,

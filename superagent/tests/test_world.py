@@ -390,3 +390,38 @@ def test_rebuild_emits_watch_nodes_for_registry_refs(initialized_workspace: Path
     )  # project:solar is not registered in this fixture; nothing else may dangle
     related = related_to(initialized_workspace, "domain:home")
     assert any(n["id"] == "watch:solar-permit" for n in related["neighbors"])
+
+
+def test_related_to_accepts_legacy_ids_and_bare_slugs(initialized_workspace: Path) -> None:
+    """R2-M1 (0.21.0): `related contact-abc` used to look up `other:contact-abc` and find nothing."""
+    from superagent.tools.world import ensure_edge, ensure_node, rebuild, related_to
+
+    rebuild(initialized_workspace)  # domain nodes exist; neighbors are filtered to known nodes
+    ensure_node(initialized_workspace, "contact:abc", "contact", path="_memory/contacts.yaml#abc", label="Abc")
+    ensure_edge(initialized_workspace, "contact:abc", "domain:health", "rolodex_member", evidence="test")
+    for query in ("contact:abc", "contact-abc", "abc"):
+        result = related_to(initialized_workspace, query)
+        assert result["node"] is not None and result["node"]["id"] == "contact:abc", query
+        assert [n["id"] for n in result["neighbors"]] == ["domain:health"], query
+    # An unknown handle is never guessed onto another node: it comes back
+    # normalized (the tool's pre-existing placeholder shape) with no neighbors.
+    for query, expected in (("contact:nobody", "contact:nobody"), ("nobody", "other:nobody")):
+        result = related_to(initialized_workspace, query)
+        assert result["node"]["id"] == expected and result["neighbors"] == [], query
+
+
+def test_rebuild_derives_scoped_edge_from_domain_field(initialized_workspace: Path) -> None:
+    """R2-M3 (0.21.0): bills / subscriptions / accounts carry `domain:`; it must map to a `scoped` edge
+    so the edge the Add modes write survives `rebuild`."""
+    import yaml
+
+    from superagent.tools.world import rebuild
+
+    bills = initialized_workspace / "_memory" / "bills.yaml"
+    data = yaml.safe_load(bills.read_text()) or {}
+    data["bills"] = [{"id": "pge-electric", "name": "PG&E", "domain": "home", "amount": 1.0,
+                      "status": "active"}]
+    bills.write_text(yaml.safe_dump(data, sort_keys=False))
+    graph = rebuild(initialized_workspace)
+    edges = [e for e in graph["edges"] if e.get("from") == "bill:pge-electric" and e.get("kind") == "scoped"]
+    assert [e["to"] for e in edges] == ["domain:home"], edges

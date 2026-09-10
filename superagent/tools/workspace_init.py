@@ -310,7 +310,7 @@ def init_folders(workspace: Path, framework: Path, dry_run: bool, log: list[str]
 
     `Outbox/` ships FLAT — only `Outbox/` + `Outbox/README.md`. The four
     documented lifecycle sub-folders (drafts / staging / sent / sealed) and
-    any artifact-kind sub-folders (emails / handoff / contractors / ...)
+    any artifact-kind sub-folders (emails / reports / contractors / ...)
     are LAZY per `contracts/outbox-lifecycle.md` § "Lazy sub-directory
     creation" — they materialize on first write via
     `superagent.tools.outbox.ensure(workspace, <subdir>)`.

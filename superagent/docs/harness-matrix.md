@@ -20,7 +20,8 @@ self-identifies its row; no code detection beyond `tools/ide.py`
 | MCP config file | `.cursor/mcp.json` | `.mcp.json` | TOML config (own format) | Varies |
 
 Per-file wiring (which harness reads which setup file, and whether it is
-committed) is tabulated in `AGENTS.md` § "Harness setup". The committed
+committed) is tabulated in [`harness-setup.md`](harness-setup.md); `AGENTS.md`
+§ "Harness setup" carries the binding summary. The committed
 `.cursor/` tree holds only `hooks.json` and the `mcp.json.cursor` template —
 there is no `.cursor/rules/` shim, since Cursor reads `AGENTS.md` natively.
 `.claudeignore` keeps `.cursor/` and `workspace/` out of Claude Code's context.

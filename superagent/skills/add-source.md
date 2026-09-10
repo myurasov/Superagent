@@ -105,7 +105,7 @@ The user provides a path (or has just dropped a file in `Inbox/`). Steps:
 7. **Sensitive?**: default false; flip true for medical, legal, accounts.
 8. **Notes**: free text.
 
-**Move** the file to the chosen path if it comes from `Inbox/` — never copy and leave the original. Copy only if the source is outside `Inbox/`. After moving from `Inbox/`, record the decision in `workspace/_memory/inbox-log.yaml` via `uv run python -m superagent.tools.inbox_triage record --file <inbox filename> --action filed --destination <path> --note "<note>"` (never hand-append YAML rows; include the sources-index id in the note once assigned).
+**Move** the file to the chosen path if it comes from `Inbox/` — never copy and leave the original. Copy only if the source is outside `Inbox/`. (`Inbox/` is a plain drop folder: the user drops files there and asks the agent to file them; this skill is the filing path.)
 
 **Sidecar (optional).** When the document needs metadata the index row cannot hold on its own — structured fields (a payment confirmation's `payee` / `amount` / `payment_date` per `contracts/payment-confirmations.md` § 2), a story worth keeping next to the file, a `provenance` block — write `<filename>.meta.md` beside it (`contracts/sources.md` § 15.3; the name is the document's FULL filename plus `.meta.md`):
 

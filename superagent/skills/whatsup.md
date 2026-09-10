@@ -102,7 +102,7 @@ Read `_memory/todo.yaml`:
 
 If overdue count > 0, end with:
 
-> **<N> overdue tasks** — run `triage-overdue` to force a decision on each.
+> **<N> overdue tasks** — run `todo triage` to force a decision on each.
 
 Echo the same pointer line into this run's `interaction-log.yaml` row `action_items` (step 9) so the pointer is auditable by grep.
 
@@ -158,5 +158,5 @@ Skip empty sections silently. Total output target: ≤ 30 lines.
      action: "quick_delta"
      summary: "Quick delta surfaced (X bills, Y appts, Z dates, N tasks, M alerts)."
      related_domain: null
-     action_items: []   # include the step 5 triage-overdue pointer and any step 7 nudge lines emitted this run
+     action_items: []   # include the step 5 overdue-triage pointer and any step 7 nudge lines emitted this run
    ```

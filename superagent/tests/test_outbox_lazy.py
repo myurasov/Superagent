@@ -44,8 +44,8 @@ def test_ensure_creates_nested_subdir(initialized_workspace: Path) -> None:
 
 
 def test_ensure_idempotent(initialized_workspace: Path) -> None:
-    assert ensure(initialized_workspace, "handoff") is True
-    assert ensure(initialized_workspace, "handoff") is False
+    assert ensure(initialized_workspace, "reports") is True
+    assert ensure(initialized_workspace, "reports") is False
 
 
 def test_ensure_does_not_clobber_existing_files(initialized_workspace: Path) -> None:
@@ -78,31 +78,31 @@ def test_list_status_empty_when_flat(initialized_workspace: Path) -> None:
 def test_list_status_walks_recursively(initialized_workspace: Path) -> None:
     ensure(initialized_workspace, "drafts")
     ensure(initialized_workspace, "drafts", "emails")
-    ensure(initialized_workspace, "handoff")
+    ensure(initialized_workspace, "reports")
     (initialized_workspace / "Outbox" / "drafts" / "emails" / "x.md").write_text("hi")
     rows = list_status(initialized_workspace)
     paths = sorted(r["path"] for r in rows)
-    assert paths == ["drafts", "drafts/emails", "handoff"]
+    assert paths == ["drafts", "drafts/emails", "reports"]  # sorted; "reports" is an ad-hoc artifact folder
     by_path = {r["path"]: r for r in rows}
     assert by_path["drafts/emails"]["file_count"] == 1
-    assert by_path["handoff"]["file_count"] == 0
+    assert by_path["reports"]["file_count"] == 0
     assert by_path["drafts"]["is_known_stage"] is True
-    assert by_path["handoff"]["is_known_stage"] is False
+    assert by_path["reports"]["is_known_stage"] is False
 
 
 def test_purge_empty_removes_only_empty_subdirs(initialized_workspace: Path) -> None:
     ensure(initialized_workspace, "drafts")
     ensure(initialized_workspace, "staging")
-    ensure(initialized_workspace, "handoff")
+    ensure(initialized_workspace, "reports")
     # Put a real file in drafts so it stays
     (initialized_workspace / "Outbox" / "drafts" / "proposal.md").write_text("body")
     deleted, kept = purge_empty(initialized_workspace)
     assert "Outbox/staging/" in deleted
-    assert "Outbox/handoff/" in deleted
+    assert "Outbox/reports/" in deleted
     assert "Outbox/drafts/" in kept
     assert (initialized_workspace / "Outbox" / "drafts").is_dir()
     assert not (initialized_workspace / "Outbox" / "staging").exists()
-    assert not (initialized_workspace / "Outbox" / "handoff").exists()
+    assert not (initialized_workspace / "Outbox" / "reports").exists()
 
 
 def test_purge_empty_dry_run_deletes_nothing(initialized_workspace: Path) -> None:

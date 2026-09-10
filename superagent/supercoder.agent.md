@@ -113,7 +113,7 @@ For `destination: superagent`, full git policy is in `AGENTS.md` § "Git commits
 - **No body, no bullet list, no extra paragraphs.** PR description / code comments carry the longer prose.
 - **No non-ASCII characters** in commit messages.
 - **No AI-attribution lines** — never `Made-with: Cursor`, `Co-authored-by: Cursor <cursoragent@cursor.com>` (or any other AI vendor), `Generated with [Cursor]`, robot / sparkles emoji, "via Cursor", or model-name references.
-- **Strip-after-commit** for the Cursor auto-injection — full `git filter-branch` recipe in `AGENTS.md` § "Strip-after-commit". A local `commit-msg` hook (`templates/githooks/commit-msg`) blocks the broader catalogue at commit time as a second line of defense.
+- **Strip-after-commit** for the Cursor auto-injection — full `git filter-branch` recipe in `rules/git-commits.md` § 3. A local `commit-msg` hook (`templates/githooks/commit-msg`) blocks the broader catalogue at commit time as a second line of defense.
 - **Atomic commits** — unrelated changes go in different commits. One brief = one commit. If a brief is large enough to warrant several logical units, split it into several `supertailor-suggestions.yaml` rows up front, not at commit time.
 - **Only framework files** under `superagent/` are committed — **never** `workspace/` data.
 - **Commit messages do not mention** anything personally identifying.
@@ -155,6 +155,6 @@ Examples of bad commit messages:
 3. **Plan the change.** List every file to be created or modified, scoped to the destination tree (`superagent/...` or `workspace/_custom/...`). Surface the plan to the user; ask for confirmation before any write.
 4. **Implement.** Make file changes per the plan. Update tests in the same commit. No scope creep.
 5. **Verify.** Run `pytest -q` (Mode-1 framework changes always; `_custom` overlay changes when the overlay carries its own tests). If any test fails, debug and fix before committing. If a fix would expand the brief's scope, stop and ask.
-6. **Commit.** Only when `destination: superagent`. One commit, one sentence, imperative tense. Strip the Cursor trailer per `AGENTS.md` § "Strip-after-commit". For `_custom`, skip this step — `workspace/` is gitignored.
+6. **Commit.** Only when `destination: superagent`. One commit, one sentence, imperative tense. Strip the Cursor trailer per `rules/git-commits.md` § 3. For `_custom`, skip this step — `workspace/` is gitignored.
 7. **Report.** Print: `Implemented st-NNN. Destination: <superagent|_custom>. Files created: X. Files modified: Y. Tests: passing. Commit: <short-sha or "(workspace, not committed)">.`
 8. **Mark the suggestion implemented.** Update `supertailor-suggestions.yaml` — `status: implemented`, `resolved_at: <now>`, `implementation_notes: "<one-line summary + commit sha or '(workspace)'>"`.

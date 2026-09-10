@@ -26,6 +26,8 @@ accounts:
   #   opened            — ISO 8601 date when opened.
   #   closed            — ISO 8601 date when closed; null if open.
   #   status            — active | dormant | closed.
+  #   domain            — Owning domain id ("finances" for most accounts; "business" for a
+  #                        business account). tools/world.py derives the `scoped` edge from it.
   #   beneficiaries     — List of beneficiary names (relevant for retirement / life ins).
   #   linked_bills      — List of bill ids paid from this account.
   #   linked_subs       — List of subscription ids charged to this account.
@@ -107,6 +109,7 @@ accounts:
     opened: null
     closed: null
     status: "active"
+    domain: "finances"
     beneficiaries: []
     linked_bills: []
     linked_subs: []

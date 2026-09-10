@@ -135,7 +135,7 @@ end with "No workspace-data changes — patch, no migration."
    when a migration ships. One sentence, imperative, ASCII, no body.
 3. Commit through the hooks (`pre-commit` re-runs ruff; `commit-msg` blocks
    AI attribution). **Never `--no-verify`.**
-4. Strip trailers per `AGENTS.md` § "Git commits" → "Strip-after-commit" (the
+4. Strip trailers per `rules/git-commits.md` § 3 (the
    `filter-branch --msg-filter` snippet over `@{u}..HEAD`), then verify with
    `git log -1 --format=%B`: subject line only, no `Made-with` /
    `Co-authored-by` / vendor names.

@@ -2,22 +2,23 @@
 # Superagent memory: the world graph — explicit entity-relationship index.
 #
 # This file is DERIVED state: it can be fully reconstructed from the entity
-# files (contacts.yaml, accounts-index.yaml, assets-index.yaml, bills.yaml,
-# subscriptions.yaml, appointments.yaml, important-dates.yaml,
-# documents-index.yaml, domains-index.yaml, projects-index.yaml,
-# sources-index.yaml, health-records.yaml) by running
+# files (domains-index.yaml, projects-index.yaml, contacts.yaml,
+# assets-index.yaml, accounts-index.yaml, bills.yaml, subscriptions.yaml,
+# appointments.yaml, important-dates.yaml, documents-index.yaml,
+# sources-index.yaml, decisions.yaml, tags.yaml) by running
 # `uv run python -m superagent.tools.world rebuild`.
 #
 # Every entity-mutating skill SHOULD update the graph in the same
 # transaction (per `contracts/world-graph.md`).
 # If the graph drifts, `tools/world.py rebuild` regenerates it from scratch.
-# `tools/validate.py` checks that every node has a corresponding entity row.
+# `uv run python -m superagent.tools.world validate` reports edges whose
+# endpoints are not nodes; the fix is a rebuild.
 #
 # Shape: nodes describe entities (id + kind); edges describe relationships
 # (from -> to + kind). Both are append-mostly; deletes happen only on
 # entity removal (rare; entities normally archive, not delete).
 #
-# Implements: superagent/docs/_internal/ideas-better-structure.md item #3 + superagent/docs/_internal/perf-improvement-ideas.md BB-4.
+# Contract: contracts/world-graph.md.
 
 schema_version: 1
 last_updated: null
@@ -31,10 +32,10 @@ nodes:
   #                Per the operational-handles convention
   #                (contracts/operational-handles.md). For back-compat, the
   #                bare slug is accepted; the world rebuilder normalizes.
-  #   kind      — entity kind: contact | account | asset | bill | subscription
-  #                | appointment | important_date | document | domain | project
-  #                | source | medication | vital_log | task | health_visit
-  #                | decision | tag | other
+  #   kind      — entity kind (exactly what `rebuild` emits): domain | project
+  #                | contact | asset | account | bill | subscription
+  #                | appointment | important_date | document | source
+  #                | decision | tag | watch
   #   path      — Workspace-relative path to the entity's row OR file:
   #                "_memory/contacts.yaml#contact-dr-smith-dentist" for indexed,
   #                "Domains/Health/info.md" for a markdown-only entity.
@@ -51,26 +52,30 @@ edges:
   # Each edge:
   #   from      — Source node id (operational handle).
   #   to        — Target node id.
-  #   kind      — Relationship kind. Canonical set:
-  #                pay_from        — bill / subscription -> account
-  #                provider        — appointment / health_visit -> contact
-  #                scoped          — anything -> domain / project
-  #                related_domain  — project -> domain
-  #                related_project — task / event / source -> project
-  #                related_asset   — bill / appointment / document -> asset
-  #                owns            — domain -> asset
-  #                holds           — account -> asset (e.g. brokerage holdings)
-  #                stakeholder     — project -> contact
-  #                rolodex_member  — domain / project -> contact
-  #                covers          — document -> asset / domain
-  #                lives_under     — sub-entity -> parent (per #10 hierarchy)
-  #                tagged          — anything -> tag
-  #                supersedes      — newer entity -> older
-  #                derives_from    — derived entity -> source entity
-  #                triggered_by    — event -> entity that caused it
-  #                affects         — decision -> entities decision touches
+  #   kind      — Relationship kind. Canonical set = exactly what `rebuild`
+  #                derives (contracts/world-graph.md § 3); any other kind is
+  #                dropped on the next rebuild:
+  #                scoped            — anything -> domain / project
+  #                                    (from `domain` / `related_domain` / `related_project`)
+  #                related_asset     — bill / appointment / account / watch -> asset
+  #                                    (from `related_asset` / `asset` / `linked_assets[]`)
+  #                pay_from          — bill / subscription / watch -> account
+  #                                    (from `pay_from_account` / `related_account` / `account`)
+  #                provider          — appointment / contact -> contact
+  #                                    (from `provider` / `primary_care` / `pharmacy` / `prescribed_by`)
+  #                contact           — important_date -> contact (from `contact`)
+  #                for_member        — appointment / document / important_date -> contact
+  #                                    (from `for_member` when it is a contact id)
+  #                ordered_by        — anything -> contact (from `ordered_by`)
+  #                lives_under       — sub-entity -> parent domain / project (from `parent`)
+  #                instantiated_from — project -> workflow (from `workflow`)
+  #                linked_account    — account -> account (from `linked_accounts[].account`)
+  #                stakeholder       — project -> contact (from `stakeholders[]`)
+  #                rolodex_member    — domain / project -> contact (from `primary_contacts[]`)
+  #                tagged            — anything -> tag (from `tags[]`)
+  #                indexed_as        — watch -> source (a watcher's own sources-index row)
   #   evidence  — Optional pointer to where this relationship was sourced
-  #                (e.g. "bills.yaml.<id>.pay_from_account field").
+  #                (e.g. "bills.yaml.<id>.pay_from_account").
   - from: ""
     to: ""
     kind: ""

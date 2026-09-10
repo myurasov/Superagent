@@ -36,7 +36,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 | `history.md` | Every doctor / dentist / vet visit; every notable health event; lab results summaries (the actual PDFs go under `Sources/<your-folders>/` — e.g. `Sources/Medical/<member>/` — via `add-source --to-domain health`); medication changes. |
 | `rolodex.md` | Doctors, dentists, optometrists, mental-health professionals, specialists, pharmacy, urgent care. |
 
-**Skills that write here**: `add-contact` (provider) → `rolodex.md`; `add-appointment` (medical) → `history.md` after completion; `health-log` → `_memory/health-records.yaml` plus `history.md`; `appointments mark-complete` → `history.md` + `_memory/health-records.yaml.visits[]`.
+**Skills that write here**: `add-contact` (provider) → `rolodex.md`; `appointments` add (medical) → `appointments.yaml`, then `history.md` after completion; `health-log` → `_memory/health-records.yaml` plus `history.md`; `appointments mark-complete` → `history.md` + `_memory/health-records.yaml.visits[]`.
 
 **Sensitive**. The structured data (`_memory/health-records.yaml`) is one of the most sensitive files in the workspace. See `architecture.md` § "Sensitive subfiles" for encryption guidance.
 
@@ -53,7 +53,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 | `history.md` | Operational events — opened / closed account, new policy, refinance, mortgage paydown, large outflow, charitable giving, tax filing, debt restructuring. |
 | `rolodex.md` | Bank rep (if you have one), financial advisor, accountant, tax preparer, insurance agents (one per policy carrier), estate lawyer. |
 
-**Skills that write here**: `add-account` → `_memory/accounts-index.yaml` + `history.md`; `add-bill` / `add-subscription` → respective YAML + `info.md` § Routines; `bills mark-paid` → `bills.yaml.history[]` + occasionally `history.md`; `expenses` → ad-hoc analysis (no writes); finance ingestors → `_memory/transactions.yaml` + cross-checks into `bills.yaml` + `subscriptions.yaml`.
+**Skills that write here**: `add` (account) → `_memory/accounts-index.yaml` + `history.md`; `bills` / `subscriptions` add → respective YAML + `info.md` § Routines; `bills mark-paid` → `bills.yaml.history[]` + occasionally `history.md`; `expenses` → ad-hoc analysis (no writes); finance ingestors → `_memory/transactions.yaml` + cross-checks into `bills.yaml` + `subscriptions.yaml`.
 
 **Cross-domain link to Assets**: every brokerage / IRA / 401(k) / HYSA account in `accounts-index.yaml` here is referenced from each held position in `assets-index.yaml.<asset>.held_in_account`. The "what do I own?" view is in Assets; the "how does money flow?" view is here.
 
@@ -70,7 +70,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 | `history.md` | Repairs done, contractors used, deliveries received, alarm events (if Home Assistant is wired in), notable maintenance. |
 | `rolodex.md` | Plumber, electrician, HVAC tech, handyman, gardener, pest control, alarm-monitoring company, neighbours (the "let me know if anything looks weird" people). |
 
-**Skills that write here**: `add-asset` (HVAC / appliance / etc.) → `_memory/assets-index.yaml`; `home-maintenance log` → `history.md` + asset's `maintenance.last_done`; Home Assistant ingestor → `history.md` for anomalies.
+**Skills that write here**: `add` (asset: HVAC / appliance / etc.) → `_memory/assets-index.yaml`; `log-event` (home repair / service) → `history.md` + asset's `maintenance.last_done`; Home Assistant ingestor → `history.md` for anomalies.
 
 ---
 
@@ -85,7 +85,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 | `history.md` | Every service event, fuel-up (optional), repair, accident, registration / inspection / insurance renewal, mileage milestones. |
 | `rolodex.md` | Mechanic(s), dealership service department, insurance agent, body shop, towing service, dashcam manufacturer support. |
 
-**Skills that write here**: `add-asset` (vehicle) → `_memory/assets-index.yaml` + maintenance schedule rows; `vehicle-log` → `history.md` + asset updates; Tesla ingestor → mileage / charging / alerts.
+**Skills that write here**: `add` (asset: vehicle) → `_memory/assets-index.yaml` + maintenance schedule rows; `log-event` (service / mileage / repair) → `history.md` + asset updates; Tesla ingestor → mileage / charging / alerts.
 
 ---
 
@@ -108,7 +108,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 
 **Schema fields on `assets-index.yaml.<asset>` for financial holdings**: `kind: stock | etf | mutual_fund | bond | treasury | crypto | cash_position | precious_metal`, plus `ticker`, `exchange`, `units`, `cost_basis`, `acquired_at`, optional per-lot `lots[]`, and (critically) `held_in_account: "account:<slug>"` pointing at the operational account in `accounts-index.yaml` (which lives under Finances).
 
-**Skills that write here**: `add-asset` (with `domain: assets` and the right `kind`) → `_memory/assets-index.yaml` row, optional warranty / maturity entry on `important-dates.yaml`; `add-source` (warranty / receipt / appraisal / brokerage statement) → `Sources/<your-folders>/<asset-slug>/` then catalogue row in `sources.md`; `add-document` (appraisal, insurance rider, share certificate, deed) → `documents-index.yaml`. Finance ingestors (Plaid / Monarch / brokerage exports) write per-position rows here automatically once enabled.
+**Skills that write here**: `add` (asset, with `domain: assets` and the right `kind`) → `_memory/assets-index.yaml` row, optional warranty / maturity entry on `important-dates.yaml`; `add-source` (warranty / receipt / appraisal / brokerage statement) → `Sources/<your-folders>/<asset-slug>/` then catalogue row in `sources.md`; `add` (document: appraisal, insurance rider, share certificate, deed) → `documents-index.yaml`. Finance ingestors (Plaid / Monarch / brokerage exports) write per-position rows here automatically once enabled.
 
 **Differs from `Vehicles` and `Home` how**: by **kind of physical thing**. Vehicles is for titled motor vehicles (legal registration, license plates, VIN). Home is for the primary residence structure + fixtures + utilities + HOA + that property's recurring maintenance. Assets is the catch-all for everything else of value.
 
@@ -142,7 +142,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 | `history.md` | Family events log (birthdays past + how it went, school plays, vacations, parent-care visits). |
 | `rolodex.md` | School(s), pediatrician, kids' dentist, kids' activities (sports coach, music teacher, tutor), parents' physicians, in-laws, extended family. |
 
-**Skills that write here**: `add-contact` (family / school) → `rolodex.md`; `add-appointment` (school / kids' medical) → `appointments.yaml` + `history.md`; `add-important-date` (kids' birthdays / anniversaries) → `important-dates.yaml`.
+**Skills that write here**: `add-contact` (family / school) → `rolodex.md`; `appointments` add (school / kids' medical) → `appointments.yaml` + `history.md`; `important-dates` add (kids' birthdays / anniversaries) → `important-dates.yaml`.
 
 ---
 
@@ -159,7 +159,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 
 **Per-trip sub-folders** are encouraged: `Travel/<YYYY-trip-slug>/` with its own `info.md` / `status.md` / `history.md` / `sources.md` / `Resources/`. Vault-grade itineraries / boarding passes / passport scans go under `Sources/<your-folders>/` (e.g. `Sources/Travel/<trip-slug>/`) and are pointed at from the trip's `sources.md`. Working photos and trip-prep drafts go in `Resources/`.
 
-**Skills that write here**: `add-document` (passport / visa) → `documents-index.yaml` + `info.md`; `add-important-date` (document expirations) → `important-dates.yaml`; the `gmail` watcher (a targeted live query for flight confirmations — no bulk fetch) → `appointments.yaml` (kind: travel) + `history.md`.
+**Skills that write here**: `add` (document: passport / visa) → `documents-index.yaml` + `info.md`; `important-dates` add (document expirations) → `important-dates.yaml`; the `gmail` watcher (a targeted live query for flight confirmations — no bulk fetch) → `appointments.yaml` (kind: travel) + `history.md`.
 
 ---
 
@@ -174,7 +174,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 | `history.md` | Job changes, promotions, performance-review summaries, certifications earned, conferences attended, courses completed. |
 | `rolodex.md` | Manager (current + recent past), key colleagues, mentor(s), recruiters worth keeping warm, interview-loop contacts, certification authorities. |
 
-**Skills that write here**: `add-document` (cert / diploma) → `documents-index.yaml`; `add-contact` (mentor / recruiter) → `contacts.yaml` + rolodex; `personal-signals` capture (career-development cues) → eventually rolls up here.
+**Skills that write here**: `add` (document: cert / diploma) → `documents-index.yaml`; `add-contact` (mentor / recruiter) → `contacts.yaml` + rolodex; `personal-signals` capture (career-development cues) → eventually rolls up here.
 
 ---
 
@@ -189,7 +189,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 | `history.md` | Client wins / losses, major contracts signed, large invoices paid, tax filings, license renewals, entity changes (formation, dissolution, conversion), pivots, year-end summaries. |
 | `rolodex.md` | Active clients (per-client subsection if heavy-touch), prospects worth following up, contractors / subcontractors, accountant / bookkeeper, business attorney, registered agent, business-bank rep, software vendors, professional-association contacts. |
 
-**Skills that write here**: `add-account` (business bank / card) → `accounts-index.yaml` with `related_domain: business`; `add-bill` (business utilities, software subscriptions) with `related_domain: business`; `add-contact` (client / contractor) with `related_domains: [business]`; `add-document` (contract, SOW, license) → `documents-index.yaml` with `related_domain: business`; `add-important-date` (contract renewal, license renewal, quarterly estimate) → `important-dates.yaml`; `expenses` skill filters business-tagged transactions for tax-prep at year end.
+**Skills that write here**: `add` (account: business bank / card) → `accounts-index.yaml` with `related_domain: business`; `bills` add (business utilities, software subscriptions) with `related_domain: business`; `add-contact` (client / contractor) with `related_domains: [business]`; `add` (document: contract, SOW, license) → `documents-index.yaml` with `related_domain: business`; `important-dates` add (contract renewal, license renewal, quarterly estimate) → `important-dates.yaml`; `expenses` skill filters business-tagged transactions for tax-prep at year end.
 
 **Differs from `Career` how**: by **income source**. Career is for W-2 employment, employer-paid benefits, salary history, performance reviews, professional development tied to that job. Business is for self-employed income — what hits Schedule C / 1120-S rather than W-2 line 1. A user with no side income can leave `Business` empty (or delete the folder); a freelance-only user can leave `Career` empty.
 
@@ -208,7 +208,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 | `history.md` | Term-by-term progress (courses taken, grades, credits earned), credentials earned, advisor meetings, financial-aid disbursements, transcripts requested / received. |
 | `rolodex.md` | Advisor(s), professors / instructors of record (current + recent), registrar contact, financial-aid officer, study group / cohort members worth keeping warm, mentors specific to this program. |
 
-**Skills that write here**: `add-document` (acceptance letter, transcript, FA award, certificate / diploma) → `documents-index.yaml` with `related_domain: education`; `add-contact` (advisor, professor) → `contacts.yaml` with `related_domains: [education]`; `add-important-date` (term deadline, FA renewal) → `important-dates.yaml`; `log-event` (advisor meeting, exam taken) → `Domains/Education/history.md`; `add-source` (syllabus, course materials, lecture recordings) → `Sources/<your-folders>/<program-slug>/`.
+**Skills that write here**: `add` (document: acceptance letter, transcript, FA award, certificate / diploma) → `documents-index.yaml` with `related_domain: education`; `add-contact` (advisor, professor) → `contacts.yaml` with `related_domains: [education]`; `important-dates` add (term deadline, FA renewal) → `important-dates.yaml`; `log-event` (advisor meeting, exam taken) → `Domains/Education/history.md`; `add-source` (syllabus, course materials, lecture recordings) → `Sources/<your-folders>/<program-slug>/`.
 
 **Differs from `Career` how**: Career covers your current / target W-2 role, salary history, employer-paid benefits, performance reviews, professional development tied to a specific job. Education is for **structured-program enrollment** — a registrar exists, you have transcripts, there's a clear start / end date for the program. A one-off cert renewal stays in Career. A multi-year MBA goes in Education with `related_domain: career` cross-link so the Career narrative can reference it.
 
@@ -229,7 +229,7 @@ The Domain folders are **registered** by `init` (the per-folder scaffold is lazy
 
 **Per-hobby sub-folders** for big ones: `Hobbies/Cycling/`, `Hobbies/Reading/`, `Hobbies/Workshop/`. Each can have its own 4-file structure.
 
-**Skills that write here**: `add-asset` (gear) → `_memory/assets-index.yaml` with `domain: hobbies`; Strava / Whoop / Garmin / Oura ingestors → `history.md` for workouts above a threshold; `personal-signals` capture (hobby-specific commitments) → roll-up.
+**Skills that write here**: `add` (asset: gear) → `_memory/assets-index.yaml` with `domain: hobbies`; Strava / Whoop / Garmin / Oura ingestors → `history.md` for workouts above a threshold; `personal-signals` capture (hobby-specific commitments) → roll-up.
 
 ---
 
@@ -256,7 +256,7 @@ Examples worth their own domain (each runs the standard 4-file structure):
 
 - **Boat** — registration, marina, mooring, maintenance.
 - **Cabin** / **Vacation home** — separate from primary residence; same structure.
-- **Estate** / **Continuity** — wills, trusts, POA, beneficiaries, executor instructions (a richer home for what `handoff` packages today).
+- **Estate** / **Continuity** — wills, trusts, POA, beneficiaries, executor instructions.
 - **Volunteer** / **Board work** — meetings, commitments, contacts.
 - **Education** — for users actively in school or running a multi-year learning plan; otherwise lives in `Career`.
 - **Music** — gear (cross-references `Assets`), gigs (history), bandmates / studio engineers (rolodex).

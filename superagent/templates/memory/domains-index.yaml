@@ -19,14 +19,14 @@ domains:
   #   status          — active | paused | completed | archived.
   #   path            — Workspace-relative folder
   #                      (e.g. "workspace/Domains/Health").
-  #   parent          — Optional id of a parent domain (per ideas-better-structure
-  #                      item #10). null = top-level. Sub-domain folders nest under
+  #   parent          — Optional id of a parent domain (contracts/domains-and-assets.md
+  #                      § sub-domains). null = top-level. Sub-domain folders nest under
   #                      parent's `Domains/<Parent>/<Child>/`.
-  #   handle          — Operational handle in `<kind>:<slug>` form (per item #20).
+  #   handle          — Operational handle in `<kind>:<slug>` form (contracts/operational-handles.md).
   #                      Example: "domain:health". Optional but recommended.
-  #   visibility      — private | household | public (per item #19). Default private.
+  #   visibility      — private | household | public (contracts/visibility.md). Default private.
   #                      Sets default for child entities scoped to this domain.
-  #   provenance      — Where this row came from (per item #4):
+  #   provenance      — Where this row came from (contracts/provenance.md):
   #                      { source: "user|<skill>|<ingestor>|init|derived",
   #                        source_id: "<optional anchor>",
   #                        at: <iso datetime>,

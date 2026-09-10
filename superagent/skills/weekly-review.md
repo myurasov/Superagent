@@ -243,7 +243,7 @@ PDF via the `report` skill (destination `Outbox/reports/`).
 
 **Discovery nudge** (max one per run; deterministic, not aspirational). Evaluate the two checks below in order and append ONE line for the first that fires:
 
-- (a) **follow-up**: `todo.yaml` overdue count >= 3 AND `interaction-log.yaml` has no `subject: follow-up` or `subject: triage-overdue` row in the last 30 days → `Consider: follow-up — N overdue tasks and no follow-up pass in 30 days.`
+- (a) **overdue triage**: `todo.yaml` overdue count >= 3 AND `interaction-log.yaml` has no `skill: todo` row with `action: triage_overdue` (legacy rows: `skill: triage-overdue` / `skill: follow-up`, or `subject:` equivalents) in the last 30 days → `Consider: todo triage — N overdue tasks and no triage pass in 30 days.`
 - (b) **expenses**: `_memory/watchlist-state.yaml` has a finance harvest row (`simplefin`) with `last_harvest` within 7 days AND `interaction-log.yaml` has no `subject: expenses` row ever → `Consider: expenses — bank transactions are flowing but spending has never been reviewed.`
 
 Record the emitted nudge line in this run's `interaction-log.yaml` row `action_items` (step 9). Record declines in `model-context.yaml` communication notes and never re-nudge a declined skill — the interaction-log echo is what makes that rule auditable.

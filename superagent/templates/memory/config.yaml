@@ -12,7 +12,7 @@ profile:
   name: ""
   preferred_name: ""           # what you want Superagent to call you in chat
   email: ""
-  phone: ""                    # optional; used by some templates (e.g. handoff)
+  phone: ""                    # optional; used by some outbound templates
   birth_date: null             # ISO 8601 date; drives age-based defaults & important dates
   timezone: ""                 # IANA tz, e.g. "America/Los_Angeles"
   city: ""
@@ -121,7 +121,7 @@ preferences:
     # Auto-create the next-cycle project when a recurring project completes.
     auto_create_next_cycle: true
 
-  # Events stream (see contracts/events-stream.md / item #16).
+  # Events stream (see contracts/events-stream.md).
   events:
     # Time partitioning. Quarterly default; monthly for high-volume workspaces.
     partition: "quarterly"   # quarterly | monthly | yearly
@@ -131,7 +131,7 @@ preferences:
     # Event kinds excluded from derivation (rare).
     skip_kinds: []
 
-  # Audit trail (see contracts/audit-trail.md / item #17).
+  # Audit trail (see contracts/audit-trail.md).
   audit:
     # Master switch. When false, no <file>.history.jsonl is written.
     enabled: true
@@ -140,7 +140,7 @@ preferences:
     # Yearly rotate the .history.jsonl files into Archive/.
     rotate_yearly: true
 
-  # Tags (see contracts/tags.md / item #11).
+  # Tags (see contracts/tags.md).
   tags:
     # When the user (or a skill) introduces a new tag, automatically add a
     # row to tags.yaml with placeholder description.
@@ -149,14 +149,14 @@ preferences:
     # Default false (lenient); flip true once tags.yaml is curated.
     strict_canonical: false
 
-  # Decisions (see contracts/decisions.md / item #24).
+  # Decisions (see contracts/decisions.md).
   decisions:
     # Surface decisions made this week in weekly-review.
     surface_in_weekly_review: true
     # Surface decisions whose review_at <= now in monthly-review.
     surface_in_monthly_review: true
 
-  # Sensitive tier (see contracts/sensitive-tier.md / item #18).
+  # Sensitive tier (see contracts/sensitive-tier.md).
   sensitive:
     # Master switch.
     enabled: true
@@ -171,21 +171,21 @@ preferences:
       - "health-records.yaml"
       - "accounts-index.yaml"
 
-  # Visibility (see contracts/visibility.md / item #19).
+  # Visibility (see contracts/visibility.md).
   visibility:
     # Default visibility for newly-created entities.
     default: "private"      # private | household | public
     # When the workspace is shared (household mode), this is the household name.
     household_name: ""
 
-  # Operational handles (see contracts/operational-handles.md / item #20).
+  # Operational handles (see contracts/operational-handles.md).
   handles:
     # Master switch — when true, every new entity gets a `handle` field
     # populated as `<kind>:<id>`. Existing entities are backfilled by
     # `tools/world.py rebuild`.
     enabled: true
 
-  # Outbox lifecycle (see contracts/outbox-lifecycle.md / item #13).
+  # Outbox lifecycle (see contracts/outbox-lifecycle.md).
   outbox:
     # Conventional lifecycle sub-folders. NOT auto-created at init —
     # materialized lazily on first write per
@@ -194,48 +194,7 @@ preferences:
     # Max age (days) before stage:drafts artifacts are surfaced as stale.
     drafts_stale_days: 14
 
-  # Workbook projections (see superagent/tools/render_workbooks.py).
-  # Per-domain (and optional per-entity) `.xlsx` views of the structured
-  # YAML data, regenerated lazily — only when ≥1 row of data exists for a
-  # given workbook AND the underlying source files have changed since the
-  # last render. Source-of-truth stays in YAML / markdown; xlsx is a
-  # human-friendly read-only projection (the agent never reads it back).
-  workbooks:
-    # Master switch for the whole subsystem.
-    enabled: true
-    # How far back the time-series sheets (transactions, vet visits,
-    # service history, etc.) reach. Set during init via the workbook
-    # history-window question. 10 years covers most personal-tax /
-    # net-worth use-cases.
-    history_window_years: 10
-    # Privacy scan posture for cell values:
-    #   strict — refuse any cell matching SSN / full account # / full card # /
-    #            high-entropy secret patterns; cell becomes "[REDACTED]".
-    #   lenient — only redact obvious SSN / 16-digit numerics.
-    #   off    — no scan (NOT recommended; xlsx files leak easily).
-    privacy_scan: strict
-    # When true, also render per-entity workbooks (per pet, per vehicle,
-    # per asset) alongside the per-domain workbook. Per-entity workbooks
-    # are themselves lazy — they materialize only when the entity has
-    # accumulated meaningful event-history (≥5 events, or ≥2 lots).
-    per_entity: true
-    # Sensitivity overrides — both default to opt-in (false) because the
-    # workbooks aggregate data that's easy to over-share by accident.
-    health:
-      # Flip to true to enable rendering Domains/Health/health.xlsx.
-      enabled: false
-    business:
-      # Flip to true to enable rendering Domains/Business/business.xlsx.
-      enabled: false
-
-  # Inbox triage (see contracts/inbox-triage.md / item #5).
-  inbox_triage:
-    # Days before files in Inbox/ surface as stale to triage.
-    stale_days: 14
-    # Pre-classify by extension before asking the user.
-    auto_classify: true
-
-  # Anti-pattern scanner (superagent/docs/_internal/perf-improvement-ideas.md § "Anti-patterns").
+  # Anti-pattern scanner (rules/anti-patterns.yaml, tools/anti_patterns.py).
   anti_patterns:
     # When true, doctor / supertailor-review run the anti-pattern scanner over
     # skills/*.md and surface findings.

@@ -103,10 +103,10 @@ Default-domain (and custom-domain) folders under `Domains/<Name>/` are
 
 Skills MUST cite this section in their frontmatter / first step when they are
 in the set that writes to `Domains/<X>/<file>`. Implicated skills: `health-log`,
-`pet-care`, `vehicle-log`, `home-maintenance`, `log-event`, `add-contact` (when
+`pet-care`, `log-event` (including its vehicle / home flows), `add-contact` (when
 appending to the rolodex), `add-source` (when appending to sources.md),
-`add-asset` (when writing to Resources/), `add-bill` / `add-subscription` /
-`add-account` (when touching the domain's `info.md` Routines section), and
+`add` (kind `asset` when writing to Resources/; kind `account`, plus the `bills` /
+`subscriptions` Add modes, when touching the domain's `info.md` Routines section), and
 every ingestor that writes domain history (per `contracts/ingestion.md`).
 
 ### 6.4b Detection-driven domain suggestions
@@ -212,7 +212,7 @@ last ask about <theme>?").
 
 ### 6.5 Adding an asset
 
-Assets are physical things you own (vehicles, electronics, appliances, jewelry, instruments, tools, collectibles). The full skill is in `skills/add-asset.md`. Summary:
+Assets are physical things you own (vehicles, electronics, appliances, jewelry, instruments, tools, collectibles). The full skill is in `skills/add.md` (kind `asset`). Summary:
 
 1. Ask: name, kind (vehicle / appliance / electronics / jewelry / tool / instrument / collectible / other), domain (which Domain owns it — Vehicles, Home, Hobbies, …), purchase date, purchase price, serial / VIN if applicable, warranty expiration if applicable, notes.
 2. Append a row to `_memory/assets-index.yaml`.

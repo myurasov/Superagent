@@ -91,7 +91,7 @@ Canonical decision table for memory-resident files that grow without bound.
 | `_memory/events/<YYYY-Qn>.yaml` | quarter-partitioned event stream | `uv run python -m superagent.tools.log_window read --since <date>` (loads only the partitions the window touches) | Reading every partition for a timeline question. |
 | `_memory/user-queries.jsonl` | one row per user prompt (rows tagged `synthetic: true` are harness noise — skip them) | Tail-read or grep for a specific phrase; full scans ONLY in `supertailor-review` | Reading the whole log to summarize "what the user usually asks". |
 | `_memory/action-signals.yaml` / `_memory/personal-signals.yaml` | grow with captures | `yaml.safe_load` + filter by `target` / `status` / date in a tool; OR tail-read | Full read in non-review skills. |
-| `_memory/transactions.yaml` | one row per bank transaction | Filter by date window / account in a tool (`reconcile_transactions.py` does this); grep for a merchant when known | Whole-file read to "review spending" — the workbook Bank Feed sheet and the reconciler are the surfaces. |
+| `_memory/transactions.yaml` | one row per bank transaction | Filter by date window / account in a tool (`reconcile_transactions.py` does this); grep for a merchant when known | Whole-file read to "review spending" — the reconciler (`tools/reconcile_transactions.py`) is the surface. |
 | `Domains/<d>/history.md` (long-lived domains) | chronological, unbounded | Grep for the entity/date, then `Read --offset --limit` the matching slice; recent-window read via tail | Whole-file read of a multi-year history for a single-event question. |
 
 **Decision rule for any new memory-resident file:**
@@ -189,6 +189,35 @@ cap covered none and forced re-reads). Counts vs content for a yes/no check:
 Stronger models apply frugality more intelligently — economy is what lets a
 frontier-tier main session with fast-tier delegation cost about what an
 un-economized mid-tier session does.
+
+## Prompt-cache discipline
+
+The harness controls how the prompt is structured and which prefixes are
+cached; both Cursor and Claude Code reward a stable prefix. The framework
+helps by keeping `AGENTS.md` SHORT and STABLE and by keeping each
+`contracts/<name>.md` / `rules/<name>.md` self-contained, so a skill pulls in
+one file, not a chain. Binding at every economy level:
+
+- **Don't edit `AGENTS.md`, `rules/`, or `contracts/` mid-session.** Mutating
+  the docs that anchor the prefix forces a full re-cache, paying the long form
+  back to the model on every subsequent turn. Draft the complete change, land
+  it once, and start a fresh session. The Supertailor / Supercoder
+  commit-then-restart cycle is built for this: approve the doc change, let the
+  Supercoder commit, open a new chat — the new session pays the full prompt
+  cost ONCE and every later turn reaps the cache savings.
+- **Don't open many framework files mid-session.** Each one bumps the prompt;
+  fewer files = better cache reuse. Read `skills/_manifest.yaml`, then the one
+  skill that applies, then only the contracts it cites.
+- **Long-running harvest / backfill sessions** run as dedicated tool
+  invocations (each a stand-alone process), not as long chat threads.
+- **Time-varying fields last** — the cache-stability floor above: no
+  timestamps or counters in `AGENTS.md` or rule files.
+
+If a future Superagent CLI wraps a model API directly, structure the prompt
+as `[stable: AGENTS.md + role files] → [cache breakpoint] → [per-skill: the
+active skill + the contracts it cites] → [cache breakpoint] → [per-turn: user
+message + tool results]`. That path needs API-level control the IDEs do not
+expose today; until then the four rules above are the whole discipline.
 
 ## Override / user overlay
 

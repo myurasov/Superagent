@@ -80,7 +80,7 @@ Avoid in agent-created paths:
 - Unicode characters in path components (titles in index rows are fine; the on-disk name is not).
 - Trailing dots or whitespace.
 
-When generating a path from a user-supplied string (e.g. an email subject, a contact name, a document title), the agent SHOULD slugify: lowercase, strip disallowed characters, collapse whitespace to single underscores, trim leading / trailing underscores and hyphens.
+When generating a path from a user-supplied string (e.g. an email subject, a contact name, a document title), the agent MUST slugify: lowercase, strip disallowed characters, collapse whitespace to single underscores, trim leading / trailing underscores and hyphens.
 
 **Exception — leading-underscore convention.** The framework reserves a small set of leading-underscore names for agent-managed metadata that sits alongside user files:
 

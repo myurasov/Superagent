@@ -2,8 +2,8 @@
 # Superagent memory: append-only audit log of writes that went UPSTREAM
 # (to a third-party service, not to local files).
 #
-# Implements: superagent/docs/_internal/ideas-better-structure.md item #15 (skeleton) + the
-# Sensitive-Tier safety contract.
+# Contracts: contracts/ingestion.md (read-only upstream; no silent writes),
+# contracts/privacy.md, contracts/sensitive-tier.md.
 #
 # Background: every ingestor in MVP is `writes_upstream: false` — read-only.
 # When an ingestor or skill is configured to write upstream (e.g. create

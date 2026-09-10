@@ -48,7 +48,7 @@ files:
     user_overlay: workspace/_custom/rules/image-format-policy.md
   - path: token-economy.md
     kind: doc
-    purpose: "Always-on leveled token economy (off|med|full|auto; per-request override economy:/token-economy:): read-budget + batching + cache-stability floor, the unbounded-file decision table (folded from the retired large-file-reads.md), graded measures by level, pacing (input_tokens_per_minute; override asap), and hard floors."
+    purpose: "Always-on leveled token economy (off|med|full|auto; per-request override economy:/token-economy:): read-budget + batching + cache-stability floor, the unbounded-file decision table (folded from the retired large-file-reads.md), graded measures by level, pacing (input_tokens_per_minute; override asap), hard floors, and prompt-cache discipline (no mid-session edits to AGENTS.md / rules / contracts; commit-then-restart)."
     consumed_by:
       - AGENTS.md
       - rules/subagents.md
@@ -84,7 +84,6 @@ files:
       - skills/weekly-review.md
       - skills/monthly-review.md
       - skills/research.md
-      - skills/follow-up.md
       - skills/summarize-thread.md
       - skills/doctor.md
       - skills/supertailor-review.md
@@ -112,16 +111,16 @@ files:
     user_overlay: workspace/_custom/rules/markdown-formatting.md
   - path: task-ids.md
     kind: doc
-    purpose: "Task display ID format: TASK-NNN (standalone) or TASK-NNN-X (subtasks A/B/C…); continuously numbered from oldest; no dates; never reassign. Next ID is derived at write time from the highest TASK-NNN present in the workspace — never recorded in a framework file."
+    purpose: "Task display ID format: TASK-NNN (standalone) or TASK-NNN-X (subtasks A/B/C…); continuously numbered from oldest; no dates; never reassign. Next ID is derived at write time from the highest TASK-NNN present in the workspace — never recorded in a framework file. Internal task-YYYYMMDD-NNN ids are never surfaced in conversation."
     consumed_by:
+      - AGENTS.md
       - rules/live-todo.md
     user_overlay: workspace/_custom/rules/task-ids.md
   - path: skill-discipline.md
     kind: doc
     purpose: "Skills must be read before any action is taken on a task they govern. Prohibits raw file ops that bypass skill protocols. Covers autoloaded skills, trigger-matched skills, and all capture/filing flows."
-    # AGENTS.md § Skills inlines this rule ("Skill discipline — non-negotiable")
-    # but does not yet cite the file by path; no in-repo consumer links here.
-    consumed_by: []
+    consumed_by:
+      - AGENTS.md
     user_overlay: workspace/_custom/rules/skill-discipline.md
   - path: unbox.md
     kind: doc
@@ -155,3 +154,11 @@ files:
       - contracts/email-capture.md
       - tools/email/archive_hook.py
     user_overlay: workspace/_custom/rules/email-capture-fallback.md
+  - path: git-commits.md
+    kind: doc
+    purpose: "Framework git-commit policy: one-sentence imperative subject (<= 72 chars, ASCII, no body), no AI-attribution trailers, strip-after-commit filter-branch recipe (parenthesized vendor alternation) REQUIRED before any push, atomic commits, only framework files (never workspace/), ruff lint gate."
+    consumed_by:
+      - AGENTS.md
+      - contracts/privacy.md
+      - docs/harness-setup.md
+    user_overlay: workspace/_custom/rules/git-commits.md

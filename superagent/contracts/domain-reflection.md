@@ -59,17 +59,14 @@ A single call to `render_domain.refresh(workspace, domains)` refreshes
    The `## Open` / `## Done` tables are spliced into any existing curated
    `status.md`, preserving the RAG / Recent Progress / Blockers / Next
    Steps narrative authored by humans.
-3. **Per-domain `.xlsx` workbook** (delegated to `tools/render_workbooks.py`).
-   Mtime-lazy — re-rendering is a no-op when no source yaml has changed
-   since the last build.
 
-All three stages are **best-effort**: failures land in the aggregate
+Both stages are **best-effort**: failures land in the aggregate
 `errors` list returned by `refresh()` but never raise. The underlying
 data is already safely in `_memory/*.yaml`; rendering is derived.
 
-If no markers are present in any domain file, stage 1 is a no-op. Stages
-2 and 3 still run — `status.md` and the `.xlsx` are managed by their own
-tools' rules independent of marker adoption.
+If no markers are present in any domain file, stage 1 is a no-op. Stage 2
+still runs — `status.md` is managed by its own tool's rules independent of
+marker adoption.
 
 ## Ingestor obligation
 
@@ -86,8 +83,8 @@ Every harvest handler (`superagent/watchers/<id>/handler.py`, or the same path u
 
 ## Capture-skill obligation
 
-Capture skills (`add-account`, `add-bill`, `add-subscription`, `add-contact`,
-`bills`, `subscriptions`, `appointments`, `log-event`, etc.) MUST end every
+Capture skills (`add`, `add-contact`, `bills`, `subscriptions`, `appointments`,
+`log-event`, etc.) MUST end every
 mutation with the equivalent refresh call:
 
 ```python

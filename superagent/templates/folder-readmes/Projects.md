@@ -87,7 +87,7 @@ Don't project-ify:
 
 - Single tasks ("call the dentist"). Use `todo` directly.
 - Ongoing maintenance ("HVAC filter changes every 90 days"). Use `assets-index.yaml.maintenance[]` + cadence surfacing.
-- Reactions to events ("respond to email about X"). Use `interaction-log.yaml` + `follow-up`.
+- Reactions to events ("respond to email about X"). Use `todo` (a task with a due date) + `interaction-log.yaml`.
 
 The right test: *"Will this benefit from a charter, a deadline, and a status briefing more than once?"* If yes, project. If no, plain task.
 

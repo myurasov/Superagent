@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """World-model entity graph — query and rebuild.
 
-Implements superagent/docs/_internal/ideas-better-structure.md item #3 + superagent/docs/_internal/perf-improvement-ideas.md BB-4.
+Contract: contracts/world-graph.md. Skill: skills/world.md.
 
 The graph is stored at `_memory/world.yaml` (per the template). Rebuild
 scans every entity-shape file and reconstructs nodes + edges from scratch.
@@ -15,7 +15,7 @@ This module is the canonical writer / reader. Skills should call:
 CLI:
     uv run python -m superagent.tools.world rebuild           # full rebuild from entity files
     uv run python -m superagent.tools.world related <handle>  # one-hop neighbors
-    uv run python -m superagent.tools.world expand <handle> --depth 2
+    uv run python -m superagent.tools.world related <handle> --depth 2
     uv run python -m superagent.tools.world stats             # node/edge counts by kind
     uv run python -m superagent.tools.world validate          # check graph vs entities
 """
@@ -219,6 +219,10 @@ def collect_nodes_edges(workspace: Path) -> tuple[list[dict[str, Any]], list[dic
     edge_fields = (
         ("related_domain", "scoped"),
         ("related_project", "scoped"),
+        # bills / subscriptions / appointments / accounts carry `domain:`;
+        # same edge as `related_domain` so a skill-written `scoped` edge
+        # survives `rebuild` (contracts/world-graph.md § 3).
+        ("domain", "scoped"),
         ("related_asset", "related_asset"),
         ("related_account", "pay_from"),
         ("pay_from_account", "pay_from"),
@@ -387,6 +391,7 @@ def _kind_for_field(field: str) -> str:
     """Heuristic: which entity kind does this cross-reference field point at?"""
     return {
         "related_domain": "domain",
+        "domain": "domain",
         "related_project": "project",
         "related_asset": "asset",
         "related_account": "account",
@@ -419,10 +424,32 @@ def rebuild(workspace: Path) -> dict[str, Any]:
     return data
 
 
+def resolve_query_handle(data: dict[str, Any], handle: str | None) -> str | None:
+    """Resolve a user-typed handle against the graph.
+
+    Accepts the canonical `kind:slug`, a legacy prefixed id (`contact-abc` ->
+    `contact:abc`, per `tools/handles.py` `LEGACY_PREFIXES`), or a bare slug:
+    a bare slug is looked up as written across every kind and resolves when
+    exactly one node carries it. Returns None for empty input; an unknown
+    handle comes back normalized so the caller can report "not found".
+    """
+    if not handle or not str(handle).strip():
+        return None
+    from superagent.tools.handles import parse as parse_handle
+
+    parsed = parse_handle(str(handle))
+    canonical = f"{parsed.kind}:{parsed.slug}"
+    by_id = {n["id"] for n in data.get("nodes", []) if isinstance(n, dict)}
+    if canonical in by_id or ":" in str(handle):
+        return canonical
+    matches = sorted(nid for nid in by_id if nid.split(":", 1)[-1] == parsed.slug)
+    return matches[0] if len(matches) == 1 else canonical
+
+
 def related_to(workspace: Path, handle: str, depth: int = 1) -> dict[str, Any]:
     """Return nodes + edges within `depth` hops of `handle` (undirected)."""
     data = load_world(workspace)
-    canonical = normalize_handle(handle)
+    canonical = resolve_query_handle(data, handle)
     if not canonical:
         return {"node": None, "neighbors": [], "edges": []}
     by_id = {n["id"]: n for n in data.get("nodes", []) if isinstance(n, dict)}

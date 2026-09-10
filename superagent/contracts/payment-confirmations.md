@@ -4,7 +4,7 @@
 
 Governs how Superagent captures, files, indexes, and cross-links the artifact produced whenever **money changes hands** on the user's behalf or with the user's involvement.
 
-The contract is universal: anytime a skill helps with a payment (`bills mark-paid`, `subscriptions update`, `vehicle-log` for a service paid, `add-appointment` for a copay, `expenses`, `draft-email` answering "here is my payment confirmation", a harvest run (the `simplefin` watcher) that surfaces a fresh charge, or a future "auto-pay this bill" workflow) it must follow this contract — no exceptions for "small" payments.
+The contract is universal: anytime a skill helps with a payment (`bills mark-paid`, `subscriptions update`, `log-event` for a vehicle or home service paid, `appointments` for a copay, `expenses`, `draft-email` answering "here is my payment confirmation", a harvest run (the `simplefin` watcher) that surfaces a fresh charge, or a future "auto-pay this bill" workflow) it must follow this contract — no exceptions for "small" payments.
 
 ---
 
@@ -46,7 +46,7 @@ Decide between two destinations based on **what the payment was for**, not on do
 
 ### 3.1 `workspace/Sources/<Domain>/...` — long-lived / auditable payments
 
-Use `Sources/` whenever the payment relates to a significant life area where the artifact could matter months or years later. Rule of thumb: anything that could be audited, claimed on a tax return, contested, or needed for warranty / title / record-keeping / handoff (`handoff` skill).
+Use `Sources/` whenever the payment relates to a significant life area where the artifact could matter months or years later. Rule of thumb: anything that could be audited, claimed on a tax return, contested, or needed for warranty / title / record-keeping / estate continuity.
 
 Canonical default domains (seeded by `init`) and their typical payment classes:
 
@@ -100,7 +100,7 @@ Every save MUST trigger the following side-effects, in order:
 1. **Refresh the Sources index** when saving into `Sources/`:
    `uv run python -m superagent.tools.sources_index refresh` (mtime-lazy — near-no-op when nothing changed).
 
-2. **Register as a document (optional but recommended)** for confirmations that matter long-term (taxes, large medical, property, vehicles): file a `documents-index.yaml` row via the `add-document` skill with `kind: receipt` (or `kind: tax_return` / `property_tax` when applicable). This makes the artifact queryable by domain and surfaces it in `monthly-review` and `handoff`.
+2. **Register as a document (optional but recommended)** for confirmations that matter long-term (taxes, large medical, property, vehicles): file a `documents-index.yaml` row via the `add` skill (kind `document`) with `kind: receipt` (or `kind: tax_return` / `property_tax` when applicable). This makes the artifact queryable by domain and surfaces it in `monthly-review`.
 
 3. **Update the related entity** (whichever applies):
    - **`bills.yaml.<bill>.history[]`** — append a new history row with:
@@ -233,10 +233,10 @@ Skills that touch payments MUST cite this contract in their frontmatter / steps:
 - `bills.md` mark-paid → after appending to `bills.yaml.<bill>.history[]`, follow step 3a (account-side mirror) per this contract.
 - `subscriptions.md` update / log-renewal → same.
 - `appointments.md` post-visit → save copay/receipt per this contract; if paid from a tracked account, add the account-side mirror.
-- `vehicle-log` service entries → save invoice per this contract; mirror the account side when the funding account is known.
+- `log-event` vehicle / home service entries → save invoice per this contract; mirror the account side when the funding account is known.
 - `expenses` skill → all expense entries flow through this contract; ingestor-sourced rows already write the account-side mirror by virtue of being keyed on the account.
 - `watch` harvest (the `simplefin` watcher's handler) → when a harvested charge matches an open bill/sub/appt, the auto-capture pass invokes this contract; the account-side row is the handler's NATIVE shape, the entity-side append is the symmetric mirror.
 - `draft-email` when sending a "here is my proof of payment" reply → save the user's outgoing-payment artifact first; mirror to the funding account.
-- `add-account` → scaffolds an empty `transactions[]` list on every new account row.
+- `add` (kind `account`) → scaffolds an empty `transactions[]` list on every new account row.
 
 Cross-references: `contracts/sources.md`, `contracts/capture.md`, `contracts/local-first-read-order.md`, `contracts/provenance.md`, `contracts/operational-handles.md`, `contracts/projects.md`, `contracts/sensitive-tier.md`, `contracts/visibility.md`, `contracts/events-stream.md`, `contracts/audit-trail.md`, `contracts/custom-overlay.md`. Schema: `superagent/templates/memory/accounts-index.yaml`.

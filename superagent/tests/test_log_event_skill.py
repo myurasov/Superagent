@@ -86,6 +86,17 @@ def test_no_yaml_block_in_skill_writes_legacy_keys() -> None:
     assert not offenders, f"legacy interaction-log keys in log-event.md examples: {offenders}"
 
 
+def test_vehicle_and_home_events_are_handled_inline() -> None:
+    """0.21.0 retired `vehicle-log` and `home-maintenance`; a vehicle or home
+    event is a generic `history.md` append inside this skill, never a
+    delegation to a skill file that no longer exists."""
+    text = SKILL_PATH.read_text(encoding="utf-8")
+    assert "vehicle-log" not in text
+    assert "home-maintenance" not in text
+    assert "Domains/Vehicles/history.md" in text
+    assert "Domains/Home/history.md" in text
+
+
 def test_prose_does_not_reference_timestamp_field() -> None:
     """The rolodex `Last contacted` step points at `ts`, not the retired `timestamp`."""
     text = SKILL_PATH.read_text(encoding="utf-8")

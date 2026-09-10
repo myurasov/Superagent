@@ -1,11 +1,11 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: unified events stream.
 #
-# Implements: superagent/docs/_internal/ideas-better-structure.md item #16 + superagent/docs/_internal/perf-improvement-ideas.md MI-2.
+# Contract: contracts/events-stream.md.
 #
 # This file is the SCHEMA reference for the events stream. The actual events
 # are stored in `_memory/events/<YYYY-Qn>.yaml` (quarterly partitions, per
-# the time-windowed-views contract — superagent/docs/_internal/perf-improvement-ideas.md MI-2).
+# contracts/events-stream.md § time-windowed views).
 #
 # The events stream is a DERIVED VIEW (contracts/events-stream.md): the
 # partitions are rebuilt wholesale by `tools/events_derive.py rebuild` from

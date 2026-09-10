@@ -30,10 +30,6 @@ contracts:
     slug: capture
     title: "Capture Contracts"
     path: contracts/capture.md
-  - id: C-08
-    slug: surfacing
-    title: "Surfacing Contracts"
-    path: contracts/surfacing.md
   - id: C-11
     slug: custom-overlay
     title: "Custom Overlay Discovery"
@@ -102,10 +98,6 @@ contracts:
     slug: outbox-lifecycle
     title: "Outbox Lifecycle Contract"
     path: contracts/outbox-lifecycle.md
-  - id: C-37
-    slug: inbox-triage
-    title: "Inbox Triage Contract"
-    path: contracts/inbox-triage.md
   - id: C-38
     slug: local-first-read-order
     title: "Local-first Read Order"

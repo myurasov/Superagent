@@ -77,11 +77,11 @@ def test_everyday_prompts_do_not_over_fire(framework_dir: Path) -> None:
 
     # QA regression set (2026-08-07 review): these previously injected
     # unrelated skills via bare-word alternates and the "I" placeholder.
-    assert "superagent-add-document" not in fired("I will pay the rent next month")
+    assert "superagent-add" not in fired("I will pay the rent next month")
     assert "superagent-important-dates" not in fired("I will pay the rent next month")
     assert "superagent-world" not in fired("what's happening in the world right now")
-    assert "superagent-add-account" not in fired("my insurance card came in the mail")
-    assert "superagent-add-bill" not in fired("my insurance card came in the mail")
+    assert "superagent-add" not in fired("my insurance card came in the mail")
+    assert "superagent-bills" not in fired("my insurance card came in the mail")
     # sane prompts still fire the right skill
     assert "superagent-refresh" in fired("update superagent please")
     assert "superagent-daily-update" in fired("give me my daily update")

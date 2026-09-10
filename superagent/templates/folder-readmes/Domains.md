@@ -26,8 +26,8 @@ Add your own (e.g. `Boat/`, `Cabin/`, `Volunteer/`, `Estate/`) via `add-domain`.
 
 Triggers that materialize a folder:
 
-- A capture skill writes the first row referencing the domain (`add-bill`, `add-contact`, `add-asset`, `add-source`, `add-document`, `add-appointment`, `add-important-date`).
-- A logging skill writes the first event (`log-event`, `health-log`, `vehicle-log`, `home-maintenance`, `pet-care`).
+- A capture skill writes the first row referencing the domain (`add`, `add-contact`, `add-source`, and the Add modes of `bills`, `subscriptions`, `appointments`, `important-dates`).
+- A logging skill writes the first event (`log-event`, `health-log`, `pet-care`).
 - An ingestor writes its first row attributable to the domain.
 - The `add-domain` flow's optional "capture an initial fact" step.
 

@@ -52,7 +52,7 @@ The bet: AI is finally good enough to take the administrative load of modern lif
    Follow AGENTS.md and run init.
    ```
 
-3. The agent reads `AGENTS.md`, finds `superagent/skills/init.md`, asks 4 orientation questions (your name and email, household, what hurts most today, how far back spreadsheet exports should reach), scaffolds `workspace/`, and walks through one capture skill that matches your top pain point.
+3. The agent reads `AGENTS.md`, finds `superagent/skills/init.md`, asks 3 orientation questions (your name and email, household, what hurts most today), scaffolds `workspace/`, and walks through one capture skill that matches your top pain point.
 
 After init, the five commands you'll use most:
 
@@ -60,22 +60,22 @@ After init, the five commands you'll use most:
 whatsup            30-second status check
 daily-update       full morning briefing
 weekly-review      Friday/Sunday wrap
-add-bill           capture a recurring bill
-add-appointment    capture an upcoming appointment
+bills add          capture a recurring bill
+appointments add   capture an upcoming appointment
 ```
 
 Or just describe what you want in plain English — the agent matches your phrasing against the [skill catalog](superagent/skills/_manifest.yaml).
 
 ## What it can do
 
-Capabilities grouped by intent. Full skill list (~50) lives at `superagent/skills/_manifest.yaml`.
+Capabilities grouped by intent. The full skill list lives at `superagent/skills/_manifest.yaml`.
 
 | Intent | Skills | Example use |
 |---|---|---|
-| **Capture** (say it; the agent files it) | `add-bill`, `add-subscription`, `add-appointment`, `add-important-date`, `add-contact`, `add-account`, `add-asset`, `add-document`, `add-domain`, `add-project`, `add-source`, `log-event`, `health-log`, `vehicle-log`, `home-maintenance`, `pet-care`, `inbox-triage` | "Just signed up for Spotify Family, $17/mo." |
-| **Recall** (ask; the agent answers from local data first) | `world` graph, per-domain `history.md`, `audit`, `events` | "Show me everything connected to my mechanic." |
-| **Surface** (the agent reaches out before you have to ask) | `whatsup`, `daily-update`, `weekly-review`, `monthly-review`, `appointments`, `bills`, `subscriptions`, `important-dates`, `follow-up`, `triage-overdue`, `personal-signals` | The morning briefing tells you the trial converts in 3 days. |
-| **Plan** (time-bounded efforts + scenarios) | `projects`, `pm-review`, `play` (playbooks), `scenarios`, `handoff` | "Plan the kitchen renovation. Budget $25k. Done by August." |
+| **Capture** (say it; the agent files it) | `add` (account / asset / document), `add-contact`, `add-domain`, `add-project`, `add-source`, the Add modes of `bills` / `subscriptions` / `appointments` / `important-dates`, `log-event` (incl. vehicle / home events), `health-log`, `pet-care` | "Just signed up for Spotify Family, $17/mo." |
+| **Recall** (ask; the agent answers from local data first) | `world` graph, per-domain `history.md`, `sources`, `research`; the `tools/audit.py` and `tools/log_window.py` CLIs for row history and timelines | "Show me everything connected to my mechanic." |
+| **Surface** (the agent reaches out before you have to ask) | `whatsup`, `daily-update`, `weekly-review`, `monthly-review`, `appointments`, `bills`, `subscriptions`, `important-dates`, `todo` (with an overdue-triage mode), `personal-signals` | The morning briefing tells you the trial converts in 3 days. |
+| **Plan** (time-bounded efforts) | `projects`, `ad-hoc-task`, `report` | "Plan the kitchen renovation. Budget $25k. Done by August." |
 | **Self-improve** (the framework improves itself) | `supertailor-review`, `doctor` | Every 90 days: ranked framework-improvement suggestions, with a hard safeguard against personal-data leakage into committed code. |
 
 ## Data sources

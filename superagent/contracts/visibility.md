@@ -7,7 +7,7 @@ Implements superagent/docs/_internal/ideas-better-structure.md item #19. Every e
 **Values**:
 - `private` (default) — owner only; never appears in shared / multi-user views.
 - `household` — visible to anyone in the workspace's household scope.
-- `public` — included in any export (handoff packet, contractor brief, tax-prep packet) by default.
+- `public` — included in any export (shared report, contractor brief, tax-prep packet) by default.
 
 **Outbound scrub** (per § "Outbound Surface Contract"): redacts `private` content; lets `public` through; treats `household` per the recipient.
 

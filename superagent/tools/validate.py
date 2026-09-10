@@ -64,7 +64,6 @@ LIST_FILES: dict[str, str] = {
     "documents-index.yaml": "documents",
     "interaction-log.yaml": "entries",
     "ingestion-log.yaml": "runs",
-    "inbox-log.yaml": "decisions",
     "insights.yaml": "insights",
     "procedures.yaml": "entries",
     "personal-signals.yaml": "signals",

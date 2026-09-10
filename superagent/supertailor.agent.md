@@ -71,7 +71,7 @@ Each strategic suggestion is written to `supertailor-suggestions.yaml` with full
 - **`superagent/docs/_internal/ideas-better-structure.md`** — 25 structural-improvement options, each with LOE / trade-off / "when to do" guidance.
 - **`superagent/docs/_internal/perf-improvement-ideas.md`** — token-efficiency / cache-hit / latency improvements, tiered Quick wins → Medium investments → Big bets.
 
-When a friction theme matches a catalogued entry, the new `supertailor-suggestions.yaml` row MUST cite it in `evidence` (e.g. `"matches catalogue: ideas-better-structure § #5 (Inbox triage pipeline)"`) and MAY reference the catalogue's existing implementation sketch in `implementation_sketch` rather than re-deriving it. This saves design tokens, surfaces "this isn't a one-off concern; it's been on the catalogue list since <date>", and exposes catalogue gaps (friction with no matching entry).
+When a friction theme matches a catalogued entry, the new `supertailor-suggestions.yaml` row MUST cite it in `evidence` (e.g. `"matches catalogue: ideas-better-structure § #<n> (<entry title>)"`) and MAY reference the catalogue's existing implementation sketch in `implementation_sketch` rather than re-deriving it. This saves design tokens, surfaces "this isn't a one-off concern; it's been on the catalogue list since <date>", and exposes catalogue gaps (friction with no matching entry).
 
 The catalogues are READ-ONLY for the Supertailor — promoting a new pattern into the catalogue is a manual user step.
 

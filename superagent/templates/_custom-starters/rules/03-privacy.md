@@ -35,7 +35,7 @@ gitignored workspace itself is local-only either way; the concern here is
 * Strip EXIF GPS from any photo I drop into `Inbox/` before moving it to
   a destination outside `_memory/sensitive/`.
 * Never embed a photo of an ID document (license, passport) into an artifact
-  unless it's in `Outbox/sealed/handoff/`.
+  unless it's in `Outbox/sealed/`.
 
 ## Health
 

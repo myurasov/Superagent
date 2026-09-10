@@ -6,8 +6,8 @@
   Rolodex (contact directory) for this domain (4-file structure).
 
   Sync contract: every Superagent skill that processes a touchpoint involving
-  a person in this domain (log-event, health-log, vehicle-log, pet-care,
-  appointments, draft-email, summarize-thread, ingestors, etc.) MUST add or
+  a person in this domain (log-event, health-log, pet-care, appointments,
+  draft-email, summarize-thread, ingestors, etc.) MUST add or
   update a row here when it sees a new person or a new touchpoint with an
   existing person. See contracts/domains-and-assets.md (rolodex sync).
 

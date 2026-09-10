@@ -17,22 +17,19 @@ import yaml
 EXPECTED_SKILLS = {
     "init", "whatsup", "daily-update", "weekly-review", "monthly-review",
     "todo",
-    "add-domain", "add-project", "add-asset", "add-contact", "add-account",
-    "add-bill", "add-subscription", "add-appointment", "add-important-date",
-    "add-document", "add-source",
+    "add", "add-domain", "add-project", "add-contact", "add-source",
     "projects", "sources",
-    "log-event", "health-log", "vehicle-log", "home-maintenance", "pet-care",
+    "log-event", "health-log", "pet-care",
     "bills", "subscriptions", "appointments", "important-dates",
     "expenses",
-    "draft-email", "summarize-thread", "follow-up", "research",
+    "draft-email", "summarize-thread", "research",
     "watch",
-    "personal-signals", "supertailor-review", "doctor", "triage-overdue", "handoff",
+    "personal-signals", "supertailor-review", "doctor",
     # Added by the second-pass implementation:
-    "inbox-triage", "tags",
-    "world", "events", "audit",
+    "world",
     # Later additions:
-    "migrate", "domain-suggest", "workbooks", "browserctl",
-    "ad-hoc-task", "refresh", "report",
+    "migrate", "domain-suggest", "browserctl",
+    "ad-hoc-task", "refresh", "report", "release",
 }
 
 
@@ -50,9 +47,14 @@ def parse_frontmatter(body: str) -> dict | None:
 def test_every_expected_skill_exists(framework_dir: Path) -> None:
     skills_dir = framework_dir / "skills"
     assert skills_dir.is_dir()
-    present = {p.stem for p in skills_dir.glob("*.md")}
+    present = {p.stem for p in skills_dir.glob("*.md") if not p.stem.startswith("_")}
     missing = EXPECTED_SKILLS - present
     assert not missing, f"missing skill files: {sorted(missing)}"
+    # Two-directional since 0.21.0: a skill file that is not in this list is
+    # either unregistered (add it here + to the AGENTS.md table) or a retired
+    # skill that came back by accident.
+    unexpected = present - EXPECTED_SKILLS
+    assert not unexpected, f"skill files not in EXPECTED_SKILLS: {sorted(unexpected)}"
 
 
 def test_every_skill_has_valid_frontmatter(framework_dir: Path) -> None:

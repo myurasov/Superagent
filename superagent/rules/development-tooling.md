@@ -23,6 +23,7 @@ The four rules are non-negotiable defaults; surface a request to the user before
   - `uv run ruff check superagent/`
 - Do NOT call `python3 …` or `python …` directly. Do NOT activate the venv with `source .venv.noSync/bin/activate`; rely on the export plus `uv run`.
 - Do NOT create per-tool venvs (`pipx`, `venv` in subdirs, `poetry env use`, `conda env`). One repo, one venv.
+- The legacy `./.venv/` is deprecated **forward-only**: it stays gitignored (and in ruff's `extend-exclude`) as a safety net and pre-existing content is not migrated, but no environment is created or refreshed there — `./.venv.noSync/` is the only venv.
 - Dependencies are declared in the root `pyproject.toml` and locked in `uv.lock`. Both files are committed; `uv.lock` is the source of truth for reproducible installs.
 - uv's package cache lives at `./.tmp.noSync/uv-cache/` via `[tool.uv].cache-dir` in `pyproject.toml`. This cache is not a second environment.
 

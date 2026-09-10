@@ -105,7 +105,7 @@ Three options, documented in `docs/architecture.md` § "Multi-user options":
 
 1. **Shared workspace** — copy `workspace/` to a shared cloud folder. Both users point Superagent at it. Last-write-wins; don't edit simultaneously.
 2. **Federated workspace** — each user has their own workspace; symlink `Domains/Family/` and `Domains/Home/` into a shared folder.
-3. **Single-user with handoff** — one person runs Superagent; the partner gets the `handoff` packet annually plus on-demand snapshots.
+3. **Single-user with shared snapshots** — one person runs Superagent; the partner gets a rendered `report` on demand (tax-prep, annual review).
 
 Built-in multi-user with proper conflict resolution is on the roadmap (LOE-L).
 
@@ -122,7 +122,7 @@ A native mobile app is not on the MVP. The Supertailor will tell you if your usa
 
 Encryption: not built-in in MVP. The whole workspace is gitignored and lives on your machine; macOS FileVault is the default underlying encryption.
 
-For the most sensitive subfiles (`health-records.yaml`, `accounts-index.yaml`, `Outbox/handoff/`), the recommended pattern is:
+For the most sensitive subfiles (`health-records.yaml`, `accounts-index.yaml`, `Outbox/sealed/`), the recommended pattern is:
 - Symlink them onto an encrypted disk image (Disk Utility → New Image, AES-256, sparse-bundle).
 - Or move them into a 1Password / Bitwarden secure-note reference and let Superagent reference them by `vault_ref`.
 
@@ -144,7 +144,7 @@ Multiple safety nets:
 
 ## Which data sources are supported?
 
-The framework ships with ~49 skills documented as markdown instruction sets, ~30 Python tools (workspace_init, validate, render_status, log_user_query, world, sources_index, log_window, audit, inbox_triage, anti_patterns, home, skill_loader, icloud_dup_check, watchlist, …), and a **watchlist** of external sources (`contracts/watchlist.md`) with six shipped watcher packs: `simplefin` (bank / brokerage harvest), `gmail` (live query for new mail, capture-through into the local archive), `url` (any URL), `cmd` (the stdout of a read-only shell command; gated by `allow_cmd`), `path` (a local file or folder), and `subagent` (anything an agent can read — the escape hatch). A standalone CSV importer (`tools/ingest/csv.py --file`) covers bank statements. Setup notes: `docs/data-sources.md`.
+The framework ships with its skills documented as markdown instruction sets (the catalog is `skills/_manifest.yaml`), ~30 Python tools (workspace_init, validate, render_status, log_user_query, world, sources_index, log_window, audit, events_derive, anti_patterns, home, skill_loader, icloud_dup_check, watchlist, …), and a **watchlist** of external sources (`contracts/watchlist.md`) with six shipped watcher packs: `simplefin` (bank / brokerage harvest), `gmail` (live query for new mail, capture-through into the local archive), `url` (any URL), `cmd` (the stdout of a read-only shell command; gated by `allow_cmd`), `path` (a local file or folder), and `subagent` (anything an agent can read — the escape hatch). A standalone CSV importer (`tools/ingest/csv.py --file`) covers bank statements. Setup notes: `docs/data-sources.md`.
 
 There is deliberately **no catalogue of stubs**. A source Superagent does not know about is a one-file `url` / `cmd` / `subagent` row under `Sources/Watchlist/`, or — when it feeds a typed index and needs real normalization — a self-contained pack folder (`pack.yaml` + optional `handler.py` implementing `IngestorBase.run`) dropped into `workspace/_custom/watchers/<id>/`, no framework code touched. Sharing a watcher is copying its folder.
 
