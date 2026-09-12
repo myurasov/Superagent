@@ -26,6 +26,7 @@ The four rules are non-negotiable defaults; surface a request to the user before
 - The legacy `./.venv/` is deprecated **forward-only**: it stays gitignored (and in ruff's `extend-exclude`) as a safety net and pre-existing content is not migrated, but no environment is created or refreshed there — `./.venv.noSync/` is the only venv.
 - Dependencies are declared in the root `pyproject.toml` and locked in `uv.lock`. Both files are committed; `uv.lock` is the source of truth for reproducible installs.
 - uv's package cache lives at `./.tmp.noSync/uv-cache/` via `[tool.uv].cache-dir` in `pyproject.toml`. This cache is not a second environment.
+- **Invoke `uv` from the repository root.** `cache-dir` is a relative path and uv does NOT anchor it to the project root — it resolves against the process working directory at use time, so a `uv run …` launched from a subdirectory silently creates a second cache at `<cwd>/.tmp.noSync/uv-cache/`. `cd` to the repo root before any `uv` call; never `cd workspace/ && uv run …`. If a subdirectory cwd is unavoidable, pass an absolute `UV_CACHE_DIR="<repo-root>/.tmp.noSync/uv-cache"`. Stray caches are disposable — delete them.
 
 ### Common commands
 
