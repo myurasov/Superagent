@@ -155,9 +155,9 @@ Both **Cursor** and **Claude Code** are first-class host IDEs, and any other `AG
 | Path | Purpose |
 |---|---|
 | `CLAUDE.md` | Claude Code's entry point — pure `@AGENTS.md` re-export |
-| `.claude/settings.json` | Claude Code project settings — wires `UserPromptSubmit` to `superagent/tools/log_user_query.py --source claude-code` AND `PostToolUse` matchers for the three Gmail MCP tools to `superagent/tools/email/archive_hook.py` (per `contracts/email-capture.md` capture-on-touch) |
+| `.claude/settings.json` | Claude Code project settings — wires `UserPromptSubmit` to `superagent.tools.log_user_query --source claude-code` AND `PostToolUse` matchers for the three Gmail MCP tools to `superagent.tools.email.archive_hook` (per `contracts/email-capture.md` capture-on-touch). Every command anchors itself to the repo root first — see `docs/harness-setup.md` § "Hook command shape" |
 | `.claudeignore` | Tells Claude Code to skip `.cursor/` and `workspace/` for ambient context |
-| `.cursor/hooks.json` | Cursor hook config (schema `"version": 1`, Cursor-native event names) — wires `beforeSubmitPrompt` to `superagent/tools/log_user_query.py` (default `source=cursor`) AND a single matcher-less `afterMCPExecution` entry to `superagent/tools/email/archive_hook.py --kind=auto`. NOT a mirror of `.claude/settings.json`: Cursor silently loads nothing if Claude Code's `UserPromptSubmit` / `PostToolUse` names are used here (per `contracts/email-capture.md` § 8.1) |
+| `.cursor/hooks.json` | Cursor hook config (schema `"version": 1`, Cursor-native event names) — wires `beforeSubmitPrompt` to `superagent.tools.log_user_query` (default `source=cursor`) AND a single matcher-less `afterMCPExecution` entry to `superagent.tools.email.archive_hook --kind=auto`. NOT a mirror of `.claude/settings.json`: Cursor silently loads nothing if Claude Code's `UserPromptSubmit` / `PostToolUse` names are used here (per `contracts/email-capture.md` § 8.1) |
 
 A fresh `git clone` has all four. If any is missing (the user accidentally deleted one, or pulled a pre-0.5.0 clone), surface the discrepancy and recommend `git checkout -- <path>` to restore from the framework's reference content. The init skill does NOT auto-create them — they are framework distribution, not workspace data.
 

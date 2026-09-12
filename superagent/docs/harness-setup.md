@@ -44,7 +44,7 @@ The committed `.cursor/` tree holds only `hooks.json` and the `mcp.json.cursor` 
 
 The `init` skill sets all of these up by default. The first two are hook-based **enhancements** — valuable where the harness supports hooks, absent elsewhere, and nothing critical depends on them (per `AGENTS.md` § "Non-Negotiables (Every Harness)").
 
-- **User-prompt logging** (used by the Supertailor for friction analysis). Both harnesses run `uv run python superagent/tools/log_user_query.py`, but on **differently-named events** — Cursor rejects Claude Code's event names in `.cursor/hooks.json` and loads nothing, silently:
+- **User-prompt logging** (used by the Supertailor for friction analysis). Both harnesses run `uv run python -m superagent.tools.log_user_query`, but on **differently-named events** — Cursor rejects Claude Code's event names in `.cursor/hooks.json` and loads nothing, silently:
   - Cursor: `.cursor/hooks.json`, event `beforeSubmitPrompt`, schema `"version": 1` (no `--source` flag; defaults to `cursor`).
   - Claude Code: `.claude/settings.json`, event `UserPromptSubmit` (passes `--source claude-code` so the Supertailor can slice by IDE).
   - Disable by setting `_memory/config.yaml.preferences.privacy.log_user_queries: false`; the script reads that flag and exits silently when it's off.
@@ -52,6 +52,20 @@ The `init` skill sets all of these up by default. The first two are hook-based *
 - **Email capture** (mirrors touched Gmail messages into the local archive). Cursor: `.cursor/hooks.json`, event `afterMCPExecution`, ONE entry with no matcher, `archive_hook --kind=auto`. Claude Code: `.claude/settings.json`, event `PostToolUse`, three `mcp__gmail__<tool>` matchers. Details and the per-harness field-name differences are in `contracts/email-capture.md` § 8.1; the hook-free floor that makes both optional is `rules/email-capture-fallback.md`.
 - **MCP servers.** Cursor and Claude Code each read their own runtime file (`.cursor/mcp.json` / `.mcp.json`). Both files start as a regular-file copy of the committed templates (`.cursor/mcp.json.cursor` / `.mcp.json.claude`). The templates are content-identical (Superagent has no per-harness OAuth client_id constraint); only the destination path differs. **Regular-file copies, not symlinks** — this repo lives in iCloud Drive, and iCloud occasionally rewrites symlinks as placeholders. Edit one file, re-run `init`, and drift between the two is detected and offered for mirror. A generic CLI that accepts MCP JSON config can be pointed at `.mcp.json` as well.
 - **Commit-message hook.** Install a `commit-msg` hook at `.githooks/commit-msg` (`git config core.hooksPath .githooks`) that blocks AI-attribution patterns at commit time. The reference implementation lives at `superagent/templates/githooks/commit-msg`. Harness-agnostic; the policy it enforces is `rules/git-commits.md`.
+
+### Hook command shape
+
+No harness guarantees a hook's working directory — Claude Code has been observed running one from `workspace/` — so **every hook command anchors itself to the repo root before doing anything else**:
+
+```sh
+cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}" && unset VIRTUAL_ENV && UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.<module> || exit 1
+```
+
+Each clause earns its place, and dropping any one of them fails silently or noisily in a different way:
+
+- **`cd <repo root>`** — the root is what makes `superagent.tools.*` importable (the package is not installed into the venv; `python -m` relies on the cwd being on `sys.path`) and what anchors uv's relative `cache-dir` to `./.tmp.noSync/uv-cache` instead of spawning a stray cache under the cwd (`rules/development-tooling.md`). `CLAUDE_PROJECT_DIR` is Claude Code's own project-root variable; the `git rev-parse` fallback covers every other harness.
+- **`unset VIRTUAL_ENV`** — a shell with the deprecated `./.venv` activated otherwise makes uv print a `does not match the project environment path` warning on every turn.
+- **`|| exit 1`** — the hook scripts' `main()` already always returns 0, but a process that cannot start at all exits **2**, and 2 is the code Claude Code reads as *block this prompt*. Mapping any failure to 1 keeps hook breakage visible on stderr while never holding up a turn.
 
 ## Routing when the repo hosts other frameworks
 

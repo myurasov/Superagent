@@ -43,8 +43,8 @@ import yaml
 try:
     from superagent.tools.skill_loader import SYNTHETIC_MARKERS
 except ModuleNotFoundError:
-    # The hooks run this file as a script (`uv run python superagent/tools/log_user_query.py`),
-    # where only the script's own directory is on sys.path. Put the repo root there so the
+    # Run by path rather than as a module (`uv run python superagent/tools/log_user_query.py`),
+    # only the script's own directory is on sys.path. Put the repo root there so the
     # shared marker tuple stays single-sourced in skill_loader instead of being duplicated.
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     from superagent.tools.skill_loader import SYNTHETIC_MARKERS
