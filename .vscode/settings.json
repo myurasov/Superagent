@@ -14,7 +14,7 @@
         "*.md": "vscode.markdown.preview.editor"
     },
     "explorer.decorations.colors": false,
-    "workbench.colorTheme": "Mayukai Mono",
+    "workbench.colorTheme": "Oceans of Andromeda",
     "workbench.iconTheme": "catppuccin-mocha",
     "workbench.statusBar.visible": true,
     "workbench.colorCustomizations": {
@@ -28,12 +28,20 @@
         "[Mayukai*]": {
             "editor.foreground": "#ffffff",
             "foreground": "#ffffff",
-            "input.foreground": "#f2f4e8",
-            "terminal.foreground": "#f2f4e8",
-            "editorLineNumber.foreground": "#7d8aa0",
+            "input.foreground": "#ffffff",
+            "terminal.foreground": "#ffffff",
             "editorLineNumber.activeForeground": "#ffffff",
             "tab.activeForeground": "#ffe100",
             "tab.inactiveForeground": "#90a0b9"
+        }
+        "[*Andromeda*]": {
+            "editor.foreground": "#ffffff",
+            "foreground": "#ffffff",
+            "input.foreground": "#ffffff",
+            "terminal.foreground": "#ffffff",
+            "editorLineNumber.activeForeground": "#ffffff",
+            "tab.activeForeground": "#00ff95",
+            "tab.inactiveForeground": "#a3dbd9"
         }
     }
 }
