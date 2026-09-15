@@ -203,6 +203,8 @@ Module `superagent.tools.watchlist` (alias `superagent.tools.ext_sources`); JSON
 
 `check` and `stamp` write `watchlist-state.yaml` (exclusively theirs) and append to `context.yaml.alerts`, `interaction-log.yaml`, `ingestion-log.yaml`, `world.yaml`, and `action-signals.yaml` only through the rules in § 9. `enable` writes exactly one new ref. Nothing else under `Sources/` or `_memory/` is ever written by this tool.
 
+**A file the tool cannot parse is refused, never replaced.** Every one of those writers loads its target with `load_yaml_for_write()`: a file that exists but is not a YAML mapping raises `CorruptFileError`, the file stays byte-for-byte as it was, and `check` reports the refusal under `errors` — together with the alert / row text that went unwritten — while the other effects still land (a corrupt `watchlist-state.yaml` stops the command outright, exit 1). A missing, empty or comments-only file is created fresh. The fallback this replaces ("parse failed → start from an empty skeleton → re-dump") is how a pre-existing indentation error wiped ~760 KB of `interaction-log.yaml` on 2026-09-15.
+
 ## 13. What this contract never does
 
 - Never replaces normalization: turning a payload into `transactions.yaml` rows stays real code in a handler.

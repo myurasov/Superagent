@@ -1745,3 +1745,120 @@ def test_cycle_string_and_null_are_accepted_by_loader_and_validator(ws: Path) ->
     assert v.check_watch_block({"type": "url", "url": "https://e.com", "cycles": None}, packs, "x") == []
     bad = v.check_watch_block({"type": "url", "url": "https://e.com", "cycles": [1]}, packs, "x")
     assert bad and "watch.cycles must be a list of cadence names" in bad[0]
+
+
+# ---------------------------------------------------------------------------
+# writers refuse to replace a file they cannot parse (2026-09-15 incident)
+# ---------------------------------------------------------------------------
+
+CORRUPT_YAML = "schema_version: 1\nentries:\n  - id: keep-me\n      ts: bad-indent\n   summary: worse\n"
+TS = "2026-09-15T01:00:00-07:00"
+
+
+def _doc_watcher(ws: Path) -> wl.Watcher:
+    """A registered path watcher (no packs needed) as a `Watcher` object."""
+    target = ws / "watched.txt"
+    target.write_text("v1")
+    write_ref(ws, "doc", path_ref(target, title="A doc", related_domain="home"))
+    watchers, errors = wl.load_registry(ws, wl.load_config(ws), {})
+    assert not errors
+    return next(w for w in watchers if w.id == "doc")
+
+
+def _run_result() -> Any:
+    from superagent.tools.ingest._base import RunResult
+
+    return RunResult(source="x", started_at=TS, finished_at=TS, items_pulled=1, items_inserted=1)
+
+
+@pytest.mark.parametrize("rel, call", [
+    ("interaction-log.yaml", lambda ws, w: wl.append_interaction_log(ws, w, summary="s", ts=TS)),
+    ("action-signals.yaml", lambda ws, w: wl.append_tailor_signal(ws, w, run_id="ingest-1", errors=["e"], ts=TS)),
+    ("ingestion-log.yaml", lambda ws, w: wl.append_ingestion_log(ws, _run_result(), trigger="scheduled")),
+    ("context.yaml", lambda ws, w: wl.append_alert(ws, w, summary="s", ts=TS)),
+    ("watchlist-state.yaml", lambda ws, w: wl.load_state(ws)),
+])
+def test_writers_refuse_to_replace_an_unparseable_file(ws: Path, rel: str, call: Any) -> None:
+    watcher = _doc_watcher(ws)
+    path = ws / "_memory" / rel
+    path.write_text(CORRUPT_YAML)
+    with pytest.raises(wl.CorruptFileError) as info:
+        call(ws, watcher)
+    message = str(info.value)
+    assert rel in message and "refusing to rewrite" in message
+    assert "line " in message, "the message points at the offending line"
+    assert path.read_text() == CORRUPT_YAML, "the file is left byte-for-byte as it was"
+
+
+def test_writers_refuse_a_file_whose_top_level_is_not_a_mapping(ws: Path) -> None:
+    watcher = _doc_watcher(ws)
+    path = ws / "_memory" / "interaction-log.yaml"
+    path.write_text("- just\n- a list\n")
+    with pytest.raises(wl.CorruptFileError, match="expected a mapping"):
+        wl.append_interaction_log(ws, watcher, summary="s", ts=TS)
+    assert path.read_text() == "- just\n- a list\n"
+
+
+def test_corrupt_alert_archive_leaves_context_untouched_too(ws: Path) -> None:
+    watcher = _doc_watcher(ws)
+    ctx_path = ws / "_memory" / "context.yaml"
+    ctx = read_yaml(ctx_path)
+    ctx["alerts"] = ["[watch:doc] older alert"]
+    ctx_path.write_text(yaml.safe_dump(ctx, sort_keys=False))
+    before = ctx_path.read_text()
+    archive = ws / "_memory" / "alerts-archive.yaml"
+    archive.write_text(CORRUPT_YAML)
+    with pytest.raises(wl.CorruptFileError):
+        wl.append_alert(ws, watcher, summary="s", ts=TS)
+    assert archive.read_text() == CORRUPT_YAML
+    assert ctx_path.read_text() == before, "the prior alert is neither archived nor dropped"
+
+
+@pytest.mark.parametrize("initial", [None, "", "# header only\n\n"])
+def test_writers_still_create_a_missing_or_empty_file(ws: Path, initial: str | None) -> None:
+    watcher = _doc_watcher(ws)
+    path = ws / "_memory" / "interaction-log.yaml"
+    if initial is None:
+        path.unlink(missing_ok=True)
+    else:
+        path.write_text(initial)
+    rid = wl.append_interaction_log(ws, watcher, summary="s", ts=TS)
+    assert [e["id"] for e in read_yaml(path)["entries"]] == [rid]
+    if initial:
+        assert path.read_text().startswith("# header only")
+
+
+def test_check_reports_a_corrupt_interaction_log_and_still_writes_the_alert(ws: Path, fw: Path) -> None:
+    target = ws / "watched.txt"
+    target.write_text("v1")
+    write_ref(ws, "doc", path_ref(target, title="A doc", related_domain="home"))
+    check(ws, fw)  # baseline
+    ilog = ws / "_memory" / "interaction-log.yaml"
+    ilog.write_text(CORRUPT_YAML)
+    target.write_text("v2")
+    payload = check(ws, fw)
+    assert ids(payload["changed"]) == ["doc"]
+    effects = payload["changed"][0]["effects"]
+    assert effects["interaction_log_id"] is None
+    assert effects["alert"] == f"[watch:doc] {payload['checked_at']}: file sha256"
+    assert len(effects["errors"]) == 1
+    err = effects["errors"][0]
+    assert "interaction-log.yaml" in err and "refusing to rewrite" in err
+    assert "unwritten interaction-log row: watch:doc" in err, "the lost row text rides along in the report"
+    assert payload["summary"]["errors"] == 1 and payload["errors"][0]["id"] == "doc"
+    assert ilog.read_text() == CORRUPT_YAML
+    assert read_yaml(ws / "_memory" / "context.yaml")["alerts"][-1] == effects["alert"]
+    assert state_row(ws, "doc")["last_changed"] == payload["checked_at"]
+    assert "interaction-log.yaml" in wl.render_report(payload)
+
+
+def test_cli_check_refuses_a_corrupt_state_file(ws: Path, fw: Path, capsys: Any) -> None:
+    (ws / "watched.txt").write_text("v1")
+    write_ref(ws, "doc", path_ref(ws / "watched.txt", title="A doc"))
+    state = ws / "_memory" / "watchlist-state.yaml"
+    state.write_text(CORRUPT_YAML)
+    rc = wl.main(["--workspace", str(ws), "--framework", str(fw), "check", "--cycle", "daily-update"])
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "watchlist-state.yaml" in err and "refusing to rewrite" in err
+    assert state.read_text() == CORRUPT_YAML

@@ -256,6 +256,19 @@ class WatchlistError(Exception):
         self.key = key
 
 
+class CorruptFileError(WatchlistError):
+    """A memory file exists but cannot be parsed as a YAML mapping.
+
+    Raised by `load_yaml_for_write()` so that no writer ever replaces a file it
+    could not read. The 2026-09-15 incident this guards against: the
+    empty-document fallback in `append_interaction_log()` re-dumped
+    `interaction-log.yaml` down to a single row over a pre-existing indentation
+    error, discarding ~760 KB of append-only history. Writers now refuse; the
+    file stays byte-for-byte as it was, for the user to repair, and the check
+    reports the refusal together with the text that went unwritten.
+    """
+
+
 # ---------------------------------------------------------------------------
 # Small helpers
 # ---------------------------------------------------------------------------
@@ -338,6 +351,13 @@ def is_ref_name(name: str) -> bool:
 
 
 def load_yaml(path: Path) -> Any:
+    """Read-only loader: None when the file is missing OR unreadable / unparseable.
+
+    Fine for readers (a broken optional file degrades to "nothing there").
+    NEVER use it to load a file you are about to rewrite — that is what turned
+    a YAML indentation error into a wiped interaction log; use
+    `load_yaml_for_write()` there.
+    """
     if not path.exists():
         return None
     try:
@@ -345,6 +365,48 @@ def load_yaml(path: Path) -> Any:
             return yaml.safe_load(fh)
     except (OSError, yaml.YAMLError):
         return None
+
+
+def _yaml_problem(exc: yaml.YAMLError) -> str:
+    """`line N: <problem>` when the parser says where, else the first line of the error."""
+    mark = getattr(exc, "problem_mark", None)
+    problem = getattr(exc, "problem", None) or (str(exc).splitlines() or ["unparseable"])[0]
+    if mark is not None:
+        return f"line {mark.line + 1}: {problem}"
+    return problem
+
+
+def load_yaml_for_write(path: Path) -> dict[str, Any] | None:
+    """Load a mapping the caller is about to rewrite in place.
+
+    Returns None when the file is missing, empty or comments-only — creating a
+    fresh file there is fine. Raises `CorruptFileError` when the file exists
+    but is not valid YAML, cannot be read, or its top level is not a mapping:
+    the only safe thing to do with such a file is to leave it alone, because
+    "fall back to a skeleton and re-dump" erases whatever it held. Read-only
+    callers keep using `load_yaml()`, whose None-on-error is harmless.
+    """
+    if not path.exists():
+        return None
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise CorruptFileError(f"{path.name} cannot be read ({exc}); refusing to rewrite it") from exc
+    try:
+        data = yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        raise CorruptFileError(
+            f"{path.name} is not valid YAML ({_yaml_problem(exc)}); refusing to rewrite it. "
+            "Fix the file by hand (`uv run python -m superagent.tools.validate` locates the line), "
+            "then re-run"
+        ) from exc
+    if data is None:
+        return None
+    if not isinstance(data, dict):
+        raise CorruptFileError(
+            f"{path.name}: top level is a {type(data).__name__}, expected a mapping; refusing to rewrite it"
+        )
+    return data
 
 
 def _leading_comment_block(path: Path) -> str:
@@ -1157,8 +1219,9 @@ def default_row() -> dict[str, Any]:
 
 
 def load_state(workspace: Path) -> dict[str, Any]:
-    data = load_yaml(state_path(workspace))
-    if not isinstance(data, dict):
+    """The machine-owned state file. Every caller goes on to save it, so a corrupt one is refused."""
+    data = load_yaml_for_write(state_path(workspace))
+    if data is None:
         data = {}
     data.setdefault("schema_version", SCHEMA_VERSION)
     rows = data.get("watchers")
@@ -1640,8 +1703,8 @@ def _mint_ingest_run_id(runs: list[Any], today: dt.date) -> str:
 def append_ingestion_log(workspace: Path, result: RunResult, *, trigger: str,
                          window: dict[str, Any] | None = None) -> str:
     path = workspace / "_memory" / "ingestion-log.yaml"
-    log = load_yaml(path)
-    if not isinstance(log, dict):
+    log = load_yaml_for_write(path)
+    if log is None:
         log = {"schema_version": 1, "runs": []}
     runs = [r for r in (log.get("runs") or []) if isinstance(r, dict) and r.get("id")]
     run_id = _mint_ingest_run_id(runs, dt.date.today())
@@ -1655,8 +1718,8 @@ def append_tailor_signal(workspace: Path, watcher: Watcher, *, run_id: str,
                          errors: list[str], ts: str) -> str | None:
     """One ambient `target: tailor` row per failing harvest run (contract § 9)."""
     path = workspace / "_memory" / "action-signals.yaml"
-    data = load_yaml(path)
-    if not isinstance(data, dict):
+    data = load_yaml_for_write(path)
+    if data is None:
         data = {"schema_version": 1, "signals": []}
     signals = [s for s in (data.get("signals") or []) if isinstance(s, dict) and s.get("id")]
     artifact_ref = f"ingestion-log:{run_id}"
@@ -1796,8 +1859,8 @@ def alert_text(watcher: Watcher, *, ts: str, summary: str) -> str:
 def append_alert(workspace: Path, watcher: Watcher, *, summary: str, ts: str) -> str | None:
     """One live string alert per watcher; the prior one moves to alerts-archive verbatim."""
     path = workspace / "_memory" / "context.yaml"
-    ctx = load_yaml(path)
-    if not isinstance(ctx, dict):
+    ctx = load_yaml_for_write(path)
+    if ctx is None:
         return None
     alerts = ctx.get("alerts")
     if not isinstance(alerts, list):
@@ -1806,8 +1869,8 @@ def append_alert(workspace: Path, watcher: Watcher, *, summary: str, ts: str) ->
     prior = [a for a in alerts if isinstance(a, str) and a.startswith(prefix)]
     if prior:
         archive_path = workspace / "_memory" / "alerts-archive.yaml"
-        archive = load_yaml(archive_path)
-        if not isinstance(archive, dict):
+        archive = load_yaml_for_write(archive_path)
+        if archive is None:
             archive = {"schema_version": 1, "archived": []}
         archived = archive.get("archived")
         if not isinstance(archived, list):
@@ -1826,8 +1889,8 @@ def append_alert(workspace: Path, watcher: Watcher, *, summary: str, ts: str) ->
 def append_interaction_log(workspace: Path, watcher: Watcher, *, summary: str, ts: str,
                            ingestion_log_ref: str | None = None) -> str | None:
     path = workspace / "_memory" / "interaction-log.yaml"
-    data = load_yaml(path)
-    if not isinstance(data, dict):
+    data = load_yaml_for_write(path)
+    if data is None:
         data = {"schema_version": 1, "entries": []}
     entries = [
         e for e in (data.get("entries") or [])
@@ -1892,11 +1955,26 @@ def sync_world_edges(workspace: Path, watchers: list[Watcher]) -> list[str]:
 
 def apply_change_effects(workspace: Path, watcher: Watcher, *, summary: str, ts: str,
                          ingestion_log_ref: str | None = None) -> dict[str, Any]:
-    alert = append_alert(workspace, watcher, summary=summary, ts=ts)
-    ilog = append_interaction_log(workspace, watcher, summary=summary, ts=ts,
-                                  ingestion_log_ref=ingestion_log_ref)
-    edges = sync_world_edges(workspace, [watcher])
-    return {"alert": alert, "interaction_log_id": ilog, "world_edges": edges}
+    """Alert + interaction-log row + world edges for one detected change.
+
+    Each effect is attempted on its own. A memory file that cannot be parsed
+    makes its writer raise `CorruptFileError`; that lands in `errors`, together
+    with the text that went unwritten, instead of aborting the other effects
+    or the check — the file itself is left untouched.
+    """
+    effects: dict[str, Any] = {"alert": None, "interaction_log_id": None, "world_edges": [], "errors": []}
+    try:
+        effects["alert"] = append_alert(workspace, watcher, summary=summary, ts=ts)
+    except CorruptFileError as exc:
+        effects["errors"].append(f"{exc}; unwritten alert: {alert_text(watcher, ts=ts, summary=summary)}")
+    try:
+        effects["interaction_log_id"] = append_interaction_log(
+            workspace, watcher, summary=summary, ts=ts, ingestion_log_ref=ingestion_log_ref,
+        )
+    except CorruptFileError as exc:
+        effects["errors"].append(f"{exc}; unwritten interaction-log row: {watcher.handle} — {summary}")
+    effects["world_edges"] = sync_world_edges(workspace, [watcher])
+    return effects
 
 
 # ---------------------------------------------------------------------------
@@ -2105,6 +2183,8 @@ def _apply_fingerprint(
                 ctx.workspace, watcher, summary=detected.detail or "fingerprint moved", ts=now_s,
                 ingestion_log_ref=ingestion_log_ref,
             )
+            for err in item["effects"]["errors"]:
+                _bucket(payload, "errors", _item(watcher, error=err))
         _bucket(payload, "changed", item)
         return "changed"
     row["last_outcome"] = "unchanged"
@@ -2712,7 +2792,16 @@ def main(argv: list[str] | None = None) -> int:
     if not (workspace / "_memory").exists():
         print(f"no workspace at {workspace}", file=sys.stderr)
         return 1
+    try:
+        return _dispatch(args, framework, workspace)
+    except CorruptFileError as exc:
+        # A memory file this command would rewrite is unparseable: refused and left untouched.
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
+
+def _dispatch(args: argparse.Namespace, framework: Path, workspace: Path) -> int:
+    """Run one sub-command; `main()` owns the workspace check and the refusal exit."""
     if args.cmd == "check":
         cfg = load_config(workspace)
         ctx = CheckContext(workspace=workspace, framework=framework, cfg=cfg, cycle=args.cycle,
