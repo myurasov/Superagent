@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-09-12T13:08:52-07:00'
-skill_count: 36
+generated_at: '2026-09-17T21:18:52-07:00'
+skill_count: 37
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -427,6 +427,36 @@ skills:
   - Domains/Health/info.md
   - Domains/Health/status.md
   - Domains/Health/history.md
+  - _memory/interaction-log.yaml
+  origin: framework
+- name: superagent-home-assistant
+  stem: home-assistant
+  path: superagent/skills/home-assistant.md
+  one_line: Work with a user's Home Assistant instance over the REST and WebSocket APIs plus (self-hosted)
+    SSH/docker access — inspect state, manage automations and template sensors, drive integrations and
+    config
+  triggers:
+  - home assistant / HA / hass
+  - what's the state of <entity> / why is <entity> unavailable
+  - add / fix / audit an automation
+  - create a template sensor / track consumption from a sensor
+  - build a dashboard / set up the energy dashboard
+  - add an integration / pair a device / commission a Matter device
+  - update home assistant core (container/host ops path)
+  mcp_required: []
+  mcp_optional: []
+  cli_required:
+  - uv
+  cli_optional:
+  - ssh (self-hosted only — config-dir and host access)
+  - docker (Container installs only — sibling services, core updates)
+  - mosquitto-clients (`mosquitto_sub` for MQTT diagnostics against a local broker)
+  lines: 360
+  h2_steps: 15
+  h3_subsections: 0
+  typical_token_cost: 9574
+  typical_files_read:
+  - _memory/action-signals.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-important-dates
