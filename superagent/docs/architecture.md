@@ -303,9 +303,9 @@ workspace/
 __pycache__/
 *.pyc
 .pytest_cache/
-.venv.noSync/
 .venv/
-.tmp.noSync/
+.venv/
+.tmp/
 .DS_Store
 EOF
 

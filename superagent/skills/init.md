@@ -178,7 +178,7 @@ For each runtime file:
 1. **`.mcp.json`** (Claude Code runtime). If missing: copy `.mcp.json.claude` → `.mcp.json` as a **regular-file copy**. If it already exists as a regular file, leave it alone — the user owns it after init.
 2. **`.cursor/mcp.json`** (Cursor runtime). If missing or a **legacy symlink** (pre-`0.5.0` workspaces sometimes symlinked it to `.mcp.json`): copy `.cursor/mcp.json.cursor` → `.cursor/mcp.json` as a regular-file copy. If a symlink is detected, show the user the current target and ask via `AskQuestion`: `replace with copy from .cursor/mcp.json.cursor / skip`. Default: replace. If it already exists as a regular file, leave it alone.
 
-**Never use symlinks.** This repo lives in iCloud Drive on most user machines; iCloud occasionally rewrites symlinks as placeholders across machines, which silently breaks the dual-IDE setup. Regular-file copies are robust.
+**Never use symlinks.** The repo may sit in a synced folder (iCloud Drive, Syncthing, …), and sync services occasionally rewrite symlinks as placeholders across machines, which silently breaks the dual-IDE setup. Regular-file copies are robust.
 
 **Drift detection.** If both `.mcp.json` and `.cursor/mcp.json` already exist but their contents differ (user edited one and forgot to mirror), print a short one-screen unified diff and ask via `AskQuestion`: `mcp.json → mirror to .cursor / .cursor/mcp.json → mirror to root / show full diff / leave as-is`. On either copy choice, run the copy and re-verify identity. There is intentionally no `tools/mcp_sync.py` helper — the per-init prompt is enough at single-user volume.
 

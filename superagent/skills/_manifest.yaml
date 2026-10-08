@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-09-17T21:18:52-07:00'
+generated_at: '2026-10-06T11:41:29-07:00'
 skill_count: 37
 skills:
 - name: superagent-ad-hoc-task
@@ -21,7 +21,7 @@ skills:
   lines: 190
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 2162
+  typical_token_cost: 2170
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml
@@ -252,7 +252,7 @@ skills:
   lines: 302
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 4738
+  typical_token_cost: 4747
   typical_files_read:
   - _memory/action-signals.yaml
   origin: framework
@@ -510,7 +510,7 @@ skills:
   lines: 348
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 6032
+  typical_token_cost: 6037
   typical_files_read:
   - _memory/config.yaml
   - _memory/insights.yaml
@@ -747,7 +747,7 @@ skills:
   lines: 230
   h2_steps: 14
   h3_subsections: 0
-  typical_token_cost: 2392
+  typical_token_cost: 2390
   typical_files_read:
   - _memory/interaction-log.yaml
   origin: framework
@@ -975,7 +975,7 @@ skills:
   lines: 153
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 3819
+  typical_token_cost: 3817
   typical_files_read:
   - _memory/config.yaml
   - _memory/interaction-log.yaml

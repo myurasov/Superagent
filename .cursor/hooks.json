@@ -27,9 +27,9 @@
     "Every command anchors itself to the repo root before running. Hooks are",
     "not guaranteed any particular cwd, and the repo root is what makes",
     "superagent.tools.* importable (the package is not installed into the",
-    "venv) and what anchors uv's relative cache-dir to ./.tmp.noSync/uv-cache",
+    "venv) and what anchors uv's relative cache-dir to ./.tmp/uv-cache",
     "(rules/development-tooling.md). `unset VIRTUAL_ENV` silences uv's",
-    "env-mismatch warning when a shell has the deprecated ./.venv activated.",
+    "env-mismatch warning when the shell has a foreign venv activated.",
     "`|| exit 1` keeps a failure off the blocking exit code (2) that a",
     "process which cannot start at all would return; the scripts own main()",
     "always returns 0 and stderr stays visible either way."
@@ -38,12 +38,12 @@
   "hooks": {
     "beforeSubmitPrompt": [
       {
-        "command": "cd \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}\" && unset VIRTUAL_ENV && UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.log_user_query || exit 1"
+        "command": "cd \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}\" && unset VIRTUAL_ENV && UV_PROJECT_ENVIRONMENT=.venv uv run python -m superagent.tools.log_user_query || exit 1"
       }
     ],
     "afterMCPExecution": [
       {
-        "command": "cd \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}\" && unset VIRTUAL_ENV && UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.email.archive_hook --kind=auto || exit 1"
+        "command": "cd \"${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}\" && unset VIRTUAL_ENV && UV_PROJECT_ENVIRONMENT=.venv uv run python -m superagent.tools.email.archive_hook --kind=auto || exit 1"
       }
     ]
   }

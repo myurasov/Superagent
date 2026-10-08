@@ -15,7 +15,7 @@ The `workspace/_custom/` overlay applies identically under every harness; there 
 You can switch between harnesses interchangeably — detection is environment-driven and runs on every call (no sticky config). The helper at `superagent/tools/ide.py` centralizes the probe:
 
 ```bash
-export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
+export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"
 uv run python -m superagent.tools.ide current   # prints "claude-code" / "cursor" / "unknown"
 uv run python -m superagent.tools.ide is-claude # exit 0 iff Claude Code
 uv run python -m superagent.tools.ide is-cursor # exit 0 iff Cursor
@@ -50,7 +50,7 @@ The `init` skill sets all of these up by default. The first two are hook-based *
   - Disable by setting `_memory/config.yaml.preferences.privacy.log_user_queries: false`; the script reads that flag and exits silently when it's off.
 - **Skill auto-loader** (Claude Code only). A second `UserPromptSubmit` hook runs `uv run python -m superagent.tools.skill_loader`: it matches the prompt against every skill's frontmatter `triggers` (framework + `_custom` overlay) and injects the matching skill deterministically — full body for short skills, a compact pointer + step index for long ones (per the read budget). Cursor's hook API cannot add context, and generic CLIs have no hooks — under those harnesses the agent recognizes triggers via the skill manifest (`superagent/skills/_manifest.yaml`). Fail-safe (always exits 0); disable via `_memory/config.yaml.preferences.skill_autoload: false`.
 - **Email capture** (mirrors touched Gmail messages into the local archive). Cursor: `.cursor/hooks.json`, event `afterMCPExecution`, ONE entry with no matcher, `archive_hook --kind=auto`. Claude Code: `.claude/settings.json`, event `PostToolUse`, three `mcp__gmail__<tool>` matchers. Details and the per-harness field-name differences are in `contracts/email-capture.md` § 8.1; the hook-free floor that makes both optional is `rules/email-capture-fallback.md`.
-- **MCP servers.** Cursor and Claude Code each read their own runtime file (`.cursor/mcp.json` / `.mcp.json`). Both files start as a regular-file copy of the committed templates (`.cursor/mcp.json.cursor` / `.mcp.json.claude`). The templates are content-identical (Superagent has no per-harness OAuth client_id constraint); only the destination path differs. **Regular-file copies, not symlinks** — this repo lives in iCloud Drive, and iCloud occasionally rewrites symlinks as placeholders. Edit one file, re-run `init`, and drift between the two is detected and offered for mirror. A generic CLI that accepts MCP JSON config can be pointed at `.mcp.json` as well.
+- **MCP servers.** Cursor and Claude Code each read their own runtime file (`.cursor/mcp.json` / `.mcp.json`). Both files start as a regular-file copy of the committed templates (`.cursor/mcp.json.cursor` / `.mcp.json.claude`). The templates are content-identical (Superagent has no per-harness OAuth client_id constraint); only the destination path differs. **Regular-file copies, not symlinks** — a checkout inside a synced folder (iCloud Drive, Syncthing, …) can have its symlinks rewritten as placeholders. Edit one file, re-run `init`, and drift between the two is detected and offered for mirror. A generic CLI that accepts MCP JSON config can be pointed at `.mcp.json` as well.
 - **Commit-message hook.** Install a `commit-msg` hook at `.githooks/commit-msg` (`git config core.hooksPath .githooks`) that blocks AI-attribution patterns at commit time. The reference implementation lives at `superagent/templates/githooks/commit-msg`. Harness-agnostic; the policy it enforces is `rules/git-commits.md`.
 
 ### Hook command shape
@@ -58,13 +58,13 @@ The `init` skill sets all of these up by default. The first two are hook-based *
 No harness guarantees a hook's working directory — Claude Code has been observed running one from `workspace/` — so **every hook command anchors itself to the repo root before doing anything else**:
 
 ```sh
-cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}" && unset VIRTUAL_ENV && UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python -m superagent.tools.<module> || exit 1
+cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel)}" && unset VIRTUAL_ENV && UV_PROJECT_ENVIRONMENT=.venv uv run python -m superagent.tools.<module> || exit 1
 ```
 
 Each clause earns its place, and dropping any one of them fails silently or noisily in a different way:
 
-- **`cd <repo root>`** — the root is what makes `superagent.tools.*` importable (the package is not installed into the venv; `python -m` relies on the cwd being on `sys.path`) and what anchors uv's relative `cache-dir` to `./.tmp.noSync/uv-cache` instead of spawning a stray cache under the cwd (`rules/development-tooling.md`). `CLAUDE_PROJECT_DIR` is Claude Code's own project-root variable; the `git rev-parse` fallback covers every other harness.
-- **`unset VIRTUAL_ENV`** — a shell with the deprecated `./.venv` activated otherwise makes uv print a `does not match the project environment path` warning on every turn.
+- **`cd <repo root>`** — the root is what makes `superagent.tools.*` importable (the package is not installed into the venv; `python -m` relies on the cwd being on `sys.path`) and what anchors uv's relative `cache-dir` to `./.tmp/uv-cache` instead of spawning a stray cache under the cwd (`rules/development-tooling.md`). `CLAUDE_PROJECT_DIR` is Claude Code's own project-root variable; the `git rev-parse` fallback covers every other harness.
+- **`unset VIRTUAL_ENV`** — guards against a foreign venv (another project's, or a stray one) activated in the launching shell; otherwise uv prints a `does not match the project environment path` warning on every turn.
 - **`|| exit 1`** — the hook scripts' `main()` already always returns 0, but a process that cannot start at all exits **2**, and 2 is the code Claude Code reads as *block this prompt*. Mapping any failure to 1 keeps hook breakage visible on stderr while never holding up a turn.
 
 ## Routing when the repo hosts other frameworks

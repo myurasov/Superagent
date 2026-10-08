@@ -50,7 +50,7 @@ in the response text exactly as the MCP returned it.
 After `read_email`:
 
 ```bash
-export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
+export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"
 uv run python -m superagent.tools.email.archive_hook --kind=inbound --raw <<'RESPONSE'
 <paste the read_email response verbatim>
 RESPONSE

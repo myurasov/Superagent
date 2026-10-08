@@ -1,4 +1,4 @@
-#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
+#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
 """Revert the 0.21.0 migration (back to 0.20.1).

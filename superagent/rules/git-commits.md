@@ -65,7 +65,7 @@ A local `commit-msg` hook (reference implementation: `superagent/templates/githo
 Every commit MUST pass `uv run ruff check superagent/` before it lands (full policy: `rules/development-tooling.md` § "Lint before commit"). Workflow:
 
 ```bash
-export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
+export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"
 uv run ruff check superagent/                 # report
 uv run ruff check --fix superagent/           # auto-fix the easy ones
 # fix any remaining issues by hand

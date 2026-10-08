@@ -67,7 +67,7 @@ A profile is a named persistent Chromium user-data dir under
 `~/.superagent/browserctl/state.json` (port, color, ephemeral flag, pid when running). The home
 is `$SUPERAGENT_HOME`-aware; `$BROWSERCTL_HOME` is the explicit override (e.g. point it at a
 legacy `~/.browserctl/`). Everything under it is machine-local and disposable — never inside the
-repo (this repo is iCloud-synced). It sits inside the sanctioned `~/.superagent/` write location
+repo (which may sit in a synced folder — iCloud Drive, Syncthing, …). It sits inside the sanctioned `~/.superagent/` write location
 (see `rules/development-tooling.md` § "browserctl state"). **Superagent-private since 0.10.0** —
 the old machine-shared `~/.browserctl/` let another framework's `app_bundle` registry key hijack
 Superagent's launches (and vice versa).

@@ -68,7 +68,7 @@ Normative contract: `contracts/watchlist.md` (cited by section below). A watcher
 | sync from <source> / refresh transactions / import data / ingest <source> | step 4 with `--id` for a detect-only watcher; a harvest-bearing watcher (`simplefin`) goes straight to step 6 — `harvest --id` is the on-demand pull; a watcher pinned to `capture_mode: manual` needs the user's yes there first |
 | refresh email | step 4 with `--id` per `gmail` watcher |
 
-Every command below is `uv run python -m superagent.tools.watchlist <subcommand>`, run from the repository root (`export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"` first in a new shell).
+Every command below is `uv run python -m superagent.tools.watchlist <subcommand>`, run from the repository root (`export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"` first in a new shell).
 
 ## 1. Add a watcher
 

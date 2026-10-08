@@ -56,7 +56,7 @@ run performs **preflight gate -> bump decision -> version bump -> roadmap row
 applies already lives in `contracts/versioning.md` and `AGENTS.md` § "Git
 commits" / § "Versioning and migrations"; this skill only sequences them.
 
-Before any `uv` call in a new shell: `export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"` from the repo root.
+Before any `uv` call in a new shell: `export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"` from the repo root.
 
 ## 0. Preflight
 

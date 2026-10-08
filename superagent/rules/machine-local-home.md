@@ -2,11 +2,10 @@
 
 [Do not change manually — managed by Superagent]
 
-This repository lives **inside iCloud Drive**
-(`~/Library/Mobile Documents/com~apple~CloudDocs/...`). Transient, high-churn,
-machine-specific files must **never** enter the iCloud sync queue — they change
-constantly, are meaningless on another machine, waste sync bandwidth, and
-generate the very `name 2.ext` conflict copies that
+Transient, high-churn, machine-specific files must **never** live inside the
+checkout. They change constantly and are meaningless on another machine; when
+the checkout sits in a synced folder (iCloud Drive, Syncthing, …) they also
+waste sync bandwidth and generate the very `name 2.ext` conflict copies that
 `tools/icloud_dup_check.py` exists to catch.
 
 ## The convention
@@ -23,7 +22,7 @@ memory lives in `workspace/_memory/`).
 
 | `~/.superagent/` dir | What it holds | Who points at it |
 | --- | --- | --- |
-| `tmp/` | The canonical transient scratch tree (replaces the former repo-root `./.tmp/`). | Any tool or skill writing scratch; `tools/icloud_dup_check.py` sentinel; `tools/skill_loader.py` session markers. |
+| `tmp/` | The canonical transient scratch tree (the repo-root `./.tmp/` holds only the uv cache, never scratch). | Any tool or skill writing scratch; `tools/icloud_dup_check.py` sentinel; `tools/skill_loader.py` session markers. |
 | `tools/` | Installed non-Python binaries / CLIs / helpers, one folder per tool (replaces the former repo-root `./.tools/`). | `rules/development-tooling.md` § 2 and any skill installing a tool. |
 
 Any **new** transient directory a tool needs follows the same pattern: real
@@ -58,11 +57,11 @@ per-checkout isolation when running multiple checkouts).
 
 ## Don't
 
-- **Don't** recreate `./.tmp/` or `./.tools/` at the repo root. Both stay
-  gitignored as safety nets (forward-only: pre-existing content is not
-  migrated), but new scratch goes to `~/.superagent/tmp/` and new tool
-  installs to `~/.superagent/tools/` — anything at the repo root re-enters
-  the iCloud sync queue.
+- **Don't** write scratch into `./.tmp/` (it holds only the uv cache) or
+  recreate `./.tools/` at the repo root. Both stay gitignored, but scratch
+  goes to `~/.superagent/tmp/` and tool installs to `~/.superagent/tools/` —
+  anything else at the repo root clutters the checkout (and, in a synced
+  folder, re-enters the sync queue).
 - **Don't** put anything under `~/.superagent/` that is a source of truth —
   it is disposable by definition.
 - **No file lands in the repo root, ever — not even "temporarily".** Bare

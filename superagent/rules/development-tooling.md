@@ -10,10 +10,10 @@ The four rules are non-negotiable defaults; surface a request to the user before
 
 ## 1. Python tooling — single shared `uv` venv at the repo root
 
-- ALL Python-based tools in this repository (under `superagent/tools/`, `superagent/tests/`, anywhere else) MUST use the single shared `uv` virtual environment at the repository root: `./.venv.noSync/`.
+- ALL Python-based tools in this repository (under `superagent/tools/`, `superagent/tests/`, anywhere else) MUST use the single shared `uv` virtual environment at the repository root: `./.venv/`.
 - Before the first `uv` call in every new shell process, export `UV_PROJECT_ENVIRONMENT` from the repository root:
   ```bash
-  export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
+  export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"
   ```
   Do not rely on a previous shell, activation, or implicit uv default. IDE hooks, git hooks, and direct tool-script shebangs carry the same setting themselves.
 - ALL Python tools MUST be invoked through `uv run`, e.g.:
@@ -21,36 +21,36 @@ The four rules are non-negotiable defaults; surface a request to the user before
   - `uv run python -m superagent.tools.sources_index refresh`
   - `uv run pytest`
   - `uv run ruff check superagent/`
-- Do NOT call `python3 …` or `python …` directly. Do NOT activate the venv with `source .venv.noSync/bin/activate`; rely on the export plus `uv run`.
+- Do NOT call `python3 …` or `python …` directly. Do NOT activate the venv with `source .venv/bin/activate`; rely on the export plus `uv run`.
 - Do NOT create per-tool venvs (`pipx`, `venv` in subdirs, `poetry env use`, `conda env`). One repo, one venv.
-- The legacy `./.venv/` is deprecated **forward-only**: it stays gitignored (and in ruff's `extend-exclude`) as a safety net and pre-existing content is not migrated, but no environment is created or refreshed there — `./.venv.noSync/` is the only venv.
+- The former `./.venv.noSync/` and `./.tmp.noSync/` names (used while the checkout lived in iCloud Drive, where the `.noSync` suffix kept the directories out of sync) are retired. The `**/*.noSync/` gitignore pattern stays as a safety net; if either directory reappears, delete it — `./.venv/` is the only venv and `./.tmp/` the only cache root.
 - Dependencies are declared in the root `pyproject.toml` and locked in `uv.lock`. Both files are committed; `uv.lock` is the source of truth for reproducible installs.
-- uv's package cache lives at `./.tmp.noSync/uv-cache/` via `[tool.uv].cache-dir` in `pyproject.toml`. This cache is not a second environment.
-- **Invoke `uv` from the repository root.** `cache-dir` is a relative path and uv does NOT anchor it to the project root — it resolves against the process working directory at use time, so a `uv run …` launched from a subdirectory silently creates a second cache at `<cwd>/.tmp.noSync/uv-cache/`. `cd` to the repo root before any `uv` call; never `cd workspace/ && uv run …`. If a subdirectory cwd is unavoidable, pass an absolute `UV_CACHE_DIR="<repo-root>/.tmp.noSync/uv-cache"`. Stray caches are disposable — delete them.
+- uv's package cache lives at `./.tmp/uv-cache/` via `[tool.uv].cache-dir` in `pyproject.toml`. This cache is not a second environment.
+- **Invoke `uv` from the repository root.** `cache-dir` is a relative path and uv does NOT anchor it to the project root — it resolves against the process working directory at use time, so a `uv run …` launched from a subdirectory silently creates a second cache at `<cwd>/.tmp/uv-cache/`. `cd` to the repo root before any `uv` call; never `cd workspace/ && uv run …`. If a subdirectory cwd is unavoidable, pass an absolute `UV_CACHE_DIR="<repo-root>/.tmp/uv-cache"`. Stray caches are disposable — delete them.
 
 ### Common commands
 
 ```bash
-export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
-uv sync                      # create / refresh ./.venv.noSync from pyproject + uv.lock
+export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"
+uv sync                      # create / refresh ./.venv from pyproject + uv.lock
 uv sync --upgrade            # refresh lock against latest compatible versions
 uv add <package>             # add a runtime dependency to pyproject + lock
 uv add --dev <package>       # add a dev-only dependency
 uv remove <package>          # drop a dependency
 uv run python <script>.py    # run a script in the venv
 uv run pytest -q             # run the test suite
-uv lock                      # regenerate uv.lock without touching .venv.noSync
+uv lock                      # regenerate uv.lock without touching .venv
 ```
 
 ### Direct execution of Python tool scripts
 
-Tool scripts under `superagent/tools/*.py` use a `uv run`-aware shebang that sets `UV_PROJECT_ENVIRONMENT=.venv.noSync`; uv resolves that relative value from the project root without exposing a space-containing `${PWD}` to shebang tokenization. Direct execution (`./superagent/tools/foo.py`) therefore routes through the shared venv automatically when launched from the repository root. If a platform rejects the `-S` form of `env`, export the absolute variable explicitly, fall back to `uv run python <path>`, and treat direct execution as unsupported on that platform.
+Tool scripts under `superagent/tools/*.py` use a `uv run`-aware shebang that sets `UV_PROJECT_ENVIRONMENT=.venv`; uv resolves that relative value from the project root without exposing a space-containing `${PWD}` to shebang tokenization. Direct execution (`./superagent/tools/foo.py`) therefore routes through the shared venv automatically when launched from the repository root. If a platform rejects the `-S` form of `env`, export the absolute variable explicitly, fall back to `uv run python <path>`, and treat direct execution as unsupported on that platform.
 
 ---
 
 ## 2. Non-Python tools — install under `~/.superagent/tools/`
 
-- Any non-Python binary, CLI, helper, or self-contained tool installed to support this project MUST land under the machine-local root at `~/.superagent/tools/` (`$SUPERAGENT_HOME` aware) per `rules/machine-local-home.md`. Binaries inside an iCloud-synced checkout churn the sync queue and are meaningless on another machine.
+- Any non-Python binary, CLI, helper, or self-contained tool installed to support this project MUST land under the machine-local root at `~/.superagent/tools/` (`$SUPERAGENT_HOME` aware) per `rules/machine-local-home.md`. Binaries are meaningless on another machine, and inside a synced checkout (iCloud Drive, Syncthing, …) they churn the sync queue.
 - Layout convention: `~/.superagent/tools/<tool-name>/` (one folder per tool, plus a top-level `bin/` symlink directory if helpful).
 - The former repo-root `./.tools/` is deprecated **forward-only**: it stays gitignored as a safety net and pre-existing content is not migrated, but no new tool installs land there.
 - Do NOT install non-Python tools system-wide (`brew install`, `npm install -g`, `cargo install --root /usr/local`, `apt install`, etc.) from inside this project. Doing so silently mutates the host machine and violates Rule #4 below.
@@ -60,10 +60,10 @@ Tool scripts under `superagent/tools/*.py` use a `uv run`-aware shebang that set
 
 ## 3. Temporary files — `~/.superagent/tmp/` only
 
-- All scratch / temporary files produced by tools, scripts, agents, or interactive sessions MUST go under the machine-local transient root at `~/.superagent/tmp/` (`$SUPERAGENT_HOME` aware) per `rules/machine-local-home.md`. The repo lives in iCloud Drive; scratch inside the checkout enters the sync queue and breeds `name 2.ext` conflict copies.
+- All scratch / temporary files produced by tools, scripts, agents, or interactive sessions MUST go under the machine-local transient root at `~/.superagent/tmp/` (`$SUPERAGENT_HOME` aware) per `rules/machine-local-home.md`. Scratch inside the checkout clutters the tree and, when the checkout sits in a synced folder (iCloud Drive, Syncthing, …), enters the sync queue and breeds `name 2.ext` conflict copies.
 - Do NOT write transient files to `/tmp`, `$TMPDIR`, OS temp dirs (`TemporaryDirectory()` without an explicit `dir=`), the repo root, sibling repo dirs, or dotfiles in `$HOME` outside `~/.superagent/`.
 - In Python, import `from superagent.tools.home import tmp_dir` and pass `dir=tmp_dir()` to `tempfile.TemporaryDirectory` / `NamedTemporaryFile`; the helper creates the directory lazily.
-- The former repo-root `./.tmp/` is deprecated **forward-only**: it stays gitignored as a safety net and pre-existing content is not migrated, but no new scratch lands there.
+- The repo-root `./.tmp/` (gitignored) holds **only** the uv package cache (`./.tmp/uv-cache/`, § 1) — never scratch. Scratch goes to `~/.superagent/tmp/`.
 - Atomic-write sibling files (`<file>.tmp` next to the target, renamed into place) are NOT scratch — they stay next to their target by design.
 
 ### Browser automation outputs (browserctl) and MCP tool outputs
@@ -93,14 +93,14 @@ Every commit to the framework tree (`superagent/`) MUST pass `uv run ruff check 
 ### The rule
 
 ```bash
-export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"
+export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"
 uv run ruff check superagent/             # report
 uv run ruff check --fix superagent/       # auto-fix the easy ones
 ```
 
 Workflow before any commit:
 
-1. Export `UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"`.
+1. Export `UV_PROJECT_ENVIRONMENT="${PWD}/.venv"`.
 2. Run `uv run ruff check superagent/`.
 3. If clean, proceed to commit.
 4. If errors, run `uv run ruff check --fix superagent/` to auto-fix what ruff can. Re-run step 2.
@@ -115,7 +115,7 @@ Ruff config lives in the root `pyproject.toml` under `[tool.ruff]`:
 
 - `target-version = "py312"` — mirrors `requires-python` so lint targets the same interpreter as the runtime.
 - `line-length = 100` — the project's chosen wrap width.
-- `extend-exclude` — `.venv.noSync`, legacy `.venv`, `.tools`, `.tmp.noSync`, `.tmp`, `.playwright-*`, and `workspace/` (user data is out of framework-lint scope).
+- `extend-exclude` — `.venv`, `.tools`, `.tmp`, `.playwright-*`, and `workspace/` (user data is out of framework-lint scope).
 - `select = ["E", "F", "W", "I", "UP", "B", "SIM"]` — pycodestyle errors + pyflakes + warnings + isort + pyupgrade + bugbear + flake8-simplify.
 - `ignore = ["E501", "B008", "SIM102", "SIM103", "SIM108"]` — line-length is enforced by the formatter not lint; `Path(...)` defaults in argparse are intentional; the three SIM rules ignored are pure style preferences (nested-if vs collapse, ternary vs if-else).
 - Per-file ignores relax `F811` for `superagent/tests/**` (pytest fixtures register by name).

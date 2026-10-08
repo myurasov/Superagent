@@ -131,11 +131,11 @@ Boundaries — route elsewhere when one of these fits better:
   self-contained. Python scratch runs through the root venv (`uv run
   python …`) or `uv run --no-project python …` for standalone snippets,
   per `rules/development-tooling.md`. Do **not** create a venv inside the
-  task folder — the repo usually sits in iCloud; if an isolated env or a
-  large intermediate (model download, big log capture) is truly needed,
-  stage it under `~/.superagent/tmp/` (per `rules/machine-local-home.md`)
-  and promote only the keepers into the task
-  folder.
+  task folder — the repo may sit in a synced folder (iCloud Drive,
+  Syncthing, …); if an isolated env or a large intermediate (model
+  download, big log capture) is truly needed, stage it under
+  `~/.superagent/tmp/` (per `rules/machine-local-home.md`) and promote
+  only the keepers into the task folder.
 - **System setup / remote hosts**: show mutating or destructive commands
   before running them and confirm first — the scope-discipline safety rule
   applies with full force here since ad-hoc work often reaches outside the

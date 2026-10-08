@@ -245,7 +245,7 @@ Applies whenever the agent commits framework code under `superagent/`. Full poli
 - **No AI-attribution.** NEVER include trailers, footers, or sign-offs naming an AI tool, vendor, or model (`Made-with: Cursor`, `Co-Authored-By: … <AI vendor>`, `Generated with …`, robot / sparkles emoji, `gpt-…` / `claude-…` / `gemini-…`), in commit messages, PR descriptions, or bodies.
 - **Strip-after-commit — REQUIRED.** Harnesses inject such trailers automatically; run the `git filter-branch --msg-filter` recipe in `rules/git-commits.md` § 3 after every commit or as a batch before `git push`, and re-check `git log -1 --format=%B`. The vendor alternation in the pattern **must** be parenthesized — `(Cursor|Claude|...)` — or unrelated subjects get stripped. Never push a commit that still carries a trailer.
 - **Atomic; framework only.** Unrelated changes go in separate commits; **only framework files** are committed — **never** `workspace/` data; messages never mention anything personally identifying, household-specific, or account-specific. Commit or push only when the user asks.
-- **Lint before commit.** Every commit MUST pass `uv run ruff check superagent/` (`export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"` first). The `.githooks/pre-commit` hook enforces it once `git config core.hooksPath .githooks` is set; the agent must NOT pass `--no-verify` without explicit user authorization.
+- **Lint before commit.** Every commit MUST pass `uv run ruff check superagent/` (`export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"` first). The `.githooks/pre-commit` hook enforces it once `git config core.hooksPath .githooks` is set; the agent must NOT pass `--no-verify` without explicit user authorization.
 
 ## Versioning and migrations
 
@@ -329,9 +329,9 @@ Canonical text: [`contracts/privacy.md`](superagent/contracts/privacy.md). Bindi
 
 Full policy: [`superagent/rules/development-tooling.md`](superagent/rules/development-tooling.md); machine-local roots: [`superagent/rules/machine-local-home.md`](superagent/rules/machine-local-home.md). Four non-negotiable defaults:
 
-- **Python** — one shared `uv` venv at `./.venv.noSync/`. Before the first `uv` call in EVERY new shell, `export UV_PROJECT_ENVIRONMENT="${PWD}/.venv.noSync"`; ALWAYS invoke Python through `uv run` (`uv run python -m superagent.tools.<x>`, `uv run pytest`); NEVER `python3 …` directly; NEVER per-tool venvs. Dependencies in root `pyproject.toml`, lockfile `uv.lock`, cache at `./.tmp.noSync/uv-cache/`.
+- **Python** — one shared `uv` venv at `./.venv/`. Before the first `uv` call in EVERY new shell, `export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"`; ALWAYS invoke Python through `uv run` (`uv run python -m superagent.tools.<x>`, `uv run pytest`); NEVER `python3 …` directly; NEVER per-tool venvs. Dependencies in root `pyproject.toml`, lockfile `uv.lock`, cache at `./.tmp/uv-cache/`.
 - **Non-Python tools** — install under `~/.superagent/tools/<tool>/`; NEVER system-wide (`brew install`, `npm -g`, ...) from inside this project.
-- **Temporary files** — `~/.superagent/tmp/` only (`$SUPERAGENT_HOME` aware; helper `uv run python -m superagent.tools.home`); never inside the iCloud-synced checkout, `/tmp`, `$TMPDIR`, or sibling repos.
+- **Temporary files** — `~/.superagent/tmp/` only (`$SUPERAGENT_HOME` aware; helper `uv run python -m superagent.tools.home`); never inside the checkout (which may sit in a synced folder — iCloud Drive, Syncthing, …), `/tmp`, `$TMPDIR`, or sibling repos.
 - **Scope discipline (safety rule)** — the agent MUST NOT install software, create files, or modify files outside this project folder unless the user explicitly authorizes that specific action; read access outside is fine. Sanctioned exception: `~/.superagent/` (disposable machine-local state, incl. `browserctl/`).
 
 ## File naming conventions

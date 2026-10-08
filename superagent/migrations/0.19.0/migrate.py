@@ -1,4 +1,4 @@
-#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
+#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
 """0.19.0 migration helper (from 0.18.1) -- the watchlist becomes the source registry.

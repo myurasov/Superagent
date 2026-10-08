@@ -10,7 +10,7 @@ tasks/
 __dev/
 __workspace-*/
 
-# ignore all .noSync/ directories and files
+# Legacy iCloud-era .noSync/ directories — retired names, kept ignored as a safety net
 **/*.noSync/
 **/*.noSync/**
 
@@ -66,3 +66,6 @@ Thumbs.db
 !.mcp.json.claude
 
 **/.playwright*
+
+.stignore
+.stfolder

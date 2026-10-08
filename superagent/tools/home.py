@@ -1,12 +1,12 @@
-#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv.noSync uv run python
+#!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
 """Machine-local transient-state root — `~/.superagent/` helper.
 
 Single source of truth for the machine-local root defined in
-`rules/machine-local-home.md`. The repo lives in iCloud Drive, so transient
-high-churn state (scratch, sentinels, session markers) must live outside the
-synced tree. Everything under the root is disposable and reconstructible.
+`rules/machine-local-home.md`. Transient high-churn state (scratch, sentinels,
+session markers) must live outside the checkout, which may sit in a synced
+folder (iCloud Drive, Syncthing, ...). Everything under the root is disposable and reconstructible.
 
 CLI:
     uv run python -m superagent.tools.home            # ensure root + subdirs
