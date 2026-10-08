@@ -30,6 +30,7 @@ EXPECTED_SKILLS = {
     # Later additions:
     "migrate", "domain-suggest", "browserctl",
     "ad-hoc-task", "refresh", "report", "release",
+    "home-assistant",
 }
 
 

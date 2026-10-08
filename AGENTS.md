@@ -129,6 +129,7 @@ The catalogue — one-liners and triggers — is [`superagent/skills/_manifest.y
 | **world** | Query, validate, rebuild the world graph (`_memory/world.yaml`). |
 | **ad-hoc-task** | Start / resume dated scratch work under `tasks/<YYYY>/<MM>/<date>-<slug>/`. |
 | **browserctl** | Drive Chromium via the `browserctl` CLI; per-app notes in `_custom/skills/browserctl.<app>.md`. |
+| **home-assistant** | Work with a Home Assistant instance over REST / WebSocket (plus SSH / docker when self-hosted) — inspect state, manage automations and template sensors, drive integrations and config. |
 | **log-event** | One-shot capture of a life event into the right `history.md` + indexes. |
 | **health-log** | Log symptom / med change / vital; rolls into `health-records.yaml`. |
 | **pet-care** | Vet schedule, vaccinations, meds, food / treat preferences. |

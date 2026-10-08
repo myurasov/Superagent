@@ -367,7 +367,7 @@ def init_custom(workspace: Path, dry_run: bool, log: list[str]) -> int:
     """Create the per-user overlay scaffold."""
     custom = workspace / "_custom"
     touched = 0
-    for sub in ("rules", "skills", "agents", "templates", "templates/memory", "tools"):
+    for sub in ("rules", "skills", "agents", "templates", "templates/memory", "tools", "watchers"):
         if safe_mkdir(custom / sub, dry_run=dry_run, log=log):
             touched += 1
     return touched

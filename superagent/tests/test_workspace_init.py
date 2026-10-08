@@ -177,7 +177,7 @@ def test_init_does_not_pre_create_lazy_memory_subdirs(
 
 def test_init_creates_custom_overlay_scaffold(initialized_workspace: Path) -> None:
     custom = initialized_workspace / "_custom"
-    for sub in ["rules", "skills", "agents", "templates", "templates/memory", "tools"]:
+    for sub in ["rules", "skills", "agents", "templates", "templates/memory", "tools", "watchers"]:
         assert (custom / sub).is_dir(), f"missing _custom/{sub}/"
 
 
