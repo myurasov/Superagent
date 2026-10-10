@@ -1799,6 +1799,20 @@ def test_writers_refuse_a_file_whose_top_level_is_not_a_mapping(ws: Path) -> Non
     assert path.read_text() == "- just\n- a list\n"
 
 
+def test_tailor_signal_text_is_redacted_at_capture(ws: Path) -> None:
+    """Signal rows sit outside the sensitive tier: an error echoing a secret is scrubbed first."""
+    from superagent.tools.log_user_query import REDACTED_PASSWORD, REDACTED_TOKEN
+
+    watcher = _doc_watcher(ws)
+    fake_token, fake_pw = "abc123XYZsecretTOKEN9", "Zq7Xw2Lk9v"  # synthetic
+    errors = [f"GET https://bridge.example/data?access_token={fake_token} -> 401",
+              f"retry with creds jdoe/{fake_pw} failed"]
+    sid = wl.append_tailor_signal(ws, watcher, run_id="ingest-1", errors=errors, ts=TS)
+    row = next(s for s in read_yaml(ws / "_memory" / "action-signals.yaml")["signals"] if s.get("id") == sid)
+    assert fake_token not in row["context"] and fake_pw not in row["context"]
+    assert REDACTED_TOKEN in row["context"] and f"jdoe/{REDACTED_PASSWORD}" in row["context"]
+
+
 def test_corrupt_alert_archive_leaves_context_untouched_too(ws: Path) -> None:
     watcher = _doc_watcher(ws)
     ctx_path = ws / "_memory" / "context.yaml"

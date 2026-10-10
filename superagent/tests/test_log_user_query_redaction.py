@@ -121,6 +121,128 @@ def test_empty_and_plain_text_untouched() -> None:
     assert redact(text) == text
 
 
+# --- short cues and id/secret pairs (st-2026-10-06-002) -----------------------
+# Every fixture is synthetic: a made-up mixed-case/digit or symbol-bearing
+# string, never a real credential. Assertions only check that it is GONE.
+
+FAKE = "Zq7Xw2Lk9v"
+FAKE_SYM = "fake!Pw42"
+
+
+def test_pass_short_cue_redacted() -> None:
+    out = redact(f"the router pass {FAKE} if you need it")
+    assert FAKE not in out
+    assert out == f"the router pass {REDACTED_PASSWORD} if you need it"
+
+
+def test_pw_short_cue_redacted() -> None:
+    assert redact(f"pw {FAKE_SYM}") == f"pw {REDACTED_PASSWORD}"
+
+
+def test_pw_to_cue_keeps_the_connective() -> None:
+    out = redact(f"pw to {FAKE} for the county portal")
+    assert out == f"pw to {REDACTED_PASSWORD} for the county portal"
+
+
+def test_wrapped_secret_after_a_short_cue_redacted() -> None:
+    assert FAKE not in redact(f"pass ({FAKE})")
+    assert FAKE_SYM not in redact(f"pw `{FAKE_SYM}`")
+
+
+def test_id_slash_secret_next_to_a_cue_keeps_the_id() -> None:
+    out = redact(f"login for the permit site: jdoe/{FAKE}")
+    assert FAKE not in out
+    assert out == f"login for the permit site: jdoe/{REDACTED_PASSWORD}"
+
+
+def test_email_slash_secret_next_to_a_cue_keeps_the_email() -> None:
+    out = redact(f"creds are someone@example.com/{FAKE_SYM} thanks")
+    assert out == f"creds are someone@example.com/{REDACTED_PASSWORD} thanks"
+
+
+def test_cue_after_the_pair_counts() -> None:
+    out = redact(f"use jdoe/{FAKE} as the login")
+    assert out == f"use jdoe/{REDACTED_PASSWORD} as the login"
+
+
+def test_short_cue_before_a_pair_redacts_the_right_side() -> None:
+    # `_looks_secret` exempts tokens containing '/', so the pair pass catches it.
+    assert redact(f"pass jdoe/{FAKE}") == f"pass jdoe/{REDACTED_PASSWORD}"
+
+
+def test_line_leading_pair_without_a_cue() -> None:
+    out = redact(f"someone@example.com/{FAKE}\nplease file the renewal")
+    assert out == f"someone@example.com/{REDACTED_PASSWORD}\nplease file the renewal"
+
+
+def test_pair_leading_a_later_list_item() -> None:
+    out = redact(f"for the county site:\n- jdoe/{FAKE}")
+    assert out == f"for the county site:\n- jdoe/{REDACTED_PASSWORD}"
+
+
+def test_every_pair_after_one_cue_redacted() -> None:
+    out = redact(f"creds: alice/{FAKE} and bob/{FAKE_SYM}")
+    assert out == f"creds: alice/{REDACTED_PASSWORD} and bob/{REDACTED_PASSWORD}"
+
+
+@pytest.mark.parametrize("text", [
+    f"pass {FAKE}",
+    f"pw to {FAKE}",
+    f"login jdoe/{FAKE}",
+    f"someone@example.com/{FAKE}",
+    "password: x9!secretish",
+    "my password: hunter2AB9 please save it",
+])
+def test_redaction_is_idempotent(text: str) -> None:
+    once = redact(text)
+    assert once != text
+    assert redact(once) == once
+
+
+@pytest.mark.parametrize("text", [
+    # ordinary prose around the short cues
+    "pass the salt and pass it on",
+    "the bus pass expired; buy a new pass at the station",
+    "all tests pass (because the fixture was fixed)",
+    "make it pass-through for now",
+    "pw reset link expired on 2026-10-06",
+    # flags, handles, dated ids, dates, dotted names and code after a bare cue
+    "commit with pass --no-verify only when the user says so",
+    "pass contact:dr-smith-dentist to the world graph",
+    "pass st-2026-10-06-002 to the supercoder",
+    "pass 2026-10-08 as the start date",
+    "the second pass module.func: still slow",
+    "tests pass `run_all.main(2)` now",
+    # file paths and URLs next to a credential cue
+    "login steps are in superagent/skills/browserctl.md",
+    "account statements live in Sources/Finances and docs/history.md",
+    "my login notes: docs/login-flow-v2 and Projects/tax-2026",
+    "the account export is statements/2026-09.pdf",
+    "the login flow lives in app/sign-in",
+    "log in at https://example.com/account/12345 then open example.com/login2fa",
+    "accounts: 24/7 support, and/or n/a, balance as of 10/2026",
+])
+def test_cue_rules_leave_benign_text_alone(text: str) -> None:
+    assert redact(text) == text
+
+
+@pytest.mark.parametrize("text", [
+    "src/utils2.py is where the bug is",
+    "origin/feature-x2 needs a rebase",
+    "Notes/Meeting-Notes has the minutes",
+    "- notes/v2-draft-final",
+    "Projects/tax-2026 is overdue",
+])
+def test_line_leading_paths_and_slugs_untouched(text: str) -> None:
+    assert redact(text) == text
+
+
+def test_mid_line_pair_without_a_cue_is_left_alone() -> None:
+    # Conservative bound: no cue and not leading its line -> not a credential handover.
+    text = f"the folder bob/{FAKE} is odd"
+    assert redact(text) == text
+
+
 # --- end-to-end: main() applies redaction and still exits 0 -------------------
 
 def _run_main(tmp_path: Path, monkeypatch, prompt: str, config: str | None = None) -> list[dict]:
@@ -148,6 +270,12 @@ def test_main_writes_redacted_row(tmp_path: Path, monkeypatch) -> None:
     assert REDACTED_PASSWORD in row["prompt"]
     assert row["length"] == len(row["prompt"])
     assert "synthetic" not in row
+
+
+def test_main_redacts_a_pasted_pair(tmp_path: Path, monkeypatch) -> None:
+    rows = _run_main(tmp_path, monkeypatch, f"someone@example.com/{FAKE}\nthat is the county login")
+    assert FAKE not in rows[0]["prompt"]
+    assert rows[0]["prompt"].startswith(f"someone@example.com/{REDACTED_PASSWORD}")
 
 
 # --- harness noise: synthetic tagging + IDE wrapper stripping -----------------

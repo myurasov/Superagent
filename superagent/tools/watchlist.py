@@ -107,6 +107,7 @@ from superagent.tools.ingest._base import (
     RunResult,
     now_iso,
 )
+from superagent.tools.log_user_query import redact
 from superagent.tools.next_id import next_id
 from superagent.tools.validate import (
     DEFAULT_WATCH_PACKS,
@@ -1716,14 +1717,20 @@ def append_ingestion_log(workspace: Path, result: RunResult, *, trigger: str,
 
 def append_tailor_signal(workspace: Path, watcher: Watcher, *, run_id: str,
                          errors: list[str], ts: str) -> str | None:
-    """One ambient `target: tailor` row per failing harvest run (contract § 9)."""
+    """One ambient `target: tailor` row per failing harvest run (contract § 9).
+
+    Trigger phrase and context go through `log_user_query.redact()` first: an
+    error string can echo a tokenized URL, and signal rows sit outside the
+    sensitive tier. Redaction runs before truncation so no secret is cut in
+    half and slips past the patterns.
+    """
     path = workspace / "_memory" / "action-signals.yaml"
     data = load_yaml_for_write(path)
     if data is None:
         data = {"schema_version": 1, "signals": []}
     signals = [s for s in (data.get("signals") or []) if isinstance(s, dict) and s.get("id")]
     artifact_ref = f"ingestion-log:{run_id}"
-    trigger = f"harvest `{watcher.id}` reported {len(errors)} error(s)"
+    trigger = redact(f"harvest `{watcher.id}` reported {len(errors)} error(s)")
     if any(s.get("artifact_ref") == artifact_ref and s.get("trigger_phrase") == trigger
            and s.get("status") == "captured" for s in signals):
         return None
@@ -1737,7 +1744,7 @@ def append_tailor_signal(workspace: Path, watcher: Watcher, *, run_id: str,
         "trigger_phrase": trigger,
         "context": (
             f"watchlist harvest for {watcher.handle} via pack `{pack_label}`: "
-            + "; ".join(errors)[:300]
+            + redact("; ".join(errors))[:300]
         ),
         "artifact_ref": artifact_ref,
         "proposed_direction": None,
