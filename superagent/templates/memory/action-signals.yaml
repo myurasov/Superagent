@@ -23,6 +23,12 @@
 # Append-only. Mark a signal as consumed by flipping `status` to `processed`
 # (with `became_suggestion` for tailor / `became_action` for superagent) or
 # to `declined` with a `notes` reason — never delete rows.
+#
+# One writer: add rows with `uv run python -m superagent.tools.signals add`
+# and close them with `signals close <id> --became-suggestion |
+# --became-action | --declined` (flips `status`, stamps `processed_at`,
+# appends to `notes`). A signal is OPEN while `status` is neither `processed`
+# nor `declined`; `signals list --open --count` is the counter skills use.
 
 schema_version: 1
 last_updated: null

@@ -21,6 +21,8 @@ Two distinct kinds of "this should change" signals, both stored in `_memory/acti
 - **`target: tailor`** — change to Superagent itself (framework code under `superagent/` or per-user overlay under `_custom/`). Examples: "make that a skill", "Superagent should always remind me about X", "every time I have to dig for the same info".
 - **`target: superagent`** — change to the user's workspace (a domain file, a bill record, an outgoing email). Examples: "@superagent please act on this", "I should update the home domain with the new HVAC contract".
 
+**One writer.** Signal rows are never hand-appended. `uv run python -m superagent.tools.signals add --target <tailor|superagent> --kind <kind> --trigger "<excerpt>" --context "<1-3 sentences>" [--artifact-ref <ref>] [--proposed-direction "<hint>"] [--source-skill <stem>]` mints the id, writes the canonical row (schema: `templates/memory/action-signals.yaml`; `kind` is one of `explicit`, `ambient`, `artifact-critique`, `artifact-rework`, `correction`, `wish`, `frustration`), redacts credential-looking text, and refuses to touch an unparseable file. A signal is **open** while its `status` is neither `processed` nor `declined`. Close it with `signals close <id> --became-suggestion <st-id> | --became-action "<label>" | --declined "<reason>"`, which sets `status` and `processed_at` and appends to `notes`.
+
 **Default react UX (both targets): show first, ask before acting.**
 
 1. Capture the row, then print it inline (id, target, kind, trigger phrase, artifact ref, proposed direction) and ask **Capture / Edit / Discard?**
@@ -28,11 +30,11 @@ Two distinct kinds of "this should change" signals, both stored in `_memory/acti
 
 Ambient signals are captured silently with a one-line tag at the end of the reply (`_Captured signal sig-<id> (target: tailor|superagent)._`) and processed later in batch.
 
-Update skills (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`) and `supertailor-review` surface **split unprocessed counts** ("N Supertailor signals + M Superagent workspace actions pending").
+Update skills (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`) and `supertailor-review` surface **split open counts** from `uv run python -m superagent.tools.signals list --open --count` (`tailor=T superagent=S total=N`): "N Supertailor signals + M Superagent workspace actions pending".
 
 ### 7.2a Session-end sweep
 
-Ambient capture gets a backstop: **before a session closes** — the same moment `model-context.yaml` is updated per `AGENTS.md` § "Model context (cross-session memory)" — sweep the session for any user correction, critique, wish, or frustration that was expressed but not already captured, and append each as a row to `_memory/action-signals.yaml` using the existing kinds (`correction`, `artifact-critique`, `artifact-rework`, `wish`, `frustration`). Self-development items route to `_memory/personal-signals.yaml` instead (§ 7.1). A session that ends with an uncaptured correction is a capture-adherence failure, not a judgment call.
+Ambient capture gets a backstop: **before a session closes** — the same moment `model-context.yaml` is updated per `AGENTS.md` § "Model context (cross-session memory)" — sweep the session for any user correction, critique, wish, or frustration that was expressed but not already captured, and capture each with `uv run python -m superagent.tools.signals add` (§ 7.2 "One writer") using the existing kinds (`correction`, `artifact-critique`, `artifact-rework`, `wish`, `frustration`). Self-development items route to `_memory/personal-signals.yaml` instead (§ 7.1). A session that ends with an uncaptured correction is a capture-adherence failure, not a judgment call.
 
 ### 7.3 Auto-capture from ingested data
 

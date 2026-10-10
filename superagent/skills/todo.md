@@ -98,7 +98,7 @@ When the user asks to change a task:
 
 1. Resolve by id or unambiguous match.
 2. Modify only the **specified fields**. Do not clear unspecified fields unless the user asked.
-3. If the update corrects how the task was captured (wrong inferred priority, mis-worded title, wrong scope or due date), also capture it to `_memory/action-signals.yaml` same-turn (`kind: correction`) per `contracts/capture.md` § 7.2a.
+3. If the update corrects how the task was captured (wrong inferred priority, mis-worded title, wrong scope or due date), also capture it same-turn with `uv run python -m superagent.tools.signals add --target tailor --kind correction` per `contracts/capture.md` § 7.2a.
 
 ### Triage overdue
 

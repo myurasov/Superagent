@@ -401,3 +401,79 @@ def test_validate_passes_without_data_sources_yaml(framework_dir: Path,
     assert not (initialized_workspace / "_memory" / "data-sources.yaml").exists()
     assert validate_main(["--workspace", str(initialized_workspace),
                           "--framework", str(framework_dir)]) == 0
+
+
+# --- action-signals / personal-signals row checks (st-2026-10-06-001) ---------
+
+def _sig(**over):
+    row = {"id": "sig-2026-10-08-001", "captured_at": "2026-10-08T09:00:00-07:00",
+           "target": "tailor", "kind": "correction", "trigger_phrase": "t", "context": "c",
+           "status": "captured"}
+    row.update(over)
+    return row
+
+
+def test_check_action_signals_flags_off_schema_rows() -> None:
+    from superagent.tools.validate import check_action_signals
+
+    template_row = {"id": None, "captured_at": None, "target": "", "kind": "", "trigger_phrase": "",
+                    "context": "", "status": "captured"}
+    no_target = _sig(id="sig-2026-10-08-004")
+    del no_target["target"]
+    rows = [
+        template_row,
+        _sig(),
+        _sig(id="sig-2026-10-08-002", kind="critique"),
+        _sig(id="sig-2026-10-08-003", status="open"),
+        no_target,
+        _sig(id="sig-2026-10-08-005", target="framework", disposition="done"),
+    ]
+    warnings = check_action_signals(rows)
+    joined = "\n".join(warnings)
+    assert len(warnings) == 5, warnings
+    assert "1 row(s) missing one of id/captured_at/target/kind/status (sig-2026-10-08-004)" in joined
+    assert "`kind` outside" in joined and "'critique' x1" in joined
+    assert "`status` outside" in joined and "'open' x1" in joined
+    assert "`target` outside" in joined and "'framework' x1" in joined
+    assert "non-schema `disposition` key" in joined and "sig-2026-10-08-005" in joined
+
+
+def test_check_action_signals_clean_rows_emit_nothing() -> None:
+    from superagent.tools.validate import SIGNAL_KINDS, check_action_signals
+
+    rows = [_sig(id=f"sig-2026-10-08-{i:03d}", kind=k) for i, k in enumerate(SIGNAL_KINDS, 1)]
+    rows.append(_sig(id="sig-2026-10-08-099", target="superagent", status="declined"))
+    assert check_action_signals(rows) == []
+    assert check_action_signals(None) == []
+
+
+def test_check_personal_signals() -> None:
+    from superagent.tools.validate import check_personal_signals
+
+    good = {"id": "psig-2026-10-08-001", "captured_at": "2026-10-08T09:00:00-07:00",
+            "category": "sleep", "source": "self-reflection", "status": "practicing"}
+    assert check_personal_signals([good]) == []
+    bad = [dict(good, id="psig-2026-10-08-002", category="time-management"),
+           dict(good, id="psig-2026-10-08-003", status="done", source="coach"),
+           {k: v for k, v in good.items() if k != "category"} | {"id": "psig-2026-10-08-004"}]
+    joined = "\n".join(check_personal_signals(bad))
+    assert "'time-management' x1" in joined
+    assert "`status` outside" in joined and "'done' x1" in joined
+    assert "`source` outside" in joined and "'coach' x1" in joined
+    assert "missing one of id/captured_at/category/status (psig-2026-10-08-004)" in joined
+
+
+def test_validate_reports_signal_drift_as_warnings_only(
+    framework_dir: Path, initialized_workspace: Path, capsys
+) -> None:
+    from superagent.tools.validate import main as validate_main
+
+    path = initialized_workspace / "_memory" / "action-signals.yaml"
+    data = yaml.safe_load(path.read_text())
+    data["signals"] = [_sig(kind="friction", disposition="processed")]
+    path.write_text(yaml.safe_dump(data, sort_keys=False))
+    rc = validate_main(["--workspace", str(initialized_workspace), "--framework", str(framework_dir)])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "OK     action-signals.yaml" in out
+    assert "WARN   action-signals.yaml" in out and "'friction' x1" in out and "`disposition`" in out

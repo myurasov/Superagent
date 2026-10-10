@@ -29,6 +29,11 @@ Soft checks (WARNINGS — reported, never affect the exit code):
     the legacy `superagent-<stem>` alias is counted separately as "prefixed".
   - `interaction-log.yaml` rows already written in the canonical shape (no
     legacy `timestamp` key) that lack `id` / `ts` / `skill`.
+  - `action-signals.yaml` rows missing `id` / `captured_at` / `target` / `kind`
+    / `status`, with `target`, `kind` or `status` outside the template enums,
+    or carrying a `disposition` key; `personal-signals.yaml` rows missing
+    `id` / `captured_at` / `category` / `status` or with `category`, `source`
+    or `status` off-enum. New rows come from `tools/signals.py`.
   - a stray `.ref.md` outside the registry (document metadata belongs in
     `<doc>.<ext>.meta.md`), or a `.ref.txt` anywhere (no longer supported).
   Legacy rows are append-only history and are never rewritten; the warnings
@@ -601,13 +606,109 @@ def check_interaction_log(rows: Any, stems: set[str], name: str = INTERACTION_LO
     return warnings
 
 
-def warnings_for(name: str, data: Any, framework: Path, workspace: Path | None) -> list[str]:
-    """Soft checks for one loaded memory file. Currently only the interaction log."""
-    if name != INTERACTION_LOG or not isinstance(data, dict):
+# ------------------------------------------------------ signal-file soft checks
+# Enums from templates/memory/action-signals.yaml and personal-signals.yaml
+# (also the vocabulary tools/signals.py writes with).
+
+ACTION_SIGNALS = "action-signals.yaml"
+PERSONAL_SIGNALS = "personal-signals.yaml"
+SIGNAL_TARGETS = ("tailor", "superagent")
+SIGNAL_KINDS = ("explicit", "ambient", "artifact-critique", "artifact-rework", "correction",
+                "wish", "frustration")
+SIGNAL_STATUSES = ("captured", "processed", "declined")
+#: "Open" everywhere = status NOT in this set (an off-enum status still counts as open).
+SIGNAL_CLOSED_STATUSES = ("processed", "declined")
+SIGNAL_REQUIRED_KEYS = ("id", "captured_at", "target", "kind", "status")
+PSIG_CATEGORIES = ("fitness", "nutrition", "sleep", "mental-health", "relationships", "parenting",
+                   "finances", "learning", "productivity", "mindfulness", "other")
+PSIG_SOURCES = ("self-reflection", "partner-feedback", "family-feedback", "pattern-noticed")
+PSIG_STATUSES = ("open", "practicing", "internalised", "deferred", "discarded")
+PSIG_REQUIRED_KEYS = ("id", "captured_at", "category", "status")
+
+
+def _row_label(row: dict[str, Any], index: int) -> str:
+    return str(row["id"]) if row.get("id") else f"#{index}"
+
+
+def _labels(labels: list[str]) -> str:
+    shown = ", ".join(labels[:PREVIEW_LIMIT])
+    if len(labels) > PREVIEW_LIMIT:
+        shown += f", ... (+{len(labels) - PREVIEW_LIMIT} more)"
+    return shown
+
+
+def _check_signal_rows(rows: Any, name: str, required: tuple[str, ...],
+                       enums: dict[str, tuple[str, ...]], banned: tuple[str, ...] = ()) -> list[str]:
+    """Shared row checks: required keys present and non-empty, enum fields in range, banned keys absent.
+
+    The template's example row (no id, no content) is skipped like any placeholder.
+    """
+    if not isinstance(rows, list):
         return []
-    return check_interaction_log(
-        data.get(LIST_FILES[INTERACTION_LOG]), skill_stems(framework, workspace), name
+    missing: list[str] = []
+    off: dict[str, dict[str, int]] = {field: {} for field in enums}
+    flagged: dict[str, list[str]] = {key: [] for key in banned}
+    for i, row in enumerate(rows):
+        if not isinstance(row, dict) or is_placeholder_row(row):
+            continue
+        if row.get("id") is None and not row.get("captured_at") and not row.get("trigger_phrase"):
+            continue  # the template's example row (id / captured_at null, empty text)
+        label = _row_label(row, i)
+        if any(row.get(k) in (None, "") for k in required):
+            missing.append(label)
+        for field, allowed in enums.items():
+            value = row.get(field)
+            if value not in (None, "") and value not in allowed:
+                text = value if isinstance(value, str) else repr(value)
+                off[field][text] = off[field].get(text, 0) + 1
+        for key in banned:
+            if key in row:
+                flagged[key].append(label)
+    warnings: list[str] = []
+    if missing:
+        warnings.append(f"{name}: {len(missing)} row(s) missing one of {'/'.join(required)} "
+                        f"({_labels(missing)})")
+    for field, values in off.items():
+        if values:
+            warnings.append(f"{name}: {sum(values.values())} row(s) with `{field}` outside "
+                            f"{{{', '.join(enums[field])}}}: {_preview(values)}")
+    for key, labels in flagged.items():
+        if labels:
+            warnings.append(f"{name}: {len(labels)} row(s) carry a non-schema `{key}` key "
+                            f"(use `status`): {_labels(labels)}")
+    return warnings
+
+
+def check_action_signals(rows: Any, name: str = ACTION_SIGNALS) -> list[str]:
+    """Soft-check action-signal rows against templates/memory/action-signals.yaml (WARNINGS only)."""
+    return _check_signal_rows(
+        rows, name, SIGNAL_REQUIRED_KEYS,
+        {"target": SIGNAL_TARGETS, "kind": SIGNAL_KINDS, "status": SIGNAL_STATUSES},
+        banned=("disposition",),
     )
+
+
+def check_personal_signals(rows: Any, name: str = PERSONAL_SIGNALS) -> list[str]:
+    """Soft-check personal-signal rows against templates/memory/personal-signals.yaml (WARNINGS only)."""
+    return _check_signal_rows(
+        rows, name, PSIG_REQUIRED_KEYS,
+        {"category": PSIG_CATEGORIES, "source": PSIG_SOURCES, "status": PSIG_STATUSES},
+    )
+
+
+def warnings_for(name: str, data: Any, framework: Path, workspace: Path | None) -> list[str]:
+    """Soft checks for one loaded memory file: interaction log, action signals, personal signals."""
+    if not isinstance(data, dict):
+        return []
+    if name == INTERACTION_LOG:
+        return check_interaction_log(
+            data.get(LIST_FILES[INTERACTION_LOG]), skill_stems(framework, workspace), name
+        )
+    if name == ACTION_SIGNALS:
+        return check_action_signals(data.get(LIST_FILES[ACTION_SIGNALS]), name)
+    if name == PERSONAL_SIGNALS:
+        return check_personal_signals(data.get(LIST_FILES[PERSONAL_SIGNALS]), name)
+    return []
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

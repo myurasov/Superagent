@@ -245,7 +245,7 @@ always dated `YYYY-MM-DD`), and if the change alters a documented procedure, edi
 procedure in place too so the steps stay executable. Add a `## Changelog` line only for
 substantial revisions (new capability, restructure), not for every pitfall.
 
-**Also capture the signal.** When a flow breaks or the user corrects the driving behavior itself (wrong site, wrong pace, "don't click that"), capture the critique to `_memory/action-signals.yaml` same-turn (`kind: artifact-critique` or `correction`) per `contracts/capture.md` § 7.2a — the app skill records the site knowledge; the signal records the framework friction.
+**Also capture the signal.** When a flow breaks or the user corrects the driving behavior itself (wrong site, wrong pace, "don't click that"), capture the critique same-turn with `uv run python -m superagent.tools.signals add --target tailor --kind artifact-critique` (or `--kind correction`) per `contracts/capture.md` § 7.2a — the app skill records the site knowledge; the signal records the framework friction.
 
 **Write the pitfall so it prevents the failure, not so it narrates it.** State the symptom
 the next agent will actually observe first, then the cause, then the fix — e.g. "URL stays

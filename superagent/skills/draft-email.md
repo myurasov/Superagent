@@ -118,7 +118,7 @@ Offer:
 
 > "Open the file to review / send via your email client. (Superagent does not send on your behalf in MVP.)"
 
-If the user critiques or reworks the draft (tone, length, structure, wrong opening), capture the critique to `_memory/action-signals.yaml` same-turn (`kind: artifact-critique`, `artifact_ref` = the Outbox path) per `contracts/capture.md` § 7.2a.
+If the user critiques or reworks the draft (tone, length, structure, wrong opening), capture the critique same-turn with `uv run python -m superagent.tools.signals add --target tailor --kind artifact-critique --artifact-ref <Outbox path>` per `contracts/capture.md` § 7.2a.
 
 ## 6. Logging
 

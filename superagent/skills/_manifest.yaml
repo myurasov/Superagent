@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-10-06T11:41:29-07:00'
+generated_at: '2026-10-08T22:45:58-07:00'
 skill_count: 37
 skills:
 - name: superagent-ad-hoc-task
@@ -252,9 +252,8 @@ skills:
   lines: 302
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 4747
-  typical_files_read:
-  - _memory/action-signals.yaml
+  typical_token_cost: 4757
+  typical_files_read: []
   origin: framework
 - name: superagent-daily-update
   stem: daily-update
@@ -277,10 +276,10 @@ skills:
     …)
   cli_required: []
   cli_optional: []
-  lines: 345
+  lines: 343
   h2_steps: 26
   h3_subsections: 0
-  typical_token_cost: 4453
+  typical_token_cost: 4463
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
@@ -311,11 +310,10 @@ skills:
   lines: 229
   h2_steps: 20
   h3_subsections: 0
-  typical_token_cost: 2524
+  typical_token_cost: 2569
   typical_files_read:
   - _memory/domains-index.yaml
   - _memory/watchlist-state.yaml
-  - _memory/action-signals.yaml
   - _memory/world.yaml
   - _memory/model-context.yaml
   - _memory/context.yaml
@@ -365,9 +363,8 @@ skills:
   lines: 137
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 1156
+  typical_token_cost: 1163
   typical_files_read:
-  - _memory/action-signals.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-expenses
@@ -451,12 +448,11 @@ skills:
   - ssh (self-hosted only — config-dir and host access)
   - docker (Container installs only — sibling services, core updates)
   - mosquitto-clients (`mosquitto_sub` for MQTT diagnostics against a local broker)
-  lines: 360
+  lines: 361
   h2_steps: 15
   h3_subsections: 0
-  typical_token_cost: 9574
+  typical_token_cost: 9584
   typical_files_read:
-  - _memory/action-signals.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-important-dates
@@ -905,10 +901,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 148
+  lines: 149
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2564
+  typical_token_cost: 2677
   typical_files_read:
   - _memory/watchlist-state.yaml
   - _memory/supertailor-suggestions.yaml
@@ -941,11 +937,10 @@ skills:
   lines: 187
   h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 2083
+  typical_token_cost: 2092
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml
-  - _memory/action-signals.yaml
   - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-watch
@@ -1033,7 +1028,7 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 162
+  lines: 159
   h2_steps: 10
   h3_subsections: 0
   typical_token_cost: 1901
@@ -1045,7 +1040,7 @@ skills:
   - _memory/important-dates.yaml
   - _memory/todo.yaml
   - _memory/ingestion-log.yaml
-  - _memory/action-signals.yaml
+  - _memory/alerts-archive.yaml
   origin: framework
 - name: superagent-world
   stem: world

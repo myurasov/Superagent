@@ -17,6 +17,9 @@ entries:
   #   id                  — "ilog-YYYY-MM-DD-NNN", minted with
   #                          `uv run python -m superagent.tools.next_id --kind ilog \
   #                             --file <workspace>/_memory/interaction-log.yaml`.
+  #                          `uv run python -m superagent.tools.signals log --skill <stem> \
+  #                             --action <verb> --summary "..."` mints the id AND appends
+  #                          the whole canonical row, parse-checked.
   #                          Derived events anchor `source: interaction-log.yaml#<id>`.
   #   ts                  — ISO 8601 datetime WITH offset (e.g. "2026-09-06T14:05:00-07:00").
   #   skill               — Skill manifest STEM (the `skills/<stem>.md` filename, framework

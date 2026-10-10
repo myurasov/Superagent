@@ -132,7 +132,7 @@ Find `documents-index.yaml` rows with `expires_at < today` AND `status: active`.
 
 ## 9. Action signal drains
 
-Find `_memory/action-signals.yaml` rows with `status: captured` older than 60 days. Surface; offer `process now` (delegates to `supertailor-review` for `target: tailor`, or to ad-hoc workspace action for `target: superagent`) or `decline` (with a reason).
+Find open signals (`uv run python -m superagent.tools.signals list --open`; open = `status` not in {`processed`, `declined`}) captured more than 60 days ago. Surface; offer `process now` (delegates to `supertailor-review` for `target: tailor`, or to ad-hoc workspace action for `target: superagent`) or `decline` (with a reason). Either way the row is closed with `signals close <id> --became-suggestion | --became-action | --declined`.
 
 ## 10. Personal-signal review
 
