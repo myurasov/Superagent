@@ -29,6 +29,9 @@ current_focus: ""
 recent_activity: ""
 
 # Last time each cadence skill ran successfully (helps the Supertailor staleness pass).
+# `tools/cadence.py start <skill>` adds `<key>_started` when a run begins;
+# `finish <skill>` stamps `<key>` and drops it. A `<key>_started` newer than
+# its `<key>` is a run that began and never finished, never a completed run.
 last_runs:
   daily_update: null
   whatsup: null

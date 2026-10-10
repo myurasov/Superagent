@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-10-08T22:45:58-07:00'
+generated_at: '2026-10-08T22:53:38-07:00'
 skill_count: 37
 skills:
 - name: superagent-ad-hoc-task
@@ -276,10 +276,10 @@ skills:
     …)
   cli_required: []
   cli_optional: []
-  lines: 343
+  lines: 345
   h2_steps: 26
   h3_subsections: 0
-  typical_token_cost: 4463
+  typical_token_cost: 4561
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
@@ -603,10 +603,10 @@ skills:
   - any watcher on the watchlist (the monthly cycle covers the weekly and daily tiers too)
   cli_required: []
   cli_optional: []
-  lines: 233
+  lines: 235
   h2_steps: 24
   h3_subsections: 0
-  typical_token_cost: 2401
+  typical_token_cost: 2465
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/documents-index.yaml
@@ -901,10 +901,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 149
+  lines: 151
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2677
+  typical_token_cost: 2838
   typical_files_read:
   - _memory/watchlist-state.yaml
   - _memory/supertailor-suggestions.yaml
@@ -912,7 +912,6 @@ skills:
   - _memory/domains-index.yaml
   - _memory/assets-index.yaml
   - _memory/accounts-index.yaml
-  - _memory/context.yaml
   origin: framework
 - name: superagent-todo
   stem: todo
@@ -994,10 +993,10 @@ skills:
   - any health / fitness watcher for the Coach pass
   cli_required: []
   cli_optional: []
-  lines: 267
+  lines: 269
   h2_steps: 22
   h3_subsections: 0
-  typical_token_cost: 2878
+  typical_token_cost: 2941
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md
