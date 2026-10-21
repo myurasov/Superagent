@@ -7,7 +7,7 @@ license = { text = "Apache-2.0" }
 authors = [{ name = "Mikhail Yurasov", email = "me@yurasov.me" }]
 dependencies = [
     "pyyaml",
-    "pypdf>=6.11.0",
+    "pypdf>=6.16.1",
     "pillow>=12.2.0",
     "pymupdf>=1.27.2.3",
     "google-api-python-client>=2.140",
