@@ -306,6 +306,8 @@ Per `contracts/visibility.md` and `contracts/sensitive-tier.md`:
 
 Per `contracts/provenance.md`: every newly-created entity row carries a `provenance` field — `source: "user|<skill>|<ingestor>|init|derived"`, optional `source_id` (interaction-log id, ingest run id), `at: <iso datetime>`, optional `verified_at`. For `info.md` § Key Facts bullets, use the inline annotation `<!-- src: <ref> -->`. The agent uses provenance to answer "are you sure?" / "where did you get that?" — by default, surface the provenance row in the response.
 
+When evidence corrects a fact, follow [the correction procedure](superagent/contracts/provenance.md#when-a-fact-is-corrected): cite the change, update confirmed current uses and dependent calculations, append a dated correction to history, and report what changed or remains uncertain.
+
 ## Time-shape vs entity-shape vs event-shape
 
 Per `contracts/memory-taxonomy.md` (its table is the canonical file list), every YAML file in `_memory/` belongs to exactly one shape:
