@@ -1,4 +1,6 @@
 #!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv uv run python
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
 """HEIC -> sRGB JPG conversion for Superagent imports.
 
 Per `superagent/rules/image-format-policy.md`, Superagent never lands a
@@ -13,6 +15,11 @@ incident in the workspace history). To dodge it, this helper uses the
 two-step `qlmanage` (Quick Look) HEIC -> PNG -> `sips` PNG -> JPG path,
 which renders the visible image through Quick Look's own pipeline.
 
+Off macOS neither tool exists, so the helper decodes the HEIC with Pillow
+through the `pillow-heif` plugin (a Linux-only dependency in
+`pyproject.toml`), applies the EXIF orientation, converts an embedded colour
+profile (Display P3 included) to sRGB, and writes the JPG itself.
+
 CLI:
 
     uv run python -m superagent.tools.heic_to_jpg convert <src.heic> [--keep]
@@ -21,6 +28,7 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import io
 import shutil
 import subprocess
 import sys
@@ -30,6 +38,7 @@ from pathlib import Path
 
 HEIC_SUFFIXES: tuple[str, ...] = (".heic", ".heif")
 QL_THUMBNAIL_SIZE = 2400
+JPEG_QUALITY = 92
 
 
 class ConversionError(RuntimeError):
@@ -55,12 +64,91 @@ def _jpg_sibling(src: Path) -> Path:
 def _require_tool(name: str) -> None:
     if shutil.which(name) is None:
         raise ConversionError(
-            f"required tool `{name}` not found on PATH (HEIC conversion needs macOS sips + qlmanage)"
+            f"required tool `{name}` not found on PATH (the macOS path needs sips + qlmanage)"
         )
 
 
+def _convert_with_quicklook(src: Path, dest: Path) -> None:
+    """macOS path: Quick Look renders the HEIC to PNG, `sips` writes the JPG."""
+    _require_tool("qlmanage")
+    _require_tool("sips")
+    with tempfile.TemporaryDirectory(prefix="heic_to_jpg_") as tmp:
+        tmp_dir = Path(tmp)
+        # qlmanage emits <basename>.png alongside its input into -o <dir>
+        png_path = tmp_dir / f"{src.name}.png"
+        subprocess.run(
+            ["qlmanage", "-t", "-s", str(QL_THUMBNAIL_SIZE), "-o", str(tmp_dir), str(src)],
+            check=True,
+            capture_output=True,
+        )
+        if not png_path.is_file():
+            # Some qlmanage versions strip the original extension before
+            # appending .png; check both forms before giving up.
+            alt = tmp_dir / f"{src.stem}.png"
+            if alt.is_file():
+                png_path = alt
+            else:
+                produced = sorted(p.name for p in tmp_dir.iterdir())
+                raise ConversionError(
+                    f"qlmanage did not produce a PNG for {src.name}; got {produced!r}"
+                )
+        subprocess.run(
+            ["sips", "-s", "format", "jpeg", str(png_path), "--out", str(dest)],
+            check=True,
+            capture_output=True,
+        )
+        if not dest.is_file():
+            raise ConversionError(f"sips PNG->JPG did not write {dest}")
+
+
+def _convert_with_pillow(src: Path, dest: Path) -> None:
+    """Portable path: decode with Pillow + pillow-heif and write an sRGB JPG."""
+    try:
+        import pillow_heif
+        from PIL import Image, ImageCms, ImageOps
+    except ImportError as exc:
+        raise ConversionError(
+            "HEIC conversion off macOS needs the `pillow-heif` package - run `uv sync` "
+            f"(import failed: {exc})"
+        ) from exc
+    pillow_heif.register_heif_opener()
+    try:
+        with Image.open(src) as opened:
+            image = ImageOps.exif_transpose(opened)
+            icc = image.info.get("icc_profile")
+            srgb = ImageCms.createProfile("sRGB")
+            if image.mode not in ("RGB", "RGBA"):
+                image = image.convert("RGB")
+            if icc:
+                # A Display P3 capture keeps its look only when its pixels are
+                # converted into sRGB; relabelling them would shift the colours.
+                try:
+                    image = ImageCms.profileToProfile(
+                        image, ImageCms.ImageCmsProfile(io.BytesIO(icc)), srgb, outputMode="RGB"
+                    )
+                except ImageCms.PyCMSError:
+                    image = image.convert("RGB")  # unreadable profile: keep the pixels
+            else:
+                image = image.convert("RGB")
+            tmp = dest.with_name(f".{dest.name}.tmp")
+            try:
+                image.save(
+                    tmp, format="JPEG", quality=JPEG_QUALITY, optimize=True,
+                    icc_profile=ImageCms.ImageCmsProfile(srgb).tobytes(),
+                )
+                tmp.replace(dest)
+            finally:
+                tmp.unlink(missing_ok=True)
+    except ConversionError:
+        raise
+    except Exception as exc:  # decoder errors come in many types
+        raise ConversionError(f"could not decode {src.name}: {exc}") from exc
+    if not dest.is_file():
+        raise ConversionError(f"JPG was not written: {dest}")
+
+
 def convert(src: Path, *, keep_heic: bool = False) -> ConversionResult:
-    """Convert one HEIC file to a sibling .jpg via qlmanage -> sips.
+    """Convert one HEIC file to a sibling .jpg (Quick Look on macOS, Pillow elsewhere).
 
     If a `.jpg` sibling already exists on disk, leave it alone (caller's
     JPG is assumed authoritative) and only remove the HEIC original
@@ -77,35 +165,10 @@ def convert(src: Path, *, keep_heic: bool = False) -> ConversionResult:
     jpg_existed = dest.is_file()
 
     if not jpg_existed:
-        _require_tool("qlmanage")
-        _require_tool("sips")
-        with tempfile.TemporaryDirectory(prefix="heic_to_jpg_") as tmp:
-            tmp_dir = Path(tmp)
-            # qlmanage emits <basename>.png alongside its input into -o <dir>
-            png_path = tmp_dir / f"{src.name}.png"
-            subprocess.run(
-                ["qlmanage", "-t", "-s", str(QL_THUMBNAIL_SIZE), "-o", str(tmp_dir), str(src)],
-                check=True,
-                capture_output=True,
-            )
-            if not png_path.is_file():
-                # Some qlmanage versions strip the original extension before
-                # appending .png; check both forms before giving up.
-                alt = tmp_dir / f"{src.stem}.png"
-                if alt.is_file():
-                    png_path = alt
-                else:
-                    produced = sorted(p.name for p in tmp_dir.iterdir())
-                    raise ConversionError(
-                        f"qlmanage did not produce a PNG for {src.name}; got {produced!r}"
-                    )
-            subprocess.run(
-                ["sips", "-s", "format", "jpeg", str(png_path), "--out", str(dest)],
-                check=True,
-                capture_output=True,
-            )
-            if not dest.is_file():
-                raise ConversionError(f"sips PNG->JPG did not write {dest}")
+        if sys.platform == "darwin":
+            _convert_with_quicklook(src, dest)
+        else:
+            _convert_with_pillow(src, dest)
 
     removed_src = False
     if not keep_heic:

@@ -9,6 +9,8 @@ dependencies = [
     "pyyaml",
     "pypdf>=6.11.0",
     "pillow>=12.2.0",
+    # HEIC decoding where macOS Quick Look is absent (tools/heic_to_jpg.py).
+    "pillow-heif>=1.0; sys_platform == 'linux'",
     "pymupdf>=1.27.2.3",
     "google-api-python-client>=2.140",
     "google-auth>=2.30",
