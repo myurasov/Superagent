@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-10-10T09:14:05+00:00'
+generated_at: '2026-11-21T12:56:09+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -162,6 +162,14 @@ migrations:
   from_version: 0.21.1
   file: 0.22.0.md
   title: 'Signals writer, cadence markers, wider redaction: no workspace data to convert'
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute
+- to_version: 0.23.0
+  from_version: 0.22.2
+  file: 0.23.0.md
+  title: 'Linux and OpenCode support, agent role files in agents/: no workspace data
+    to convert'
   breaking: false
   revertible: true
   estimated_duration: <1 minute

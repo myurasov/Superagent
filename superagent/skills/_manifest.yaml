@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-11-21T04:52:39-08:00'
+generated_at: '2026-11-21T04:56:45-08:00'
 skill_count: 37
 skills:
 - name: superagent-ad-hoc-task
@@ -250,10 +250,10 @@ skills:
   cli_optional:
   - playwright (Chromium install — one-time per machine; browserctl prints the exact command when the
     browser is missing)
-  lines: 346
+  lines: 349
   h2_steps: 11
   h3_subsections: 0
-  typical_token_cost: 5305
+  typical_token_cost: 5367
   typical_files_read: []
   origin: framework
 - name: superagent-daily-update
