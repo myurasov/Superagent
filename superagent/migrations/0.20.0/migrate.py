@@ -713,8 +713,20 @@ class Migration:
     def _say(self, msg: str) -> None:
         self.out(("[dry-run] " if self.dry_run else "") + msg)
 
+    def _original_rel(self, rel: str) -> str:
+        """Pre-migration path of a ref this migration renamed (its own path otherwise)."""
+        for row in self.manifest.get("renamed") or []:
+            if isinstance(row, dict) and row.get("to") == rel and row.get("from"):
+                return str(row["from"])
+        return rel
+
     def _checkpoint(self, path: Path) -> None:
-        dest = self.ws / CHECKPOINT_REL / path.relative_to(self.ws)
+        # Key the copy by the file's pre-migration name. A ref renamed by case
+        # only (`simplefin.ref.md` -> `Simplefin.ref.md`) resolves to the same
+        # checkpoint on a case-insensitive disk; on a case-sensitive one it
+        # would otherwise be captured a second time, post-rename, and revert
+        # would restore both names.
+        dest = self.ws / CHECKPOINT_REL / self._original_rel(self._rel(path))
         if dest.exists():
             return  # keep the earliest original
         dest.parent.mkdir(parents=True, exist_ok=True)
