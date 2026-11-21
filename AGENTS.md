@@ -44,11 +44,11 @@ If this repository also hosts other AI-assistant frameworks (work assistants, pr
 
 ## Canonical references
 
-- **Role definitions** (Superagent + helper personas): read and follow [`superagent/superagent.agent.md`](superagent/superagent.agent.md).
+- **Role definitions** (Superagent + helper personas): read and follow [`superagent/agents/superagent.agent.md`](superagent/agents/superagent.agent.md).
 - **Operational contracts** (init, cadences, data-ingestion, capture patterns, autonomy, memory taxonomy, ...): browse [`superagent/contracts/`](superagent/contracts/) — one markdown file per contract, indexed by `superagent/contracts/_manifest.yaml`. Skills cite a specific contract as `contracts/<slug>.md`.
 - **Rules** (single-behavior policies — token economy, file naming, git commits, memory routing, ...): [`superagent/rules/`](superagent/rules/), indexed by `superagent/rules/_manifest.yaml`; cited as `rules/<slug>.md`.
-- **Supertailor (framework hygiene + improvement)**: read and follow [`superagent/supertailor.agent.md`](superagent/supertailor.agent.md).
-- **Supercoder (implementation)**: read and follow [`superagent/supercoder.agent.md`](superagent/supercoder.agent.md).
+- **Supertailor (framework hygiene + improvement)**: read and follow [`superagent/agents/supertailor.agent.md`](superagent/agents/supertailor.agent.md).
+- **Supercoder (implementation)**: read and follow [`superagent/agents/supercoder.agent.md`](superagent/agents/supercoder.agent.md).
 - **Custom overlay** (per-user extensions): see § "Custom overlay" below; contract in [`superagent/contracts/custom-overlay.md`](superagent/contracts/custom-overlay.md).
 - **Harness wiring** (which harness reads which setup file, hooks, MCP config): [`superagent/docs/harness-setup.md`](superagent/docs/harness-setup.md); capabilities per harness: [`superagent/docs/harness-matrix.md`](superagent/docs/harness-matrix.md).
 
@@ -262,7 +262,7 @@ When discussing items from the task tracker, **do not surface internal task ids*
 
 ## Knowledge discipline
 
-Core operating principle: **know as much as possible, fetch as little as necessary.** Two complementary rules govern every skill (full statement: `superagent/superagent.agent.md` § "Knowledge discipline"; the pre-fetch self-check: [`superagent/rules/scope-discipline.md`](superagent/rules/scope-discipline.md)):
+Core operating principle: **know as much as possible, fetch as little as necessary.** Two complementary rules govern every skill (full statement: `superagent/agents/superagent.agent.md` § "Knowledge discipline"; the pre-fetch self-check: [`superagent/rules/scope-discipline.md`](superagent/rules/scope-discipline.md)):
 
 - **Discovery is lean.** Don't pre-fetch context the immediate task does not need. Default to § "Local-first read order"; step out to live MCPs / CLIs only when the local read is genuinely insufficient AND freshness genuinely matters. Don't probe data sources, enrich entities the user didn't ask about, or run sweeps on ad-hoc requests.
 - **Retention is opportunistic.** Anything legitimately encountered during a task — a new contact in an email read for another reason, an account number on a receipt opened for a different question, a tag worth registering — gets captured to its proper home, with `provenance`. The user never has to surface the same fact twice (generalizes the ingestion contract's capture-through rule).

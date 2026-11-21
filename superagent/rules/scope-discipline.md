@@ -2,7 +2,7 @@
 
 [Do not change manually — managed by Superagent]
 
-This rule operationalizes the **Knowledge discipline** principle stated canonically in `superagent/superagent.agent.md` § "Knowledge discipline" (and summarized in `AGENTS.md` § "Knowledge discipline"). The principle says *what*; this rule says *how to check yourself before each ask*.
+This rule operationalizes the **Knowledge discipline** principle stated canonically in `superagent/agents/superagent.agent.md` § "Knowledge discipline" (and summarized in `AGENTS.md` § "Knowledge discipline"). The principle says *what*; this rule says *how to check yourself before each ask*.
 
 The agent's information-gathering behavior is governed by **two distinct asymmetric rules**:
 
@@ -83,7 +83,7 @@ The honest answer is in this rule: **X wasn't necessary for the task on the tabl
 
 ## Related contracts and docs
 
-- `superagent/superagent.agent.md` § "Knowledge discipline" — the canonical principle this rule implements.
+- `superagent/agents/superagent.agent.md` § "Knowledge discipline" — the canonical principle this rule implements.
 - `AGENTS.md` § "Knowledge discipline" — always-on summary of the principle.
 - `contracts/local-first-read-order.md` — the local-vs-live escalation order this rule constrains.
 - `contracts/provenance.md` — schema for the `provenance` field that captured facts must carry.

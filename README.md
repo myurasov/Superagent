@@ -122,7 +122,7 @@ T-shirt-sized (XS/S/M/L/XL) with rationale and "done when" criteria. Headline ne
 
 If you're using this and find friction, the most useful thing you can do is **tell the agent**. Action signals get captured into `_memory/action-signals.yaml`, the Supertailor digests them, and approved fixes ship as code.
 
-If you want to write code: [`superagent/supercoder.agent.md`](superagent/supercoder.agent.md) documents the conventions. Add a new data source by dropping a watcher pack folder into `superagent/watchers/<id>/` (`pack.yaml`, plus `handler.py` implementing `IngestorBase.run` only if it feeds a typed index), listing it in `watchers/_manifest.yaml`, and adding a pack-loader test — or keep it private under `workspace/_custom/watchers/<id>/`.
+If you want to write code: [`superagent/agents/supercoder.agent.md`](superagent/agents/supercoder.agent.md) documents the conventions. Add a new data source by dropping a watcher pack folder into `superagent/watchers/<id>/` (`pack.yaml`, plus `handler.py` implementing `IngestorBase.run` only if it feeds a typed index), listing it in `watchers/_manifest.yaml`, and adding a pack-loader test — or keep it private under `workspace/_custom/watchers/<id>/`.
 
 ## License
 

@@ -12,7 +12,7 @@ suggestions:
   #   category              — new-skill | skill-improvement | memory-schema |
   #                            template | workflow | hygiene | config |
   #                            new-ingestor | auto-capture-rule | surfacing-rule
-  #   destination           — superagent | _custom (see supertailor.agent.md
+  #   destination           — superagent | _custom (see agents/supertailor.agent.md
   #                            § Destination Classification).
   #                            superagent → generic; implemented by Supercoder
   #                            into the committed framework tree.

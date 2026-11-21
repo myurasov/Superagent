@@ -49,9 +49,10 @@ A project can touch multiple domains (a kitchen renovation touches Home + Financ
 ├── .gitignore, .githooks/, .mcp.json.example, .cursor/
 │
 ├── superagent/                     ← framework code (committed; this is the product)
-│   ├── superagent.agent.md         ← role definitions (Superagent + helpers)
-│   ├── supertailor.agent.md        ← Supertailor's role (observer + proposer)
-│   ├── supercoder.agent.md         ← Supercoder's role (sole implementer)
+│   ├── agents/                     ← agent role definitions, one <name>.agent.md per agent
+│   │   ├── superagent.agent.md     ← role definitions (Superagent + helpers)
+│   │   ├── supertailor.agent.md    ← Supertailor's role (observer + proposer)
+│   │   └── supercoder.agent.md     ← Supercoder's role (sole implementer)
 │   ├── skills/                     ← 36 skills, one .md per skill + _manifest.yaml
 │   ├── contracts/                  ← 29 multi-actor contracts + _manifest.yaml
 │   ├── rules/                      ← machine-readable rule catalogues + _manifest.yaml
@@ -150,7 +151,7 @@ The shape: **skills are language**, **tools are code**, **watchers are pluggable
 
 ## The dual-agent loop (Supertailor + Supercoder)
 
-Superagent ships with built-in introspection. The full role definitions are in `supertailor.agent.md` and `supercoder.agent.md`; the user-facing skill is `supertailor-review`. The high-level loop:
+Superagent ships with built-in introspection. The full role definitions are in `agents/supertailor.agent.md` and `agents/supercoder.agent.md`; the user-facing skill is `supertailor-review`. The high-level loop:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐

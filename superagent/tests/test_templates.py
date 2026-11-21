@@ -187,8 +187,8 @@ def test_commit_msg_hook_exists_and_executable(framework_dir: Path) -> None:
 
 
 def test_supercoder_agent_md_is_single_purpose(framework_dir: Path) -> None:
-    """supercoder.agent.md describes a single-purpose framework-only role."""
-    body = (framework_dir / "supercoder.agent.md").read_text()
+    """agents/supercoder.agent.md describes a single-purpose framework-only role."""
+    body = (framework_dir / "agents" / "supercoder.agent.md").read_text()
     assert "Personal-data safeguard" in body
     assert "approved" in body.lower(), "must require an approved suggestion"
     # No Mode 2 / project-build content.
@@ -199,7 +199,7 @@ def test_supercoder_agent_md_is_single_purpose(framework_dir: Path) -> None:
 
 def test_supercoder_agent_md_points_at_real_migration_mechanism(framework_dir: Path) -> None:
     """Schema-bump guidance names the shipped migration files, not phantom tools."""
-    body = (framework_dir / "supercoder.agent.md").read_text()
+    body = (framework_dir / "agents" / "supercoder.agent.md").read_text()
     assert "tools/migrate.py" not in body, "no such tool; migrations are markdown files"
     assert "test_migrations" not in body, "no such test module; coverage lives in test_version.py"
     assert "superagent/migrations/<to_version>.md" in body
