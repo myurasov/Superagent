@@ -137,3 +137,14 @@ def test_exit_hint_points_at_the_apparmor_profile(tmp_path, bc):
     log.write_text("some other failure\n")
     assert bc._exit_hint(log) == ""
     assert bc._exit_hint(tmp_path / "missing.log") == ""
+
+
+def test_install_command_pins_the_running_playwright_version(bc):
+    cmd = bc._install_command()
+    assert cmd.startswith("uv run --no-project --with ")
+    assert cmd.endswith("python -m playwright install chromium")
+    try:
+        from importlib.metadata import version
+        assert f'"playwright=={version("playwright")}"' in cmd
+    except Exception:  # Playwright absent from the test environment
+        assert "--with playwright " in cmd

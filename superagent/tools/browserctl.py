@@ -373,6 +373,21 @@ def sanitize_session_prefs(project: str, profile: str) -> None:
 # ---------------------------------------------------------------- launch/stop
 
 
+def _install_command() -> str:
+    """The command that installs the Chromium build THIS run's Playwright wants.
+
+    browserctl's script environment resolves its own Playwright, and each
+    Playwright release pins one Chromium build. A bare `--with playwright`
+    install can resolve another release (a cached one, say) and fetch a build
+    this run cannot use, so the command names the exact version."""
+    try:
+        from importlib.metadata import version
+        pin = f'"playwright=={version("playwright")}"'
+    except Exception:  # metadata missing: fall back to the unpinned form
+        pin = "playwright"
+    return f"uv run --no-project --with {pin} python -m playwright install chromium"
+
+
 def chromium_executable() -> str:
     """The launch binary: the custom app bundle when one was built with the
     ``icon`` command (distinct Dock icon/name vs the user's main Chrome), else
@@ -403,7 +418,7 @@ def chromium_executable() -> str:
     if not exe.exists():
         raise RuntimeError(
             f"Playwright's Chromium is not installed ({exe}) - run: "
-            "uv run --with playwright playwright install chromium")
+            f"{_install_command()}")
 
     def _cache(state: dict) -> None:
         state["chromium_exe"] = str(exe)
@@ -424,7 +439,7 @@ def _playwright_chromium_bundle() -> Path:
     if exe is None or not exe.exists():
         raise RuntimeError(
             "Playwright's Chromium is not installed - run: "
-            "uv run --with playwright playwright install chromium")
+            f"{_install_command()}")
     bundle = exe.parents[2]
     if bundle.suffix != ".app":
         raise RuntimeError(f"unexpected Chromium layout: {bundle}")
