@@ -597,6 +597,87 @@ def port_free(port: int) -> bool:
         return s.connect_ex(("localhost", port)) != 0
 
 
+# ------------------------------------------------- linux desktop session
+
+# What a headed browser needs from a graphical login on Linux. A shell reached
+# over SSH (remote editors and agent harnesses included) carries none of it.
+_DESKTOP_ENV_KEYS = ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "XDG_RUNTIME_DIR",
+                     "XDG_SESSION_TYPE", "XDG_CURRENT_DESKTOP", "DBUS_SESSION_BUS_ADDRESS")
+_NO_SANDBOX_MARK = "No usable sandbox"
+
+
+def _unquote_systemd(value: str) -> str:
+    """Undo the `$'...'` quoting `systemctl show-environment` applies to values
+    that hold special characters; a plain value comes back unchanged."""
+    if len(value) >= 3 and value.startswith("$'") and value.endswith("'"):
+        return value[2:-1].replace("\\'", "'").replace("\\\\", "\\")
+    return value
+
+
+def desktop_session_env(environ: dict[str, str] | None = None) -> dict[str, str]:
+    """Display variables published by the logged-in desktop session (Linux).
+
+    A graphical login (GNOME, KDE) imports its display variables into the
+    user's systemd manager, and `systemctl --user show-environment` prints them
+    to any shell of the same user. Returns {} when the command is missing,
+    fails, or lists no display - never raises."""
+    env = dict(os.environ if environ is None else environ)
+    # An SSH shell without a login session may lack the runtime dir the user
+    # manager is reached through; its location is fixed per uid.
+    env.setdefault("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    try:
+        r = subprocess.run(["systemctl", "--user", "show-environment"],
+                           capture_output=True, text=True, timeout=5, env=env)
+    except (OSError, subprocess.SubprocessError):
+        return {}
+    if r.returncode != 0:
+        return {}
+    found: dict[str, str] = {}
+    for line in r.stdout.splitlines():
+        name, sep, value = line.partition("=")
+        if sep and name in _DESKTOP_ENV_KEYS and value:
+            found[name] = _unquote_systemd(value)
+    if not (found.get("DISPLAY") or found.get("WAYLAND_DISPLAY")):
+        return {}
+    return found
+
+
+def launch_env(headless: bool, environ: dict[str, str] | None = None,
+               platform: str | None = None) -> dict[str, str]:
+    """Environment for the browser process.
+
+    Unchanged on macOS, for headless launches, and for a shell that already
+    has a display (X11 forwarding included). A headed launch on Linux from a
+    shell with no display borrows the desktop session's variables; with no
+    desktop session logged in it raises RuntimeError, because Chromium would
+    otherwise die at startup with an unhelpful message."""
+    env = dict(os.environ if environ is None else environ)
+    if headless or not (platform or sys.platform).startswith("linux"):
+        return env
+    if env.get("DISPLAY") or env.get("WAYLAND_DISPLAY"):
+        return env
+    session = desktop_session_env(env)
+    if not session:
+        raise RuntimeError(
+            "a headed launch needs a display, and neither this shell nor a logged-in "
+            "desktop session has one - log in on the machine's desktop (or enable "
+            "automatic login), set DISPLAY and XAUTHORITY yourself, or launch --headless")
+    env.update(session)
+    return env
+
+
+def _exit_hint(log_path: Path) -> str:
+    """Extra guidance for a browser that died at startup, from its log tail."""
+    try:
+        tail = log_path.read_bytes()[-4000:].decode("utf-8", "replace")
+    except OSError:
+        return ""
+    if _NO_SANDBOX_MARK in tail:
+        return ("; Chromium found no usable sandbox - on Ubuntu 23.10+ install the AppArmor "
+                "profile for Playwright's Chromium (skills/browserctl.md, \"Linux\")")
+    return ""
+
+
 def _fresh_name_in(state: dict, project: str, requested: str) -> str:
     n = 2
     while (key(project, f"{requested}-{n}") in state["profiles"]
@@ -659,6 +740,7 @@ def launch(project: str, profile: str, *, headless: bool,
     logs.mkdir(parents=True, exist_ok=True)
     log_path = logs / f"{project}--{profile}.log"
 
+    env = launch_env(headless)  # raises early when a headed launch has no display
     ensure_app_bundle()
     cmd = [
         chromium_executable(),
@@ -689,7 +771,7 @@ def launch(project: str, profile: str, *, headless: bool,
 
     with open(log_path, "ab") as log:
         proc = subprocess.Popen(cmd, stdout=log, stderr=log,
-                                start_new_session=True, cwd=str(pdir))
+                                start_new_session=True, cwd=str(pdir), env=env)
 
     deadline = time.time() + 60
     while time.time() < deadline:
@@ -697,7 +779,8 @@ def launch(project: str, profile: str, *, headless: bool,
             break
         if proc.poll() is not None:
             raise RuntimeError(
-                f"browser exited (code {proc.returncode}); see {log_path}")
+                f"browser exited (code {proc.returncode}); see {log_path}"
+                f"{_exit_hint(log_path)}")
         time.sleep(0.3)
     else:
         raise RuntimeError(
