@@ -167,6 +167,10 @@ Two complementary paths, both live, both feeding one local archive:
      ```bash
      sudo npm install -g @gongrzhe/server-gmail-autoauth-mcp
      ```
+     Without a system-wide install (the machine has no Node, or you keep tools machine-local per `rules/development-tooling.md` § 2): unpack a Node release into `~/.superagent/tools/node/` and install the server with that Node's own `npm`, which puts `gmail-mcp` beside `node` in `~/.superagent/tools/node/bin/`:
+     ```bash
+     PATH="$HOME/.superagent/tools/node/bin:$PATH" npm install -g @gongrzhe/server-gmail-autoauth-mcp
+     ```
   3. **Stage the OAuth client where the MCP looks for it, then run auth** (browser opens; sign in; grant):
      ```bash
      mkdir -p ~/.gmail-mcp
@@ -182,6 +186,21 @@ Two complementary paths, both live, both feeding one local archive:
        }
      }
      ```
+     OpenCode reads `opencode.jsonc` (a copy of the committed `opencode.jsonc.opencode`), whose format differs: servers sit under `mcp.servers`, and the command is an array. This line finds `gmail-mcp` on every machine, with either install above:
+     ```jsonc
+     {
+       "$schema": "https://opencode.ai/config.json",
+       "mcp": {
+         "servers": {
+           "gmail": {
+             "type": "local",
+             "command": ["sh", "-c", "PATH=\"$HOME/.superagent/tools/node/bin:$PATH\" exec gmail-mcp"]
+           }
+         }
+       }
+     }
+     ```
+     A second machine needs the same two files in `~/.gmail-mcp/` (`gcp-oauth.keys.json` and `credentials.json`): copy them from the first machine, or repeat step 3 there. They hold your OAuth client and token, so move them only over a channel you trust.
      Verify: `gmail` shows connected with 19 tools; smoke-test in a fresh chat ("list my 3 most recent emails"), then `uv run python -m superagent.tools.email.archive stats` should show the stubs that search just captured.
   5. **Hook wiring for the archive** (optional enhancement): `init` writes the Cursor `afterMCPExecution` entry to `.cursor/hooks.json` and the Claude Code `PostToolUse` matchers to `.claude/settings.json` per `contracts/email-capture.md` § 8.1. Nothing depends on them — the agent runs `archive_hook --raw` after every Gmail call regardless (`rules/email-capture-fallback.md`).
   6. **Register a watcher**: `uv run python -m superagent.tools.watchlist enable gmail --id gmail-bills --param query="label:Bills newer_than:30d"`. Repeat with a different `--id` / query per slice you care about.
