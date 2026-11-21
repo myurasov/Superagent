@@ -3,7 +3,21 @@
 """Tests for `tools/ide.py` (host-IDE detection helper)."""
 from __future__ import annotations
 
+import os
+
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _no_host_markers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Start every test from a shell that looks like no harness at all.
+
+    The suite itself runs inside some harness, whose markers would otherwise
+    leak into the tests that read `os.environ`.
+    """
+    for key in list(os.environ):
+        if key in ("CLAUDECODE", "OPENCODE", "OPENCODE_SESSION_ID") or key.startswith("CURSOR_"):
+            monkeypatch.delenv(key, raising=False)
 
 
 def test_detect_claude_code_from_marker() -> None:
@@ -151,3 +165,38 @@ def test_cli_env_subcommand_reports_state(capsys: pytest.CaptureFixture[str],
     out = capsys.readouterr().out
     assert "detected=cursor" in out
     assert "CURSOR_TRACE_ID" in out
+
+
+def test_detect_opencode_from_flag_or_session_id() -> None:
+    from superagent.tools.ide import IDE, detect
+
+    assert detect({"OPENCODE": "1"}) is IDE.OPENCODE
+    assert detect({"OPENCODE_SESSION_ID": "ses_abc"}) is IDE.OPENCODE
+    assert detect({"OPENCODE": "0"}) is IDE.UNKNOWN
+    assert detect({"OPENCODE_SESSION_ID": ""}) is IDE.UNKNOWN
+
+
+def test_detect_order_claude_then_opencode_then_cursor() -> None:
+    """A harness started from another's shell inherits the outer markers."""
+    from superagent.tools.ide import IDE, detect
+
+    # Claude Code launched from an OpenCode shell sets its own marker.
+    assert detect({"CLAUDECODE": "1", "OPENCODE": "1"}) is IDE.CLAUDE_CODE
+    # OpenCode launched from a Cursor terminal inherits the CURSOR_* family.
+    assert detect({"OPENCODE": "1", "CURSOR_TRACE_ID": "xyz"}) is IDE.OPENCODE
+    assert detect({"CLAUDECODE": "1", "OPENCODE": "1", "CURSOR_TRACE_ID": "x"}) is IDE.CLAUDE_CODE
+
+
+def test_cli_is_opencode_exit_codes_and_label(capsys: pytest.CaptureFixture[str],
+                                              monkeypatch: pytest.MonkeyPatch) -> None:
+    from superagent.tools.ide import IDE, label, main
+
+    assert label(IDE.OPENCODE) == "opencode"
+    assert main(["is-opencode"]) == 1
+    monkeypatch.setenv("OPENCODE", "1")
+    assert main(["is-opencode"]) == 0
+    assert main(["is-claude"]) == 1 and main(["is-cursor"]) == 1
+    assert main(["current"]) == 0
+    assert capsys.readouterr().out.strip() == "opencode"
+    assert main(["env"]) == 0
+    assert "opencode_marker=set" in capsys.readouterr().out

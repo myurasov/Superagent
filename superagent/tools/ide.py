@@ -3,12 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """IDE detection helper.
 
-Superagent supports two host IDEs as first-class citizens:
+Superagent supports three host harnesses as first-class citizens:
 
 - **Cursor** — reads `AGENTS.md` natively; project-level MCP config at
   `.cursor/mcp.json`; hooks at `.cursor/hooks.json`.
 - **Claude Code** — reads `CLAUDE.md` (which `@`-imports `AGENTS.md`);
   project-level MCP config at `.mcp.json`; hooks at `.claude/settings.json`.
+- **OpenCode** — reads `AGENTS.md` natively; project-level config (MCP
+  servers included) at `opencode.jsonc`; no hooks.
 
 This module centralizes the "which IDE am I running under?" decision so
 skills and scripts don't open-code the env-var probes themselves.
@@ -21,12 +23,15 @@ answer on every turn without touching `_memory/config.yaml`.
 Detection rules (in order):
 
 1. `CLAUDECODE=1` set in the environment → `IDE.CLAUDE_CODE`.
-2. Any `CURSOR_*` env var set (`CURSOR_TRACE_ID`, `CURSOR_SESSION_ID`,
+2. `OPENCODE=1` or `OPENCODE_SESSION_ID` set → `IDE.OPENCODE`. OpenCode
+   sets both in every tool shell.
+3. Any `CURSOR_*` env var set (`CURSOR_TRACE_ID`, `CURSOR_SESSION_ID`,
    ...) → `IDE.CURSOR`.
-3. Both Claude Code and Cursor markers present (rare; usually means a
-   user opened a sub-shell across IDEs) → prefer Claude Code, the more
-   specific marker.
-4. Neither → `IDE.UNKNOWN`. Callers decide whether to ask the user or
+4. Several markers present (a harness started from another harness's
+   shell inherits the outer one's variables) → the order above decides:
+   Claude Code sets a marker of its own even inside an OpenCode shell, and
+   OpenCode started from a Cursor terminal inherits the `CURSOR_*` family.
+5. None → `IDE.UNKNOWN`. Callers decide whether to ask the user or
    default to a safe behavior.
 
 API:
@@ -34,12 +39,13 @@ API:
     from superagent.tools.ide import IDE, detect, label
 
     ide = detect()                         # IDE enum
-    print(label(ide))                      # "claude-code" / "cursor" / "unknown"
+    print(label(ide))                      # "claude-code" / "opencode" / "cursor" / "unknown"
 
 CLI:
 
     uv run python -m superagent.tools.ide current      # prints label
     uv run python -m superagent.tools.ide is-claude    # exit 0 if Claude Code
+    uv run python -m superagent.tools.ide is-opencode  # exit 0 if OpenCode
     uv run python -m superagent.tools.ide is-cursor    # exit 0 if Cursor
 
 Exit codes match unix convention — 0 on a positive answer, 1 otherwise.
@@ -57,6 +63,7 @@ class IDE(enum.Enum):
     """The host IDE Superagent is running under."""
 
     CLAUDE_CODE = "claude-code"
+    OPENCODE = "opencode"
     CURSOR = "cursor"
     UNKNOWN = "unknown"
 
@@ -66,12 +73,22 @@ class IDE(enum.Enum):
 CLAUDE_CODE_MARKER = "CLAUDECODE"
 CLAUDE_CODE_MARKER_TRUTHY = ("1", "true", "yes", "on")
 CURSOR_MARKER_PREFIX = "CURSOR_"
+# OpenCode sets a flag and the session id in every tool shell.
+OPENCODE_MARKER = "OPENCODE"
+OPENCODE_SESSION_MARKER = "OPENCODE_SESSION_ID"
 
 
 def _has_claude_code(env: Mapping[str, str]) -> bool:
     """Return True when the env carries Claude Code's marker variable."""
     value = env.get(CLAUDE_CODE_MARKER, "")
     return value.lower() in CLAUDE_CODE_MARKER_TRUTHY
+
+
+def _has_opencode(env: Mapping[str, str]) -> bool:
+    """Return True when the env carries OpenCode's flag or a session id."""
+    if env.get(OPENCODE_MARKER, "").lower() in CLAUDE_CODE_MARKER_TRUTHY:
+        return True
+    return bool(env.get(OPENCODE_SESSION_MARKER, ""))
 
 
 def _has_cursor(env: Mapping[str, str]) -> bool:
@@ -86,11 +103,11 @@ def detect(env: Mapping[str, str] | None = None) -> IDE:
     Re-runs on every call — no caching, no sticky state.
     """
     env = os.environ if env is None else env
-    claude = _has_claude_code(env)
-    cursor = _has_cursor(env)
-    if claude:
+    if _has_claude_code(env):
         return IDE.CLAUDE_CODE
-    if cursor:
+    if _has_opencode(env):
+        return IDE.OPENCODE
+    if _has_cursor(env):
         return IDE.CURSOR
     return IDE.UNKNOWN
 
@@ -108,6 +125,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="cmd")
     sub.add_parser("current", help="Print the detected IDE label.")
     sub.add_parser("is-claude", help="Exit 0 iff the active IDE is Claude Code.")
+    sub.add_parser("is-opencode", help="Exit 0 iff the active harness is OpenCode.")
     sub.add_parser("is-cursor", help="Exit 0 iff the active IDE is Cursor.")
     sub.add_parser("env", help="Print the env-var markers the detector saw.")
     return parser
@@ -122,6 +140,10 @@ def _cmd_is_claude() -> int:
     return 0 if detect() is IDE.CLAUDE_CODE else 1
 
 
+def _cmd_is_opencode() -> int:
+    return 0 if detect() is IDE.OPENCODE else 1
+
+
 def _cmd_is_cursor() -> int:
     return 0 if detect() is IDE.CURSOR else 1
 
@@ -130,6 +152,9 @@ def _cmd_env() -> int:
     env = os.environ
     claude = _has_claude_code(env)
     print(f"claude_code_marker={'set' if claude else 'unset'} ({CLAUDE_CODE_MARKER})")
+    opencode = _has_opencode(env)
+    print(f"opencode_marker={'set' if opencode else 'unset'} "
+          f"({OPENCODE_MARKER}, {OPENCODE_SESSION_MARKER})")
     cursor_keys = sorted(k for k in env if k.startswith(CURSOR_MARKER_PREFIX))
     if cursor_keys:
         print(f"cursor_markers=set ({', '.join(cursor_keys)})")
@@ -147,6 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     dispatch = {
         "current": _cmd_current,
         "is-claude": _cmd_is_claude,
+        "is-opencode": _cmd_is_opencode,
         "is-cursor": _cmd_is_cursor,
         "env": _cmd_env,
     }

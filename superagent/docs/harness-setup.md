@@ -1,11 +1,12 @@
-# Harness setup (Cursor, Claude Code, and other CLIs)
+# Harness setup (Cursor, Claude Code, OpenCode, and other CLIs)
 
-Superagent runs under **Cursor** and **Claude Code** as first-class hosts, and under any other CLI that reads `AGENTS.md` natively (e.g. Codex CLI) with zero framework changes. This page is the per-file wiring reference; `AGENTS.md` § "Harness setup" carries the binding summary, and the per-harness *capability* matrix (hooks, sandbox, question tool, subagents) lives in [`harness-matrix.md`](harness-matrix.md).
+Superagent runs under **Cursor**, **Claude Code** and **OpenCode** as first-class hosts, and under any other CLI that reads `AGENTS.md` natively (e.g. Codex CLI) with zero framework changes. This page is the per-file wiring reference; `AGENTS.md` § "Harness setup" carries the binding summary, and the per-harness *capability* matrix (hooks, sandbox, question tool, subagents) lives in [`harness-matrix.md`](harness-matrix.md).
 
-## Three harness classes
+## Four harness classes
 
 - **Cursor** — reads `AGENTS.md` natively at the repo root.
 - **Claude Code** — reads [`CLAUDE.md`](../../CLAUDE.md), which `@`-imports `AGENTS.md`.
+- **OpenCode** (2.x) — reads `AGENTS.md` natively at the repo root. It runs no Superagent hooks, so the hook-free floor in `AGENTS.md` § "Non-Negotiables (Every Harness)" is how every step runs: read the custom overlay by hand, recognize skill triggers from the manifest, and pipe each Gmail MCP response into `archive_hook`. MCP servers come from `opencode.jsonc`.
 - **Generic `AGENTS.md`-native CLI** — reads `AGENTS.md` directly; no hooks, no IDE-specific config files. Everything such a CLI needs lives in `AGENTS.md` (see its "Non-Negotiables (Every Harness)").
 
 The `workspace/_custom/` overlay applies identically under every harness; there is no per-harness overlay path.
@@ -16,12 +17,13 @@ You can switch between harnesses interchangeably — detection is environment-dr
 
 ```bash
 export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"
-uv run python -m superagent.tools.ide current   # prints "claude-code" / "cursor" / "unknown"
-uv run python -m superagent.tools.ide is-claude # exit 0 iff Claude Code
+uv run python -m superagent.tools.ide current     # prints "claude-code" / "opencode" / "cursor" / "unknown"
+uv run python -m superagent.tools.ide is-claude   # exit 0 iff Claude Code
+uv run python -m superagent.tools.ide is-opencode # exit 0 iff OpenCode
 uv run python -m superagent.tools.ide is-cursor # exit 0 iff Cursor
 ```
 
-Detection looks at `CLAUDECODE=1` (Claude Code) and any `CURSOR_*` env var (Cursor); when both are present, Claude Code wins. **`unknown` is a first-class answer** — it is the correct result for generic `AGENTS.md`-native CLIs, which need no detection because they carry no harness-specific wiring. There is intentionally **no** `preferences.ide` override in `_memory/config.yaml` — re-detecting each turn keeps multi-harness workflows frictionless.
+Detection looks at `CLAUDECODE=1` (Claude Code), `OPENCODE=1` or `OPENCODE_SESSION_ID` (OpenCode), and any `CURSOR_*` env var (Cursor), in that order: a harness started from another harness's shell inherits the outer one's variables, and the order names the inner one. **`unknown` is a first-class answer** — it is the correct result for generic `AGENTS.md`-native CLIs, which need no detection because they carry no harness-specific wiring. There is intentionally **no** `preferences.ide` override in `_memory/config.yaml` — re-detecting each turn keeps multi-harness workflows frictionless.
 
 ## Setup files — who reads what
 
@@ -37,6 +39,8 @@ Detection looks at `CLAUDECODE=1` (Claude Code) and any `CURSOR_*` env var (Curs
 | `.cursor/mcp.json` | Yes (runtime; may carry tokens) | No | No | No (gitignored) |
 | `.mcp.json.claude` | No (template only) | No (template only) | No (template only) | Yes |
 | `.mcp.json` | No | Yes (runtime; may carry tokens) | Varies — point the CLI at it if it accepts MCP JSON config | No (gitignored) |
+| `opencode.jsonc.opencode` | No (template only) | No (template only) | No (template only) | Yes |
+| `opencode.jsonc` | No | No | OpenCode reads it (project config: MCP servers under `mcp.servers`) | No (gitignored) |
 
 The committed `.cursor/` tree holds only `hooks.json` and the `mcp.json.cursor` template — there is no `.cursor/rules/` shim, since Cursor reads `AGENTS.md` natively. `.claudeignore` keeps `.cursor/` and `workspace/` out of Claude Code's context.
 
@@ -50,7 +54,7 @@ The `init` skill sets all of these up by default. The first two are hook-based *
   - Disable by setting `_memory/config.yaml.preferences.privacy.log_user_queries: false`; the script reads that flag and exits silently when it's off.
 - **Skill auto-loader** (Claude Code only). A second `UserPromptSubmit` hook runs `uv run python -m superagent.tools.skill_loader`: it matches the prompt against every skill's frontmatter `triggers` (framework + `_custom` overlay) and injects the matching skill deterministically — full body for short skills, a compact pointer + step index for long ones (per the read budget). Cursor's hook API cannot add context, and generic CLIs have no hooks — under those harnesses the agent recognizes triggers via the skill manifest (`superagent/skills/_manifest.yaml`). Fail-safe (always exits 0); disable via `_memory/config.yaml.preferences.skill_autoload: false`.
 - **Email capture** (mirrors touched Gmail messages into the local archive). Cursor: `.cursor/hooks.json`, event `afterMCPExecution`, ONE entry with no matcher, `archive_hook --kind=auto`. Claude Code: `.claude/settings.json`, event `PostToolUse`, three `mcp__gmail__<tool>` matchers. Details and the per-harness field-name differences are in `contracts/email-capture.md` § 8.1; the hook-free floor that makes both optional is `rules/email-capture-fallback.md`.
-- **MCP servers.** Cursor and Claude Code each read their own runtime file (`.cursor/mcp.json` / `.mcp.json`). Both files start as a regular-file copy of the committed templates (`.cursor/mcp.json.cursor` / `.mcp.json.claude`). The templates are content-identical (Superagent has no per-harness OAuth client_id constraint); only the destination path differs. **Regular-file copies, not symlinks** — a checkout inside a synced folder (iCloud Drive, Syncthing, …) can have its symlinks rewritten as placeholders. Edit one file, re-run `init`, and drift between the two is detected and offered for mirror. A generic CLI that accepts MCP JSON config can be pointed at `.mcp.json` as well.
+- **MCP servers.** Cursor, Claude Code and OpenCode each read their own runtime file (`.cursor/mcp.json` / `.mcp.json` / `opencode.jsonc`). Each starts as a regular-file copy of its committed template (`.cursor/mcp.json.cursor` / `.mcp.json.claude` / `opencode.jsonc.opencode`). OpenCode's format differs from the other two: servers sit under `mcp.servers`, each with `"type": "local"` and a `command` array. The templates are content-identical (Superagent has no per-harness OAuth client_id constraint); only the destination path differs. **Regular-file copies, not symlinks** — a checkout inside a synced folder (iCloud Drive, Syncthing, …) can have its symlinks rewritten as placeholders. Edit one file, re-run `init`, and drift between the two is detected and offered for mirror. A generic CLI that accepts MCP JSON config can be pointed at `.mcp.json` as well.
 - **Commit-message hook.** Install a `commit-msg` hook at `.githooks/commit-msg` (`git config core.hooksPath .githooks`) that blocks AI-attribution patterns at commit time. The reference implementation lives at `superagent/templates/githooks/commit-msg`. Harness-agnostic; the policy it enforces is `rules/git-commits.md`.
 
 ### Hook command shape

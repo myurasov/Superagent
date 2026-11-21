@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-11-21T01:55:53-08:00'
+generated_at: '2026-11-21T04:42:46-08:00'
 skill_count: 37
 skills:
 - name: superagent-ad-hoc-task
@@ -249,10 +249,10 @@ skills:
   - uv
   cli_optional:
   - playwright (Chromium install — one-time `uv run --with playwright playwright install chromium`)
-  lines: 302
-  h2_steps: 10
+  lines: 344
+  h2_steps: 11
   h3_subsections: 0
-  typical_token_cost: 4757
+  typical_token_cost: 5246
   typical_files_read: []
   origin: framework
 - name: superagent-daily-update
@@ -503,10 +503,10 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 348
+  lines: 351
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 6037
+  typical_token_cost: 6192
   typical_files_read:
   - _memory/config.yaml
   - _memory/insights.yaml
@@ -904,7 +904,7 @@ skills:
   lines: 151
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2838
+  typical_token_cost: 2848
   typical_files_read:
   - _memory/watchlist-state.yaml
   - _memory/supertailor-suggestions.yaml

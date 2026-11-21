@@ -4,20 +4,20 @@ One row per harness class that has driven Superagent, one column per
 capability that matters to the framework. Seeded 2026-08-11 from sibling
 frameworks' (Co-SA, Solaris) Aug 2026 cross-agent work; extend as new
 harnesses are observed. Rules and skills use **harness-class language**
-(`cursor`, `claude-code`, `codex-cli`, `unknown-cli`) — the agent
+(`cursor`, `claude-code`, `opencode`, `codex-cli`, `unknown-cli`) — the agent
 self-identifies its row; no code detection beyond `tools/ide.py`
 (`unknown` is a first-class answer).
 
-| Capability | Cursor | Claude Code | Codex CLI | Generic `AGENTS.md` CLI |
-|---|---|---|---|---|
-| Loads `AGENTS.md` | Yes (native) | Via `CLAUDE.md` `@`-import | Yes (native) | Yes (native) |
-| Hooks that inject context | No (hook API cannot add context) | Yes (`UserPromptSubmit` → skill auto-loader) | No hooks | Assume none |
-| Hooks that run commands | Yes (`.cursor/hooks.json`) | Yes (`.claude/settings.json`) | No | Varies |
-| Shell sandbox | Sandbox + `required_permissions` escalation | Permission prompts | Seatbelt sandbox + `approval_policy = "on-request"` | Varies |
-| Structured question tool | Yes (`AskQuestion`) | Yes (`AskUserQuestion`) | No — ask in prose and wait | Assume prose |
-| Subagent / task tool | Yes | Yes | No | Assume none |
-| Ranged file reads | Yes (`Read --offset --limit`) | Yes | Shell equivalents (`sed -n`) | Assume shell |
-| MCP config file | `.cursor/mcp.json` | `.mcp.json` | TOML config (own format) | Varies |
+| Capability | Cursor | Claude Code | OpenCode | Codex CLI | Generic `AGENTS.md` CLI |
+|---|---|---|---|---|---|
+| Loads `AGENTS.md` | Yes (native) | Via `CLAUDE.md` `@`-import | Yes (native) | Yes (native) | Yes (native) |
+| Hooks that inject context | No (hook API cannot add context) | Yes (`UserPromptSubmit` → skill auto-loader) | No Superagent hooks | No hooks | Assume none |
+| Hooks that run commands | Yes (`.cursor/hooks.json`) | Yes (`.claude/settings.json`) | No Superagent hooks | No | Varies |
+| Shell sandbox | Sandbox + `required_permissions` escalation | Permission prompts | Permission rules (user config); no sandbox by default | Seatbelt sandbox + `approval_policy = "on-request"` | Varies |
+| Structured question tool | Yes (`AskQuestion`) | Yes (`AskUserQuestion`) | Yes (`question`) | No — ask in prose and wait | Assume prose |
+| Subagent / task tool | Yes | Yes | Yes (runs in the background; the result arrives in a later turn) | No | Assume none |
+| Ranged file reads | Yes (`Read --offset --limit`) | Yes | Yes (`read` with `offset` / `limit`) | Shell equivalents (`sed -n`) | Assume shell |
+| MCP config file | `.cursor/mcp.json` | `.mcp.json` | `opencode.jsonc` (`mcp.servers`) | TOML config (own format) | Varies |
 
 Per-file wiring (which harness reads which setup file, and whether it is
 committed) is tabulated in [`harness-setup.md`](harness-setup.md); `AGENTS.md`

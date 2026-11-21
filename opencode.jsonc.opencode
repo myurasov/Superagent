@@ -1,0 +1,29 @@
+// Starting-point project config for OpenCode. The `init` skill copies this
+// file to `opencode.jsonc` on first run if `opencode.jsonc` is missing. After
+// that, edit `opencode.jsonc` (not this template). `opencode.jsonc` is
+// gitignored, like the other harnesses' runtime files; this template stays
+// committed so the repo documents itself.
+//
+// OpenCode reads `AGENTS.md` at the repo root on its own, so this file holds
+// only what `AGENTS.md` cannot: MCP servers. The model, providers and
+// permissions belong in your user-level OpenCode config, not here.
+//
+// Superagent needs no MCP server for the quick-start. Each source declares
+// its own MCP or CLI requirements (superagent/docs/data-sources.md). Browser
+// automation is not an MCP: it runs through the browserctl CLI.
+//
+// To enable a server, add it under `mcp.servers` and restart OpenCode.
+// Example: the Gmail server the email skills use. The command resolves
+// `gmail-mcp` from PATH after putting the machine-local Node install first,
+// so one line works on every machine (see data-sources.md, "Gmail"):
+//
+//   "gmail": {
+//     "type": "local",
+//     "command": ["sh", "-c", "PATH=\"$HOME/.superagent/tools/node/bin:$PATH\" exec gmail-mcp"]
+//   }
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {}
+  }
+}

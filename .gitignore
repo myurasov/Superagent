@@ -62,8 +62,12 @@ Thumbs.db
 # committed. The committed starting-point templates (one per IDE) live at:
 #   .mcp.json.claude         → committed (Claude Code starting point)
 #   .cursor/mcp.json.cursor  → committed (Cursor starting point; allow-listed above)
+#   opencode.jsonc.opencode  → committed (OpenCode starting point)
 .mcp.json
 !.mcp.json.claude
+opencode.json
+opencode.jsonc
+!opencode.jsonc.opencode
 
 **/.playwright*
 
