@@ -28,7 +28,7 @@ files:
     user_overlay: workspace/_custom/rules/anti-patterns.yaml
   - path: development-tooling.md
     kind: doc
-    purpose: "Python venv, non-Python tool install location, temp-file path, and scope-discipline rules for the repository."
+    purpose: "Python venv, non-Python tool install location, temp-file path, scope-discipline, lint-before-commit, and one-git-clone-per-machine rules for the repository."
     consumed_by:
       - AGENTS.md
       - docs/architecture.md

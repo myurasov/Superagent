@@ -146,9 +146,38 @@ This rule is enforced at three layers:
 2. **Pre-commit hook** — `./.githooks/pre-commit` blocks the local commit when ruff fails (once `core.hooksPath` is set per the install above).
 3. **CI (future)** — when the project gains CI, the same `uv run ruff check superagent/` runs there as a hard gate.
 
+## 6. A checkout synced between machines — one git clone per machine
+
+When a file-sync tool (Syncthing and the like) keeps the checkout in step across machines, the working tree travels and git's own state must not. Two clones that share one `.git` through a sync tool corrupt each other, and a git command that rewrites files rewrites them on every machine.
+
+- **`.git` stays out of the sync.** Each machine holds its own clone. The sync tool's ignore entry for `.git` must not carry a "delete with the parent folder" flag, so a folder removed on one machine never takes another machine's clone, and its unpushed commits, with it.
+- **A new machine gets its clone without touching the synced files.** Either copy `.git` from a machine whose clone matches the tree, or clone without a checkout and move `.git` in, then reset the index only:
+
+  ```bash
+  git clone --no-checkout <remote> ~/.superagent/tmp/clone
+  mv ~/.superagent/tmp/clone/.git . && rmdir ~/.superagent/tmp/clone
+  git reset -q                       # index only; the files are already here
+  git config core.hooksPath .githooks
+  git status -sb                     # shows only real differences
+  ```
+
+- **Commit and push from the machine the work was done on.** Before committing there, run `git fetch` and read `git status -sb`: when the clone is behind, catch it up first.
+- **Catch another clone up index-only.** The files arrived by sync, so only the branch pointer and the index have to move:
+
+  ```bash
+  git fetch origin
+  git status -sb                     # must not say "ahead": unpushed commits here would be dropped from the branch
+  git reset -q origin/<branch>       # mixed reset: no file is written
+  git status -sb                     # clean, or only this machine's own uncommitted work
+  ```
+
+  A difference that remains means the sync has not finished, or the other machine holds commits it has not pushed: wait, or push there first.
+- **Tree-rewriting git commands are confirm-first.** `git pull`, `git merge`, `git rebase`, `git checkout`, `git switch`, `git restore`, `git stash`, `git clean` and `git reset --hard` write files, and the sync carries those writes to every machine, over work in progress there. Run one only after the user confirms it, and say which machines the tree reaches.
+- **One machine commits at a time.** Two machines committing the same synced change produce two different commits for one tree.
+
 ## Enforcement (other rules)
 
-The four rules above (#1 single-venv, #2 tools-under-superagent-home, #3 temp-under-superagent-home, #4 scope-discipline) have no automatic enforcement yet; violations are caught in review or by the user. Pre-commit hook scope is currently ruff only.
+The rules above other than lint (#1 single-venv, #2 tools-under-superagent-home, #3 temp-under-superagent-home, #4 scope-discipline, #6 one-clone-per-machine) have no automatic enforcement yet; violations are caught in review or by the user. Pre-commit hook scope is currently ruff only.
 
 Future work (tracked in `docs/roadmap.md` if escalated):
 - Pre-commit hook that fails on `python3 superagent/tools/` invocations in committed files.

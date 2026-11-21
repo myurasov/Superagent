@@ -329,12 +329,13 @@ Canonical text: [`contracts/privacy.md`](superagent/contracts/privacy.md). Bindi
 
 ## Local development tooling
 
-Full policy: [`superagent/rules/development-tooling.md`](superagent/rules/development-tooling.md); machine-local roots: [`superagent/rules/machine-local-home.md`](superagent/rules/machine-local-home.md). Four non-negotiable defaults:
+Full policy: [`superagent/rules/development-tooling.md`](superagent/rules/development-tooling.md); machine-local roots: [`superagent/rules/machine-local-home.md`](superagent/rules/machine-local-home.md). Five non-negotiable defaults:
 
 - **Python** — one shared `uv` venv at `./.venv/`. Before the first `uv` call in EVERY new shell, `export UV_PROJECT_ENVIRONMENT="${PWD}/.venv"`; ALWAYS invoke Python through `uv run` (`uv run python -m superagent.tools.<x>`, `uv run pytest`); NEVER `python3 …` directly; NEVER per-tool venvs. Dependencies in root `pyproject.toml`, lockfile `uv.lock`, cache at `./.tmp/uv-cache/`.
 - **Non-Python tools** — install under `~/.superagent/tools/<tool>/`; NEVER system-wide (`brew install`, `npm -g`, ...) from inside this project.
 - **Temporary files** — `~/.superagent/tmp/` only (`$SUPERAGENT_HOME` aware; helper `uv run python -m superagent.tools.home`); never inside the checkout (which may sit in a synced folder — iCloud Drive, Syncthing, …), `/tmp`, `$TMPDIR`, or sibling repos.
 - **Scope discipline (safety rule)** — the agent MUST NOT install software, create files, or modify files outside this project folder unless the user explicitly authorizes that specific action; read access outside is fine. Sanctioned exception: `~/.superagent/` (disposable machine-local state, incl. `browserctl/`).
+- **Synced checkout** — when a sync tool carries the checkout between machines, each machine keeps its own git clone and `.git` never syncs. Commit and push from the machine the work was done on; catch another clone up index-only (`git fetch`, then `git reset -q origin/<branch>` when it holds no unpushed commits). `git pull` / `merge` / `rebase` / `checkout` / `switch` / `restore` / `stash` / `clean` and `reset --hard` rewrite files on every synced machine: run one only after the user confirms.
 
 ## File naming conventions
 
