@@ -5,10 +5,6 @@
 
 schema_version: 1
 
-# Date (YYYY-MM-DD) the on-open whatsup/daily-update suggestion was last made.
-# Caps the stale-context nag at once per calendar day across session restarts.
-refresh_suggested: null
-
 # Per-domain "where we are" snapshots (auto-updated by daily-update).
 # Each entry: { domain: "<slug>", note: "<one-line>", as_of: "<iso>" }
 domain_snapshots: []
