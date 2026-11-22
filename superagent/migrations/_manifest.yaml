@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-11-22T00:21:39+00:00'
+generated_at: '2026-11-22T10:54:10+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -178,6 +178,14 @@ migrations:
   file: 0.24.0.md
   title: 'Mixed-machine safety: per-machine logs, machine-tagged ids, conflict sweep;
     the single log files become read-only history'
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute
+- to_version: 0.25.0
+  from_version: 0.24.0
+  file: 0.25.0.md
+  title: 'Agents as first-class objects: the id prefix and model defaults in config,
+    and the agent registry'
   breaking: false
   revertible: true
   estimated_duration: <1 minute
