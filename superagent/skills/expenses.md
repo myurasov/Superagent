@@ -120,5 +120,5 @@ The next ingest run will apply the rule to incoming transactions.
 ## 3. Sync downstream
 
 After any analysis:
-- Append a one-line entry to `interaction-log.yaml` with the window and any anomalies surfaced.
+- Log a one-line entry through `signals log` with the window and any anomalies surfaced.
 - For meaningful anomalies (e.g. > 2× P95), surface in next `daily-update`.

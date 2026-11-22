@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-11-21T04:56:45-08:00'
+generated_at: '2026-11-21T16:22:57-08:00'
 skill_count: 37
 skills:
 - name: superagent-ad-hoc-task
@@ -21,11 +21,10 @@ skills:
   lines: 190
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 2170
+  typical_token_cost: 2164
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-contact
   stem: add-contact
@@ -45,13 +44,12 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 150
+  lines: 149
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 1202
+  typical_token_cost: 1170
   typical_files_read:
   - _memory/contacts.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-domain
   stem: add-domain
@@ -71,10 +69,9 @@ skills:
   lines: 125
   h2_steps: 6
   h3_subsections: 0
-  typical_token_cost: 1043
+  typical_token_cost: 1024
   typical_files_read:
   - _memory/domains-index.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-project
   stem: add-project
@@ -97,12 +94,11 @@ skills:
   lines: 228
   h2_steps: 8
   h3_subsections: 10
-  typical_token_cost: 2139
+  typical_token_cost: 2111
   typical_files_read:
   - _memory/projects-index.yaml
   - _memory/domains-index.yaml
   - _memory/contacts.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add-source
   stem: add-source
@@ -123,7 +119,7 @@ skills:
   lines: 213
   h2_steps: 9
   h3_subsections: 4
-  typical_token_cost: 2995
+  typical_token_cost: 2971
   typical_files_read:
   - _memory/domains-index.yaml
   - _memory/projects-index.yaml
@@ -131,7 +127,6 @@ skills:
   - _memory/sources-index.yaml
   - _memory/assets-index.yaml
   - _memory/accounts-index.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-add
   stem: add
@@ -155,7 +150,7 @@ skills:
   lines: 439
   h2_steps: 12
   h3_subsections: 9
-  typical_token_cost: 6072
+  typical_token_cost: 6047
   typical_files_read:
   - _memory/sources-index.yaml
   - _memory/accounts-index.yaml
@@ -164,7 +159,6 @@ skills:
   - _memory/bills.yaml
   - Domains/Finances/history.md
   - Domains/Finances/info.md
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-appointments
   stem: appointments
@@ -189,13 +183,12 @@ skills:
   - calendar ingestors (gcal / icloud_calendar / outlook_calendar)
   cli_required: []
   cli_optional: []
-  lines: 218
+  lines: 217
   h2_steps: 4
   h3_subsections: 6
-  typical_token_cost: 2557
+  typical_token_cost: 2524
   typical_files_read:
   - _memory/appointments.yaml
-  - _memory/interaction-log.yaml
   - _memory/health-records.yaml
   origin: framework
 - name: superagent-bills
@@ -221,12 +214,11 @@ skills:
   lines: 236
   h2_steps: 4
   h3_subsections: 5
-  typical_token_cost: 3021
+  typical_token_cost: 2996
   typical_files_read:
   - _memory/bills.yaml
   - _memory/accounts-index.yaml
   - _memory/transactions.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-browserctl
   stem: browserctl
@@ -253,7 +245,7 @@ skills:
   lines: 349
   h2_steps: 11
   h3_subsections: 0
-  typical_token_cost: 5367
+  typical_token_cost: 5366
   typical_files_read: []
   origin: framework
 - name: superagent-daily-update
@@ -280,7 +272,7 @@ skills:
   lines: 345
   h2_steps: 26
   h3_subsections: 0
-  typical_token_cost: 4561
+  typical_token_cost: 4568
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
@@ -308,17 +300,16 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 229
-  h2_steps: 20
+  lines: 258
+  h2_steps: 21
   h3_subsections: 0
-  typical_token_cost: 2569
+  typical_token_cost: 2998
   typical_files_read:
   - _memory/domains-index.yaml
   - _memory/watchlist-state.yaml
   - _memory/world.yaml
   - _memory/model-context.yaml
   - _memory/context.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-domain-suggest
   stem: domain-suggest
@@ -339,12 +330,11 @@ skills:
   lines: 208
   h2_steps: 9
   h3_subsections: 5
-  typical_token_cost: 1536
+  typical_token_cost: 1506
   typical_files_read:
   - _memory/domain-suggestions.yaml
   - _memory/config.yaml
   - _memory/domains-index.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-draft-email
   stem: draft-email
@@ -361,12 +351,11 @@ skills:
   - email ingestors (for prior-thread context)
   cli_required: []
   cli_optional: []
-  lines: 137
+  lines: 136
   h2_steps: 7
   h3_subsections: 0
-  typical_token_cost: 1163
-  typical_files_read:
-  - _memory/interaction-log.yaml
+  typical_token_cost: 1130
+  typical_files_read: []
   origin: framework
 - name: superagent-expenses
   stem: expenses
@@ -392,7 +381,7 @@ skills:
   lines: 124
   h2_steps: 5
   h3_subsections: 7
-  typical_token_cost: 1517
+  typical_token_cost: 1515
   typical_files_read:
   - _memory/transactions.yaml
   - _memory/accounts-index.yaml
@@ -419,13 +408,12 @@ skills:
   lines: 175
   h2_steps: 5
   h3_subsections: 6
-  typical_token_cost: 1379
+  typical_token_cost: 1352
   typical_files_read:
   - _memory/health-records.yaml
   - Domains/Health/info.md
   - Domains/Health/status.md
   - Domains/Health/history.md
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-home-assistant
   stem: home-assistant
@@ -449,12 +437,11 @@ skills:
   - ssh (self-hosted only — config-dir and host access)
   - docker (Container installs only — sibling services, core updates)
   - mosquitto-clients (`mosquitto_sub` for MQTT diagnostics against a local broker)
-  lines: 361
+  lines: 360
   h2_steps: 15
   h3_subsections: 0
-  typical_token_cost: 9584
-  typical_files_read:
-  - _memory/interaction-log.yaml
+  typical_token_cost: 9541
+  typical_files_read: []
   origin: framework
 - name: superagent-important-dates
   stem: important-dates
@@ -482,10 +469,9 @@ skills:
   lines: 183
   h2_steps: 4
   h3_subsections: 6
-  typical_token_cost: 2078
+  typical_token_cost: 2066
   typical_files_read:
   - _memory/important-dates.yaml
-  - _memory/interaction-log.yaml
   - Domains/Family/info.md
   origin: framework
 - name: superagent-init
@@ -504,14 +490,13 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 351
+  lines: 350
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 6192
+  typical_token_cost: 6171
   typical_files_read:
   - _memory/config.yaml
   - _memory/insights.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-log-event
   stem: log-event
@@ -553,13 +538,12 @@ skills:
   lines: 219
   h2_steps: 6
   h3_subsections: 2
-  typical_token_cost: 3963
+  typical_token_cost: 3913
   typical_files_read:
   - Domains/Vehicles/history.md
   - Domains/Home/history.md
   - _memory/decisions.yaml
   - _memory/assets-index.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-migrate
   stem: migrate
@@ -581,12 +565,11 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 361
+  lines: 362
   h2_steps: 12
   h3_subsections: 10
-  typical_token_cost: 2924
-  typical_files_read:
-  - _memory/interaction-log.yaml
+  typical_token_cost: 2934
+  typical_files_read: []
   origin: framework
 - name: superagent-monthly-review
   stem: monthly-review
@@ -607,7 +590,7 @@ skills:
   lines: 235
   h2_steps: 24
   h3_subsections: 0
-  typical_token_cost: 2465
+  typical_token_cost: 2461
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/documents-index.yaml
@@ -636,11 +619,10 @@ skills:
   lines: 131
   h2_steps: 5
   h3_subsections: 3
-  typical_token_cost: 1034
+  typical_token_cost: 1039
   typical_files_read:
   - _memory/personal-signals.yaml
   - Domains/Self/history.md
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-pet-care
   stem: pet-care
@@ -661,7 +643,7 @@ skills:
   lines: 130
   h2_steps: 6
   h3_subsections: 7
-  typical_token_cost: 991
+  typical_token_cost: 989
   typical_files_read:
   - Domains/Pets/status.md
   origin: framework
@@ -687,10 +669,9 @@ skills:
   lines: 196
   h2_steps: 5
   h3_subsections: 8
-  typical_token_cost: 1756
+  typical_token_cost: 1731
   typical_files_read:
   - _memory/projects-index.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-refresh
   stem: refresh
@@ -717,10 +698,9 @@ skills:
   lines: 274
   h2_steps: 12
   h3_subsections: 0
-  typical_token_cost: 3138
+  typical_token_cost: 3132
   typical_files_read:
   - _memory/config.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-release
   stem: release
@@ -741,12 +721,11 @@ skills:
   - uv
   cli_optional:
   - gh (only for an optional GitHub release page after the tag is pushed)
-  lines: 230
+  lines: 234
   h2_steps: 14
   h3_subsections: 0
-  typical_token_cost: 2390
-  typical_files_read:
-  - _memory/interaction-log.yaml
+  typical_token_cost: 2472
+  typical_files_read: []
   origin: framework
 - name: superagent-report
   stem: report
@@ -771,10 +750,9 @@ skills:
   lines: 173
   h2_steps: 5
   h3_subsections: 0
-  typical_token_cost: 1974
+  typical_token_cost: 1971
   typical_files_read:
   - _memory/outbox-log.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-research
   stem: research
@@ -792,14 +770,13 @@ skills:
   - web search (if available in current IDE)
   cli_required: []
   cli_optional: []
-  lines: 126
+  lines: 128
   h2_steps: 9
   h3_subsections: 7
-  typical_token_cost: 1037
+  typical_token_cost: 1040
   typical_files_read:
   - _memory/sources-index.yaml
   - _memory/watchlist-state.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-sources
   stem: sources
@@ -824,12 +801,11 @@ skills:
   lines: 168
   h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 1995
+  typical_token_cost: 1970
   typical_files_read:
   - _memory/sources-index.yaml
   - _memory/watchlist-state.yaml
   - _memory/transactions.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-subscriptions
   stem: subscriptions
@@ -856,12 +832,11 @@ skills:
   lines: 205
   h2_steps: 4
   h3_subsections: 7
-  typical_token_cost: 2340
+  typical_token_cost: 2317
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/accounts-index.yaml
   - Domains/Finances/info.md
-  - _memory/interaction-log.yaml
   - Domains/Finances/status.md
   origin: framework
 - name: superagent-summarize-thread
@@ -879,13 +854,12 @@ skills:
   - imessage / whatsapp / signal / slack ingestors
   cli_required: []
   cli_optional: []
-  lines: 117
+  lines: 119
   h2_steps: 8
   h3_subsections: 4
-  typical_token_cost: 861
+  typical_token_cost: 851
   typical_files_read:
   - _memory/watchlist-state.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-supertailor-review
   stem: supertailor-review
@@ -905,7 +879,7 @@ skills:
   lines: 151
   h2_steps: 8
   h3_subsections: 5
-  typical_token_cost: 2848
+  typical_token_cost: 2878
   typical_files_read:
   - _memory/watchlist-state.yaml
   - _memory/supertailor-suggestions.yaml
@@ -937,11 +911,10 @@ skills:
   lines: 187
   h2_steps: 8
   h3_subsections: 6
-  typical_token_cost: 2092
+  typical_token_cost: 2129
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-watch
   stem: watch
@@ -970,10 +943,9 @@ skills:
   lines: 153
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 3817
+  typical_token_cost: 3770
   typical_files_read:
   - _memory/config.yaml
-  - _memory/interaction-log.yaml
   origin: framework
 - name: superagent-weekly-review
   stem: weekly-review
@@ -997,7 +969,7 @@ skills:
   lines: 269
   h2_steps: 22
   h3_subsections: 0
-  typical_token_cost: 2941
+  typical_token_cost: 2982
   typical_files_read:
   - _memory/transactions.yaml
   - Domains/Hobbies/status.md
@@ -1031,7 +1003,7 @@ skills:
   lines: 159
   h2_steps: 10
   h3_subsections: 0
-  typical_token_cost: 1901
+  typical_token_cost: 1874
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
@@ -1062,10 +1034,9 @@ skills:
   lines: 123
   h2_steps: 6
   h3_subsections: 4
-  typical_token_cost: 1511
+  typical_token_cost: 1482
   typical_files_read:
   - _memory/world.yaml
   - _memory/config.yaml
   - _memory/contacts.yaml
-  - _memory/interaction-log.yaml
   origin: framework

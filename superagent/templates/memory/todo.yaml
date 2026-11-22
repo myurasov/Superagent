@@ -6,7 +6,10 @@ schema_version: 1
 
 tasks:
   # Each task:
-  #   id                  — Stable id, format: "task-YYYYMMDD-NNN" (e.g. "task-20260428-001")
+  #   id                  — Stable id, format: "task-YYYYMMDD-<machine>-NNN" (e.g.
+  #                          "task-20260428-mybox-001"), minted with
+  #                          `uv run python -m superagent.tools.next_id --kind task --file <this file>`.
+  #                          Older ids ("task-20260428-001") stay valid.
   #   title               — Short headline.
   #   description         — Details, links, acceptance criteria.
   #   priority            — P0 | P1 | P2 | P3.

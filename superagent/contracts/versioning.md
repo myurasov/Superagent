@@ -49,7 +49,7 @@ exactly one semver string and a trailing newline:
   by `tools/version.py.set_workspace_version()`.
 - **Never edited by hand** — manual edits silently bypass migrations and
   can corrupt state. The skill warns if the file's mtime drifts away
-  from the last `migrate` run recorded in `interaction-log.yaml`.
+  from the last `migrate` run recorded in the interaction log.
 
 If the file is **missing** (legacy workspace), the framework treats the
 workspace as **`0.1.0`** (the version before this contract existed) and
@@ -230,7 +230,7 @@ The skill's contract:
    3. Run the `Validate` steps. On any failure, halt and surface the
       revert command for THIS migration plus all prior ones in the run.
    4. Update `workspace/.version` to the migration's `to_version`.
-   5. Append a row to `_memory/interaction-log.yaml` referencing the
+   5. Log a row through `signals log` referencing the
       migration file, the from/to versions, the duration, and any
       notes.
 6. **Final summary.** Report the new version, the count of migrations
@@ -254,7 +254,7 @@ The skill's contract:
 - Migrations marked `revertible: false` halt the revert chain. The
   skill surfaces the exact list of files affected and asks the user to
   approve a manual restore from backup or to accept the partial state.
-- Logged to `_memory/interaction-log.yaml` like a forward migration.
+- Logged through `signals log` like a forward migration.
 
 ### 4.2 Downgrade scenario
 
@@ -310,7 +310,7 @@ inspects state and computes chains. Application is the skill's job
   in `AGENTS.md` checks `.version` BEFORE step 1 of the read order, so
   a stale workspace doesn't get queried with new schemas.
 - **`contracts/audit-trail.md`** — every migration row appended to
-  `interaction-log.yaml` references the migration file path, from/to
+  the interaction log references the migration file path, from/to
   versions, and the helper script versions used.
 - **`contracts/framework-artifacts.md`** — migration files are
   framework artifacts; the safeguard against personal data in the body

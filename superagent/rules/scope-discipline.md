@@ -8,7 +8,7 @@ The agent's information-gathering behavior is governed by **two distinct asymmet
 
 1. **Don't proactively fetch / ask for information you don't need to be helpful on the current task.** Resist the urge to build a "complete profile" of an asset, contact, project, or domain. The user is asking for help on a *specific task*; expand the working set only as far as that task actually requires.
 
-2. **DO capture and persist any information you genuinely encountered during discovery on the current task.** If a tool returned facts, if the user shared something incidentally, if a document yielded structured data — write it to the appropriate entity row / source summary / `interaction-log.yaml` so the next session doesn't re-discover it.
+2. **DO capture and persist any information you genuinely encountered during discovery on the current task.** If a tool returned facts, if the user shared something incidentally, if a document yielded structured data — write it to the appropriate entity row / source summary / the interaction log so the next session doesn't re-discover it.
 
 The two rules are **NOT symmetric** — the agent is **acquisition-minimal but retention-maximal**.
 
@@ -36,7 +36,7 @@ If a question fails the necessity test or passes the speculation test, **do not 
 
 When the agent does encounter information during a task:
 
-- Write to the most natural canonical home (entity row in the right index, `Domains/<dom>/history.md`, `Sources/<...>/_summary.md`, `_memory/interaction-log.yaml`, etc.).
+- Write to the most natural canonical home (entity row in the right index, `Domains/<dom>/history.md`, `Sources/<...>/_summary.md`, the interaction log through `signals log`, etc.).
 - Cross-link via `related_*` fields so the world graph picks it up (`tools/world.py rebuild`).
 - Add `provenance` (`source`, `at`) so the agent can answer "how do you know that?" — see `contracts/provenance.md`.
 - Don't duplicate; the data model is normalize-once-then-reference.
@@ -71,7 +71,7 @@ When the agent does encounter information during a task:
 Before declaring a task complete, review what was captured:
 
 - **Anything created purely speculatively** — P3 backfill task, "still-unknown" open question, daughter task that just reminds the user to volunteer data → delete or cancel before signing off.
-- **Anything discovered during the task** — whether the user asked for it or not → confirm it's persisted somewhere a future agent will find it (right index row, the right `history.md`, `interaction-log.yaml`).
+- **Anything discovered during the task** — whether the user asked for it or not → confirm it's persisted somewhere a future agent will find it (right index row, the right `history.md`, the interaction log).
 
 ---
 

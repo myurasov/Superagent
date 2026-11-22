@@ -13,7 +13,7 @@ record_change(workspace, file_path, kind="update",
 ```
 BEFORE persisting the new YAML state, so the diff captures the actual transition.
 
-**Skipped files** (per `config.preferences.audit.skip_files`): time-shape logs that audit themselves — defaults to `interaction-log.yaml`, `ingestion-log.yaml`, `user-queries.jsonl`, `events.yaml`.
+**Skipped files** (per `config.preferences.audit.skip_files`): time-shape logs that audit themselves — defaults to `interaction-log.yaml`, `ingestion-log.yaml`, `user-queries.jsonl`, `events.yaml`. The per-machine log folders `interaction-log/` and `user-queries/` are never audited either.
 
 **Rotation**: when `config.preferences.audit.rotate_yearly: true`, `doctor` rotates `<file>.history.jsonl` to `Archive/<YYYY>/<file>.history.jsonl` at year flip.
 

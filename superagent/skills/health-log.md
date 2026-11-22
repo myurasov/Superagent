@@ -148,10 +148,10 @@ If `abnormal: true`: create a P1 task to "Discuss <kind> result with <ordered_by
 
 ## 3. Sync downstream
 
-- Append a canonical row to `_memory/interaction-log.yaml` (shape per `templates/memory/interaction-log.yaml`; mint the id with `uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml`). `<kind>` is the snake_case event kind from § 1 (`symptom`, `vital`, `medication_start`, `medication_stop`, `medication_change`, `visit`, `vaccination`, `lab_result`):
+- Log a canonical row through `signals log` (shape per `templates/memory/interaction-log.yaml`; `signals log` mints the id). `<kind>` is the snake_case event kind from § 1 (`symptom`, `vital`, `medication_start`, `medication_stop`, `medication_change`, `visit`, `vaccination`, `lab_result`):
 
   ```yaml
-  - id: "<ilog-YYYY-MM-DD-NNN>"
+  - id: "<minted by signals log>"
     ts: <now, ISO 8601 with offset>
     skill: "health-log"
     action: "log_<kind>"

@@ -214,10 +214,10 @@ On `yes`: set `status: active`, append H4 to `history.md`. Else stay in `plannin
 
 ## 7. Logging
 
-Append to `interaction-log.yaml`:
+Log through `signals log`:
 
 ```yaml
-- id: "<ilog-YYYY-MM-DD-NNN>"   # uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml
+- id: "<minted by signals log>"
   ts: "<ISO 8601 datetime with offset>"
   skill: "add-project"
   action: "create_project"

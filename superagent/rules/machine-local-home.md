@@ -24,6 +24,9 @@ memory lives in `workspace/_memory/`).
 | --- | --- | --- |
 | `tmp/` | The canonical transient scratch tree (the repo-root `./.tmp/` holds only the uv cache, never scratch). | Any tool or skill writing scratch; `tools/icloud_dup_check.py` sentinel; `tools/skill_loader.py` session markers. |
 | `tools/` | Installed non-Python binaries / CLIs / helpers, one folder per tool (replaces the former repo-root `./.tools/`). | `rules/development-tooling.md` § 2 and any skill installing a tool. |
+| `machine.json` (a file) | This machine's name, fixed at first run from the host name the owner set; `machines name --set <name>` changes it. The name tags new ids and names the machine's log files. | `tools/machines.py`; `rules/concurrent-sessions.md`. |
+| `state/` | Per-workspace notes that must not sync, one `workspace-<hash>.json` each: the day the on-open check last nagged. Created on first use. | `tools/machines.py` (`read_local_state` / `write_local_state`); `tools/cadence.py status --stamp`. |
+| `tmp/heal/` | Sync conflict copies the sweep merged or found identical, moved out of the synced tree; kept as a safety net, safe to delete. | `tools/heal.py sweep`. |
 
 Any **new** transient directory a tool needs follows the same pattern: real
 dir at `~/.superagent/<name>`, referenced by its absolute path, added to

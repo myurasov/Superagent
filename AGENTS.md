@@ -5,7 +5,7 @@
 - **Floor** — [Non-Negotiables (Every Harness)](#non-negotiables-every-harness) · [How this file is loaded](#how-this-file-is-loaded) · [Canonical references](#canonical-references) · [Custom overlay](#custom-overlay--read-on-every-superagent-turn) · [Framework Artifact Creation Contract](#framework-artifact-creation-contract)
 - **Session** — [On workspace open](#on-workspace-open) · [Before any file or MCP operation](#before-any-file-or-mcp-operation) · [Model context](#model-context-cross-session-memory) · [Skills](#skills)
 - **Data** — [Data ingestion contract](#data-ingestion-contract) · [Local archives — email](#local-archives--email-capture-on-touch) · [Logging](#logging) · [Domain / Project / Sources folder convention](#domain--project--sources-folder-convention) · [Public artifact destination](#public-artifact-destination)
-- **Discipline** — [Local task references](#local-task-references) · [Knowledge discipline](#knowledge-discipline) · [Token economy](#token-economy-always-on-dials) · [Local-first read order](#local-first-read-order) · [Memory-routing guardrail](#memory-routing-guardrail)
+- **Discipline** — [Local task references](#local-task-references) · [Knowledge discipline](#knowledge-discipline) · [Token economy](#token-economy-always-on-dials) · [Local-first read order](#local-first-read-order) · [Memory-routing guardrail](#memory-routing-guardrail) · [Concurrent sessions](#concurrent-sessions)
 - **Data model** — [Operational handles](#operational-handles) · [Visibility and sensitive tier](#visibility-and-sensitive-tier) · [Provenance](#provenance) · [Time-shape vs entity-shape vs event-shape](#time-shape-vs-entity-shape-vs-event-shape) · [Privacy and data location](#privacy-and-data-location)
 - **Engineering** — [Git commits](#git-commits) · [Versioning and migrations](#versioning-and-migrations) · [Local development tooling](#local-development-tooling) · [File naming conventions](#file-naming-conventions) · [Image format policy](#image-format-policy) · [Harness setup](#harness-setup-cursor-claude-code-opencode-and-other-clis) · [Prompt-cache discipline](#prompt-cache-discipline)
 
@@ -85,7 +85,12 @@ When the agent first opens (or first acts in) `workspace/` in a session:
 1. Check whether **`workspace/_memory/config.yaml`** exists.
 2. **If it does not exist**, suggest running the **init** skill (`superagent/skills/init.md`) before relying on Superagent memory or paths.
 3. **If it exists**, run `uv run python -m superagent.tools.version check`. If the framework version is **ahead** of `workspace/.version` by a MINOR or MAJOR step, suggest the **migrate** skill BEFORE any other skill writes data (a stale workspace queried with new schemas can corrupt). PATCH-only deltas are silently advanced by `migrate`. See § "Versioning and migrations".
-4. Run `uv run python -m superagent.tools.cadence status --stamp`. It prints nothing when context is fresh and every cadence and watcher is current, or when the nag already fired today. Otherwise it prints what is late (a `last_check` older than 24 hours, overdue cadences, watchers overdue for a check, cadence runs that started and never finished) and stamps `context.yaml.refresh_suggested`, so the nag fires at most once per calendar day across session restarts. Relay its lines and suggest **daily-update** (or **whatsup**, or the overdue cadence). If the tool cannot run, apply the rule by hand: `last_check` more than 24 hours ago (or null) → suggest whatsup / daily-update unless `refresh_suggested` equals today, then set it to today (`YYYY-MM-DD`).
+4. Run `uv run python -m superagent.tools.cadence status --stamp` (the on-open check) and relay every line it prints. Three kinds of line:
+   - **Presence** (every open): "`<machine>` wrote here N min ago" means another machine is writing this workspace now or was a moment ago. Let the sync settle and re-read a shared file right before editing it (§ "Concurrent sessions").
+   - **Sync conflicts** (every open): what the conflict sweep merged by itself, and each conflict copy left to fold by hand. Fold those before other work touches the same file.
+   - **What is late** (at most once per calendar day on this machine): a `last_check` older than 24 hours, overdue cadences, watchers overdue for a check, cadence runs that started and never finished. Suggest **daily-update** (or **whatsup**, or the overdue cadence).
+
+   The check writes no shared file: the day it last nagged is kept in `~/.superagent/state/`, and the only workspace file it writes is this machine's beat file `_memory/machines/<machine>.json`. It prints nothing when no other machine is active, no conflict copy exists, and either nothing is late or the nag already fired today. If the tool cannot run, apply the rule by hand: `last_check` more than 24 hours ago (or null) → suggest whatsup / daily-update, once per session.
 
 ## Before any file or MCP operation
 
@@ -167,7 +172,8 @@ Distinct from the watchlist: every email the agent **reads** via `mcp_user-gmail
 
 ## Logging
 
-- **Log significant agent actions** (skill runs, structural edits to memory, autonomous suggestions that change files, watchlist changes — `action: watch_change_detected` — and harvest runs) by appending to **`workspace/_memory/interaction-log.yaml`** per its schema (append-only; canonical row `id / ts / skill / action / summary`; do not rewrite history).
+- **Log significant agent actions** (skill runs, structural edits to memory, autonomous suggestions that change files, watchlist changes — `action: watch_change_detected` — and harvest runs) to the **interaction log**, always through the tool: `uv run python -m superagent.tools.signals log --skill <stem> --action <verb> --summary "..."` (it mints the id and appends the canonical row `id / ts / skill / action / summary`; append-only, do not rewrite history). The log is one file per machine, `workspace/_memory/interaction-log/<machine>.yaml`, so two machines can log at once; never append to a log file by hand.
+- **Read the interaction log** through `uv run python -m superagent.tools.signals log-show` (`--since`, `--skill`, `--action`, `--last N`, `--full`): one view of every machine's rows, sorted by time, including the single `interaction-log.yaml` a workspace older than 0.24.0 keeps as read-only history. The prompt log follows the same pattern (`_memory/user-queries/<machine>.jsonl`, read with `log_user_query --show`).
 - **Harvest runs** *also* append a row to **`workspace/_memory/ingestion-log.yaml`** with per-source counts, durations, and errors; the interaction-log entry may simply reference it.
 - **Payment confirmations** (money changes hands on the user's behalf, the user reports a completed payment, or shares a receipt) MUST be captured as files per `contracts/payment-confirmations.md` — long-lived / auditable payments under `Sources/<Domain>/`, project-scoped purchases under `Projects/<project>/Resources/` — cross-linked from `bills.yaml` / `subscriptions.yaml` / `appointments.yaml` / project history. Capture by *what* the payment is, not by dollar amount.
 
@@ -253,7 +259,7 @@ Full policy: [`contracts/versioning.md`](superagent/contracts/versioning.md). Bi
 
 - **Semver**, authoritative in `pyproject.toml`. **MAJOR** = breaking workspace-data change (migration **required**). **MINOR** = backwards-compatible significant change (migration **required when it touches workspace data**). **PATCH** = fix / doc / refactor (no migration; `workspace/.version` advances silently).
 - **`workspace/.version`** records the framework version that built the workspace — created by `init`, updated only by the `migrate` skill, never edited by hand. Missing file = legacy workspace at `0.1.0`.
-- **Migrations** live in `superagent/migrations/<to_version>.md` (registered in `_manifest.yaml`; `breaking`, `revertible`, pre-flight / migrate / validate / revert steps) and are the **sole** way to migrate. The **`migrate` skill** is the **sole** entry point: interactive (proceed / dry-run / cancel), chained one version at a time, validates after each step, updates `.version` after each success, logs to `interaction-log.yaml`, halts cleanly on any failure — never half-applies. **Revertible by default**; the skill refuses to pass a `revertible: false` step without explicit user acceptance.
+- **Migrations** live in `superagent/migrations/<to_version>.md` (registered in `_manifest.yaml`; `breaking`, `revertible`, pre-flight / migrate / validate / revert steps) and are the **sole** way to migrate. The **`migrate` skill** is the **sole** entry point: interactive (proceed / dry-run / cancel), chained one version at a time, validates after each step, updates `.version` after each success, logs each step through `signals log`, halts cleanly on any failure — never half-applies. **Revertible by default**; the skill refuses to pass a `revertible: false` step without explicit user acceptance.
 - **Authoring** (bump `pyproject.toml`, copy `migrations/_template.md`, `version refresh-manifest`, roadmap row): `contracts/versioning.md` § 3; `tools/version.py` exposes `current_version()`, `workspace_version()`, `find_chain()`.
 
 ## Local task references
@@ -313,7 +319,7 @@ When evidence corrects a fact, follow [the correction procedure](superagent/cont
 Per `contracts/memory-taxonomy.md` (its table is the canonical file list), every YAML file in `_memory/` belongs to exactly one shape:
 
 - **Entity-shape** — long-lived rows; mutate-in-place; cross-referenced by id (`contacts.yaml`, `bills.yaml`, `*-index.yaml`, `tags.yaml`, `world.yaml`, ...).
-- **Time-shape (append-only)** — each row is an event in time; never rewritten in place (`interaction-log.yaml`, `ingestion-log.yaml`, `action-signals.yaml`, `decisions.yaml`, `health-records.yaml.{vitals,...}`, the partitioned `_memory/events/<YYYY-Qn>.yaml` stream, ...).
+- **Time-shape (append-only)** — each row is an event in time; never rewritten in place (the interaction log `interaction-log/<machine>.yaml`, `ingestion-log.yaml`, `action-signals.yaml`, `decisions.yaml`, `health-records.yaml.{vitals,...}`, the partitioned `_memory/events/<YYYY-Qn>.yaml` stream, ...).
 - **State-shape (singleton snapshot)** — one current "now"; read at session start, write at session end (`context.yaml`, `model-context.yaml`, `config.yaml`, `watchlist-state.yaml`).
 
 Tools enforce the shape — `tools/audit.py.record_change()` writes `<file>.history.jsonl` for entity-shape files only; mutating a historical row in an append-only file is a bug.
@@ -324,7 +330,7 @@ Canonical text: [`contracts/privacy.md`](superagent/contracts/privacy.md). Bindi
 
 - **`workspace/`** is **gitignored** and **local only** to this machine unless the user copies or syncs it; never assume it is backed up or shared.
 - **No telemetry.** Superagent does not phone home; any such mechanism would be a major-version, opt-in, clearly-labelled roadmap proposal.
-- **No remote write.** Watchers and harvests are read-only upstream; a skill that writes upstream must declare it in its frontmatter, ask per call, and log the write to `interaction-log.yaml`.
+- **No remote write.** Watchers and harvests are read-only upstream; a skill that writes upstream must declare it in its frontmatter, ask per call, and log the write through `signals log`.
 - **Sensitive subfiles** — `_memory/health-records.yaml`, `_memory/accounts-index.yaml`, `Outbox/sealed/` — are called out so the user can move them to encrypted storage; sharing options are in `docs/architecture.md` § "Multi-user options".
 
 ## Local development tooling
@@ -348,6 +354,15 @@ Full policy: [`superagent/rules/image-format-policy.md`](superagent/rules/image-
 ## Memory-routing guardrail
 
 Full policy: [`superagent/rules/memory-routing.md`](superagent/rules/memory-routing.md). **"Remember this" writes stay inside the installation**: ONLY `workspace/_memory/` (structured data — the default), `workspace/_custom/` (user-specific rules / skills / agents / templates / tools), or `superagent/` (framework code — ONLY on an explicit "make it core" request, per the Framework Artifact Creation Contract). **NEVER** write remembered content outside the repo root — not `~/.claude/…/memory/MEMORY.md`, `~/.cursor/`, OS temp dirs, dotfiles, sibling repos, or any host-IDE memory feature. Extends `scope-discipline`. On finding an existing violation: migrate the content in-workspace, then ask before deleting the external original.
+
+## Concurrent sessions
+
+Full policy: [`superagent/rules/concurrent-sessions.md`](superagent/rules/concurrent-sessions.md). A workspace may be carried between machines by a folder-sync tool and opened on more than one. The sync tool copies whole files and cannot merge two versions of one. Binding on every harness:
+
+- **Re-read a shared file just before writing it**, and **edit it in place**: never rewrite `todo.yaml`, `model-context.yaml`, `context.yaml` or an index from an earlier read or from memory.
+- **Logs and ids go through the tools.** Interaction-log rows through `signals log` (one file per machine); every other new id through `uv run python -m superagent.tools.next_id`, so it carries this machine's tag (`<kind>-<date>-<machine>-NNN`; older ids without a tag stay valid).
+- **A conflict copy** (`<stem>.sync-conflict-<date>-<time>-<device>.<ext>`) is the losing version of a file two machines changed before a sync. The sweep (`uv run python -m superagent.tools.heal sweep`, run by the on-open check and by `doctor`) merges append-only logs by itself and reports the rest: fold what only the copy has into the original by hand, then delete the copy. Never delete a copy unread, and never pick a side wholesale.
+- **Every scan skips** conflict copies and files still arriving, so a copy never becomes a second watcher, skill or document.
 
 ## Harness setup (Cursor, Claude Code, OpenCode, and other CLIs)
 

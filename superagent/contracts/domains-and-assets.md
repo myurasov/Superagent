@@ -65,7 +65,7 @@ The full skill is in `skills/add-domain.md`. Summary:
    a contract, a logged event, a status update, …), via `ensure_folder` (see
    § 6.4a). Tell the user "I've registered <Name>; the folder will appear when
    the first row of data lands."
-4. Append a `domain_added` entry to `interaction-log.yaml`.
+4. Log a `domain_added` entry through `signals log`.
 
 ### 6.4a Lazy folder materialization (no empty domains)
 
@@ -191,7 +191,7 @@ Two surfacing paths:
 
 | Answer | What the agent does |
 |---|---|
-| **yes** | Invoke `add-domain` skill with `proposed_name` / `proposed_scope` / `proposed_priority` pre-filled (user can edit). On the new domain row landing in `domains-index.yaml`, move the suggestion row to `accepted[]` with `domain_id` set. Append to `interaction-log.yaml`. |
+| **yes** | Invoke `add-domain` skill with `proposed_name` / `proposed_scope` / `proposed_priority` pre-filled (user can edit). On the new domain row landing in `domains-index.yaml`, move the suggestion row to `accepted[]` with `domain_id` set. Log through `signals log`. |
 | **not now** | Append to `deferred[]` with `revisit_after = today + 90d` (or per `config.preferences.domain_detection.defer_days`). Detector skips this theme until that date. |
 | **never** | Append to `declined[]` with `revisit_after: null`. Detector skips this theme forever (until the user explicitly clears the row via `domain-suggest forget <theme>`). |
 

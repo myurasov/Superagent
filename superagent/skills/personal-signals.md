@@ -46,7 +46,7 @@ Runs as a side-effect of every chat turn, not as a standalone invocation. Trigge
 When triggered:
 
 1. Construct the row per `templates/memory/personal-signals.yaml` example:
-   - `id`: `psig-YYYY-MM-DD-NNN`
+   - `id`: `psig-YYYY-MM-DD-<machine>-NNN`, minted with `uv run python -m superagent.tools.next_id --kind psig --file _memory/personal-signals.yaml`
    - `captured_at`: now
    - `category`: best-effort classification
    - `trigger_phrase`: short excerpt
@@ -120,7 +120,7 @@ The `Self` domain is the canonical home for self-development tracking; this skil
 For surface invocations:
 
 ```yaml
-- id: "<ilog-YYYY-MM-DD-NNN via uv run python -m superagent.tools.next_id --kind ilog --file _memory/interaction-log.yaml>"
+- id: "<minted by signals log>"
   ts: "<ISO 8601 datetime with offset>"
   skill: "personal-signals"
   action: "surface_signals"
@@ -128,4 +128,4 @@ For surface invocations:
   related_domain: "self"
 ```
 
-Capture invocations do NOT log to `interaction-log.yaml` (the per-row tag in chat is the log). This keeps the log signal-rich.
+Capture invocations do NOT log through `signals log` (the per-row tag in chat is the log). This keeps the log signal-rich.

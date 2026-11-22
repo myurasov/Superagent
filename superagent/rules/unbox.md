@@ -70,7 +70,7 @@ a different name.
 
 The AGENTS.md floor (item 3) points every harness here on a denied command.
 The Supertailor's hygiene pass flags repeated identical name-block failures
-in `user-queries.jsonl` that never produced a registry row.
+in the prompt log that never produced a registry row.
 
 ## Override / user overlay
 

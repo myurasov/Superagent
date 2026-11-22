@@ -17,7 +17,9 @@ last_updated: null
 
 writes:
   # Each write:
-  #   id              — "uw-YYYY-MM-DD-NNN".
+  #   id              — "uw-YYYY-MM-DD-<machine>-NNN", minted with
+  #                      `uv run python -m superagent.tools.next_id --kind uw --file <this file>`
+  #                      (older ids "uw-YYYY-MM-DD-NNN" stay valid).
   #   ts              — ISO 8601.
   #   skill           — Which skill initiated the write.
   #   source          — Watcher id (lowercased filename stem of Sources/Watchlist/<name>.ref.md),

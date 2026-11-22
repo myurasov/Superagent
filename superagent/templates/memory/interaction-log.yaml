@@ -2,6 +2,18 @@
 # Superagent memory: append-only log of touchpoints and significant agent actions.
 # New entries go at the end; do NOT rewrite history.
 #
+# WHERE THE LOG LIVES. One file per machine: `_memory/interaction-log/<machine>.yaml`,
+# created by its first row (`tools/machines.py` names the machine). This
+# template is NOT copied into a workspace: it defines the row shape only.
+#   write   uv run python -m superagent.tools.signals log --skill <stem> \
+#               --action <verb> --summary "..."      (mints the id, appends the row)
+#   read    uv run python -m superagent.tools.signals log-show [--since ...] \
+#               [--skill ...] [--action ...]         (every machine, one view by time)
+# One writer per file, so two machines can log at the same moment without a
+# sync conflict (rules/concurrent-sessions.md). A workspace created before
+# 0.24.0 also keeps its single `_memory/interaction-log.yaml`: read-only
+# history, part of the merged view, never appended to.
+#
 # This template is the SINGLE NORMATIVE DEFINITION of the interaction-log row
 # shape (cited by contracts/events-stream.md § "Canonical row shape"). Every
 # new append MUST use the canonical shape below. Legacy rows that use the
@@ -14,13 +26,14 @@ schema_version: 1
 
 entries:
   # Canonical entry (every new append):
-  #   id                  — "ilog-YYYY-MM-DD-NNN", minted with
-  #                          `uv run python -m superagent.tools.next_id --kind ilog \
-  #                             --file <workspace>/_memory/interaction-log.yaml`.
+  #   id                  — "ilog-YYYY-MM-DD-<machine>-NNN", minted by
   #                          `uv run python -m superagent.tools.signals log --skill <stem> \
-  #                             --action <verb> --summary "..."` mints the id AND appends
-  #                          the whole canonical row, parse-checked.
-  #                          Derived events anchor `source: interaction-log.yaml#<id>`.
+  #                             --action <verb> --summary "..."`, which also appends
+  #                          the whole canonical row, parse-checked. The machine tag
+  #                          keeps two machines from minting one id; ids written
+  #                          before 0.24.0 ("ilog-YYYY-MM-DD-NNN") stay valid.
+  #                          Derived events anchor
+  #                          `source: interaction-log/<machine>.yaml#<id>`.
   #   ts                  — ISO 8601 datetime WITH offset (e.g. "2026-09-06T14:05:00-07:00").
   #   skill               — Skill manifest STEM (the `skills/<stem>.md` filename, framework
   #                          `superagent/skills/` or overlay `_custom/skills/`), or null for

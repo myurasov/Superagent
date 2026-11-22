@@ -199,10 +199,10 @@ If the user also wants to be told when something about this document's subject c
 
 ## 7. Logging
 
-Append a canonical row to `interaction-log.yaml` (shape per `templates/memory/interaction-log.yaml`; mint the id with `uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml`):
+Log a canonical row through `signals log` (shape per `templates/memory/interaction-log.yaml`; `signals log` mints the id):
 
 ```yaml
-- id: "<ilog-YYYY-MM-DD-NNN>"
+- id: "<minted by signals log>"
   ts: <now, ISO 8601 with offset>
   skill: "add-source"
   action: "add_source"

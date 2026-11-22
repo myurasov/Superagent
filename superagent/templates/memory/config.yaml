@@ -94,7 +94,7 @@ preferences:
 
   # Privacy posture.
   privacy:
-    log_user_queries: true           # populate _memory/user-queries.jsonl (used by Supertailor)
+    log_user_queries: true           # populate _memory/user-queries/<machine>.jsonl (used by Supertailor)
     redact_outbound: true            # outbound surfaces go through scrub pipeline
 
   # Sources library (see contracts/sources.md). `Sources/` holds the user's

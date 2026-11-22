@@ -111,10 +111,10 @@ User asked to add a date ("add a birthday", "add an anniversary", "add an import
    Recurrence: <recurrence>.
    Lookahead: <lookahead_days> days.
    ```
-8. **Log** — append to `interaction-log.yaml`:
+8. **Log** through `signals log`:
 
    ```yaml
-   - id: "<ilog-YYYY-MM-DD-NNN>"   # uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml
+   - id: "<minted by signals log>"
      ts: "<ISO 8601 datetime with offset>"
      skill: "important-dates"
      action: "add_important_date"
@@ -128,7 +128,7 @@ User asked: "draft a card / message / email for <date>".
 
 1. Resolve date by id or fuzzy title match.
 2. Look up the contact (if `contact` is set in the row): get name + relationship + last_contacted.
-3. Look up history with this contact (search `interaction-log.yaml` for last 6 months mentioning this person).
+3. Look up history with this contact (search the interaction log for the last 6 months mentioning this person: `uv run python -m superagent.tools.signals log-show --since <date> --full`).
 4. Look up `gift_log[]` for the last 3 years if relevant.
 5. Compose a draft greeting in the user's voice (per `model-context.yaml.communication.style`):
    - Opening (warm, calibrated to relationship).
@@ -176,7 +176,7 @@ User asked to retire a date (e.g. friendship ended, milestone passed):
 
 After any operation:
 - Update `Domains/<for_member's-likely-domain>/history.md` if a greeting was drafted or a gift was logged.
-- Append to `interaction-log.yaml` (the Add intent's row is in § 1 Add step 8; other intents use the same canonical shape with `action: "draft_greeting"`, `"suggest_gift"`, `"log_gift"`, or `"retire_date"`).
+- Log through `signals log` (the Add intent's row is in § 1 Add step 8; other intents use the same canonical shape with `action: "draft_greeting"`, `"suggest_gift"`, `"log_gift"`, or `"retire_date"`).
 
 ## 3. Capture gift ideas in passing
 

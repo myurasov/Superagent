@@ -11,11 +11,11 @@ Task display IDs in `workspace/todo.md` follow the format `TASK-NNN` for standal
 
 ## Relationship to todo.yaml
 
-The internal `todo.yaml` IDs (`task-YYYYMMDD-NNN`) remain as stable internal keys and are NOT changed. `TASK-NNN` is the display ID shown in `workspace/todo.md` and used in conversation. The mapping is maintained implicitly by creation order. The render itself is governed by `rules/live-todo.md`.
+The internal `todo.yaml` IDs (`task-YYYYMMDD-<machine>-NNN`; older ones `task-YYYYMMDD-NNN`) remain as stable internal keys and are NOT changed. `TASK-NNN` is the display ID shown in `workspace/todo.md` and used in conversation. The mapping is maintained implicitly by creation order. The render itself is governed by `rules/live-todo.md`.
 
 ## In conversation
 
-The internal `todo.yaml` ids (`task-YYYYMMDD-NNN`, legacy `task-NNN`) are machine keys. When discussing items from the task tracker, **do not surface those internal ids to the user** in casual conversation — give a brief inline noun-phrase description of what the task is about (or the `TASK-NNN` display id when the user is working from `workspace/todo.md`). Internal tool calls (grep, file reads, `next_id`) may still use the internal ids to locate the right rows.
+The internal `todo.yaml` ids (`task-YYYYMMDD-<machine>-NNN`, older `task-YYYYMMDD-NNN`, legacy `task-NNN`) are machine keys. When discussing items from the task tracker, **do not surface those internal ids to the user** in casual conversation — give a brief inline noun-phrase description of what the task is about (or the `TASK-NNN` display id when the user is working from `workspace/todo.md`). Internal tool calls (grep, file reads, `next_id`) may still use the internal ids to locate the right rows.
 
 ## Deriving the next ID
 

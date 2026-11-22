@@ -104,7 +104,7 @@ If overdue count > 0, end with:
 
 > **<N> overdue tasks** — run `todo triage` to force a decision on each.
 
-Echo the same pointer line into this run's `interaction-log.yaml` row `action_items` (step 9) so the pointer is auditable by grep.
+Echo the same pointer line into this run's interaction-log row `action_items` (step 9) so the pointer is auditable by grep.
 
 ## 6. Watchlist alerts (read-only — never checks)
 
@@ -146,10 +146,10 @@ Skip empty sections silently. Total output target: ≤ 30 lines.
 
 1. Set `_memory/context.yaml.last_check` to now (ISO 8601 with TZ offset).
 2. When a `context.yaml` alert's condition is resolved or superseded, MOVE it verbatim to `_memory/alerts-archive.yaml` (append a row) and delete it from `context.yaml` — never annotate resolved alerts in place. Same for `recent_activity` beyond the newest ~8 entries and for superseded `current_focus` prose.
-3. Append a short canonical row to `interaction-log.yaml` (shape per `templates/memory/interaction-log.yaml`; mint the id with `uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml`):
+3. Log a short canonical row through `signals log` (shape per `templates/memory/interaction-log.yaml`; `signals log` mints the id):
 
    ```yaml
-   - id: "<ilog-YYYY-MM-DD-NNN>"
+   - id: "<minted by signals log>"
      ts: <now, ISO 8601 with offset>
      skill: "whatsup"
      action: "quick_delta"

@@ -18,7 +18,9 @@ last_updated: null
 
 decisions:
   # Each decision:
-  #   id                    — "dec-YYYY-MM-DD-NNN"
+  #   id                    — "dec-YYYY-MM-DD-<machine>-NNN", minted with
+  #                            `uv run python -m superagent.tools.next_id --kind dec --file <this file>`
+  #                            (older ids "dec-YYYY-MM-DD-NNN" stay valid).
   #   ts                    — ISO 8601 datetime when the decision was recorded.
   #   decision              — One sentence: the call that was made.
   #   context               — Why the decision was needed.

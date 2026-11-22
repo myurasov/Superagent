@@ -134,7 +134,7 @@ Credentials: never stored in plaintext in the workspace. Account credentials are
 
 Multiple safety nets:
 
-- **Append-only logs.** `interaction-log.yaml`, `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml` never lose information; they only grow.
+- **Append-only logs.** The interaction log (`interaction-log/<machine>.yaml`), `ingestion-log.yaml`, `personal-signals.yaml`, `action-signals.yaml` never lose information; they only grow.
 - **Per-row audit trail.** Every entity-shape index file (`bills.yaml`, `contacts.yaml`, …) gets a sibling `<file>.history.jsonl` written by `tools/audit.py` on every change — so "when did this row change, and to what?" is always answerable.
 - **Reversible archives.** Anything `doctor` moves to `Archive/` is one `mv` away from coming back.
 - **Diff-and-merge, not clobber.** Skills that update markdown files diff against your hand-edits and merge; they don't overwrite blindly.

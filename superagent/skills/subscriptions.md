@@ -183,10 +183,10 @@ User asked to add a subscription ("add a subscription", "new recurring subscript
 ## 2. Sync downstream
 
 After any add or cancel:
-- Append to `interaction-log.yaml` (canonical shape per `contracts/events-stream.md`; id via `uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml`). For an add:
+- Log through `signals log` (canonical shape per `contracts/events-stream.md`; `signals log` mints the id). For an add:
 
   ```yaml
-  - id: "<ilog-YYYY-MM-DD-NNN>"
+  - id: "<minted by signals log>"
     ts: "<ISO 8601 datetime with offset>"
     skill: "subscriptions"
     action: "add_subscription"

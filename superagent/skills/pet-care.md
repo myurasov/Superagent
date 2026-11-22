@@ -106,7 +106,7 @@ Add an entry similar to a vet visit (provider = boarding facility from `contacts
 ## 3. Sync downstream
 
 - Update `Domains/Pets/status.md` § Recent Progress + Next Steps.
-- Append to `interaction-log.yaml`.
+- Log through `signals log`.
 
 ## 4. Default vaccination schedules
 

@@ -57,8 +57,8 @@ def test_sync_downstream_row_uses_canonical_interaction_log_shape(
     framework_dir: Path,
 ) -> None:
     section = _section(_skill_body(framework_dir), "Sync downstream")
-    assert "interaction-log.yaml" in section
-    assert "next_id --kind ilog" in section, "id must be minted via next_id"
+    assert "through `signals log`" in section, "the row is written by the one log writer"
+    assert "next_id --kind ilog" not in section, "`signals log` mints the id"
 
     (rows,) = _yaml_blocks(section)
     row = rows[0]

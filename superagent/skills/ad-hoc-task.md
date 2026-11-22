@@ -156,7 +156,7 @@ Boundaries — route elsewhere when one of these fits better:
 2. When the work concludes (done, blocked, or abandoned), fill in
    `## Outcome` with one short paragraph: what was achieved / decided /
    learned, and any follow-up that was spun off (todo entry, project).
-3. Append an entry to `workspace/_memory/interaction-log.yaml`,
+3. Log an entry through `signals log`,
    `skill: ad-hoc-task`, per its schema — **once per significant working
    session**, not only at final close (a multi-session task gets a row
    each time real work happens). Set `related_domain` when the task

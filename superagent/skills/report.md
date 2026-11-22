@@ -169,5 +169,5 @@ without re-invoking the module path):
 3. For Outbox artifacts: append the `outbox-log.yaml` row (create + any later
    stage transition). For domain/project reports: add a dated line to that
    entity's `history.md`.
-4. Log the run to `_memory/interaction-log.yaml` (`skill: report`) with the
+4. Log the run through `signals log` (`skill: report`) with the
    artifact path and page count.

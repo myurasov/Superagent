@@ -86,10 +86,10 @@ Canonical decision table for memory-resident files that grow without bound.
 | `_memory/todo.yaml` | hundreds–thousands of tasks | `yaml.safe_load` in a tool, then filter by `status` / `priority` / `related_*`; OR grep for a specific task id when known; OR the rendered `workspace/todo.md` view. Exception: the `live-todo` write path (see Hard floors) | Reading the file whole into context to "look at the todo list" on a browse / lookup path. The model never needs every row at once. |
 | `_memory/email/_messages.jsonl` | one row per touched email, unbounded | `superagent.tools.email.archive.find(...)` / `find_by_query(...)` | Direct `cat` / `Read` / whole-file grep dumps. |
 | `_memory/email/<YYYY>/<MM>/<DD>/<file>.json` | per-message shards, individually small | `Read` whole per message — that is the unit of work | Enumerating shards via a directory walk; use `archive.find` to locate the shard first. |
-| `_memory/interaction-log.yaml` | one entry per skill run, unbounded | Tail-read with `Read offset=-N` for the recent slice; `_memory/interaction-log.summary.yaml` for "what happened lately"; full scans ONLY in `supertailor-review` and `monthly-review` | Loading the full file for "what did I do recently". |
-| `_memory/ingestion-log.yaml` | one row per ingest run | Same as interaction-log (tail / summary sibling) | Full read in non-review skills. |
+| The interaction log (`_memory/interaction-log/<machine>.yaml`, one file per machine, plus the single `_memory/interaction-log.yaml` of older workspaces) | one entry per skill run, unbounded | `uv run python -m superagent.tools.signals log-show --last N` (or `--since <date>`, `--skill`, `--action`) for the recent slice: one merged view of every machine; full scans ONLY in `supertailor-review` and `monthly-review` | Reading a log file directly, or loading the full log for "what did I do recently". |
+| `_memory/ingestion-log.yaml` | one row per ingest run | Tail-read with `Read offset=-N` for the recent slice | Full read in non-review skills. |
 | `_memory/events/<YYYY-Qn>.yaml` | quarter-partitioned event stream | `uv run python -m superagent.tools.log_window read --since <date>` (loads only the partitions the window touches) | Reading every partition for a timeline question. |
-| `_memory/user-queries.jsonl` | one row per user prompt (rows tagged `synthetic: true` are harness noise — skip them) | Tail-read or grep for a specific phrase; full scans ONLY in `supertailor-review` | Reading the whole log to summarize "what the user usually asks". |
+| The prompt log (`_memory/user-queries/<machine>.jsonl`, one file per machine, plus the single `_memory/user-queries.jsonl` of older workspaces) | one row per user prompt (rows tagged `synthetic: true` are harness noise — skip them) | `uv run python -m superagent.tools.log_user_query --show` `--last N` / `--since <date>` `--no-synthetic` (one merged view), piped to grep for a specific phrase; full scans ONLY in `supertailor-review` | Reading the whole log to summarize "what the user usually asks". |
 | `_memory/action-signals.yaml` / `_memory/personal-signals.yaml` | grow with captures | `yaml.safe_load` + filter by `target` / `status` / date in a tool; OR tail-read | Full read in non-review skills. |
 | `_memory/transactions.yaml` | one row per bank transaction | Filter by date window / account in a tool (`reconcile_transactions.py` does this); grep for a merchant when known | Whole-file read to "review spending" — the reconciler (`tools/reconcile_transactions.py`) is the surface. |
 | `Domains/<d>/history.md` (long-lived domains) | chronological, unbounded | Grep for the entity/date, then `Read --offset --limit` the matching slice; recent-window read via tail | Whole-file read of a multi-year history for a single-event question. |
@@ -104,7 +104,8 @@ Canonical decision table for memory-resident files that grow without bound.
    If no tool exists yet, write one (or extend `log_window.py` / the archive
    helpers) before extending the file's use.
 3. **Append + the agent often needs the latest N entries**
-   (`interaction-log.yaml`)? → Tail-read with explicit negative `offset`.
+   (`ingestion-log.yaml`)? → Tail-read with explicit negative `offset`. The
+   interaction log has its own reader: `signals log-show --last N`.
 
 Search method and read discipline are orthogonal: this table governs *not
 loading huge files whole*, not which search tool to use. A harness without a

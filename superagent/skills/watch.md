@@ -136,10 +136,10 @@ uv run python -m superagent.tools.watchlist harvest --id <id> [--dry-run]
 
 ## 7. Logging
 
-Append one canonical row per skill run to `interaction-log.yaml` (mint the id with `uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml`). Tool-written `watch_change_detected` rows are separate (§ 9) — do not duplicate them. This skill leaves `context.yaml.last_runs` alone; the cadence skill that owns the cycle stamps it.
+Log one canonical row per skill run through `signals log` (`signals log` mints the id). Tool-written `watch_change_detected` rows are separate (§ 9) — do not duplicate them. This skill leaves `context.yaml.last_runs` alone; the cadence skill that owns the cycle stamps it.
 
 ```yaml
-- id: "<ilog-YYYY-MM-DD-NNN via uv run python -m superagent.tools.next_id --kind ilog --file _memory/interaction-log.yaml>"
+- id: "<minted by signals log>"
   ts: "<ISO 8601 datetime with offset>"
   skill: "watch"
   action: "<add_watcher|list_watchers|pause_watcher|revive_watcher|remove_watcher|check_watchlist|probe_packs|enable_pack|harvest_source>"
@@ -149,5 +149,5 @@ Append one canonical row per skill run to `interaction-log.yaml` (mint the id wi
   related_asset: null
   related_account: null
   action_items: []
-  ingestion_log_ref: <ingest-YYYYMMDD-NNN when a harvest ran, else null>
+  ingestion_log_ref: <the ingestion-log run id when a harvest ran, else null>
 ```

@@ -183,10 +183,10 @@ When a project's `status` flips, also append a one-bullet update to each `relate
 
 ## 4. Logging
 
-Append a canonical row to `interaction-log.yaml` (shape per `templates/memory/interaction-log.yaml`; mint the id with `uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml`). The sub-action goes in `action`, never into `skill`:
+Log a canonical row through `signals log` (shape per `templates/memory/interaction-log.yaml`; `signals log` mints the id). The sub-action goes in `action`, never into `skill`:
 
 ```yaml
-- id: "<ilog-YYYY-MM-DD-NNN>"
+- id: "<minted by signals log>"
   ts: <now, ISO 8601 with offset>
   skill: "projects"
   action: "<sub_action>"   # e.g. complete_project, pause_project, archive_project

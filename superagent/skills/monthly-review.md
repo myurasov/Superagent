@@ -230,6 +230,6 @@ PDF via the `report` skill (destination `Outbox/reports/`).
 ## 10. Update memory
 
 1. `uv run python -m superagent.tools.cadence finish monthly-review` (stamps `last_runs.monthly_review`, clears the started marker).
-2. Append to `_memory/interaction-log.yaml`.
+2. Log through `signals log`.
 3. Append the H4 entry to `Domains/Self/history.md`.
 4. Persist any subscription `status` flips, document tasks, health-followup tasks created.

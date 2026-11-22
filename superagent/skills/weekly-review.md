@@ -245,10 +245,10 @@ PDF via the `report` skill (destination `Outbox/reports/`).
 
 **Discovery nudge** (max one per run; deterministic, not aspirational). Evaluate the two checks below in order and append ONE line for the first that fires:
 
-- (a) **overdue triage**: `todo.yaml` overdue count >= 3 AND `interaction-log.yaml` has no `skill: todo` row with `action: triage_overdue` (legacy rows: `skill: triage-overdue` / `skill: follow-up`, or `subject:` equivalents) in the last 30 days → `Consider: todo triage — N overdue tasks and no triage pass in 30 days.`
-- (b) **expenses**: `_memory/watchlist-state.yaml` has a finance harvest row (`simplefin`) with `last_harvest` within 7 days AND `interaction-log.yaml` has no `subject: expenses` row ever → `Consider: expenses — bank transactions are flowing but spending has never been reviewed.`
+- (a) **overdue triage**: `todo.yaml` overdue count >= 3 AND the interaction log (`uv run python -m superagent.tools.signals log-show --skill todo --action triage_overdue --since <30 days ago>`) has no `skill: todo` row with `action: triage_overdue` (legacy rows: `skill: triage-overdue` / `skill: follow-up`, or `subject:` equivalents) in the last 30 days → `Consider: todo triage — N overdue tasks and no triage pass in 30 days.`
+- (b) **expenses**: `_memory/watchlist-state.yaml` has a finance harvest row (`simplefin`) with `last_harvest` within 7 days AND the interaction log (`signals log-show --skill expenses --count`) has no `skill: expenses` row (legacy rows: `subject: expenses`) ever → `Consider: expenses — bank transactions are flowing but spending has never been reviewed.`
 
-Record the emitted nudge line in this run's `interaction-log.yaml` row `action_items` (step 9). Record declines in `model-context.yaml` communication notes and never re-nudge a declined skill — the interaction-log echo is what makes that rule auditable.
+Record the emitted nudge line in this run's interaction-log row `action_items` (step 9). Record declines in `model-context.yaml` communication notes and never re-nudge a declined skill — the interaction-log echo is what makes that rule auditable.
 
 ## 8b. Derived views rebuild
 
@@ -264,6 +264,6 @@ uv run python -m superagent.tools.events_derive rebuild
 ## 9. Update memory
 
 1. `uv run python -m superagent.tools.cadence finish weekly-review` (stamps `last_runs.weekly_review`, clears the started marker).
-2. Append entry to `_memory/interaction-log.yaml` (its `action_items` carries any discovery-nudge line from step 8 and the stale-draft paths from step 5c).
+2. Log entry through `signals log` (its `action_items` carries any discovery-nudge line from step 8 and the stale-draft paths from step 5c).
 3. If reflection captured a personal signal, append to `_memory/personal-signals.yaml`.
 4. The `Domains/Self/history.md` H4 entry is already written in step 7.

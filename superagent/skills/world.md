@@ -106,10 +106,10 @@ Per `contracts/world-graph.md` § 4, a skill that creates an entity row calls `t
 
 ## 5. Logging
 
-Append one row to `_memory/interaction-log.yaml` per invocation:
+Log one row through `signals log` per invocation:
 
 ```yaml
-- id: "<ilog-YYYY-MM-DD-NNN>"   # uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml
+- id: "<minted by signals log>"
   ts: "<ISO 8601 datetime with offset>"
   skill: "world"
   action: "<related | stats | rebuild | validate>"

@@ -153,10 +153,10 @@ Domain detection — <today>
 
 ## 6. Logging
 
-Append to `_memory/interaction-log.yaml`:
+Log through `signals log`:
 
 ```yaml
-- id: "<ilog-YYYY-MM-DD-NNN>"   # uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml
+- id: "<minted by signals log>"
   ts: "<ISO 8601 datetime with offset>"
   skill: "domain-suggest"
   action: "suggest_domains"

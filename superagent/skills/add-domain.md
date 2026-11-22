@@ -113,10 +113,10 @@ skill and saying "yes" to the initial-entry prompt).
 
 ## 5. Logging
 
-Append to `interaction-log.yaml`:
+Log through `signals log`:
 
 ```yaml
-- id: "<uv run python -m superagent.tools.next_id --kind ilog --file _memory/interaction-log.yaml>"
+- id: "<minted by signals log>"
   ts: <now ISO 8601 with offset>
   skill: "add-domain"
   action: "register_domain"

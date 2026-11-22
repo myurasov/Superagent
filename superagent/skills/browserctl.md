@@ -279,7 +279,7 @@ is a defect.
 6. `~/.superagent/browserctl/` is reconstructible (re-create + re-auth); nothing under it is a source of
    truth. A wedged registry entry (port shown busy, nothing running) can be fixed by deleting
    the entry from `state.json`.
-7. **Log** browser-driving work that changes workspace files to `interaction-log.yaml` as usual;
+7. **Log** browser-driving work that changes workspace files through `signals log` as usual;
    the browsing itself is not logged.
 
 ## Linux

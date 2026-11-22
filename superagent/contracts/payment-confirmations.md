@@ -119,13 +119,13 @@ Every save MUST trigger the following side-effects, in order:
     - Set `status: pending` on initial save; flip to `posted` either on next finance harvest reconciliation pass or on explicit user confirmation. `failed` / `reversed` are surfaced to triage skills.
     - For payments with NO funding account on file (cash, money order, peer-to-peer with no bank trace), skip this step but log the reason in the artifact's frontmatter (or `.meta.md` sidecar) `notes`.
 
-4. **Append to `interaction-log.yaml`** with `kind: payment_confirmation_saved`, citing:
+4. **Log through `signals log`** with `kind: payment_confirmation_saved`, citing:
    - `path` — saved artifact path (workspace-relative)
    - `payee`, `amount`, `currency`, `payment_date`
    - `related` — list of operational handles touched
    - `destination_class` — `sources` | `project_resources`
 
-5. **Events stream** (per `contracts/events-stream.md`) — no explicit mirror: the events stream is a derived view, so the `history.md` / `interaction-log.yaml` entry written above materializes as an event on the next `tools/events_derive.py rebuild`. When the save wrote to neither, add an `interaction-log.yaml` entry so the payment reaches the timeline.
+5. **Events stream** (per `contracts/events-stream.md`) — no explicit mirror: the events stream is a derived view, so the `history.md` / interaction-log entry written above materializes as an event on the next `tools/events_derive.py rebuild`. When the save wrote to neither, add an `interaction-log.yaml` entry so the payment reaches the timeline.
 
 6. **Provenance** — write the `provenance` block on the saved artifact's frontmatter (or its `.meta.md` sidecar) per `contracts/provenance.md`. For ingestor-sourced confirmations, also include the `ingestion_log_row` reference.
 

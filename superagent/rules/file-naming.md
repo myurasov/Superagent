@@ -48,7 +48,7 @@ Hyphens (`-`) remain valid and are preferred for:
 The agent must NOT sweep pre-existing spaced filenames or folder names without explicit user request. Reasons:
 
 - Silent mass renames break index `id` values in `_memory/sources-index.yaml` (id is `src-<sha1(rel_path)[:10]>`); a rename changes the id and forces a re-curation pass.
-- Folder renames cascade: every file under the renamed folder gets a new path / new id; cross-references in domain `sources.md`, project `sources.md`, `world.yaml`, and `interaction-log.yaml` entries may need updating.
+- Folder renames cascade: every file under the renamed folder gets a new path / new id; cross-references in domain `sources.md`, project `sources.md`, `world.yaml`, and interaction-log entries may need updating.
 - The user may have stable references (shell aliases, bookmarks, links from outside the workspace) to existing paths.
 
 The agent MAY:

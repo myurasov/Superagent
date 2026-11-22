@@ -133,12 +133,12 @@ For **interaction**:
 
 1. Resolve the contact (offer `add-contact` if missing).
 2. Ask: when, summary, action items.
-3. Append to `_memory/interaction-log.yaml` in the canonical row shape
+3. Log through `signals log` in the canonical row shape
    (`templates/memory/interaction-log.yaml` is normative — never the retired
    `timestamp` / `type` / `subject` / `participants` keys). Name the contact
    in `summary`; there is no `participants` field.
    ```yaml
-   - id: "<ilog-YYYY-MM-DD-NNN via uv run python -m superagent.tools.next_id --kind ilog --file _memory/interaction-log.yaml>"
+   - id: "<minted by signals log>"
      ts: "<when — ISO 8601 datetime with offset>"
      skill: "log-event"
      action: "<meeting|call|note> with <contact name>"
@@ -202,10 +202,10 @@ For a schedule add: `Scheduled <kind> on <asset> every <interval>; first due <ne
 
 ## 5. Logging
 
-**interaction** already appended its row in step 2. Every other sub-flow this skill handled itself (vehicle, vehicle accident, vehicle renewal, home, generic, decision, list due, schedule) appends one canonical row (mint the id with `uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml`):
+**interaction** already appended its row in step 2. Every other sub-flow this skill handled itself (vehicle, vehicle accident, vehicle renewal, home, generic, decision, list due, schedule) appends one canonical row (`signals log` mints the id):
 
 ```yaml
-- id: "<ilog-YYYY-MM-DD-NNN>"
+- id: "<minted by signals log>"
   ts: "<now — ISO 8601 datetime with offset>"
   skill: "log-event"
   action: "<vehicle_event|vehicle_accident|vehicle_renewal|home_event|generic_event|decision_logged|list_maintenance_due|schedule_maintenance>"

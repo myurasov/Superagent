@@ -212,10 +212,10 @@ User asked to change a bill's amount / cadence / due day:
 
 After any add / mark-paid / update / reconcile:
 - Update relevant `Domains/<Domain>/status.md` § Next Steps.
-- Append to `interaction-log.yaml`. For a reconcile run this row IS the run marker (the reconciler is a pure report tool and `ingestion-log.yaml` is reserved for ingestors per `contracts/ingestion.md`):
+- Log through `signals log`. For a reconcile run this row IS the run marker (the reconciler is a pure report tool and `ingestion-log.yaml` is reserved for ingestors per `contracts/ingestion.md`):
 
   ```yaml
-  - id: "<ilog-YYYY-MM-DD-NNN via uv run python -m superagent.tools.next_id --kind ilog --file _memory/interaction-log.yaml>"
+  - id: "<minted by signals log>"
     ts: "<now — ISO 8601 datetime with offset>"
     skill: "bills"
     action: "reconcile_transactions"

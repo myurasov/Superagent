@@ -17,7 +17,7 @@ Superagent watchers and harvests are read-only against upstream sources by defau
 
 1. declare it loudly in its frontmatter (`writes_upstream: true`);
 2. ask for confirmation **per call**; and
-3. log the write to `_memory/interaction-log.yaml` (and `_memory/upstream-writes.yaml`).
+3. log the write through `signals log` (and `_memory/upstream-writes.yaml`).
 
 ## 4. Sensitive subfiles
 

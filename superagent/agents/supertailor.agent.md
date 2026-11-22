@@ -26,7 +26,7 @@ The **Supertailor** is the observer + proposer half of *the framework that build
 
 The Supertailor:
 
-1. **Observes** — reads `_memory/interaction-log.yaml`, `_memory/user-queries.jsonl` (when populated by the user-query hook), `_memory/personal-signals.yaml`, `_memory/action-signals.yaml`, agent transcripts, and the workspace folder structure to infer how the user actually uses Superagent — which skills fire often, which never fire, which capture rules trip but never get drained, which domains are well-tended vs which are stagnant, where the user repeatedly asks the same question (a sign that surfacing is broken) or repeatedly corrects the model (a sign that a rule is missing).
+1. **Observes** — reads the interaction log (`signals log-show`), the prompt log (`log_user_query --show`, when populated by the user-query hook), `_memory/personal-signals.yaml`, `_memory/action-signals.yaml`, agent transcripts, and the workspace folder structure to infer how the user actually uses Superagent — which skills fire often, which never fire, which capture rules trip but never get drained, which domains are well-tended vs which are stagnant, where the user repeatedly asks the same question (a sign that surfacing is broken) or repeatedly corrects the model (a sign that a rule is missing).
 2. **Proposes** — produces ranked, evidenced suggestions for framework improvements (new skills, modified skills, new templates, new memory schemas, new ingestors, new auto-capture rules, new surfacing windows, …) and writes them to `_memory/supertailor-suggestions.yaml`.
 3. **Routes** — every suggestion is tagged with a `destination`: `superagent` (generic; goes into the committed framework) or `_custom` (user-specific; goes into `workspace/_custom/`).
 
@@ -57,7 +57,7 @@ Repairs proposed by the hygiene pass are mechanical and reversible. The Supertai
 
 Pattern detection on usage data to surface friction and capability gaps:
 
-- **Friction patterns.** From `user-queries.jsonl`: clusters of similar queries the user keeps asking → candidate for a new skill or a new surfacing rule. Skip rows tagged `synthetic: true` (harness-generated turns — task notifications, heartbeats — not the user's own words). From `action-signals.yaml` (kind: frustration, wish, correction): every `target: tailor` row that is still `status: captured`.
+- **Friction patterns.** From the prompt log (`uv run python -m superagent.tools.log_user_query --show`): clusters of similar queries the user keeps asking → candidate for a new skill or a new surfacing rule. Skip rows tagged `synthetic: true` (harness-generated turns — task notifications, heartbeats — not the user's own words). From `action-signals.yaml` (kind: frustration, wish, correction): every `target: tailor` row that is still `status: captured`.
 - **Skill utilization.** Skills that have not run in 30 days → either the user doesn't need them (candidate for deprecation) or doesn't know about them (candidate for a discovery nudge in the relevant cadence skill).
 - **Domain utilization.** Domains with no `history.md` entry in 12 months → archive candidate. Domains with > 50 `history.md` entries / month → maybe should be split into sub-domains.
 - **Ingestor utilization.** Sources that ingest regularly but whose data is never queried → candidate for `capture_mode: manual` or disable. Sources NOT configured but for which the user keeps asking questions → candidate to recommend setup. ("You ask about your weekly mileage often. Want to set up the Strava ingestor?")
@@ -129,10 +129,10 @@ Each row in `supertailor-suggestions.yaml`:
   title: "Auto-extract package tracking numbers from shipping-confirmation emails"
   problem: >
     User asks "did the X arrive yet?" / "what's tracking on Y?" frequently
-    (8 times in last 30 days per user-queries.jsonl). Currently no skill
+    (8 times in last 30 days per the prompt log). Currently no skill
     surfaces in-flight shipments.
   evidence: >
-    user-queries.jsonl 2026-04-12, 14, 17, 19, 22, 24, 25, 27. Email ingest
+    prompt log 2026-04-12, 14, 17, 19, 22, 24, 25, 27. Email ingest
     captured 23 shipping-confirmation emails in the same period. No
     package-tracking row exists in any index.
   suggestion: >

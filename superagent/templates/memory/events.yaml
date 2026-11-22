@@ -9,7 +9,7 @@
 #
 # The events stream is a DERIVED VIEW (contracts/events-stream.md): the
 # partitions are rebuilt wholesale by `tools/events_derive.py rebuild` from
-# the two sources of truth — `_memory/interaction-log.yaml` + Domain/Project
+# the two sources of truth — the interaction log (every machine's file) + Domain/Project
 # `history.md` H4 entries. Nothing appends to partitions per-write; rows
 # flagged `legacy: true` are frozen byte-verbatim across rebuilds.
 #

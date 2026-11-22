@@ -185,7 +185,7 @@ If overdue count > 0 (same threshold as `whatsup` § 5), end the task block with
 
 > **<N> overdue tasks** — run `todo triage` to force a decision on each.
 
-Echo the same pointer line into this run's `interaction-log.yaml` row `action_items` (step 14) so the pointer is auditable by grep.
+Echo the same pointer line into this run's interaction-log row `action_items` (step 14) so the pointer is auditable by grep.
 
 ## 8. Health signals
 
@@ -257,10 +257,10 @@ Per `contracts/capture.md` § 7.2:
 
 **Discovery nudge** (max one per run; deterministic, not aspirational). Evaluate the two checks below in order and add ONE line under Consider for the first that fires:
 
-- (a) **overdue triage**: `todo.yaml` overdue count (step 7) >= 3 AND `interaction-log.yaml` has no `skill: todo` row with `action: triage_overdue` (legacy rows: `skill: triage-overdue` / `skill: follow-up`, or `subject:` equivalents) in the last 30 days → `Consider: todo triage — N overdue tasks and no triage pass in 30 days.`
-- (b) **expenses**: `_memory/watchlist-state.yaml` has a finance harvest row (`simplefin`) with `last_harvest` within 7 days AND `interaction-log.yaml` has no `skill: expenses` row (legacy rows: `subject: expenses`) ever → `Consider: expenses — bank transactions are flowing but spending has never been reviewed.`
+- (a) **overdue triage**: `todo.yaml` overdue count (step 7) >= 3 AND the interaction log (`uv run python -m superagent.tools.signals log-show --skill todo --action triage_overdue --since <30 days ago>`) has no `skill: todo` row with `action: triage_overdue` (legacy rows: `skill: triage-overdue` / `skill: follow-up`, or `subject:` equivalents) in the last 30 days → `Consider: todo triage — N overdue tasks and no triage pass in 30 days.`
+- (b) **expenses**: `_memory/watchlist-state.yaml` has a finance harvest row (`simplefin`) with `last_harvest` within 7 days AND the interaction log (`signals log-show --skill expenses --count`) has no `skill: expenses` row (legacy rows: `subject: expenses`) ever → `Consider: expenses — bank transactions are flowing but spending has never been reviewed.`
 
-Record the emitted nudge line in this run's `interaction-log.yaml` row `action_items` (step 14). Record declines in `model-context.yaml` communication notes and never re-nudge a declined skill — the interaction-log echo is what makes that rule auditable.
+Record the emitted nudge line in this run's interaction-log row `action_items` (step 14). Record declines in `model-context.yaml` communication notes and never re-nudge a declined skill — the interaction-log echo is what makes that rule auditable.
 
 ## 13. Compose the briefing
 
@@ -316,10 +316,10 @@ Skip empty sections silently. Target ≤ 80 lines.
 1. `_memory/context.yaml.last_check` → now.
 2. `uv run python -m superagent.tools.cadence finish daily-update` (stamps `last_runs.daily_update`, clears the started marker).
 3. `_memory/context.yaml.alerts` → keep / add per the briefing's findings. When an alert's condition is resolved or superseded, MOVE it verbatim to `_memory/alerts-archive.yaml` (append a row) and delete it from `context.yaml` — never annotate resolved alerts in place. Same for `recent_activity` beyond the newest ~8 entries and for superseded `current_focus` prose.
-4. Append a canonical row to `_memory/interaction-log.yaml` (shape per `templates/memory/interaction-log.yaml`; mint the id with `uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml`):
+4. Log a canonical row through `signals log` (shape per `templates/memory/interaction-log.yaml`; `signals log` mints the id):
 
    ```yaml
-   - id: "<ilog-YYYY-MM-DD-NNN>"
+   - id: "<minted by signals log>"
      ts: <now, ISO 8601 with offset>
      skill: "daily-update"
      action: "daily_briefing"
@@ -337,7 +337,7 @@ Read `config.preferences.cadences` (with the matching `<skill>_auto` flags) and 
   > **Weekly review overdue** — last run <date or never>; run `weekly-review`.
 - **monthly_review**: `monthly_review_auto: true` AND today is past the 1st AND `last_runs.monthly_review` is null or falls in a prior month →
   > **Monthly review overdue** — the <Month> pass (due the 1st) has not run; run `monthly-review`.
-- **doctor**: `last_runs.doctor` is null or > 180 days ago (or past `cadences.doctor` when it differs) AND the workspace is older than 180 days (first `interaction-log.yaml` row or `workspace/.version` creation) — fresh installs are not nagged →
+- **doctor**: `last_runs.doctor` is null or > 180 days ago (or past `cadences.doctor` when it differs) AND the workspace is older than 180 days (first interaction-log row or `workspace/.version` creation) — fresh installs are not nagged →
   > **Workspace doctor pending** — no hygiene pass in 180+ days; run `doctor`.
 - **tailor_review**: `last_runs.tailor_review` is null OR > 90 days ago →
   > **Supertailor review pending** — Superagent's framework hasn't been audited in 90+ days. When you have a quiet 15 minutes, run `supertailor-review`.

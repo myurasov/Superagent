@@ -7,7 +7,9 @@ last_updated: null
 
 suggestions:
   # Each suggestion:
-  #   id                    — Unique ID: "st-YYYY-MM-DD-NNN"
+  #   id                    — Unique ID: "st-YYYY-MM-DD-<machine>-NNN", minted with
+  #                            `uv run python -m superagent.tools.next_id --kind st --file <this file>`
+  #                            (older ids "st-YYYY-MM-DD-NNN" stay valid).
   #   proposed_at           — ISO 8601 when suggested.
   #   category              — new-skill | skill-improvement | memory-schema |
   #                            template | workflow | hygiene | config |

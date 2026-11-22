@@ -218,7 +218,7 @@ migration runs (same soft warning as `AGENTS.md` § "On workspace open").
      [stash: popped cleanly | left in stash due to conflicts in <files>]
    ```
 
-2. Append one row to `workspace/_memory/interaction-log.yaml` per its
+2. Log one row through `signals log` per its
    schema (`skill: "refresh"`, `action: "framework-update"`, summary noting
    commits pulled, sync results, and the workspace version transition).
 3. End with a stray-file sweep: `git status --short` must be clean (or show

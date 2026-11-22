@@ -424,10 +424,10 @@ A skipped call is repaired by the next `world rebuild`.
 
 ## 11. Logging
 
-Append a canonical row to `interaction-log.yaml` (shape per `templates/memory/interaction-log.yaml`; mint the id with `uv run python -m superagent.tools.next_id --kind ilog --file <workspace>/_memory/interaction-log.yaml`). `action` is per kind so log greps stay stable: `add_account` / `register_asset` / `add_document`.
+Log a canonical row through `signals log` (shape per `templates/memory/interaction-log.yaml`; `signals log` mints the id). `action` is per kind so log greps stay stable: `add_account` / `register_asset` / `add_document`.
 
 ```yaml
-- id: "<ilog-YYYY-MM-DD-NNN>"
+- id: "<minted by signals log>"
   ts: <now, ISO 8601 with offset>
   skill: "add"
   action: "<add_account | register_asset | add_document>"

@@ -58,7 +58,7 @@ entries:
 
 The AGENTS.md floor (item 3) cross-references this file. The Supertailor's
 hygiene pass flags repeated deny-then-escalate sequences in
-`user-queries.jsonl` whose command class never got a registry row.
+the prompt log whose command class never got a registry row.
 
 ## Override / user overlay
 

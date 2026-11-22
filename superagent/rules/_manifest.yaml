@@ -154,6 +154,15 @@ files:
       - contracts/email-capture.md
       - tools/email/archive_hook.py
     user_overlay: workspace/_custom/rules/email-capture-fallback.md
+  - path: concurrent-sessions.md
+    kind: doc
+    purpose: "One workspace on more than one machine: re-read a shared file just before writing, edit in place, fold a reported sync conflict copy by hand and then delete it; what the framework does by itself (machine beat, machine-tagged ids, per-machine logs, the conflict sweep) and the safe sync settings."
+    consumed_by:
+      - AGENTS.md
+      - skills/doctor.md
+      - tools/heal.py
+      - tools/machines.py
+    user_overlay: workspace/_custom/rules/concurrent-sessions.md
   - path: git-commits.md
     kind: doc
     purpose: "Framework git-commit policy: one-sentence imperative subject (<= 72 chars, ASCII, no body), no AI-attribution trailers, strip-after-commit filter-branch recipe (parenthesized vendor alternation) REQUIRED before any push, atomic commits, only framework files (never workspace/), ruff lint gate."

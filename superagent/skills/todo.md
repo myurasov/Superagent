@@ -70,7 +70,7 @@ When the user asks to add a task:
    - **related_asset / related_account / related_appointment / related_bill** (optional cross-references).
    - **tags** (list of short labels).
    - **source** = `"user"` for user-added, otherwise the skill / ingestor that created it.
-2. Generate **id** = `task-<YYYYMMDD>-<NNN>` where NNN is the next sequential 3-digit number for today.
+2. Mint the **id** with `uv run python -m superagent.tools.next_id --kind task --file _memory/todo.yaml`: `task-<YYYYMMDD>-<machine>-<NNN>`, the next number for today on this machine. The machine tag keeps two machines that have not synced yet from minting one id (`rules/concurrent-sessions.md`); ids without a tag (`task-<YYYYMMDD>-<NNN>`) stay valid.
 3. Set **status** = `open`, **created** = now (ISO 8601 with TZ).
 4. Append the new record.
 
@@ -174,10 +174,10 @@ If any P0 tasks exist and are still open after the operation:
 
 ## 7. Logging
 
-Append to `interaction-log.yaml`:
+Log through `signals log`:
 
 ```yaml
-- id: "<ilog-YYYY-MM-DD-NNN via uv run python -m superagent.tools.next_id --kind ilog --file _memory/interaction-log.yaml>"
+- id: "<minted by signals log>"
   ts: "<ISO 8601 datetime with offset>"
   skill: "todo"
   action: "<add|list|complete|update>_task"   # or "triage_overdue" for the triage mode

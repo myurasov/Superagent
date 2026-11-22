@@ -101,7 +101,8 @@ The two layers serve different access patterns:
 | `config.yaml` | profile, preferences, watchlist defaults | every skill |
 | `context.yaml` | rolling state (last_check, current_focus, alerts) | `whatsup`, `daily-update`, `weekly-review`, `monthly-review` |
 | `model-context.yaml` | model's accumulated learning across sessions | every skill (read at session start) |
-| `interaction-log.yaml` | append-only log of touchpoints (every interaction the agent records) | `summarize-thread`, all cadence skills, the Supertailor |
+| `interaction-log/<machine>.yaml` | append-only log of touchpoints (every interaction the agent records), one file per machine, written by `signals log` and read merged by `signals log-show`; a workspace older than 0.24.0 also keeps its single `interaction-log.yaml` as read-only history | `summarize-thread`, all cadence skills, the Supertailor |
+| `machines/<machine>.json` | one small beat file per machine: when it last wrote here (`tools/machines.py`) | the on-open check |
 | `ingestion-log.yaml` | append-only per-run summaries of every harvest | `watch`, cadence skills, Supertailor |
 | `todo.yaml` | task list (P0-P3) | `todo` (including its overdue-triage mode), all cadence skills |
 | `domains-index.yaml` | metadata about each domain folder | every skill |
@@ -159,8 +160,8 @@ Superagent ships with built-in introspection. The full role definitions are in `
 │    every chat turn → optional ambient capture into:                     │
 │      _memory/personal-signals.yaml   (about the user)                   │
 │      _memory/action-signals.yaml     (about the framework or workspace) │
-│    every skill run → entry in _memory/interaction-log.yaml              │
-│    every UserPromptSubmit → line in _memory/user-queries.jsonl          │
+│    every skill run → entry in _memory/interaction-log/<machine>.yaml    │
+│    every UserPromptSubmit → line in _memory/user-queries/<machine>.jsonl│
 └────────────────────────┬───────────────────────────────────────────────┘
                          │
                          │  (every 90 days, or when nudged)

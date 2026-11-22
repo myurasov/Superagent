@@ -35,7 +35,8 @@ last_updated: null
 
 signals:
   # Each signal:
-  #   id                    — "sig-YYYY-MM-DD-NNN"
+  #   id                    — "sig-YYYY-MM-DD-<machine>-NNN", minted by `signals add`
+  #                            (older ids "sig-YYYY-MM-DD-NNN" stay valid).
   #   captured_at           — ISO 8601 when the agent captured the signal.
   #   target                — tailor | superagent
   #   kind                  — explicit | ambient | artifact-critique |

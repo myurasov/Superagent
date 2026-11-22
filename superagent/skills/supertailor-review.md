@@ -64,7 +64,7 @@ Per `agents/supertailor.agent.md` § "Hygiene pass":
 6. **Watchlist health**: every `_memory/watchlist-state.yaml` row with `error_streak > 0` or `status: evicted` surfaced with its `last_error` / `evict_reason` and one-line "what to fix" (per `contracts/watchlist.md`). Also every **healthy watcher overdue against its schedule**: `uv run python -m superagent.tools.cadence status --json` → `overdue_watchers` (active, `error_streak: 0`, last success older than its fastest cycle's period plus one day). It is not broken — the cadence that runs it has lapsed — so the fix to name is that cadence (`daily-update` / `weekly-review` / `monthly-review`).
 7. **Custom-overlay scaffold**: ensure `_custom/{rules,skills,agents,templates,tools,watchers}/` exist; create empty if missing.
 8. **Improvement-ideas catalogues exist**: verify the two hand-curated idea catalogues named in `agents/supertailor.agent.md` (hygiene-pass item "Improvement-ideas catalogues exist") are present and parseable, with the tier headings that file lists. They are mandatory inputs to step 3 below; missing files silently degrade Supertailor output. Surface as `needs-attention` (not auto-fixable — both are hand-curated).
-9. **Signal-capture health**: near-zero rows in `action-signals.yaml` + `personal-signals.yaml` while `user-queries.jsonl` is dense over the same period → capture-adherence failure (the session-end sweep in `contracts/capture.md` § 7.2a is not running); surface as `needs-attention`.
+9. **Signal-capture health**: near-zero rows in `action-signals.yaml` + `personal-signals.yaml` while the prompt log is dense over the same period → capture-adherence failure (the session-end sweep in `contracts/capture.md` § 7.2a is not running); surface as `needs-attention`.
 10. **Memory-routing check**: run `uv run python -m superagent.tools.memory_routing_check --since <last review>`; exit 1 → flag the reported files for migration per `rules/memory-routing.md`.
 11. **World-graph consistency**: run `uv run python -m superagent.tools.world validate` (per `contracts/world-graph.md` § 5); exit 1 → list the dangling edges as `needs-attention` with the one-line fix `uv run python -m superagent.tools.world rebuild` (the graph is derived; a rebuild is always safe).
 
@@ -76,7 +76,7 @@ Pattern detection on usage data.
 
 Per `agents/supertailor.agent.md` § "Strategic pass":
 
-1. **Friction patterns** from `user-queries.jsonl` (clusters of similar queries; skip rows tagged `synthetic: true` — harness-generated turns, not the user) and the open `target: tailor` signals (`uv run python -m superagent.tools.signals list --open --target tailor`; open = `status` not in {`processed`, `declined`}).
+1. **Friction patterns** from the prompt log (`uv run python -m superagent.tools.log_user_query --show` `--since <last review> --no-synthetic`: one merged view of every machine's file; clusters of similar queries; skip rows tagged `synthetic: true` — harness-generated turns, not the user) and the open `target: tailor` signals (`uv run python -m superagent.tools.signals list --open --target tailor`; open = `status` not in {`processed`, `declined`}).
 2. **Skill utilization** — skills not run in 30 days (deprecation candidates) and skills run with high frequency (optimization candidates).
 3. **Domain utilization** — silent domains (archive candidates) and overactive domains (split candidates).
 4. **Ingestor utilization** — sources that ingest but whose data is never queried (disable candidates) and not-configured sources for whose data the user keeps asking (recommend setup).
@@ -145,7 +145,7 @@ For approved suggestions:
 ## 7. Update memory
 
 1. `uv run python -m superagent.tools.cadence finish supertailor-review` (stamps `last_runs.tailor_review`, clears the started marker).
-2. Append to `interaction-log.yaml`.
+2. Log through `signals log`.
 3. `supertailor-suggestions.yaml` updated with the new rows.
 4. Close every signal this run consumed: `uv run python -m superagent.tools.signals close <id> --became-suggestion <st-id>` when it fed a suggestion, `--became-action "<label>"` when a hygiene repair or workspace action resolved it, `--declined "<reason>"` when it needs no change. A consumed signal left open pads the next run's backlog and every cadence counter.
 5. (Designed, not yet shipped: `_memory/_checkpoints/<date>/` populated with backups of any files modified by hygiene-pass repairs — blocked on `roadmap.md` § S-27.)
