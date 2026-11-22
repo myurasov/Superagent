@@ -23,11 +23,20 @@ abandoned midway used to leave no trace at all. This tool makes both visible:
                        period plus one day of grace (daily 1, weekly 7,
                        monthly 31 days; `manual` watchers are never late);
                      - unfinished runs (see `finish`).
-                   Prints nothing when everything is current. `--stamp` does
-                   the on-open bookkeeping: it prints nothing when
-                   `refresh_suggested` already equals today, and sets it to
-                   today whenever it printed findings. `--json` prints the
-                   full structure instead.
+                   Prints nothing when everything is current. `--stamp` is
+                   the on-open check (AGENTS.md "On workspace open"):
+                     - it prints who else wrote here lately (another machine's
+                       recent beat, tools/machines.py) and what the conflict
+                       sweep merged or found (tools/heal.py), every time;
+                     - it prints the late items above at most once per calendar
+                       day PER MACHINE: the day it last nagged is kept in
+                       `~/.superagent/state/`, never in the workspace;
+                     - the only workspace file it writes is this machine's beat
+                       file (and a log the sweep merged). A session that opens
+                       on a machine that is behind on sync must not rewrite a
+                       shared file with its stale copy
+                       (rules/concurrent-sessions.md).
+                   `--json` prints the full structure instead.
 
 Skill -> `last_runs` key: daily-update daily_update, weekly-review
 weekly_review, monthly-review monthly_review, supertailor-review
@@ -55,6 +64,7 @@ from typing import Any
 
 import yaml
 
+from superagent.tools import heal, machines
 from superagent.tools import watchlist as wl
 
 FRAMEWORK = Path(__file__).resolve().parent.parent
@@ -187,16 +197,6 @@ def _set_child(text: str, parent: str, key: str, value: Any, *, delete: bool = F
     return "".join(lines)
 
 
-def _set_top(text: str, key: str, value: Any) -> str:
-    """Set a top-level scalar line (appended when the key is absent)."""
-    pattern = re.compile(rf"^{re.escape(key)}\s*:.*$", re.MULTILINE)
-    if pattern.search(text):
-        return pattern.sub(lambda _m: _render(key, value), text, count=1)
-    if text and not text.endswith("\n"):
-        text += "\n"
-    return text + _render(key, value) + "\n"
-
-
 def _write_checked(workspace: Path, new_text: str, expected: dict[str, Any]) -> None:
     """Parse-check `new_text` against `expected`, then write context.yaml atomically."""
     path = _context_path(workspace)
@@ -262,17 +262,10 @@ def _every_days(value: Any, default: int) -> int:
 def workspace_since(workspace: Path) -> dt.datetime | None:
     """Earliest of the first interaction-log row and `workspace/.version` (birth) time."""
     found: list[dt.datetime] = []
-    try:
-        log = yaml.load((workspace / "_memory" / "interaction-log.yaml").read_text(encoding="utf-8"),
-                        Loader=_LOADER)
-        rows = log.get("entries") if isinstance(log, dict) else None
-        for row in (rows or [])[:5]:
-            if isinstance(row, dict):
-                when = as_datetime(row.get("ts") or row.get("timestamp"))
-                if when:
-                    found.append(when)
-    except (OSError, yaml.YAMLError):
-        pass
+    for _path, _index, row in machines.interaction_log_rows(workspace)[:5]:
+        when = as_datetime(row.get("ts") or row.get("timestamp"))
+        if when:
+            found.append(when)
     version = workspace / ".version"
     if version.exists():
         st = version.stat()
@@ -376,7 +369,7 @@ def status(workspace: Path, *, now: dt.datetime | None = None, framework: Path =
         "overdue_watchers": overdue_watchers(workspace, now, framework=framework,
                                              grace_days=grace_days),
         "unfinished_runs": unfinished_runs(runs),
-        "refresh_suggested": str(ctx["refresh_suggested"]) if ctx.get("refresh_suggested") else None,
+        "refresh_suggested": machines.read_local_state(workspace).get("refresh_suggested"),
     }
 
 
@@ -405,11 +398,29 @@ def render(report: dict[str, Any]) -> list[str]:
 
 
 def stamp_refresh_suggested(workspace: Path, today: str) -> None:
-    """Set `context.yaml.refresh_suggested` to `today` (YYYY-MM-DD), parse-checked."""
-    text, ctx = load_context(workspace)
-    expected = dict(ctx)
-    expected["refresh_suggested"] = today
-    _write_checked(workspace, _set_top(text, "refresh_suggested", today), expected)
+    """Record that this machine nagged `today` (YYYY-MM-DD), in `~/.superagent/state/`.
+
+    Machine-local on purpose: the workspace may sync between machines, and a
+    marker written into `context.yaml` at session open let a stale copy of
+    that file win over fresher content from another machine.
+    """
+    machines.write_local_state(workspace, refresh_suggested=today)
+
+
+def on_open(workspace: Path, now: dt.datetime) -> list[str]:
+    """The every-time part of the on-open check: presence, conflict sweep, stray rows, beat.
+
+    Returns the lines to print. Never raises: a sweep that fails is reported
+    as a line, and the cadence report still follows.
+    """
+    lines = machines.presence_lines(workspace, now=now)
+    try:
+        lines += heal.sweep_lines(workspace)
+        lines += heal.stray_lines(workspace)
+    except Exception as exc:  # the open check must not die on one bad file
+        lines.append(f"Conflict sweep failed ({exc}); run `uv run python -m superagent.tools.heal sweep`.")
+    machines.beat(workspace, now=now)
+    return lines
 
 
 # --------------------------------------------------------------------- CLI
@@ -454,13 +465,14 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         report = status(workspace, now=now, grace_days=args.grace_days)
         today = now.date().isoformat()
-        if args.stamp and report["refresh_suggested"] == today:
-            return 0  # already nagged today (AGENTS.md "On workspace open")
-        lines = render(report)
+        open_lines = on_open(workspace, now) if args.stamp else []
+        # Late items: at most once per day on this machine (AGENTS.md "On workspace open").
+        nagged = args.stamp and report["refresh_suggested"] == today
+        lines = [] if nagged else render(report)
         if args.json:
-            print(json.dumps(report, indent=2))
+            print(json.dumps({**report, "on_open": open_lines}, indent=2))
         else:
-            for line in lines:
+            for line in open_lines + lines:
                 print(line)
         if args.stamp and lines:
             stamp_refresh_suggested(workspace, today)

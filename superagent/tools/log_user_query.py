@@ -1,7 +1,7 @@
 #!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
-"""Log every user prompt to `_memory/user-queries.jsonl`.
+"""Log every user prompt to this machine's prompt log, `_memory/user-queries/<machine>.jsonl`.
 
 Wired as a `beforeSubmitPrompt` hook in Cursor (`.cursor/hooks.json`;
 `--source` defaults to `cursor`) and as a `UserPromptSubmit` hook in Claude
@@ -11,6 +11,15 @@ similar queries that aren't being answered well by an existing skill).
 
 Reads the prompt from stdin (the way both harnesses invoke hooks).
 Append-only; one JSON object per line; never blocks the prompt.
+
+One file per machine (`tools/machines.py`), one writer each, so two machines
+can log at the same moment without a sync conflict
+(`rules/concurrent-sessions.md`). The single `_memory/user-queries.jsonl` of
+older workspaces stays in place as read-only history. Read the log as ONE
+merged view, oldest first:
+
+    uv run python -m superagent.tools.log_user_query --show [--since 2026-11-01] \\
+        [--no-synthetic] [--last 50] [--json]
 
 Harness noise: a leading `<ide_opened_file>...</ide_opened_file>` wrapper is
 stripped so only the user's own text is logged. Rows whose (stripped) prompt
@@ -28,7 +37,8 @@ text (`action-signals.yaml` trigger phrases and context), so it stays
 importable and side-effect free.
 
 Exit code:
-  0  always (we never want to block the user's prompt because of a logging error)
+  0  always when logging (we never want to block the user's prompt because of a
+     logging error); `--show` returns 2 for an unreadable `--since`.
 """
 from __future__ import annotations
 
@@ -43,12 +53,14 @@ from typing import Any
 import yaml
 
 try:
+    from superagent.tools import machines
     from superagent.tools.skill_loader import SYNTHETIC_MARKERS
 except ModuleNotFoundError:
     # Run by path rather than as a module (`uv run python superagent/tools/log_user_query.py`),
     # only the script's own directory is on sys.path. Put the repo root there so the
     # shared marker tuple stays single-sourced in skill_loader instead of being duplicated.
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    from superagent.tools import machines
     from superagent.tools.skill_loader import SYNTHETIC_MARKERS
 
 REDACTED_PASSWORD = "[REDACTED:password]"
@@ -90,10 +102,11 @@ _PASSWORD_WS_RE = re.compile(
 
 # Tokens that carry a digit or a symbol yet are plainly not credentials, so a
 # bare cue never redacts them: `pass contact:dr-smith-dentist` (a handle),
-# `pass st-2026-10-06-002` / `task-20260428-001` (a dated id), `pass 2026-10-08`
+# `pass st-2026-10-06-002` / `task-20260428-001` / `sig-2026-10-06-mybox-002`
+# (a dated id, with or without the machine tag), `pass 2026-10-08`
 # (an ISO date). CLI flags (`pass --no-verify`) are caught by a leading '-'.
 _HANDLE_RE = re.compile(r"[a-z][a-z0-9_-]*:[a-z0-9][a-z0-9._-]*")
-_DATED_ID_RE = re.compile(r"[a-z]+-\d{4}-?\d{2}-?\d{2}-\d{3,}")
+_DATED_ID_RE = re.compile(r"[a-z]+-\d{4}-?\d{2}-?\d{2}-(?:[a-z][a-z0-9]*-)?\d{3,}")
 _ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}(?:T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?")
 _CODE_CALL_RE = re.compile(r"[A-Za-z_][\w.]*\(")  # `tests pass `run_all.main(2)``
 _WRAP_OPEN = "([{<\"'`"
@@ -297,7 +310,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse CLI args."""
     parser = argparse.ArgumentParser(
         prog="log_user_query",
-        description="Append the user's prompt to user-queries.jsonl.",
+        description="Append the user's prompt to this machine's prompt log, or show the merged log.",
     )
     parser.add_argument(
         "--workspace",
@@ -311,7 +324,37 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default="cursor",
         help="Which IDE invoked this hook (default: 'cursor').",
     )
+    parser.add_argument("--show", action="store_true",
+                        help="Print the merged prompt log (every machine), oldest first; reads no stdin.")
+    parser.add_argument("--since", default=None, help="With --show: ISO date or datetime.")
+    parser.add_argument("--no-synthetic", action="store_true",
+                        help="With --show: leave out harness-generated rows.")
+    parser.add_argument("--last", type=int, default=None, metavar="N",
+                        help="With --show: only the newest N rows.")
+    parser.add_argument("--json", action="store_true", help="With --show: whole rows, one JSON per line.")
     return parser.parse_args(argv)
+
+
+def show(workspace: Path, args: argparse.Namespace) -> int:
+    """Print the merged prompt log. Exit code 2 for an unreadable `--since`."""
+    since = None
+    if args.since:
+        since = machines.parse_ts(args.since)
+        if since is None:
+            print(f"log_user_query: not an ISO date or datetime: {args.since!r}", file=sys.stderr)
+            return 2
+    rows = machines.read_user_queries(workspace, since=since, include_synthetic=not args.no_synthetic)
+    if args.last is not None:
+        rows = rows[-args.last:] if args.last > 0 else []
+    for row in rows:
+        if args.json:
+            print(json.dumps(row, ensure_ascii=False))
+        else:
+            prompt = " ".join(str(row.get("prompt") or "").split())
+            if len(prompt) > 200:
+                prompt = prompt[:197] + "..."
+            print(f"{str(row.get('ts') or '')[:19]}  {row.get('source') or '-'}  {prompt}")
+    return 0
 
 
 def read_prompt() -> dict[str, Any]:
@@ -338,6 +381,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv if argv is not None else sys.argv[1:])
     framework = Path(__file__).resolve().parent.parent
     workspace: Path = args.workspace or framework.parent / "workspace"
+    if args.show:
+        return show(workspace, args)
     if not workspace.exists():
         return 0
     if not is_logging_enabled(workspace):
@@ -355,9 +400,11 @@ def main(argv: list[str] | None = None) -> int:
         # Fail closed: never write an unredacted prompt, never block the turn.
         prompt_text = "[REDACTION-ERROR: prompt withheld]"
 
-    log_dir = workspace / "_memory"
-    log_path = log_dir / "user-queries.jsonl"
-    log_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        log_path = machines.user_queries_path(workspace)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        return 0
 
     entry = {
         "ts": now_iso(),
@@ -377,6 +424,7 @@ def main(argv: list[str] | None = None) -> int:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
     except OSError:
         return 0
+    machines.beat(workspace, min_interval_s=60)  # "this machine is writing here"; never raises
     return 0
 
 

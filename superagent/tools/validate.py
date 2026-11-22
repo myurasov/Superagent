@@ -55,6 +55,8 @@ from typing import Any
 
 import yaml
 
+from superagent.tools.syncnames import is_sync_artifact
+
 # Files that have a top-level `<key>` whose value is a list of rows.
 LIST_FILES: dict[str, str] = {
     "todo.yaml": "tasks",
@@ -188,7 +190,8 @@ def validate_data(name: str, data: Any, framework: Path) -> list[str]:
         return errors
     if "schema_version" not in data:
         errors.append(f"{name}: missing required key 'schema_version'")
-    template_keys = get_template_keys(framework, name)
+    schema = schema_name(name)
+    template_keys = get_template_keys(framework, schema)
     if name == WATCHLIST_STATE:
         template_keys = (template_keys or set()) | WATCHLIST_STATE_TOP_KEYS
     if template_keys is not None:
@@ -199,7 +202,7 @@ def validate_data(name: str, data: Any, framework: Path) -> list[str]:
                 f"{name}: unexpected top-level keys {sorted(unexpected)} "
                 f"(template has {sorted(template_keys)})"
             )
-    list_key = LIST_FILES.get(name)
+    list_key = LIST_FILES.get(schema)
     if list_key and list_key in data:
         rows = data[list_key]
         if not isinstance(rows, list):
@@ -273,7 +276,8 @@ def known_watch_packs(framework: Path, workspace: Path | None) -> set[str]:
 
 def is_ref_name(name: str) -> bool:
     """True for `<stem>.ref.md`, matched case-insensitively (`X.Ref.MD` counts)."""
-    return name.lower().endswith(REF_SUFFIX) and len(name) > len(REF_SUFFIX)
+    return (name.lower().endswith(REF_SUFFIX) and len(name) > len(REF_SUFFIX)
+            and not is_sync_artifact(name))
 
 
 def ref_stem(name: str) -> str:
@@ -434,7 +438,7 @@ def stray_ref_warnings(workspace: Path, registry: Path) -> list[str]:
     registry_resolved = registry.resolve() if registry.exists() else registry
     for root in _sources_roots(workspace):
         for path in sorted(root.rglob("*")):
-            if not path.is_file():
+            if not path.is_file() or is_sync_artifact(path):
                 continue
             rel = path.relative_to(workspace).as_posix()
             name = path.name.lower()
@@ -513,6 +517,35 @@ def validate_file(path: Path, framework: Path) -> list[str]:
 # ------------------------------------------------ interaction-log soft checks
 
 INTERACTION_LOG = "interaction-log.yaml"
+#: Folder of the per-machine interaction-log files (`<machine>.yaml`), each
+#: checked by the rules of the single file older workspaces carry.
+INTERACTION_LOG_DIR = "interaction-log"
+
+
+def schema_name(label: str) -> str:
+    """The file name whose rules apply to `label` (a path relative to `_memory/`).
+
+    `interaction-log/<machine>.yaml` follows the `interaction-log.yaml` rules;
+    every other label is its own schema name.
+    """
+    parts = label.split("/")
+    if len(parts) == 2 and parts[0] == INTERACTION_LOG_DIR and parts[1].endswith(".yaml"):
+        return INTERACTION_LOG
+    return label
+
+
+def memory_yaml_files(memory_dir: Path) -> list[Path]:
+    """Every memory file to validate: `_memory/*.yaml` plus each machine's interaction log.
+
+    Sync conflict copies and files still arriving are left out: they are not
+    memory files (`tools/heal.py` merges or reports them).
+    """
+    files = sorted(p for p in memory_dir.glob("*.yaml") if not is_sync_artifact(p))
+    per_machine = memory_dir / INTERACTION_LOG_DIR
+    if per_machine.is_dir():
+        files.extend(sorted(p for p in per_machine.glob("*.yaml")
+                            if not is_sync_artifact(p) and not p.name.startswith(("_", "."))))
+    return files
 LEGACY_SKILL_PREFIX = "superagent-"
 CANONICAL_ILOG_KEYS = ("id", "ts", "skill")
 PREVIEW_LIMIT = 8
@@ -529,13 +562,15 @@ def skill_stems(framework: Path, workspace: Path | None) -> set[str]:
     framework_skills = framework / "skills"
     if framework_skills.is_dir():
         stems.update(
-            p.stem for p in framework_skills.glob("*.md") if not p.name.startswith("_")
+            p.stem for p in framework_skills.glob("*.md")
+            if not p.name.startswith("_") and not is_sync_artifact(p)
         )
     if workspace is not None:
         custom_skills = workspace / "_custom" / "skills"
         if custom_skills.is_dir():
             stems.update(
-                p.stem for p in custom_skills.glob("*.md") if not p.name.startswith("_")
+                p.stem for p in custom_skills.glob("*.md")
+                if not p.name.startswith("_") and not is_sync_artifact(p)
             )
     return stems
 
@@ -700,7 +735,7 @@ def warnings_for(name: str, data: Any, framework: Path, workspace: Path | None) 
     """Soft checks for one loaded memory file: interaction log, action signals, personal signals."""
     if not isinstance(data, dict):
         return []
-    if name == INTERACTION_LOG:
+    if schema_name(name) == INTERACTION_LOG:
         return check_interaction_log(
             data.get(LIST_FILES[INTERACTION_LOG]), skill_stems(framework, workspace), name
         )
@@ -743,7 +778,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Run `uv run python superagent/tools/workspace_init.py` first.", file=sys.stderr)
         return 1
 
-    yaml_files = sorted(memory_dir.glob("*.yaml"))
+    yaml_files = memory_yaml_files(memory_dir)
     if not yaml_files:
         print(f"No YAML files in {memory_dir}", file=sys.stderr)
         return 1
@@ -752,19 +787,20 @@ def main(argv: list[str] | None = None) -> int:
     total_errors = 0
     total_warnings = 0
     for path in yaml_files:
+        label = path.relative_to(memory_dir).as_posix()
         data, err = load_yaml(path)
         if err:
-            errs = [f"{path.name}: parse failed: {err}"]
+            errs = [f"{label}: parse failed: {err}"]
             warns: list[str] = []
         else:
-            errs = validate_data(path.name, data, framework)
-            warns = warnings_for(path.name, data, framework, workspace)
+            errs = validate_data(label, data, framework)
+            warns = warnings_for(label, data, framework, workspace)
         if errs:
             total_errors += len(errs)
             for e in errs:
                 print(f"  ERROR  {e}")
         else:
-            print(f"  OK     {path.name}")
+            print(f"  OK     {label}")
         total_warnings += len(warns)
         for w in warns:
             print(f"  WARN   {w}")

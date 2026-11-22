@@ -189,7 +189,8 @@ def convert_dir(
     if not root.is_dir():
         raise ConversionError(f"not a directory: {root}")
     results: list[ConversionResult] = []
-    for src in sorted(p for p in root.rglob("*") if p.is_file() and _is_heic(p)):
+    for src in sorted(p for p in root.rglob("*")
+                      if p.is_file() and _is_heic(p) and ".sync-conflict-" not in p.name):
         if dry_run:
             dest = _jpg_sibling(src)
             results.append(

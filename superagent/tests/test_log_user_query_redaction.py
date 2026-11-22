@@ -256,7 +256,7 @@ def _run_main(tmp_path: Path, monkeypatch, prompt: str, config: str | None = Non
     rc = main(["--workspace", str(workspace), "--source", "test"])
     assert rc == 0
 
-    log_path = workspace / "_memory" / "user-queries.jsonl"
+    log_path = workspace / "_memory" / "user-queries" / "testbox.jsonl"
     if not log_path.exists():
         return []
     return [json.loads(line) for line in log_path.read_text().splitlines() if line.strip()]
@@ -351,6 +351,7 @@ def test_main_respects_privacy_opt_out(tmp_path: Path, monkeypatch) -> None:
     rows = _run_main(tmp_path, monkeypatch, "what bills are due?", config=config)
     assert rows == []
     assert not (tmp_path / "workspace" / "_memory" / "user-queries.jsonl").exists()
+    assert not (tmp_path / "workspace" / "_memory" / "user-queries").exists()
 
 
 def test_main_logs_when_opt_out_absent_from_config(tmp_path: Path, monkeypatch) -> None:

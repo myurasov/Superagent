@@ -1,12 +1,12 @@
 #!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
-"""One writer for the append-only signal and interaction-log files.
+"""One writer for the append-only signal file and the interaction log.
 
-`_memory/action-signals.yaml` and `_memory/interaction-log.yaml` used to be
-appended by hand, and the row shapes drifted (`disposition` instead of
-`status`, off-enum kinds, a missing `target`, legacy-shape log rows); twice a
-hand-append broke the file's parse. New rows go through this module instead:
+`_memory/action-signals.yaml` and the interaction log used to be appended by
+hand, and the row shapes drifted (`disposition` instead of `status`, off-enum
+kinds, a missing `target`, legacy-shape log rows); twice a hand-append broke
+the file's parse. New rows go through this module instead:
 
   add     mint a `sig-YYYY-MM-DD-NNN` id (tools/next_id.py) and append a
           canonical signal row (schema: templates/memory/action-signals.yaml).
@@ -20,8 +20,17 @@ hand-append broke the file's parse. New rows go through this module instead:
           `--became-action TEXT`) or `declined` (`--declined REASON`), stamp
           `processed_at`, and append a dated line to `notes`.
   log     append a canonical interaction-log row (id / ts / skill / action /
-          summary plus the template's related_* fields); `skill` must be a
-          skill manifest stem or omitted.
+          summary plus the template's related_* fields; `--field KEY=VALUE`
+          adds a skill-specific one); `skill` must be a skill manifest stem
+          or omitted. The row goes to THIS machine's file,
+          `_memory/interaction-log/<machine>.yaml` (tools/machines.py): one
+          writer per file, so two machines can log at the same moment
+          (rules/concurrent-sessions.md). The id carries the machine's tag.
+  log-show  print the interaction log as ONE merged view, oldest first: the
+          single `interaction-log.yaml` of older workspaces (read-only
+          history) plus every machine's file. `--since`, `--skill`,
+          `--action`, `--id`, `--last N`; `--full` prints whole rows as YAML,
+          `--json` as JSON. This is the reader every skill uses.
 
 Writes are text-level, so everything else in the file stays byte-for-byte as
 it was: a new row is rendered at the indent the file already uses and inserted
@@ -42,11 +51,13 @@ CLI:
     uv run python -m superagent.tools.signals close <sig-id> --became-suggestion <st-id>
     uv run python -m superagent.tools.signals log --skill daily-update \\
         --action run_daily_briefing --summary "..."
+    uv run python -m superagent.tools.signals log-show --since 2026-11-01 --skill bills
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import os
 import re
 import stat
@@ -56,6 +67,7 @@ from typing import Any
 
 import yaml
 
+from superagent.tools import machines
 from superagent.tools.log_user_query import redact
 from superagent.tools.next_id import next_id
 from superagent.tools.validate import (
@@ -69,8 +81,12 @@ from superagent.tools.validate import (
 FRAMEWORK = Path(__file__).resolve().parent.parent
 SIGNALS_FILE = "action-signals.yaml"
 SIGNALS_KEY = "signals"
-ILOG_FILE = "interaction-log.yaml"
-ILOG_KEY = "entries"
+ILOG_FILE = machines.ILOG_LEGACY  # the pre-0.24.0 single file: read-only history
+ILOG_KEY = machines.ILOG_KEY
+#: Canonical interaction-log fields; `--field` can add others, never replace these.
+ILOG_FIELDS = ("id", "ts", "skill", "action", "summary", "related_domain", "related_project",
+               "related_asset", "related_account", "action_items", "ingestion_log_ref")
+ILOG_SKELETON = machines.ILOG_SKELETON
 #: Free-text signal fields that can quote the user; scrubbed before every write.
 REDACTED_SIGNAL_FIELDS = ("trigger_phrase", "context", "proposed_direction")
 #: Indent for the first row of a list that has none yet (the templates' style).
@@ -126,22 +142,34 @@ def _parse(text: str, name: str) -> dict[str, Any]:
     return data
 
 
-def _read(path: Path, list_key: str) -> tuple[str, dict[str, Any], list[Any]]:
-    """Return (text, parsed mapping, rows) for a file about to be rewritten; the 'before' check."""
-    text = ""
-    if path.exists():
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise CorruptFileError(f"{path.name} cannot be read ({exc}); refusing to rewrite it") from exc
-    data = _parse(text, path.name)
+def _read_text(path: Path) -> str:
+    """The file's text, "" when it does not exist. Raises CorruptFileError when unreadable."""
+    if not path.exists():
+        return ""
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise CorruptFileError(
+            f"{machines.file_label(path)} cannot be read ({exc}); refusing to rewrite it") from exc
+
+
+def parse_rows(name: str, text: str, list_key: str) -> tuple[dict[str, Any], list[Any]]:
+    """(parsed mapping, rows under `list_key`) of a memory file's text; the 'before' check."""
+    data = _parse(text, name)
     rows = data.get(list_key)
     if rows is None:
         rows = []
     if not isinstance(rows, list):
         raise CorruptFileError(
-            f"{path.name}: `{list_key}` is a {type(rows).__name__}, expected a list; refusing to rewrite it"
+            f"{name}: `{list_key}` is a {type(rows).__name__}, expected a list; refusing to rewrite it"
         )
+    return data, rows
+
+
+def _read(path: Path, list_key: str) -> tuple[str, dict[str, Any], list[Any]]:
+    """Return (text, parsed mapping, rows) for a file about to be rewritten; the 'before' check."""
+    text = _read_text(path)
+    data, rows = parse_rows(machines.file_label(path), text, list_key)
     return text, data, rows
 
 
@@ -216,24 +244,35 @@ def _atomic_write(path: Path, text: str) -> None:
     tmp.replace(path)
 
 
-def append_row(path: Path, list_key: str, row: dict[str, Any], *,
-               skeleton: str = "schema_version: 1\n", last_updated: str | None = None) -> None:
-    """Append `row` to the top-level list `list_key` of `path`, text-level and parse-checked.
+def edit_rows_text(name: str, text: str, list_key: str, *,
+                   append: list[dict[str, Any]] | None = None,
+                   replace: dict[int, dict[str, Any]] | None = None,
+                   remove: list[int] | None = None,
+                   skeleton: str = "schema_version: 1\n",
+                   last_updated: str | None = None) -> str:
+    """Return `text` with rows of the top-level list `list_key` appended, re-rendered or removed.
 
-    The row lands after the list's last row at the file's own row indent (the
-    templates' 2 when the list is empty); an empty flow list (`key: []`)
-    becomes block form. A top-level `last_updated:` line, when present, is set
-    to `last_updated`. Nothing else in the file changes. Raises
-    CorruptFileError for a broken file and WriteRefusedError when the
-    post-write check fails; the file is untouched in both cases.
+    Text-level and parse-checked, with no file access: `append` rows land
+    after the list's last row at the file's own row indent (the templates' 2
+    when the list is empty; an empty flow list `key: []` becomes block form),
+    `replace` maps a row index to its new row, `remove` lists row indexes to
+    drop. A top-level `last_updated:` line, when present, is set to
+    `last_updated`. Nothing else in the text changes. Raises CorruptFileError
+    for a broken text and WriteRefusedError when the edit cannot be applied
+    or does not read back as intended.
     """
-    text, data, rows = _read(path, list_key)
+    append, replace, remove = list(append or []), dict(replace or {}), sorted(set(remove or []))
+    data, rows = parse_rows(name, text, list_key)
     if not text.strip():
         text = skeleton
     if not text.endswith("\n"):
         text += "\n"
     lines = text.splitlines(keepends=True)
     block = _list_block(lines, list_key)
+    touched = sorted(set(replace) | set(remove))
+    if touched and (block is None or not all(0 <= i < len(rows) for i in touched)):
+        missing = next((i for i in touched if not 0 <= i < len(rows)), touched[0])
+        raise WriteRefusedError(f"{name}: row {missing} not found")
     if block is None:
         lines.append(f"{list_key}:\n")
         block = (len(lines) - 1, len(lines))
@@ -242,16 +281,44 @@ def append_row(path: Path, list_key: str, row: dict[str, Any], *,
         lines[k] = f"{list_key}:\n"
     indent, starts = _row_layout(lines, k, end)
     if len(starts) != len(rows):
-        raise WriteRefusedError(f"{path.name}: found {len(starts)} row(s) in the text but {len(rows)} "
-                                "parsed; refusing a text-level append")
-    content = [j for j in range(k, end) if not _is_filler(lines[j])]
-    insert_at = (content[-1] if content else k) + 1
-    lines[insert_at:insert_at] = _render_row(row, indent)
+        raise WriteRefusedError(f"{name}: found {len(starts)} row(s) in the text but {len(rows)} "
+                                f"parsed; refusing a text-level {'edit' if touched else 'append'}")
+    expected: list[Any] = list(rows)
+    for index in reversed(touched):  # last row first, so earlier line numbers stay valid
+        first = starts[index]
+        last = starts[index + 1] if index + 1 < len(starts) else end
+        while last > first + 1 and _is_filler(lines[last - 1]):
+            last -= 1
+        rendered = [] if index in remove else _render_row(replace[index], indent)
+        lines[first:last] = rendered
+        end += len(rendered) - (last - first)
+        if index in remove:
+            del expected[index]
+        else:
+            expected[index] = replace[index]
+    if append:
+        content = [j for j in range(k, end) if not _is_filler(lines[j])]
+        insert_at = (content[-1] if content else k) + 1
+        lines[insert_at:insert_at] = [ln for row in append for ln in _render_row(row, indent)]
+        expected.extend(append)
     new_text = "".join(lines)
     if last_updated is not None:
         new_text = _set_top_scalar(new_text, "last_updated", last_updated)
-    _check_rows(path.name, new_text, list_key, [*rows, row], data)
-    _atomic_write(path, new_text)
+    _check_rows(name, new_text, list_key, expected, data)
+    return new_text
+
+
+def append_row(path: Path, list_key: str, row: dict[str, Any], *,
+               skeleton: str = "schema_version: 1\n", last_updated: str | None = None) -> None:
+    """Append `row` to the top-level list `list_key` of `path`, text-level and parse-checked.
+
+    See `edit_rows_text` for what changes in the file. Raises CorruptFileError
+    for a broken file and WriteRefusedError when the post-write check fails;
+    the file is untouched in both cases.
+    """
+    text = _read_text(path)
+    _atomic_write(path, edit_rows_text(machines.file_label(path), text, list_key, append=[row],
+                                       skeleton=skeleton, last_updated=last_updated))
 
 
 def replace_row(path: Path, list_key: str, index: int, new_row: dict[str, Any], *,
@@ -260,28 +327,9 @@ def replace_row(path: Path, list_key: str, index: int, new_row: dict[str, Any], 
 
     Same before / after checks as `append_row`.
     """
-    text, data, rows = _read(path, list_key)
-    lines = text.splitlines(keepends=True)
-    block = _list_block(lines, list_key)
-    if block is None or not 0 <= index < len(rows):
-        raise WriteRefusedError(f"{path.name}: row {index} not found")
-    k, end = block
-    indent, starts = _row_layout(lines, k, end)
-    if len(starts) != len(rows):
-        raise WriteRefusedError(f"{path.name}: found {len(starts)} row(s) in the text but {len(rows)} "
-                                "parsed; refusing a text-level edit")
-    first = starts[index]
-    last = starts[index + 1] if index + 1 < len(starts) else end
-    while last > first + 1 and _is_filler(lines[last - 1]):
-        last -= 1
-    lines[first:last] = _render_row(new_row, indent)
-    new_text = "".join(lines)
-    if last_updated is not None:
-        new_text = _set_top_scalar(new_text, "last_updated", last_updated)
-    expected = list(rows)
-    expected[index] = new_row
-    _check_rows(path.name, new_text, list_key, expected, data)
-    _atomic_write(path, new_text)
+    text = _read_text(path)
+    _atomic_write(path, edit_rows_text(machines.file_label(path), text, list_key,
+                                       replace={index: new_row}, last_updated=last_updated))
 
 
 # --------------------------------------------------------------------- signals
@@ -384,6 +432,7 @@ def add_signal(workspace: Path, *, target: str, kind: str, trigger_phrase: str, 
                      source_skill=source_skill, source_turn=source_turn)
     append_row(path, SIGNALS_KEY, row, skeleton="schema_version: 1\nlast_updated: null\n",
                last_updated=ts)
+    machines.beat(workspace, min_interval_s=60)
     return sid
 
 
@@ -429,6 +478,7 @@ def close_signal(workspace: Path, sid: str, *, became_suggestion: str | None = N
     prior = old.get("notes")
     new["notes"] = f"{str(prior).rstrip()} {line}" if prior not in (None, "") else line
     replace_row(path, SIGNALS_KEY, index, new, last_updated=ts)
+    machines.beat(workspace, min_interval_s=60)
     return new
 
 
@@ -438,9 +488,14 @@ def ilog_row(*, rid: str, ts: str, skill: str | None, action: str, summary: str,
              related_domain: str | None = None, related_project: str | None = None,
              related_asset: str | None = None, related_account: str | None = None,
              action_items: list[str] | None = None,
-             ingestion_log_ref: str | None = None) -> dict[str, Any]:
-    """A canonical interaction-log row (templates/memory/interaction-log.yaml field order)."""
-    return {
+             ingestion_log_ref: str | None = None,
+             extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """A canonical interaction-log row (templates/memory/interaction-log.yaml field order).
+
+    `extra` appends skill-specific fields after the canonical ones (a release
+    row's `from_version`); a key that names a canonical field is refused.
+    """
+    row: dict[str, Any] = {
         "id": rid,
         "ts": ts,
         "skill": skill,
@@ -453,30 +508,68 @@ def ilog_row(*, rid: str, ts: str, skill: str | None, action: str, summary: str,
         "action_items": list(action_items or []),
         "ingestion_log_ref": ingestion_log_ref,
     }
+    for key, value in (extra or {}).items():
+        if key in row:
+            raise ValueError(f"--field cannot set the canonical field {key!r}")
+        row[key] = value
+    return row
+
+
+def interaction_log_path(workspace: Path) -> Path:
+    """This machine's interaction-log file, the only one `log` writes."""
+    return machines.interaction_log_path(workspace)
 
 
 def append_interaction_log(workspace: Path, *, skill: str | None, action: str, summary: str,
                            ts: str | None = None, **related: Any) -> str:
-    """Append one canonical interaction-log row; return its new `ilog-` id.
+    """Append one canonical interaction-log row to this machine's file; return its new `ilog-` id.
 
     `skill` must be a skill manifest stem (no `superagent-` prefix) or None
     for a non-skill note. `related` takes the template's related_* /
-    action_items / ingestion_log_ref fields.
+    action_items / ingestion_log_ref fields and `extra` (a mapping of
+    skill-specific fields).
     """
     if skill is not None:
         _check_skill(skill, workspace)
     if not action.strip() or not summary.strip():
         raise ValueError("action and summary must be non-empty")
     ts = ts or now_iso()
-    path = workspace / "_memory" / ILOG_FILE
+    path = interaction_log_path(workspace)
     _read(path, ILOG_KEY)
-    rid = next_id("ilog", ts[:10], path)
+    # The single file of older workspaces is scanned too: a row someone still
+    # appended there with this machine's tag must not be minted a second time.
+    rid = next_id("ilog", ts[:10], [path, workspace / "_memory" / ILOG_FILE])
     row = ilog_row(rid=rid, ts=ts, skill=skill, action=action.strip(), summary=summary.strip(), **related)
-    append_row(path, ILOG_KEY, row)
+    append_row(path, ILOG_KEY, row, skeleton=ILOG_SKELETON)
+    machines.beat(workspace, min_interval_s=60)
     return rid
 
 
+def read_interaction_log(workspace: Path, **filters: Any) -> list[dict[str, Any]]:
+    """The merged interaction log, oldest first (see `machines.read_interaction_log`)."""
+    return machines.read_interaction_log(workspace, **filters)
+
+
 # ------------------------------------------------------------------------- CLI
+
+def _since(value: str) -> dt.datetime:
+    """argparse type: an ISO 8601 date or datetime; a bare date means its local midnight."""
+    parsed = machines.parse_ts(value)
+    if parsed is None:
+        raise argparse.ArgumentTypeError(f"not an ISO 8601 date or datetime: {value!r}")
+    return parsed
+
+
+def _field(value: str) -> tuple[str, Any]:
+    """argparse type: `KEY=VALUE`; the value is read as YAML (`true`, `3`, `null`, text)."""
+    key, sep, raw = value.partition("=")
+    if not sep or not re.fullmatch(r"[a-z][a-z0-9_]*", key):
+        raise argparse.ArgumentTypeError(f"expected KEY=VALUE with a snake_case key: {value!r}")
+    try:
+        return key, yaml.safe_load(raw)
+    except yaml.YAMLError:
+        return key, raw
+
 
 def _iso(value: str) -> str:
     """argparse type: an ISO 8601 datetime WITH offset."""
@@ -530,7 +623,21 @@ def build_parser() -> argparse.ArgumentParser:
         log.add_argument(f"--related-{field}", default=None)
     log.add_argument("--action-item", action="append", default=None, dest="action_items")
     log.add_argument("--ingestion-log-ref", default=None)
+    log.add_argument("--field", action="append", default=None, type=_field, dest="fields",
+                     metavar="KEY=VALUE", help="A skill-specific extra field; repeatable.")
     log.add_argument("--ts", type=_iso, default=None)
+
+    show = sub.add_parser("log-show", parents=[common],
+                          help="Print the merged interaction log (every machine), oldest first.")
+    show.add_argument("--since", type=_since, default=None, help="ISO date or datetime.")
+    show.add_argument("--skill", default=None, help="Rows of one skill stem.")
+    show.add_argument("--action", default=None, help="Rows whose action contains this text.")
+    show.add_argument("--id", default=None, dest="row_id", help="One row, by its id.")
+    show.add_argument("--last", type=int, default=None, metavar="N", help="Only the newest N rows.")
+    how = show.add_mutually_exclusive_group()
+    how.add_argument("--full", action="store_true", help="Whole rows, as YAML.")
+    how.add_argument("--json", action="store_true", help="Whole rows, as JSON.")
+    how.add_argument("--count", action="store_true", help="Only the number of matching rows.")
     return parser
 
 
@@ -542,11 +649,52 @@ def _list_line(row: dict[str, Any]) -> str:
             f"{str(row.get('captured_at') or '')[:10]}  {trigger}")
 
 
+def _log_line(row: dict[str, Any]) -> str:
+    """One merged-log row on one line: id, time, skill, action, start of the summary."""
+    when = str(row.get("ts") or row.get("timestamp") or "")[:16].replace("T", " ")
+    what = row.get("action") or row.get("subject") or row.get("type") or ""
+    summary = " ".join(str(row.get("summary") or "").split())
+    if len(summary) > 100:
+        summary = summary[:97] + "..."
+    return f"{row.get('id') or '-'}  {when}  {row.get('skill') or '-'}  {what}  {summary}"
+
+
+def show_log(workspace: Path, *, since: dt.datetime | None = None, skill: str | None = None,
+             action: str | None = None, row_id: str | None = None, last: int | None = None,
+             full: bool = False, as_json: bool = False, count: bool = False) -> int:
+    """Print the merged interaction log; exit code 1 when a file could not be read."""
+    errors: list[str] = []
+    rows = machines.read_interaction_log(workspace, since=since, skill=skill, action=action,
+                                         errors=errors)
+    if row_id is not None:
+        rows = [r for r in rows if r.get("id") == row_id]
+    if last is not None:
+        rows = rows[-last:] if last > 0 else []
+    if count:
+        print(len(rows))
+    elif as_json:
+        print(json.dumps(rows, indent=2, default=str, ensure_ascii=False))
+    elif full:
+        if rows:
+            print(yaml.safe_dump(rows, sort_keys=False, allow_unicode=True,
+                                 default_flow_style=False, width=100), end="")
+    else:
+        for row in rows:
+            print(_log_line(row))
+    for problem in errors:
+        print(f"signals: skipped {problem}", file=sys.stderr)
+    return 1 if errors else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Entry point."""
     args = build_parser().parse_args(argv if argv is not None else sys.argv[1:])
     workspace: Path = args.workspace or default_workspace()
     try:
+        if args.command == "log-show":
+            return show_log(workspace, since=args.since, skill=args.skill, action=args.action,
+                            row_id=args.row_id, last=args.last, full=args.full,
+                            as_json=args.json, count=args.count)
         if args.command == "add":
             print(add_signal(workspace, target=args.target, kind=args.kind, trigger_phrase=args.trigger,
                              context=args.context, artifact_ref=args.artifact_ref,
@@ -571,7 +719,8 @@ def main(argv: list[str] | None = None) -> int:
                 workspace, skill=args.skill, action=args.action, summary=args.summary, ts=args.ts,
                 related_domain=args.related_domain, related_project=args.related_project,
                 related_asset=args.related_asset, related_account=args.related_account,
-                action_items=args.action_items, ingestion_log_ref=args.ingestion_log_ref))
+                action_items=args.action_items, ingestion_log_ref=args.ingestion_log_ref,
+                extra=dict(args.fields or [])))
     except ValueError as exc:
         print(f"signals: {exc}", file=sys.stderr)
         return 2

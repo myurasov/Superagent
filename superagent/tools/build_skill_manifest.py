@@ -31,6 +31,8 @@ from typing import Any
 
 import yaml
 
+from superagent.tools.syncnames import is_sync_artifact
+
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 H2_RE = re.compile(r"^##\s+(.*)$", re.MULTILINE)
 H3_RE = re.compile(r"^###\s+(.*)$", re.MULTILINE)
@@ -138,7 +140,7 @@ def collect_skills(framework: Path, workspace: Path | None) -> list[dict[str, An
     root = framework.resolve().parent
     framework_dir = framework / "skills"
     if framework_dir.exists():
-        for path in sorted(framework_dir.glob("*.md")):
+        for path in sorted(p for p in framework_dir.glob("*.md") if not is_sync_artifact(p)):
             row = parse_skill(path, root)
             if row is not None:
                 row["origin"] = "framework"
@@ -146,7 +148,7 @@ def collect_skills(framework: Path, workspace: Path | None) -> list[dict[str, An
     if workspace is not None:
         custom_dir = workspace / "_custom" / "skills"
         if custom_dir.exists():
-            for path in sorted(custom_dir.glob("*.md")):
+            for path in sorted(p for p in custom_dir.glob("*.md") if not is_sync_artifact(p)):
                 row = parse_skill(path, root)
                 if row is not None:
                     row["origin"] = "custom"

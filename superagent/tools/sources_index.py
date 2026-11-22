@@ -59,6 +59,7 @@ from typing import Any
 
 import yaml
 
+from superagent.tools.syncnames import is_sync_artifact
 from superagent.tools.validate import DEFAULT_WATCHLIST_PATH, META_SUFFIX, REF_SUFFIX
 
 # ---------------------------------------------------------------------------
@@ -252,6 +253,7 @@ def companion_document(sidecar_path: Path) -> Path | None:
         siblings = sorted(
             p for p in parent.iterdir()
             if p.name != sidecar_path.name and _is_document(p) and p.stem == stem
+            and not is_sync_artifact(p)
         )
     except OSError:
         return None
@@ -359,8 +361,8 @@ def walk_sources(workspace: Path, config: dict[str, Any] | None = None) -> list[
                 continue
             if path.name in RESERVED_NAMES:
                 continue
-            if path.name.startswith("."):
-                continue
+            if path.name.startswith(".") or is_sync_artifact(path):
+                continue  # dotfiles; sync conflict copies and files still arriving
             if any(part == LEGACY_CACHE_DIRNAME for part in path.relative_to(root).parts):
                 continue
             files.append(path)
@@ -373,7 +375,7 @@ def max_mtime(workspace: Path, config: dict[str, Any] | None = None) -> dt.datet
     newest: dt.datetime | None = None
     for root in iter_source_roots(workspace):
         for path in root.rglob("*"):
-            if not path.is_file():
+            if not path.is_file() or is_sync_artifact(path):
                 continue
             try:
                 m = dt.datetime.fromtimestamp(path.stat().st_mtime).astimezone()

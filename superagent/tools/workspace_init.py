@@ -64,6 +64,11 @@ DEFAULT_DOMAINS = [
 # the guard holds even while the old template file lingers in the tree.
 RETIRED_MEMORY_TEMPLATES = frozenset({"data-sources.yaml"})
 
+# Templates that define a row shape and are NOT copied into `_memory/`: the
+# interaction log is one file per machine (`_memory/interaction-log/<machine>.yaml`),
+# created by `tools/signals.py log` on its first row.
+SHAPE_ONLY_MEMORY_TEMPLATES = frozenset({"interaction-log.yaml"})
+
 # Watcher registry folder (relative to the workspace) and the memory singleton
 # the watchlist tool owns. Both mirror `config.preferences.watchlist` defaults.
 WATCHLIST_DIRNAME = "Sources/Watchlist"
@@ -251,8 +256,10 @@ def init_memory(workspace: Path, framework: Path, dry_run: bool, log: list[str])
     safe_mkdir(dst_dir, dry_run=dry_run, log=log)
     copied = 0
     for src in sorted(src_dir.glob("*.yaml")):
-        if src.name in RETIRED_MEMORY_TEMPLATES:
+        if src.name in RETIRED_MEMORY_TEMPLATES or src.name in SHAPE_ONLY_MEMORY_TEMPLATES:
             continue
+        if ".sync-conflict-" in src.name:
+            continue  # a sync conflict copy of a template is not a template
         if safe_copy(src, dst_dir / src.name, dry_run=dry_run, log=log):
             copied += 1
     return copied
@@ -343,8 +350,10 @@ def init_internal_dirs(workspace: Path, dry_run: bool, log: list[str]) -> int:
     """Create the `_memory/` sub-directories whose writers ship today.
 
     Eager (created here): `sensitive/` (sensitive-tier root, written by
-    capture skills + ingestors) and `events/` (events stream, written by
-    `tools/log_window.py`).
+    capture skills + ingestors), `events/` (events stream, written by
+    `tools/log_window.py`), and the three per-machine folders of
+    `tools/machines.py`: `interaction-log/` and `user-queries/` (one log file
+    per machine) and `machines/` (one beat file per machine).
 
     Reserved (NOT created here): `_briefings/`. Would be created by a writer on
     first use (the writers all `mkdir(parents=True, exist_ok=True)`),
@@ -355,6 +364,9 @@ def init_internal_dirs(workspace: Path, dry_run: bool, log: list[str]) -> int:
     internal = [
         "_memory/sensitive",
         "_memory/events",
+        "_memory/interaction-log",
+        "_memory/user-queries",
+        "_memory/machines",
     ]
     touched = 0
     for sub in internal:

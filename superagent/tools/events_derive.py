@@ -7,7 +7,9 @@ Implements st-2026-08-31-010 option (c). The quarterly partitions under
 `_memory/events/<YYYY-Qn>.yaml` are derived data — no skill appends to them
 per-write. This module rebuilds every partition from the two sources of truth:
 
-  1. `_memory/interaction-log.yaml` — both row schemas: old-format rows
+  1. The interaction log (the single `_memory/interaction-log.yaml` of older
+     workspaces plus every `_memory/interaction-log/<machine>.yaml`, read as
+     one merged view) — both row schemas: old-format rows
      (timestamp / type / subject, no id) and new-format rows
      (id / ts / skill / action / summary / related_*).
   2. `Domains/*/history.md` + `Projects/*/history.md` (plus archived copies
@@ -64,6 +66,8 @@ from superagent.tools.log_window import (
     quarter_for,
     save_yaml,
 )
+from superagent.tools.machines import interaction_log_files, interaction_log_rows
+from superagent.tools.syncnames import is_sync_artifact
 
 SUBJECT_MAX = 120
 SUMMARY_MAX = 600
@@ -123,7 +127,7 @@ PARTITION_HEADER = (
     "# [Do not change manually — managed by Superagent]\n"
     "# Superagent events partition — DERIVED VIEW.\n"
     "# Rebuilt wholesale by `tools/events_derive.py rebuild` from\n"
-    "# `_memory/interaction-log.yaml` + Domain/Project `history.md`\n"
+    "# the interaction log + Domain/Project `history.md`\n"
     "# (per contracts/events-stream.md). Rows carrying `legacy: true`\n"
     "# are frozen byte-verbatim; every other row is regenerated.\n"
     "\n"
@@ -218,11 +222,14 @@ def history_files(workspace: Path) -> list[Path]:
     return [f for f in files if f.is_file()]
 
 
+def partition_files(root: Path) -> list[Path]:
+    """The partition files in `_memory/events/`, without sync conflict copies or temp files."""
+    return sorted(p for p in root.glob("*.yaml") if not is_sync_artifact(p))
+
+
 def source_files(workspace: Path) -> list[Path]:
-    files = []
-    ilog = workspace / "_memory" / "interaction-log.yaml"
-    if ilog.exists():
-        files.append(ilog)
+    """Every source of truth: each interaction-log file, then the history files."""
+    files = list(interaction_log_files(workspace))
     files.extend(history_files(workspace))
     return files
 
@@ -287,7 +294,7 @@ def collect_legacy(workspace: Path) -> tuple[dict[str, list[tuple[dict[str, Any]
     root = events_root(workspace)
     if not root.exists():
         return legacy, watermark
-    for path in sorted(root.glob("*.yaml")):
+    for path in partition_files(root):
         for chunk in split_partition_items(path.read_text()):
             row = parse_chunk(chunk)
             if not row or row.get("legacy") is not True:
@@ -307,7 +314,7 @@ def count_unflagged_hand_rows(workspace: Path) -> int:
     if not root.exists():
         return 0
     n = 0
-    for path in sorted(root.glob("*.yaml")):
+    for path in partition_files(root):
         data = load_yaml(path)
         if not isinstance(data, dict) or data.get("derived") is True:
             continue
@@ -321,13 +328,16 @@ def count_unflagged_hand_rows(workspace: Path) -> int:
 
 def derive_from_interaction_log(workspace: Path, watermark: dt.datetime | None,
                                 skip_kinds: list[str]) -> list[tuple]:
-    """Yield (sort_key, event_dict) for post-watermark interaction-log rows."""
-    data = load_yaml(workspace / "_memory" / "interaction-log.yaml") or {}
-    entries = data.get("entries") or []
+    """Yield (sort_key, event_dict) for post-watermark interaction-log rows.
+
+    Reads the merged log: the single file of older workspaces plus every
+    machine's file (`tools/machines.py`). A row's `source` anchor names the
+    file it sits in, relative to `_memory/`.
+    """
+    memory = workspace / "_memory"
     out: list[tuple] = []
-    for i, row in enumerate(entries):
-        if not isinstance(row, dict):
-            continue
+    for path, i, row in interaction_log_rows(workspace):
+        origin = path.relative_to(memory).as_posix()
         raw_ts = row.get("ts") or row.get("timestamp")
         ts = parse_iso_dt(raw_ts)
         if ts is None or (watermark is not None and ts <= watermark):
@@ -349,9 +359,9 @@ def derive_from_interaction_log(workspace: Path, watermark: dt.datetime | None,
             "subject": subject,
             "summary": clip_summary(row.get("summary") or ""),
             "entities": entities_for(row),
-            "source": f"interaction-log.yaml#{anchor}",
+            "source": f"{origin}#{anchor}",
         }
-        out.append(((ts, 0, ("interaction-log.yaml", i)), event))
+        out.append(((ts, 0, (origin, i)), event))
     return out
 
 
@@ -547,7 +557,7 @@ def rebuild(workspace: Path, force: bool = False,
     # Remove fully-derived partitions whose content no longer derives.
     root = events_root(workspace)
     if root.exists():
-        for path in sorted(root.glob("*.yaml")):
+        for path in partition_files(root):
             if path.stem not in quarters:
                 path.unlink()
                 changed = True

@@ -17,6 +17,22 @@ if str(REPO_ROOT) not in sys.path:
 FRAMEWORK_DIR = REPO_ROOT / "superagent"
 
 
+#: The machine name every test runs under (tools/machines.py); new ids carry it.
+TEST_MACHINE = "testbox"
+
+
+@pytest.fixture(autouse=True)
+def _machine_local_sandbox(monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory) -> None:
+    """Keep every test off the real `~/.superagent/` and on one fixed machine name.
+
+    Tools write machine-local state (the machine's name, the on-open nag
+    marker, the conflict sweep's trash) under `$SUPERAGENT_HOME`; a test that
+    needs another home or name sets its own with `monkeypatch`.
+    """
+    monkeypatch.setenv("SUPERAGENT_HOME", str(tmp_path_factory.mktemp("sa-home")))
+    monkeypatch.setenv("SUPERAGENT_MACHINE", TEST_MACHINE)
+
+
 @pytest.fixture(scope="session")
 def framework_dir() -> Path:
     """Absolute path to the superagent/ framework directory."""

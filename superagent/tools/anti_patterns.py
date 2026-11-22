@@ -35,6 +35,8 @@ from typing import Any
 
 import yaml
 
+from superagent.tools.syncnames import is_sync_artifact
+
 _FRAMEWORK_ROOT = Path(__file__).resolve().parent.parent
 _RULES_FILE = _FRAMEWORK_ROOT / "rules" / "anti-patterns.yaml"
 
@@ -151,7 +153,7 @@ def scan_dir(
         return {}
     out: dict[str, list[dict[str, Any]]] = {}
     for path in sorted(directory.glob("*.md")):
-        if path.name.startswith("_"):
+        if path.name.startswith("_") or is_sync_artifact(path):
             continue
         hits = scan_file(path, patterns=patterns, mitigations=mitigations)
         if hits:

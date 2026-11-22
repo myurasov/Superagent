@@ -30,6 +30,8 @@ import yaml
 
 SKIP_DEFAULT = ("interaction-log.yaml", "ingestion-log.yaml",
                 "user-queries.jsonl", "events.yaml")
+#: Folders of per-machine append-only logs (tools/machines.py); never audited.
+SKIP_DIRS = ("interaction-log", "user-queries")
 
 
 def now_iso() -> str:
@@ -71,7 +73,7 @@ def record_change(workspace: Path, file_path: Path, kind: str,
     """Append one audit row. Returns True if written."""
     if not is_audit_enabled(workspace):
         return False
-    if file_path.name in skip_files(workspace):
+    if file_path.name in skip_files(workspace) or file_path.parent.name in SKIP_DIRS:
         return False
     h = history_path(file_path)
     h.parent.mkdir(parents=True, exist_ok=True)
@@ -116,7 +118,7 @@ def list_files_with_audit(workspace: Path) -> list[Path]:
     memory = workspace / "_memory"
     if not memory.exists():
         return []
-    return sorted(memory.glob("*.history.jsonl"))
+    return sorted(p for p in memory.glob("*.history.jsonl") if ".sync-conflict-" not in p.name)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

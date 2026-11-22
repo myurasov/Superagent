@@ -29,6 +29,8 @@ from typing import Any
 
 import yaml
 
+from superagent.tools.syncnames import is_sync_artifact
+
 
 def now_iso() -> str:
     return dt.datetime.now().astimezone().isoformat(timespec="seconds")
@@ -135,7 +137,7 @@ def update_index(workspace: Path) -> None:
     if not root.exists():
         return
     partitions: list[dict[str, Any]] = []
-    for path in sorted(root.glob("*.yaml")):
+    for path in sorted(p for p in root.glob("*.yaml") if not is_sync_artifact(p)):
         meta = load_yaml(path)
         meta = meta if isinstance(meta, dict) else {}
         rows = [r for r in (meta.get("events") or []) if isinstance(r, dict)]

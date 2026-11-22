@@ -132,6 +132,8 @@ def discover_skills() -> list[dict]:
         except Exception:
             continue
         for f in files:
+            if ".sync-conflict-" in f.name:
+                continue  # a sync conflict copy is not a skill (tools/syncnames.py)
             if f.name.startswith("_"):
                 continue
             skill = parse_skill(f)

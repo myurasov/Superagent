@@ -3,6 +3,8 @@
 """Tests for `tools/signals.py`: the one writer for action-signal and interaction-log rows."""
 from __future__ import annotations
 
+import datetime as dt
+import json
 import stat
 from pathlib import Path
 
@@ -82,14 +84,14 @@ def _add(ws: Path, **over) -> str:
 
 def test_add_on_a_fresh_workspace_writes_the_canonical_row(initialized_workspace: Path) -> None:
     sid = _add(initialized_workspace)
-    assert sid == "sig-2026-10-08-001"
+    assert sid == "sig-2026-10-08-testbox-001"
     rows = _rows(initialized_workspace)
     assert len(rows) == 1
     assert list(rows[0]) == SIGNAL_KEYS
     assert rows[0]["status"] == "captured" and rows[0]["captured_at"] == TS
     assert check_action_signals(yaml.safe_load(_path(initialized_workspace).read_text())["signals"]) == []
     text = _path(initialized_workspace).read_text()
-    assert "\n  - id: sig-2026-10-08-001\n" in text, "template indent (2) kept"
+    assert "\n  - id: sig-2026-10-08-testbox-001\n" in text, "template indent (2) kept"
     assert yaml.safe_load(text)["last_updated"] == TS
 
 
@@ -100,13 +102,13 @@ def test_add_changes_nothing_else_in_the_file(tmp_path: Path) -> None:
     expected_prefix = HAND_FILE.replace("'2026-10-01T10:00:00-07:00'\nsignals",
                                         f"'{TS}'\nsignals", 1)
     assert new.startswith(expected_prefix), "every pre-existing byte survives (bar last_updated)"
-    assert new[len(expected_prefix):].startswith("- id: sig-2026-10-08-001\n"), "file's own indent (0)"
+    assert new[len(expected_prefix):].startswith("- id: sig-2026-10-08-testbox-001\n"), "file's own indent (0)"
 
 
 def test_add_mints_sequential_ids(tmp_path: Path) -> None:
     ws = _hand_ws(tmp_path)
-    assert [_add(ws), _add(ws)] == ["sig-2026-10-08-001", "sig-2026-10-08-002"]
-    assert [r["id"] for r in _rows(ws)][-2:] == ["sig-2026-10-08-001", "sig-2026-10-08-002"]
+    assert [_add(ws), _add(ws)] == ["sig-2026-10-08-testbox-001", "sig-2026-10-08-testbox-002"]
+    assert [r["id"] for r in _rows(ws)][-2:] == ["sig-2026-10-08-testbox-001", "sig-2026-10-08-testbox-002"]
 
 
 def test_add_redacts_free_text(tmp_path: Path) -> None:
@@ -138,7 +140,7 @@ def test_add_turns_an_empty_flow_list_into_block_form(tmp_path: Path) -> None:
     ws = _hand_ws(tmp_path, "schema_version: 1\nlast_updated: null\nsignals: []\n")
     _add(ws)
     text = _path(ws).read_text()
-    assert "signals:\n  - id: sig-2026-10-08-001\n" in text
+    assert "signals:\n  - id: sig-2026-10-08-testbox-001\n" in text
     assert len(_rows(ws)) == 1
 
 
@@ -151,10 +153,15 @@ def test_add_keeps_the_file_mode(tmp_path: Path) -> None:
 
 # ------------------------------------------------------------ refusals
 
+def _ilog_path(ws: Path) -> Path:
+    """This machine's interaction-log file (the test machine is `testbox`)."""
+    return ws / "_memory" / "interaction-log" / "testbox.yaml"
+
+
 def _ilog_ws(tmp_path: Path, text: str) -> Path:
     ws = tmp_path / "ws"
-    (ws / "_memory").mkdir(parents=True)
-    (ws / "_memory" / "interaction-log.yaml").write_text(text)
+    _ilog_path(ws).parent.mkdir(parents=True)
+    _ilog_path(ws).write_text(text)
     return ws
 
 
@@ -180,7 +187,7 @@ def test_log_refuses_a_broken_file(tmp_path: Path) -> None:
     ws = _ilog_ws(tmp_path, corrupt)
     with pytest.raises(sg.CorruptFileError, match="line "):
         sg.append_interaction_log(ws, skill="todo", action="add_task", summary="s", ts=TS)
-    assert (ws / "_memory" / "interaction-log.yaml").read_text() == corrupt
+    assert _ilog_path(ws).read_text() == corrupt
 
 
 def test_text_layout_it_cannot_follow_is_refused(tmp_path: Path) -> None:
@@ -271,14 +278,120 @@ def test_log_appends_a_canonical_row(initialized_workspace: Path, framework_dir:
     rid = sg.append_interaction_log(initialized_workspace, skill="todo", action="add_task",
                                     summary="added a P1 task", ts=TS, related_domain="home",
                                     action_items=["follow up"])
-    assert rid == "ilog-2026-10-08-001"
-    data = yaml.safe_load((initialized_workspace / "_memory" / "interaction-log.yaml").read_text())
-    rows = [r for r in data["entries"] if r.get("id")]
+    assert rid == "ilog-2026-10-08-testbox-001"
+    assert not (initialized_workspace / "_memory" / "interaction-log.yaml").exists(), (
+        "a new workspace has no single log file: the log is one file per machine")
+    text = _ilog_path(initialized_workspace).read_text()
+    assert text.startswith("# [Do not change manually"), "created with its header"
+    rows = [r for r in yaml.safe_load(text)["entries"] if r.get("id")]
     assert list(rows[-1]) == ILOG_KEYS
     assert rows[-1]["related_domain"] == "home" and rows[-1]["action_items"] == ["follow up"]
     assert check_interaction_log(rows, skill_stems(framework_dir, initialized_workspace)) == []
     assert sg.append_interaction_log(initialized_workspace, skill=None, action="note",
-                                     summary="non-skill note", ts=TS) == "ilog-2026-10-08-002"
+                                     summary="non-skill note", ts=TS) == "ilog-2026-10-08-testbox-002"
+    beat = initialized_workspace / "_memory" / "machines" / "testbox.json"
+    assert beat.is_file(), "a write marks this machine as active here"
+
+
+def test_log_never_touches_the_single_file_of_an_older_workspace(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    (ws / "_memory").mkdir(parents=True)
+    legacy = ws / "_memory" / "interaction-log.yaml"
+    old = ("schema_version: 1\nentries:\n"
+           "  - id: ilog-2026-10-08-001\n    ts: '2026-10-08T08:00:00-07:00'\n    skill: todo\n"
+           "    action: add_task\n    summary: before the split\n"
+           "  - id: ilog-2026-10-08-testbox-004\n    ts: '2026-10-08T08:30:00-07:00'\n    skill: todo\n"
+           "    action: add_task\n    summary: hand-appended to the old file with the new id shape\n")
+    legacy.write_text(old)
+    rid = sg.append_interaction_log(ws, skill="todo", action="add_task", summary="after", ts=TS)
+    assert rid == "ilog-2026-10-08-testbox-005", "ids in the old file with this machine's tag are counted"
+    assert legacy.read_text() == old, "read-only history"
+    assert [r["id"] for r in sg.read_interaction_log(ws)] == [
+        "ilog-2026-10-08-001", "ilog-2026-10-08-testbox-004", "ilog-2026-10-08-testbox-005"]
+
+
+def test_log_extra_fields_follow_the_canonical_ones(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    (ws / "_memory").mkdir(parents=True)
+    assert sg.main(["log", "--workspace", str(ws), "--skill", "release", "--action", "release",
+                    "--summary", "cut 1.2.3", "--field", "to_version=1.2.3", "--field", "pushed=false",
+                    "--ts", TS]) == 0
+    row = yaml.safe_load(_ilog_path(ws).read_text())["entries"][0]
+    assert list(row) == [*ILOG_KEYS, "to_version", "pushed"]
+    assert row["to_version"] == "1.2.3" and row["pushed"] is False
+    assert sg.main(["log", "--workspace", str(ws), "--action", "a", "--summary", "s",
+                    "--field", "summary=override"]) == 2, "a canonical field cannot be replaced"
+    with pytest.raises(SystemExit):
+        sg.main(["log", "--workspace", str(ws), "--action", "a", "--summary", "s", "--field", "noequals"])
+
+
+def _two_machine_ws(tmp_path: Path) -> Path:
+    """An older single file plus two machines' files, written out of time order."""
+    ws = tmp_path / "ws"
+    folder = ws / "_memory" / "interaction-log"
+    folder.mkdir(parents=True)
+    (ws / "_memory" / "interaction-log.yaml").write_text(
+        "schema_version: 1\nentries:\n"
+        "  - id: null\n    ts: null\n    skill: null\n    action: ''\n    summary: ''\n"
+        "  - timestamp: '2026-10-01T09:00:00-07:00'\n    type: note\n    subject: legacy row\n"
+        "    summary: old shape\n"
+        "  - id: ilog-2026-10-08-001\n    ts: '2026-10-08T12:00:00-07:00'\n    skill: bills\n"
+        "    action: mark_bill_paid\n    summary: paid\n")
+    (folder / "laptop.yaml").write_text(
+        "schema_version: 1\nentries:\n"
+        "  - id: ilog-2026-10-08-laptop-001\n    ts: '2026-10-08T11:00:00-07:00'\n    skill: todo\n"
+        "    action: add_task\n    summary: from the laptop\n"
+        "  - id: ilog-2026-10-09-laptop-001\n    ts: '2026-10-09T09:00:00-07:00'\n    skill: bills\n"
+        "    action: reconcile_transactions\n    summary: later\n")
+    (folder / "laptop.sync-conflict-20261009-101010-ABCDEFG.yaml").write_text(
+        "schema_version: 1\nentries:\n  - id: ilog-2026-10-09-laptop-099\n"
+        "    ts: '2026-10-09T10:00:00-07:00'\n    skill: todo\n    action: x\n    summary: a conflict copy\n")
+    (folder / "_frozen.yaml").write_text("schema_version: 1\ninteraction_log: {rows: 3}\n")
+    sg.append_interaction_log(ws, skill="todo", action="complete_task", summary="from here",
+                              ts="2026-10-08T11:30:00-07:00")
+    return ws
+
+
+def test_merged_view_is_one_list_sorted_by_time(tmp_path: Path) -> None:
+    ws = _two_machine_ws(tmp_path)
+    rows = sg.read_interaction_log(ws)
+    assert [r.get("id") for r in rows] == [
+        None,                              # the legacy-shape row, 10-01
+        "ilog-2026-10-08-laptop-001",      # 11:00
+        "ilog-2026-10-08-testbox-001",     # 11:30
+        "ilog-2026-10-08-001",             # 12:00, the older single file
+        "ilog-2026-10-09-laptop-001",
+    ], "placeholder row, conflict copy and the freeze marker are not rows"
+    assert [r["id"] for r in sg.read_interaction_log(ws, skill="bills")] == [
+        "ilog-2026-10-08-001", "ilog-2026-10-09-laptop-001"]
+    since = dt.datetime.fromisoformat("2026-10-08T11:30:00-07:00")
+    assert len(sg.read_interaction_log(ws, since=since)) == 3
+    assert [r["id"] for r in sg.read_interaction_log(ws, action="task")] == [
+        "ilog-2026-10-08-laptop-001", "ilog-2026-10-08-testbox-001"]
+
+
+def test_log_show_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = _two_machine_ws(tmp_path)
+    capsys.readouterr()
+    assert sg.main(["log-show", "--workspace", str(ws), "--since", "2026-10-08", "--skill", "todo"]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert [line.split()[0] for line in out] == ["ilog-2026-10-08-laptop-001", "ilog-2026-10-08-testbox-001"]
+    assert "from the laptop" in out[0]
+    assert sg.main(["log-show", "--workspace", str(ws), "--count"]) == 0
+    assert capsys.readouterr().out.strip() == "5"
+    assert sg.main(["log-show", "--workspace", str(ws), "--last", "1", "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)[0]["id"] == "ilog-2026-10-09-laptop-001"
+    assert sg.main(["log-show", "--workspace", str(ws), "--id", "ilog-2026-10-08-001", "--full"]) == 0
+    assert yaml.safe_load(capsys.readouterr().out)[0]["action"] == "mark_bill_paid"
+
+
+def test_log_show_names_a_file_it_could_not_read(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = _two_machine_ws(tmp_path)
+    (ws / "_memory" / "interaction-log" / "broken.yaml").write_text("entries:\n  - id: x\n   bad: [\n")
+    capsys.readouterr()
+    assert sg.main(["log-show", "--workspace", str(ws), "--count"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out.strip() == "5" and "broken.yaml" in captured.err
 
 
 @pytest.mark.parametrize("skill, message", [
@@ -286,11 +399,10 @@ def test_log_appends_a_canonical_row(initialized_workspace: Path, framework_dir:
     ("browserctl (amazon)", "not a skill stem"),
 ])
 def test_log_refuses_non_stem_skills(initialized_workspace: Path, skill: str, message: str) -> None:
-    path = initialized_workspace / "_memory" / "interaction-log.yaml"
-    before = path.read_text()
+    path = _ilog_path(initialized_workspace)
     with pytest.raises(ValueError, match=message):
         sg.append_interaction_log(initialized_workspace, skill=skill, action="x", summary="y", ts=TS)
-    assert path.read_text() == before
+    assert not path.exists(), "nothing written"
     assert sg.main(["log", "--workspace", str(initialized_workspace), "--skill", skill,
                     "--action", "x", "--summary", "y"]) == 2
 
@@ -300,7 +412,7 @@ def test_cli_add_prints_the_id(initialized_workspace: Path, capsys: pytest.Captu
                   "--kind", "wish", "--trigger", "track gift ideas", "--context", "chat aside",
                   "--ts", TS])
     assert rc == 0
-    assert capsys.readouterr().out.strip() == "sig-2026-10-08-001"
+    assert capsys.readouterr().out.strip() == "sig-2026-10-08-testbox-001"
     with pytest.raises(SystemExit) as info:
         sg.main(["add", "--target", "tailor", "--kind", "critique", "--trigger", "t", "--context", "c"])
     assert info.value.code == 2

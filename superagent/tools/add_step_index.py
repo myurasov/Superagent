@@ -357,7 +357,7 @@ def main(argv: list[str] | None = None) -> int:
     if not skills_dir.is_dir():
         print(f"No skills dir at {skills_dir}", file=sys.stderr)
         return 1
-    paths = sorted(skills_dir.glob("*.md"))
+    paths = sorted(p for p in skills_dir.glob("*.md") if ".sync-conflict-" not in p.name)
     if args.skill:
         paths = [p for p in paths if p.stem == args.skill]
     changed = 0

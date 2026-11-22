@@ -52,7 +52,7 @@ harvest handler (`harvest(config_row, dry_run)` or an `IngestorBase` class).
 Writes (contract § 9 / § 12): `_memory/watchlist-state.yaml` (machine-owned,
 atomic replace under a lock); on a detected change one string alert in
 `context.yaml.alerts` (prior alert for the same watcher moves to
-`alerts-archive.yaml`), one `interaction-log.yaml` row
+`alerts-archive.yaml`), one interaction-log row
 (`action: watch_change_detected`), and `world.yaml` edges for `related_*`;
 harvest runs append to `ingestion-log.yaml` (+ one `action-signals.yaml`
 tailor row when a harvest reports errors).
@@ -108,7 +108,15 @@ from superagent.tools.ingest._base import (
     now_iso,
 )
 from superagent.tools.log_user_query import redact
+from superagent.tools.machines import (
+    ILOG_LEGACY,
+    ILOG_SKELETON,
+    file_label,
+    interaction_log_path,
+    machine_tag,
+)
 from superagent.tools.next_id import next_id
+from superagent.tools.syncnames import is_sync_artifact
 from superagent.tools.validate import (
     DEFAULT_WATCH_PACKS,
     DEFAULT_WATCHLIST_PATH,
@@ -348,7 +356,8 @@ def ref_filename(watcher_id: str) -> str:
 
 def is_ref_name(name: str) -> bool:
     """True for `<stem>.ref.md`, suffix matched case-insensitively."""
-    return name.lower().endswith(REF_SUFFIX) and len(name) > len(REF_SUFFIX)
+    return (name.lower().endswith(REF_SUFFIX) and len(name) > len(REF_SUFFIX)
+            and not is_sync_artifact(name))
 
 
 def load_yaml(path: Path) -> Any:
@@ -377,8 +386,10 @@ def _yaml_problem(exc: yaml.YAMLError) -> str:
     return problem
 
 
-def load_yaml_for_write(path: Path) -> dict[str, Any] | None:
+def load_yaml_for_write(path: Path, label: str | None = None) -> dict[str, Any] | None:
     """Load a mapping the caller is about to rewrite in place.
+
+    `label` names the file in error messages (default: its bare name).
 
     Returns None when the file is missing, empty or comments-only — creating a
     fresh file there is fine. Raises `CorruptFileError` when the file exists
@@ -389,15 +400,16 @@ def load_yaml_for_write(path: Path) -> dict[str, Any] | None:
     """
     if not path.exists():
         return None
+    label = label or path.name
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        raise CorruptFileError(f"{path.name} cannot be read ({exc}); refusing to rewrite it") from exc
+        raise CorruptFileError(f"{label} cannot be read ({exc}); refusing to rewrite it") from exc
     try:
         data = yaml.safe_load(text)
     except yaml.YAMLError as exc:
         raise CorruptFileError(
-            f"{path.name} is not valid YAML ({_yaml_problem(exc)}); refusing to rewrite it. "
+            f"{label} is not valid YAML ({_yaml_problem(exc)}); refusing to rewrite it. "
             "Fix the file by hand (`uv run python -m superagent.tools.validate` locates the line), "
             "then re-run"
         ) from exc
@@ -405,7 +417,7 @@ def load_yaml_for_write(path: Path) -> dict[str, Any] | None:
         return None
     if not isinstance(data, dict):
         raise CorruptFileError(
-            f"{path.name}: top level is a {type(data).__name__}, expected a mapping; refusing to rewrite it"
+            f"{label}: top level is a {type(data).__name__}, expected a mapping; refusing to rewrite it"
         )
     return data
 
@@ -1126,8 +1138,8 @@ def registry_stray_files(folder: Path) -> list[str]:
     out: list[str] = []
     for p in sorted(folder.iterdir(), key=lambda q: q.name.lower()):
         if (not p.is_file() or p.name.startswith(".") or p.name == "README.md"
-                or is_ref_name(p.name)):
-            continue
+                or is_ref_name(p.name) or is_sync_artifact(p)):
+            continue  # sync conflict copies are reported by tools/heal.py, not as stray files
         stem = p.name.split(".")[0]
         out.append(
             f"{p.name}: not a .ref.md — not a watcher; rename it to "
@@ -1690,15 +1702,16 @@ def budget_check(watcher: Watcher, row: dict[str, Any], now: dt.datetime) -> str
 
 
 def _mint_ingest_run_id(runs: list[Any], today: dt.date) -> str:
-    stamp = today.strftime("%Y%m%d")
+    """`ingest-<YYYYMMDD>-<machine>-NNN`: the counter runs per machine (tools/next_id.py)."""
+    prefix = f"ingest-{today.strftime('%Y%m%d')}-{machine_tag()}-"
     n = 0
     for row in runs:
         if isinstance(row, dict):
             rid = str(row.get("id") or "")
-            if rid.startswith(f"ingest-{stamp}-"):
+            if rid.startswith(prefix):
                 with contextlib.suppress(ValueError):
                     n = max(n, int(rid.rsplit("-", 1)[-1]))
-    return f"ingest-{stamp}-{n + 1:03d}"
+    return f"{prefix}{n + 1:03d}"
 
 
 def append_ingestion_log(workspace: Path, result: RunResult, *, trigger: str,
@@ -1895,15 +1908,19 @@ def append_alert(workspace: Path, watcher: Watcher, *, summary: str, ts: str) ->
 
 def append_interaction_log(workspace: Path, watcher: Watcher, *, summary: str, ts: str,
                            ingestion_log_ref: str | None = None) -> str | None:
-    path = workspace / "_memory" / "interaction-log.yaml"
-    data = load_yaml_for_write(path)
+    """Append the `watch_change_detected` row to this machine's interaction-log file."""
+    path = interaction_log_path(workspace)
+    data = load_yaml_for_write(path, file_label(path))
     if data is None:
         data = {"schema_version": 1, "entries": []}
+        if not path.exists():  # a machine's first row: the file starts with its header
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(ILOG_SKELETON, encoding="utf-8")
     entries = [
         e for e in (data.get("entries") or [])
         if isinstance(e, dict) and not (e.get("id") is None and not e.get("action") and not e.get("summary"))
     ]
-    rid = next_id("ilog", ts[:10], path)
+    rid = next_id("ilog", ts[:10], [path, workspace / "_memory" / ILOG_LEGACY])
     entries.append({
         "id": rid,
         "ts": ts,

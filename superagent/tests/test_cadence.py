@@ -13,6 +13,7 @@ import pytest
 import yaml
 
 from superagent.tools import cadence as cd
+from superagent.tools import machines
 
 PDT = dt.timezone(dt.timedelta(hours=-7))
 NOW = dt.datetime(2026, 10, 8, 9, 0, tzinfo=PDT)
@@ -193,15 +194,64 @@ def test_stamp_nags_once_per_day(initialized_workspace: Path, capsys: pytest.Cap
     assert cd.main(["status", "--stamp", "--workspace", str(ws), "--now", NOW.isoformat()]) == 0
     out = capsys.readouterr().out
     assert "Context last refreshed never" in out and "Overdue cadences:" in out
-    assert _ctx(ws)["refresh_suggested"] == "2026-10-08"
-    changed = [ln for ln in _ctx_path(ws).read_text().splitlines() if ln not in original.splitlines()]
-    assert changed == ["refresh_suggested: '2026-10-08'"], "only the bookkeeping line changes"
+    assert _ctx_path(ws).read_text() == original, "the open check writes no shared file"
+    assert machines.read_local_state(ws)["refresh_suggested"] == "2026-10-08", (
+        "the marker is machine-local (~/.superagent/state/)")
     assert cd.main(["status", "--stamp", "--workspace", str(ws), "--now", NOW.isoformat()]) == 0
     assert capsys.readouterr().out == "", "second open on the same day stays silent"
     tomorrow = (NOW + dt.timedelta(days=1)).isoformat()
     assert cd.main(["status", "--stamp", "--workspace", str(ws), "--now", tomorrow]) == 0
     assert capsys.readouterr().out != ""
-    assert _ctx(ws)["refresh_suggested"] == "2026-10-09"
+    assert machines.read_local_state(ws)["refresh_suggested"] == "2026-10-09"
+    assert _ctx_path(ws).read_text() == original
+
+
+def _files_under(root: Path) -> dict[str, bytes]:
+    return {p.relative_to(root).as_posix(): p.read_bytes() for p in sorted(root.rglob("*")) if p.is_file()}
+
+
+def test_open_check_writes_only_this_machines_beat(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    before = _files_under(ws)
+    assert cd.main(["status", "--stamp", "--workspace", str(ws), "--now", NOW.isoformat()]) == 0
+    after = _files_under(ws)
+    assert {k for k in after if after[k] != before.get(k)} == {"_memory/machines/testbox.json"}
+    beat = json.loads(after["_memory/machines/testbox.json"])
+    assert beat["machine"] == "testbox" and beat["at"].startswith("2026-10-08T")
+
+
+def test_open_check_says_who_else_wrote_here(initialized_workspace: Path,
+                                             capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    _make_current(ws, NOW)
+    folder = ws / "_memory" / "machines"
+    (folder / "laptop.json").write_text(json.dumps(
+        {"machine": "laptop", "uid": "aa", "at": (NOW - dt.timedelta(minutes=12)).isoformat()}))
+    (folder / "old-box.json").write_text(json.dumps(
+        {"machine": "old-box", "uid": "bb", "at": (NOW - dt.timedelta(days=3)).isoformat()}))
+    assert cd.main(["status", "--stamp", "--workspace", str(ws), "--now", NOW.isoformat()]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out == ["laptop wrote here 12 min ago: let the sync settle and re-read a file before editing it."]
+    # The presence line is not a nag: it shows on every open, also once the day's nag is spent.
+    assert cd.main(["status", "--stamp", "--workspace", str(ws), "--now", NOW.isoformat()]) == 0
+    assert capsys.readouterr().out.splitlines() == out
+    # Plain `status` (a cadence skill asking what is late) says nothing about presence.
+    assert cd.main(["status", "--workspace", str(ws), "--now", NOW.isoformat()]) == 0
+    assert capsys.readouterr().out == ""
+
+
+def test_open_check_runs_the_conflict_sweep(initialized_workspace: Path,
+                                            capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    _make_current(ws, NOW)
+    todo = ws / "_memory" / "todo.yaml"
+    copy = ws / "_memory" / "todo.sync-conflict-20261008-101010-ABCDEFG.yaml"
+    copy.write_text(todo.read_text() + "# a line only the other machine has\n")
+    assert cd.main(["status", "--stamp", "--workspace", str(ws), "--now", NOW.isoformat()]) == 0
+    out = capsys.readouterr().out
+    assert "Sync conflict to fold by hand: workspace/_memory/todo.yaml has a second version" in out
+    assert "1 line(s) only in the copy" in out and "a line only the other machine has" not in out
+    assert copy.exists(), "reported and left in place"
 
 
 def test_status_reports_unfinished_runs_and_json(initialized_workspace: Path,

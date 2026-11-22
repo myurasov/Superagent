@@ -335,7 +335,8 @@ def refresh_manifest(migrations_dir: Path | None = None) -> int:
     written.
     """
     md_dir = migrations_dir or MIGRATIONS_DIR
-    md_files = sorted(p for p in md_dir.glob("*.md") if p.name not in {"README.md", "_template.md"})
+    md_files = sorted(p for p in md_dir.glob("*.md")
+                      if p.name not in {"README.md", "_template.md"} and ".sync-conflict-" not in p.name)
 
     rows: list[dict] = []
     for md in md_files:

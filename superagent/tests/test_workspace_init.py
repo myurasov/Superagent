@@ -15,7 +15,7 @@ from pathlib import Path
 import yaml
 
 EXPECTED_MEMORY_FILES = [
-    "config.yaml", "context.yaml", "model-context.yaml", "interaction-log.yaml",
+    "config.yaml", "context.yaml", "model-context.yaml",
     "todo.yaml", "domains-index.yaml", "projects-index.yaml", "sources-index.yaml",
     "contacts.yaml", "assets-index.yaml",
     "accounts-index.yaml", "bills.yaml", "subscriptions.yaml",
@@ -41,6 +41,15 @@ def test_init_creates_memory_dir(initialized_workspace: Path) -> None:
     assert mem.is_dir()
     for fname in EXPECTED_MEMORY_FILES:
         assert (mem / fname).is_file(), f"missing _memory/{fname}"
+
+
+def test_init_seeds_no_single_interaction_log(initialized_workspace: Path) -> None:
+    """The interaction log is one file per machine, created by `signals log` on its first row."""
+    mem = initialized_workspace / "_memory"
+    assert not (mem / "interaction-log.yaml").exists()
+    for folder in ("interaction-log", "user-queries", "machines"):
+        assert (mem / folder).is_dir(), f"missing _memory/{folder}/"
+        assert list((mem / folder).iterdir()) == []
 
 
 def test_init_memory_files_parse(initialized_workspace: Path) -> None:

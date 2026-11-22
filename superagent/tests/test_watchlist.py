@@ -472,7 +472,7 @@ def test_path_file_baseline_then_change_writes_effects(ws: Path, fw: Path) -> No
     assert ctx["alerts"][-1] == f"[watch:doc] {ts}: file sha256"
     assert (ws / "_memory" / "context.yaml").read_text().startswith("#"), "header comments survive"
 
-    ilog = read_yaml(ws / "_memory" / "interaction-log.yaml")
+    ilog = read_yaml(ws / "_memory" / "interaction-log" / "testbox.yaml")
     entry = ilog["entries"][-1]
     assert entry["skill"] == "watch"
     assert entry["action"] == "watch_change_detected"
@@ -781,7 +781,7 @@ def test_subagent_dispatch_then_stamp_cycle(ws: Path, fw: Path) -> None:
     assert row["last_changed"] == row["last_success"] == row["last_checked"]
     alerts = read_yaml(ws / "_memory" / "context.yaml")["alerts"]
     assert alerts[-1] == f"[watch:portal] {row['last_changed']}: {res['note']}"
-    ilog = read_yaml(ws / "_memory" / "interaction-log.yaml")
+    ilog = read_yaml(ws / "_memory" / "interaction-log" / "testbox.yaml")
     assert ilog["entries"][-1]["related_project"] == "solar"
     assert ilog["entries"][-1]["action"] == "watch_change_detected"
 
@@ -1086,7 +1086,7 @@ def test_harvest_type_runs_handler_logs_and_alerts(ws: Path, fw: Path) -> None:
     assert "('include_pending', False)" in calls[0], "extra watch: keys override harvest.defaults"
     assert "('recency_window_days', 7)" in calls[0], "budget.max_window_days caps the window"
 
-    ilog = read_yaml(ws / "_memory" / "interaction-log.yaml")
+    ilog = read_yaml(ws / "_memory" / "interaction-log" / "testbox.yaml")
     assert ilog["entries"][-1]["ingestion_log_ref"] == run_id
     assert ilog["entries"][-1]["related_domain"] == "finances"
     assert read_yaml(ws / "_memory" / "context.yaml")["alerts"][-1].startswith("[watch:bank] ")
@@ -1772,7 +1772,7 @@ def _run_result() -> Any:
 
 
 @pytest.mark.parametrize("rel, call", [
-    ("interaction-log.yaml", lambda ws, w: wl.append_interaction_log(ws, w, summary="s", ts=TS)),
+    ("interaction-log/testbox.yaml", lambda ws, w: wl.append_interaction_log(ws, w, summary="s", ts=TS)),
     ("action-signals.yaml", lambda ws, w: wl.append_tailor_signal(ws, w, run_id="ingest-1", errors=["e"], ts=TS)),
     ("ingestion-log.yaml", lambda ws, w: wl.append_ingestion_log(ws, _run_result(), trigger="scheduled")),
     ("context.yaml", lambda ws, w: wl.append_alert(ws, w, summary="s", ts=TS)),
@@ -1781,6 +1781,7 @@ def _run_result() -> Any:
 def test_writers_refuse_to_replace_an_unparseable_file(ws: Path, rel: str, call: Any) -> None:
     watcher = _doc_watcher(ws)
     path = ws / "_memory" / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(CORRUPT_YAML)
     with pytest.raises(wl.CorruptFileError) as info:
         call(ws, watcher)
@@ -1792,7 +1793,7 @@ def test_writers_refuse_to_replace_an_unparseable_file(ws: Path, rel: str, call:
 
 def test_writers_refuse_a_file_whose_top_level_is_not_a_mapping(ws: Path) -> None:
     watcher = _doc_watcher(ws)
-    path = ws / "_memory" / "interaction-log.yaml"
+    path = ws / "_memory" / "interaction-log" / "testbox.yaml"
     path.write_text("- just\n- a list\n")
     with pytest.raises(wl.CorruptFileError, match="expected a mapping"):
         wl.append_interaction_log(ws, watcher, summary="s", ts=TS)
@@ -1831,7 +1832,7 @@ def test_corrupt_alert_archive_leaves_context_untouched_too(ws: Path) -> None:
 @pytest.mark.parametrize("initial", [None, "", "# header only\n\n"])
 def test_writers_still_create_a_missing_or_empty_file(ws: Path, initial: str | None) -> None:
     watcher = _doc_watcher(ws)
-    path = ws / "_memory" / "interaction-log.yaml"
+    path = ws / "_memory" / "interaction-log" / "testbox.yaml"
     if initial is None:
         path.unlink(missing_ok=True)
     else:
@@ -1847,7 +1848,7 @@ def test_check_reports_a_corrupt_interaction_log_and_still_writes_the_alert(ws: 
     target.write_text("v1")
     write_ref(ws, "doc", path_ref(target, title="A doc", related_domain="home"))
     check(ws, fw)  # baseline
-    ilog = ws / "_memory" / "interaction-log.yaml"
+    ilog = ws / "_memory" / "interaction-log" / "testbox.yaml"
     ilog.write_text(CORRUPT_YAML)
     target.write_text("v2")
     payload = check(ws, fw)
@@ -1857,13 +1858,13 @@ def test_check_reports_a_corrupt_interaction_log_and_still_writes_the_alert(ws: 
     assert effects["alert"] == f"[watch:doc] {payload['checked_at']}: file sha256"
     assert len(effects["errors"]) == 1
     err = effects["errors"][0]
-    assert "interaction-log.yaml" in err and "refusing to rewrite" in err
+    assert "interaction-log/testbox.yaml" in err and "refusing to rewrite" in err
     assert "unwritten interaction-log row: watch:doc" in err, "the lost row text rides along in the report"
     assert payload["summary"]["errors"] == 1 and payload["errors"][0]["id"] == "doc"
     assert ilog.read_text() == CORRUPT_YAML
     assert read_yaml(ws / "_memory" / "context.yaml")["alerts"][-1] == effects["alert"]
     assert state_row(ws, "doc")["last_changed"] == payload["checked_at"]
-    assert "interaction-log.yaml" in wl.render_report(payload)
+    assert "interaction-log/testbox.yaml" in wl.render_report(payload)
 
 
 def test_cli_check_refuses_a_corrupt_state_file(ws: Path, fw: Path, capsys: Any) -> None:
