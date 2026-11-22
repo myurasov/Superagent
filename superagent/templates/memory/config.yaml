@@ -75,7 +75,7 @@ preferences:
   # What hurts most (set during init from the questionnaire).
   pain_points: []              # e.g. ["bills","subscriptions","health-tracking","important-dates"]
 
-  # Money preferences (used by the Bookkeeper persona).
+  # Money preferences (used by the Bookkeeper role).
   money:
     currency: "USD"
     budget_method: "zero-based"     # zero-based | 50-30-20 | category | none
@@ -199,6 +199,29 @@ preferences:
     # When true, doctor / supertailor-review run the anti-pattern scanner over
     # skills/*.md and surface findings.
     scan_skills: true
+
+  # Agents and Autocode (see contracts/agents.md). Autocode is an optional
+  # runtime that keeps agents running as registered sessions. With it off, the
+  # chat session takes whichever role the work needs. Absent block = these
+  # defaults.
+  autocode:
+    # First part of every agent id (`<id_prefix>:<name>`), so several users can
+    # share one Autocode server. A lowercase letter first, then lowercase
+    # letters, digits or `-`, 16 characters at most. Reserved: owner, autocode,
+    # me, project, dev.
+    id_prefix: "sa"
+    # Default model per tier; null = the harness's own default. `runner` is for
+    # the agents that do the work, `dev` for their dev twins. A row in
+    # `_memory/agents.yaml` overrides the model of its agent.
+    models:
+      runner:
+        model: null              # "<provider>/<model>", as the harness names it
+        variant: null            # the model's variant (e.g. a reasoning effort)
+      dev:
+        model: null
+        variant: null
+    # Daily cost cap per agent, in USD; null = no cap. A registry row overrides it.
+    daily_usd: null
 
 # --- Data sources (which MCPs / CLI tools you've authorized) ---
 # This block carries the COARSE flag (have you set up the auth at all?). The detailed

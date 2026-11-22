@@ -1,0 +1,306 @@
+# SPDX-FileCopyrightText: 2026 Mikhail Yurasov
+# SPDX-License-Identifier: Apache-2.0
+"""Tests for `tools/agents.py`: the roster, ids, duties, and the zero-cost duty check.
+
+Also pins that `cadence status` and `agents duties --overdue` report the same
+findings, each under the agent whose duty it is (contracts/agents.md § 3).
+"""
+from __future__ import annotations
+
+import datetime as dt
+import json
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+
+from superagent.tools import agents as ag
+from superagent.tools import cadence as cd
+
+PDT = dt.timezone(dt.timedelta(hours=-7))
+NOW = dt.datetime(2026, 10, 8, 9, 0, tzinfo=PDT)
+
+
+def _ago(days: float = 0, hours: float = 0) -> str:
+    return (NOW - dt.timedelta(days=days, hours=hours)).isoformat(timespec="seconds")
+
+
+def _set_runs(ws: Path, *, last_check: str | None, **runs: str) -> None:
+    path = ws / "_memory" / "context.yaml"
+    ctx = yaml.safe_load(path.read_text())
+    ctx["last_check"] = last_check
+    ctx["last_runs"].update(runs)
+    path.write_text(yaml.safe_dump(ctx, sort_keys=False))
+
+
+def _make_current(ws: Path) -> None:
+    _set_runs(ws, last_check=_ago(hours=1), daily_update=_ago(hours=1), weekly_review=_ago(1),
+              monthly_review=_ago(hours=2), tailor_review=_ago(1), doctor=_ago(1))
+
+
+def _registry(ws: Path, rows: list[dict[str, Any]]) -> None:
+    (ws / "_memory" / "agents.yaml").write_text(
+        yaml.safe_dump({"schema_version": 1, "last_updated": None, "agents": rows}, sort_keys=False))
+
+
+def _set_autocode(ws: Path, block: str) -> None:
+    config = ws / "_memory" / "config.yaml"
+    text = config.read_text(encoding="utf-8")
+    start = text.index("  autocode:\n")
+    end = text.index("\n# --- Data sources", start)
+    config.write_text(text[:start] + block + text[end:], encoding="utf-8")
+
+
+def _run(argv: list[str], ws: Path, capsys: pytest.CaptureFixture[str]) -> tuple[int, str, str]:
+    code = ag.main([*argv, "--workspace", str(ws), "--now", NOW.isoformat()])
+    captured = capsys.readouterr()
+    return code, captured.out, captured.err
+
+
+# ------------------------------------------------------------------- roster
+
+def test_roster_of_a_fresh_workspace(initialized_workspace: Path) -> None:
+    data = ag.roster(initialized_workspace)
+    assert data["errors"] == [] and data["prefix"] == "sa"
+    assert [(a["id"], a["kind"], a["status"], a["dev_id"]) for a in data["agents"]] == [
+        ("sa:superagent", "lead", "off", "sa:superagent:dev"),
+        ("sa:bookkeeper", "durable", "off", "sa:bookkeeper:dev"),
+        ("sa:updater", "durable", "off", "sa:updater:dev"),
+    ]
+    assert all(not a["registered"] and a["host"] is None for a in data["agents"])
+    project = next(r for r in data["roles"] if r["name"] == "project")
+    assert project["instances"] == 0 and project["dev_id"] == "sa:project:dev"
+    lines = ag.render_roster(data)
+    assert lines[0].split() == ["ID", "ROLE", "KIND", "STATUS", "HOST", "DEV", "TWIN"]
+    assert lines[-1].startswith("sa:project:<slug>") and "no agent yet" in lines[-1]
+
+
+def test_roster_reads_the_registry_and_the_configured_prefix(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _set_autocode(ws, '  autocode:\n    id_prefix: "fam"\n    models:\n'
+                      '      runner: {model: "prov/big", variant: "high"}\n'
+                      '      dev: {model: "prov/big", variant: "xhigh"}\n    daily_usd: 5\n')
+    _registry(ws, [
+        {"name": "", "role": "", "status": "off"},  # the template's example row
+        {"name": "updater", "role": "updater", "host": "box1", "status": "active", "daily_usd": 2,
+         "wakes": [{"name": "tick", "trigger": "every 30m"}]},
+        {"name": "project:tax-2026", "role": "project", "project": "project:tax-2026",
+         "status": "dormant", "model": "prov/small"},
+    ])
+    data = ag.roster(ws)
+    assert data["errors"] == []
+    rows = {a["id"]: a for a in data["agents"]}
+    assert set(rows) == {"fam:superagent", "fam:bookkeeper", "fam:updater", "fam:project:tax-2026"}
+    updater = rows["fam:updater"]
+    assert (updater["status"], updater["host"], updater["daily_usd"], updater["wakes"]) == (
+        "active", "box1", 2, 1)
+    assert (updater["model"], updater["variant"]) == ("prov/big", "high"), "the runner default"
+    assert (updater["dev_model"], updater["dev_variant"]) == ("prov/big", "xhigh")
+    project = rows["fam:project:tax-2026"]
+    assert project["model"] == "prov/small" and project["variant"] == "high", "the row overrides"
+    assert project["dev_id"] == "fam:project:dev" and project["status"] == "dormant"
+    assert rows["fam:superagent"]["daily_usd"] == 5, "the configured default cap"
+    assert not any("no agent yet" in line for line in ag.render_roster(data))
+
+
+def test_roster_names_rows_that_fit_no_role(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _registry(ws, [
+        {"name": "ghost", "role": "ghost"},
+        {"name": "updater", "role": "bookkeeper"},
+        {"name": "project", "role": "project"},
+        {"name": "bookkeeper", "role": "bookkeeper", "status": "sleeping"},
+        {"name": "bookkeeper", "role": "bookkeeper"},
+    ])
+    errors = "\n".join(ag.roster(ws)["errors"])
+    assert "`ghost` has no role file" in errors
+    assert "`updater` names role 'bookkeeper'" in errors
+    assert "`project` is not `project:<slug>`" in errors
+    assert "status 'sleeping'" in errors
+    assert "`bookkeeper` is listed twice" in errors
+
+
+def test_missing_or_broken_registry(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    path = ws / "_memory" / "agents.yaml"
+    path.unlink()
+    assert ag.load_registry(ws) == ([], []), "no file: an empty registry"
+    path.write_text("agents: [\n")
+    rows, errors = ag.load_registry(ws)
+    assert rows == [] and "cannot be read" in errors[0]
+
+
+def test_list_command(initialized_workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    code, out, err = _run(["list"], initialized_workspace, capsys)
+    assert code == 0 and err == ""
+    assert out.splitlines()[1].split()[:4] == ["sa:superagent", "superagent", "lead", "off"]
+    code, out, _err = _run(["list", "--json"], initialized_workspace, capsys)
+    assert code == 0 and json.loads(out)["prefix"] == "sa"
+
+
+def test_a_bad_prefix_is_a_usage_error(initialized_workspace: Path,
+                                       capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    _set_autocode(ws, '  autocode:\n    id_prefix: "Not Valid"\n')
+    for argv in (["list"], ["id", "updater"]):
+        code, out, err = _run(argv, ws, capsys)
+        assert code == 2 and out == "" and "id prefix" in err
+
+
+# ----------------------------------------------------------------------- id
+
+def test_id_command(initialized_workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    assert _run(["id", "updater"], ws, capsys)[:2] == (0, "sa:updater\n")
+    assert _run(["id", "updater", "--dev"], ws, capsys)[:2] == (0, "sa:updater:dev\n")
+    assert _run(["id", "project:tax-2026"], ws, capsys)[:2] == (0, "sa:project:tax-2026\n")
+    code, out, err = _run(["id", "project"], ws, capsys)
+    assert code == 2 and out == "" and "needs a slug" in err
+    code, _out, err = _run(["id", "nobody"], ws, capsys)
+    assert code == 2 and "no role named 'nobody'" in err
+
+
+# ------------------------------------------------------------------- duties
+
+def test_duties_of_a_current_workspace(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _make_current(ws)
+    rows, errors = ag.duty_rows(ws, now=NOW)
+    assert errors == []
+    by_key = {(r["agent"], r["duty"]): r for r in rows}
+    assert by_key[("superagent", "weekly-review")]["state"] == "ok"
+    assert by_key[("superagent", "weekly-review")]["schedule_value"] == "Sunday 18:00"
+    assert by_key[("superagent", "weekly-review")]["last_run"].startswith("2026-10-07")
+    assert by_key[("updater", "watchlist")]["state"] == "ok"
+    assert by_key[("bookkeeper", "bills")]["state"] == "on-request"
+    assert not [r for r in rows if r["state"] in ("overdue", "unfinished")]
+
+
+def test_overdue_duties_match_cadence_status(initialized_workspace: Path) -> None:
+    """The acceptance check of contracts/agents.md § 3: one set of findings, two views."""
+    ws = initialized_workspace  # fresh template: nothing ever ran
+    cd.mark(ws, "monthly-review", phase="start", now=NOW - dt.timedelta(hours=5))
+    report = cd.status(ws, now=NOW)
+    rows, _errors = ag.duty_rows(ws, now=NOW)
+    late = {(r["agent"], r["skill"]) for r in rows if r["state"] in ("overdue", "unfinished")}
+    expected = {(c["agent"], c["cadence"]) for c in report["overdue_cadences"]}
+    expected |= {(u["agent"], u["cadence"]) for u in report["unfinished_runs"]}
+    if report["last_check_stale"]:
+        expected.add((report["last_check_agent"], "daily-update"))
+    assert late == expected
+    assert ("superagent", "daily-update") in late and ("superagent", "weekly-review") in late
+    # An unfinished run is reported as unfinished only when the duty is not overdue anyway.
+    _make_current(ws)
+    cd.mark(ws, "weekly-review", phase="start", now=NOW - dt.timedelta(hours=5))
+    rows, _errors = ag.duty_rows(ws, now=NOW)
+    weekly = next(r for r in rows if r["duty"] == "weekly-review")
+    assert weekly["state"] == "unfinished" and "never finished" in weekly["reason"]
+
+
+def test_watcher_findings_belong_to_the_updater(initialized_workspace: Path,
+                                                monkeypatch: pytest.MonkeyPatch) -> None:
+    ws = initialized_workspace
+    _make_current(ws)
+    late = [{"watcher": "bank", "cycle": "daily-update", "last_success": None, "days_since": 9},
+            {"watcher": "permit", "cycle": "weekly-review", "last_success": None, "days_since": 30}]
+    monkeypatch.setattr(cd, "overdue_watchers", lambda *a, **k: [dict(row) for row in late])
+    report = cd.status(ws, now=NOW)
+    assert [w["agent"] for w in report["overdue_watchers"]] == ["updater", "updater"]
+    assert cd.render(report) == [
+        "[updater] Watchers overdue for a check: bank (daily-update; last success never, 9 day(s) ago); "
+        "permit (weekly-review; last success never, 30 day(s) ago)."]
+    rows, _errors = ag.duty_rows(ws, now=NOW, agent="updater")
+    assert [(r["duty"], r["state"]) for r in rows] == [("watchlist", "overdue")]
+    assert rows[0]["reason"] == "2 watcher(s) overdue for a check: bank, permit"
+    assert ag.check(ws, "updater", "watchlist", now=NOW) == (
+        True, "updater watchlist: overdue: 2 watcher(s) overdue for a check: bank, permit")
+
+
+def test_cadence_lines_are_grouped_by_agent(initialized_workspace: Path,
+                                            monkeypatch: pytest.MonkeyPatch) -> None:
+    ws = initialized_workspace  # nothing ever ran
+    monkeypatch.setattr(cd, "overdue_watchers", lambda *a, **k: [
+        {"watcher": "bank", "cycle": "daily-update", "last_success": None, "days_since": 9}])
+    cd.mark(ws, "whatsup", phase="start", now=NOW - dt.timedelta(hours=5))
+    report = cd.status(ws, now=NOW)
+    lines = cd.render(report)
+    assert report["agents"][0] == "superagent"
+    owners = [line.split("]")[0].lstrip("[") for line in lines]
+    assert owners == ["superagent", "superagent", "superagent", "updater"], lines
+    assert lines[0].startswith("[superagent] Context last refreshed never")
+    assert lines[1].startswith("[superagent] Overdue cadences: ")
+    assert lines[2].startswith("[superagent] Unfinished runs: whatsup started"), (
+        "a skill no role claims as a duty goes to the lead")
+    assert lines[3].startswith("[updater] Watchers overdue for a check: bank")
+
+
+def test_render_without_agents_prints_plain_lines() -> None:
+    report = {"now": NOW.isoformat(), "last_check": None, "last_check_stale": True,
+              "overdue_cadences": [{"cadence": "doctor", "last_run": None, "reason": "r"}],
+              "overdue_watchers": [], "unfinished_runs": []}
+    assert cd.render(report) == [
+        "Context last refreshed never: run `daily-update` (or `whatsup`).",
+        "Overdue cadences: doctor (r; last never)."]
+
+
+def test_duties_command(initialized_workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    _make_current(ws)
+    code, out, _err = _run(["duties", "--overdue"], ws, capsys)
+    assert (code, out) == (0, ""), "nothing late prints nothing"
+    code, out, _err = _run(["duties", "--agent", "bookkeeper"], ws, capsys)
+    assert code == 0 and [line.split()[1] for line in out.splitlines()[1:]] == [
+        "bills", "subscriptions", "expenses"]
+    _set_runs(ws, last_check=_ago(hours=1), weekly_review=_ago(30))
+    code, out, _err = _run(["duties", "--overdue"], ws, capsys)
+    assert code == 0 and len(out.splitlines()) == 2
+    assert out.splitlines()[1].startswith("superagent  weekly-review")
+    assert "overdue: no run in the last 7 days; last 2026-09-08" in out
+    code, out, _err = _run(["duties", "--overdue", "--json"], ws, capsys)
+    assert [r["duty"] for r in json.loads(out)] == ["weekly-review"]
+    code, _out, err = _run(["duties", "--agent", "nobody"], ws, capsys)
+    assert code == 2 and "no role named 'nobody'" in err
+
+
+# -------------------------------------------------------------------- check
+
+def test_check_exit_codes(initialized_workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    _make_current(ws)
+    assert _run(["check", "superagent", "weekly-review"], ws, capsys) == (1, "", ""), (
+        "not due: exit 1 and silence, so a scheduler skips the run at no cost")
+    assert _run(["check", "bookkeeper", "bills"], ws, capsys)[0] == 1, "an on-request duty is never due"
+    _set_runs(ws, last_check=_ago(days=3), weekly_review=_ago(30))
+    code, out, _err = _run(["check", "superagent", "weekly-review"], ws, capsys)
+    assert code == 0 and out.startswith("superagent weekly-review: overdue: no run in the last 7 days")
+    code, out, _err = _run(["check", "superagent", "daily-update"], ws, capsys)
+    assert code == 0 and "context last refreshed 3 day(s) ago" in out
+    code, out, err = _run(["check", "superagent", "nope"], ws, capsys)
+    assert code == 2 and out == "" and "has no duty 'nope'" in err
+    code, _out, err = _run(["check", "nobody", "x"], ws, capsys)
+    assert code == 2 and "no role named 'nobody'" in err
+    code, _out, err = _run(["check", "project:tax-2026", "x"], ws, capsys)
+    assert code == 2 and "'project' has no duty 'x' (duties: none)" in err
+
+
+def test_check_that_cannot_run_is_not_mistaken_for_not_due(initialized_workspace: Path,
+                                                           capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    (ws / "_memory" / "context.yaml").write_text("last_runs: [unclosed\n")
+    code, out, err = _run(["check", "superagent", "weekly-review"], ws, capsys)
+    assert code == 3 and out == "" and "context.yaml" in err
+    assert _run(["duties"], ws, capsys)[0] == 1
+
+
+def test_agents_tool_reads_only(initialized_workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+
+    def snapshot() -> dict[str, bytes]:
+        return {p.relative_to(ws).as_posix(): p.read_bytes() for p in sorted(ws.rglob("*")) if p.is_file()}
+
+    before = snapshot()
+    for argv in (["list"], ["id", "updater"], ["duties"], ["duties", "--overdue"],
+                 ["check", "updater", "watchlist"]):
+        _run(argv, ws, capsys)
+    assert snapshot() == before

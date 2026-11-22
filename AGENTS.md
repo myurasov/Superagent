@@ -3,7 +3,7 @@
 ## Table of Contents
 
 - **Floor** — [Non-Negotiables (Every Harness)](#non-negotiables-every-harness) · [How this file is loaded](#how-this-file-is-loaded) · [Canonical references](#canonical-references) · [Custom overlay](#custom-overlay--read-on-every-superagent-turn) · [Framework Artifact Creation Contract](#framework-artifact-creation-contract)
-- **Session** — [On workspace open](#on-workspace-open) · [Before any file or MCP operation](#before-any-file-or-mcp-operation) · [Model context](#model-context-cross-session-memory) · [Skills](#skills)
+- **Session** — [On workspace open](#on-workspace-open) · [Before any file or MCP operation](#before-any-file-or-mcp-operation) · [Model context](#model-context-cross-session-memory) · [Skills](#skills) · [Agents](#agents)
 - **Data** — [Data ingestion contract](#data-ingestion-contract) · [Local archives — email](#local-archives--email-capture-on-touch) · [Logging](#logging) · [Domain / Project / Sources folder convention](#domain--project--sources-folder-convention) · [Public artifact destination](#public-artifact-destination)
 - **Discipline** — [Local task references](#local-task-references) · [Knowledge discipline](#knowledge-discipline) · [Token economy](#token-economy-always-on-dials) · [Local-first read order](#local-first-read-order) · [Memory-routing guardrail](#memory-routing-guardrail) · [Concurrent sessions](#concurrent-sessions)
 - **Data model** — [Operational handles](#operational-handles) · [Visibility and sensitive tier](#visibility-and-sensitive-tier) · [Provenance](#provenance) · [Time-shape vs entity-shape vs event-shape](#time-shape-vs-entity-shape-vs-event-shape) · [Privacy and data location](#privacy-and-data-location)
@@ -44,11 +44,11 @@ If this repository also hosts other AI-assistant frameworks (work assistants, pr
 
 ## Canonical references
 
-- **Role definitions** (Superagent + helper personas): read and follow [`superagent/agents/superagent.agent.md`](superagent/agents/superagent.agent.md).
+- **Role definitions**: the lead and its helper personas in [`superagent/agents/superagent.agent.md`](superagent/agents/superagent.agent.md) (read and follow it); the other roles (`updater`, `bookkeeper`, `project`) beside it, each with its dev twin; the roster in [`superagent/agents/_manifest.yaml`](superagent/agents/_manifest.yaml). See § "Agents".
 - **Operational contracts** (init, cadences, data-ingestion, capture patterns, autonomy, memory taxonomy, ...): browse [`superagent/contracts/`](superagent/contracts/) — one markdown file per contract, indexed by `superagent/contracts/_manifest.yaml`. Skills cite a specific contract as `contracts/<slug>.md`.
 - **Rules** (single-behavior policies — token economy, file naming, git commits, memory routing, ...): [`superagent/rules/`](superagent/rules/), indexed by `superagent/rules/_manifest.yaml`; cited as `rules/<slug>.md`.
-- **Supertailor (framework hygiene + improvement)**: read and follow [`superagent/agents/supertailor.agent.md`](superagent/agents/supertailor.agent.md).
-- **Supercoder (implementation)**: read and follow [`superagent/agents/supercoder.agent.md`](superagent/agents/supercoder.agent.md).
+- **Framework review** (hygiene + improvement suggestions): the `supertailor-review` skill ([`superagent/skills/supertailor-review.md`](superagent/skills/supertailor-review.md)). It is a skill the lead runs, with no agent of its own.
+- **Framework changes** (implementation): read and follow [`superagent/rules/framework-changes.md`](superagent/rules/framework-changes.md) before any edit under `superagent/`.
 - **Custom overlay** (per-user extensions): see § "Custom overlay" below; contract in [`superagent/contracts/custom-overlay.md`](superagent/contracts/custom-overlay.md).
 - **Harness wiring** (which harness reads which setup file, hooks, MCP config): [`superagent/docs/harness-setup.md`](superagent/docs/harness-setup.md); capabilities per harness: [`superagent/docs/harness-matrix.md`](superagent/docs/harness-matrix.md).
 
@@ -60,11 +60,11 @@ On **every Superagent turn**, before doing anything else:
 
 1. If `workspace/_custom/rules/` exists and contains files, list them and **read every file**. Treat their contents as **additional rules** that apply to the current interaction on top of this `AGENTS.md`. Ordering: alphabetical by filename.
 2. When the user invokes or infers a skill, search **both** `superagent/skills/` **and** `workspace/_custom/skills/`. On name collision, run the framework skill first, then apply the custom file as an addendum (extra steps) — and announce the overlay at the top of the response.
-3. When a role definition is needed, check `workspace/_custom/agents/` for a same-named overlay and merge its content as additional boundaries / preferences on top of the framework role (never weakening framework safety).
+3. When a role definition is needed, check `workspace/_custom/agents/` for a same-named overlay and merge its content as additional boundaries / preferences on top of the framework role (never weakening framework safety). Any other `<name>.agent.md` there is a custom role with its own dev twin (`contracts/agents.md` § 7).
 4. When resolving a template, check `workspace/_custom/templates/` first. If a same-named template exists, use the custom version **and announce** it loudly: *"Using `_custom/templates/<name>` (overrides framework template)."*
 5. Watcher packs in `workspace/_custom/watchers/<id>/` are discovered alongside `superagent/watchers/<id>/` (per `contracts/watchlist.md`). On an `id` collision the custom pack wins — override, not merge — **and announce** it: *"Using `_custom/watchers/<id>` (overrides framework pack)."*
 
-If `workspace/_custom/` does not exist, skip the overlay silently — no error, no warning. It is optional scaffolding. The Supertailor (`supertailor-review` skill) auto-scaffolds the `_custom/` directory structure during its hygiene pass if it is missing.
+If `workspace/_custom/` does not exist, skip the overlay silently — no error, no warning. It is optional scaffolding. The `supertailor-review` skill offers to scaffold the `_custom/` directory structure during its hygiene pass if it is missing.
 
 ## Framework Artifact Creation Contract
 
@@ -74,7 +74,7 @@ Whenever the agent (or any skill) is about to create a new **skill**, **agent ro
 2. **If unambiguous**, announce the destination at the top of the response and proceed.
 3. **If ambiguous**, **ask the user** with the `AskQuestion` tool: choose `superagent`, `_custom`, or `cancel`.
 4. **Safeguard**: scan the artifact body for any name from `_memory/contacts.yaml`, `domains-index.yaml`, `assets-index.yaml`, `accounts-index.yaml`, address fragments, account numbers, license-plate patterns, or known personal identifiers. On any match, refuse the `superagent/` path and re-route to `workspace/_custom/`.
-5. **NEVER** silently write user-specific content under `superagent/` — even if explicitly requested. The Supercoder enforces this with a refusal on receipt.
+5. **NEVER** silently write user-specific content under `superagent/` — even if explicitly requested. The safeguard runs again at the moment of the write and refuses on a match (`rules/framework-changes.md` § 2).
 
 This contract does **not** govern workspace **data** writes (domain files, contact entries, bill records, appointment rows) — those go to `workspace/` by their own conventions (see `contracts/`).
 
@@ -88,7 +88,7 @@ When the agent first opens (or first acts in) `workspace/` in a session:
 4. Run `uv run python -m superagent.tools.cadence status --stamp` (the on-open check) and relay every line it prints. Three kinds of line:
    - **Presence** (every open): "`<machine>` wrote here N min ago" means another machine is writing this workspace now or was a moment ago. Let the sync settle and re-read a shared file right before editing it (§ "Concurrent sessions").
    - **Sync conflicts** (every open): what the conflict sweep merged by itself, and each conflict copy left to fold by hand. Fold those before other work touches the same file.
-   - **What is late** (at most once per calendar day on this machine): a `last_check` older than 24 hours, overdue cadences, watchers overdue for a check, cadence runs that started and never finished. Suggest **daily-update** (or **whatsup**, or the overdue cadence).
+   - **What is late** (at most once per calendar day on this machine): a `last_check` older than 24 hours, overdue cadences, watchers overdue for a check, cadence runs that started and never finished. Each line starts with the agent whose duty it is, in brackets (`[superagent]`, `[updater]`; § "Agents"). Suggest **daily-update** (or **whatsup**, or the overdue cadence).
 
    The check writes no shared file: the day it last nagged is kept in `~/.superagent/state/`, and the only workspace file it writes is this machine's beat file `_memory/machines/<machine>.json`. It prints nothing when no other machine is active, no conflict copy exists, and either nothing is late or the nag already fired today. If the tool cannot run, apply the rule by hand: `last_check` more than 24 hours ago (or null) → suggest whatsup / daily-update, once per session.
 
@@ -144,10 +144,23 @@ The catalogue — one-liners and triggers — is [`superagent/skills/_manifest.y
 | **report** | Author + render a printable report (HTML source → US-Letter PDF). |
 | **personal-signals** | Capture self-development feedback; surface growth themes on request. |
 | **domain-suggest** | Surface a candidate new domain once when signals warrant it. |
-| **doctor / supertailor-review** | Hygiene: `doctor` = workspace data (stale domains, duplicates, drift); `supertailor-review` = framework hygiene + strategic suggestions → `supertailor-suggestions.yaml`. |
+| **doctor / supertailor-review** | Hygiene: `doctor` = workspace data (stale domains, duplicates, drift); `supertailor-review` = framework hygiene + strategic suggestions → `supertailor-suggestions.yaml`, each built by a dev twin once approved. |
+| **agents** | Agent roster: roles, instances, ids and dev twins; each agent's duties and what is late; take a role ("act as the bookkeeper") or develop one as its dev twin; registry rows. |
 | **migrate / refresh / release** | Version chain: apply / revert workspace migrations one version at a time; pull the framework from git then `migrate` (never pushes); cut a release (gate, bump, migration, roadmap row, tag, push). |
 
 Capture boundary: `add-source` owns the file (bytes under `Sources/`, the `.meta.md` sidecar, the sources index row, the `sources.md` catalogue row); `add` kind `document` owns the `documents-index.yaml` record. When both apply, run `add-source` first.
+
+## Agents
+
+Per [`contracts/agents.md`](superagent/contracts/agents.md) (roles, instances, ids, dev twins, duties) and [`contracts/autonomy.md`](superagent/contracts/autonomy.md) (what an agent may do on its own). Binding:
+
+- **An agent is a role that runs skills.** Skills stay the single source of behavior; no logic lives only in an agent. Roles: `superagent` (the lead: briefs, routes, and is the one role that asks the owner), `updater` (fetches, captures, reconciles; never asks, never sends), `bookkeeper` (bills, subscriptions, spending; never pays, never cancels), `project` (one instance per Project that has an agent; idle until written to). A role is a file, `superagent/agents/<name>.agent.md`, or `workspace/_custom/agents/<name>.agent.md` for a custom role; an instance is a row in `workspace/_memory/agents.yaml`.
+- **No separate agent runs by default.** This session is the lead and takes any other role the work needs: read that role's file first and keep its boundaries (the `agents` skill). Autocode is an optional runtime for agents that run as registered sessions; no framework tool needs it.
+- **Ids are built, never typed.** An id is `<prefix>:<name>`, with the prefix from `preferences.autocode.id_prefix` (default `sa`): `uv run python -m superagent.tools.agents id <name>` (`--dev` for the dev twin). Never hardcode a prefix.
+- **Duties** are declared in a role's frontmatter (skill, tier, schedule, check); schedule values stay in `preferences.cadences`. `uv run python -m superagent.tools.agents duties --overdue` lists what is late and whose it is, and `agents check <agent> <duty>` is the zero-cost check a scheduled wake runs first (exit 0 due, exit 1 not due).
+- **Dev twins.** Every role has `<name>.agent.dev.md` beside it. The running agent never edits its own role, duties or checks: it files a change request, and the dev twin builds the change under `rules/framework-changes.md` (the gate: an approved suggestion or the owner's direct request).
+- **Autonomy.** Four tiers, the markers of the task list: `act` 🚗, `approve` 👤 🚗, `prepare` 🚗 👤, `owner` 👤. A run with nobody present never asks in chat, never sends, never pays. Overlay rules can only tighten a tier.
+- **Wakes.** Every periodic wake is a grant the owner approved with its exact terms, recorded on the agent's registry row, and it runs its check first. A project agent and a dev twin have none by default.
 
 ## Data ingestion contract
 
@@ -298,7 +311,7 @@ When the live call happens, capture-through MUST run (per `contracts/ingestion.m
 
 ## Operational handles
 
-Per `contracts/operational-handles.md`, every entity has a canonical handle `<kind>:<slug>` — `contact:dr-smith-dentist`, `bill:pge-electric`, `appointment:20260512-dr-smith-cleaning`, `project:tax-2026`, `domain:health`, `asset:car-blue-camry-2018`, `task:20260428-001`, `decision:dec-2026-04-28-001`, `watch:<id>`. Use `superagent/tools/handles.py` — `parse(value)` (canonicalizes legacy bare ids), `format(kind, slug)`, `is_handle(value)`; never split on colon by hand. The world graph (`_memory/world.yaml`, `contracts/world-graph.md`) is keyed by handle; "show me everything connected to X" is `tools/world.py related <handle>`.
+Per `contracts/operational-handles.md`, every entity has a canonical handle `<kind>:<slug>` — `contact:dr-smith-dentist`, `bill:pge-electric`, `appointment:20260512-dr-smith-cleaning`, `project:tax-2026`, `domain:health`, `asset:car-blue-camry-2018`, `task:20260428-001`, `decision:dec-2026-04-28-001`, `watch:<id>`, `agent:<name>`. Use `superagent/tools/handles.py` — `parse(value)` (canonicalizes legacy bare ids), `format(kind, slug)`, `is_handle(value)`; never split on colon by hand. The world graph (`_memory/world.yaml`, `contracts/world-graph.md`) is keyed by handle; "show me everything connected to X" is `tools/world.py related <handle>`.
 
 ## Visibility and sensitive tier
 
@@ -370,4 +383,4 @@ Four harness classes: **Cursor** reads `AGENTS.md` natively; **Claude Code** rea
 
 ## Prompt-cache discipline
 
-Both harnesses reward a stable prompt prefix: **do not edit `AGENTS.md`, `rules/`, or `contracts/` mid-session** — land the complete change once, commit, and start a fresh session (the Supertailor / Supercoder commit-then-restart cycle); **do not open many framework files mid-session**; run long harvest / backfill work as dedicated tool invocations. Full rule: [`superagent/rules/token-economy.md`](superagent/rules/token-economy.md) § "Prompt-cache discipline".
+Both harnesses reward a stable prompt prefix: **do not edit `AGENTS.md`, `rules/`, or `contracts/` mid-session** — land the complete change once, commit, and start a fresh session (the commit-then-restart cycle of `rules/framework-changes.md`); **do not open many framework files mid-session**; run long harvest / backfill work as dedicated tool invocations. Full rule: [`superagent/rules/token-economy.md`](superagent/rules/token-economy.md) § "Prompt-cache discipline".

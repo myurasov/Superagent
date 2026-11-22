@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-11-21T16:22:57-08:00'
-skill_count: 37
+generated_at: '2026-11-22T02:55:44-08:00'
+skill_count: 38
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -159,6 +159,33 @@ skills:
   - _memory/bills.yaml
   - Domains/Finances/history.md
   - Domains/Finances/info.md
+  origin: framework
+- name: superagent-agents
+  stem: agents
+  path: superagent/skills/agents.md
+  one_line: 'Show the agent roster (roles, instances, ids, dev twins), each agent''s duties and which
+    are late, and take a role in the chat session: work as one of the agents, or develop one as its dev
+    twin. Also a'
+  triggers:
+  - list agents / show the agents / agent roster / list the roster
+  - which agent does <thing> / which agent runs <skill>
+  - agent duties / which duties are overdue / what is each agent behind on
+  - what is the id of <agent> / agent id for <agent>
+  - act as the <agent> / take the <agent> role / work as the <agent>
+  - develop the <agent> agent / work as the dev twin / dev twin of <agent>
+  - add an agent row / place the <agent> agent / agent registry
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 122
+  h2_steps: 5
+  h3_subsections: 6
+  typical_token_cost: 1903
+  typical_files_read:
+  - _memory/agents.yaml
+  - _memory/config.yaml
+  - _memory/supertailor-suggestions.yaml
   origin: framework
 - name: superagent-appointments
   stem: appointments
@@ -864,8 +891,9 @@ skills:
 - name: superagent-supertailor-review
   stem: supertailor-review
   path: superagent/skills/supertailor-review.md
-  one_line: Run the Supertailor's two-pass review (hygiene + strategic). Hygiene applies mechanical reversible
-    repairs to the workspace. Strategic surfaces ranked framework-improvement suggestions and writes them
+  one_line: Run the two-pass framework review (hygiene + strategic). Hygiene finds mechanical, reversible
+    repairs to the workspace and applies the approved ones. Strategic surfaces ranked framework-improvement
+    su
   triggers:
   - tailor review
   - run the tailor
@@ -876,13 +904,15 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 151
-  h2_steps: 8
+  lines: 268
+  h2_steps: 15
   h3_subsections: 5
-  typical_token_cost: 2878
+  typical_token_cost: 5798
   typical_files_read:
-  - _memory/watchlist-state.yaml
+  - _memory/personal-signals.yaml
+  - _memory/action-signals.yaml
   - _memory/supertailor-suggestions.yaml
+  - _memory/watchlist-state.yaml
   - _memory/contacts.yaml
   - _memory/domains-index.yaml
   - _memory/assets-index.yaml

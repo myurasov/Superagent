@@ -34,6 +34,7 @@ REQUIRED_MEMORY_TEMPLATES = [
     "documents-index.yaml",
     "health-records.yaml",
     "watchlist-state.yaml",  # 0.19.0: replaces data-sources.yaml (retired)
+    "agents.yaml",  # 0.25.0: the agent registry (contracts/agents.md)
     "ingestion-log.yaml",
     "insights.yaml",
     "procedures.yaml",
@@ -186,25 +187,58 @@ def test_commit_msg_hook_exists_and_executable(framework_dir: Path) -> None:
     assert "Co-authored-by" in body, "commit-msg hook should block AI co-authors"
 
 
-def test_supercoder_agent_md_is_single_purpose(framework_dir: Path) -> None:
-    """agents/supercoder.agent.md describes a single-purpose framework-only role."""
-    body = (framework_dir / "agents" / "supercoder.agent.md").read_text()
+def test_framework_changes_rule_is_single_purpose(framework_dir: Path) -> None:
+    """rules/framework-changes.md (the Supercoder role of earlier versions) covers
+    framework changes only, behind the gate and the safeguard."""
+    body = (framework_dir / "rules" / "framework-changes.md").read_text()
     assert "Personal-data safeguard" in body
-    assert "approved" in body.lower(), "must require an approved suggestion"
+    assert "approved suggestion" in body.lower(), "must require an approved suggestion"
+    assert "owner's direct request" in body, "the second way through the gate"
     # No Mode 2 / project-build content.
     assert "Mode 2" not in body
     assert "project-build" not in body.lower()
     assert "code-projects" not in body
 
 
-def test_supercoder_agent_md_points_at_real_migration_mechanism(framework_dir: Path) -> None:
+def test_framework_changes_rule_points_at_real_migration_mechanism(framework_dir: Path) -> None:
     """Schema-bump guidance names the shipped migration files, not phantom tools."""
-    body = (framework_dir / "agents" / "supercoder.agent.md").read_text()
+    body = (framework_dir / "rules" / "framework-changes.md").read_text()
     assert "tools/migrate.py" not in body, "no such tool; migrations are markdown files"
     assert "test_migrations" not in body, "no such test module; coverage lives in test_version.py"
     assert "superagent/migrations/<to_version>.md" in body
     assert "tests/test_version.py" in body
     assert "refresh-manifest" in body
+
+
+def test_helper_role_files_are_folded(framework_dir: Path) -> None:
+    """0.25.0: the review is a skill and implementing is a rule; neither is a role file."""
+    agents = framework_dir / "agents"
+    assert not (agents / "supertailor.agent.md").exists()
+    assert not (agents / "supercoder.agent.md").exists()
+    assert (framework_dir / "rules" / "framework-changes.md").is_file()
+    skill = (framework_dir / "skills" / "supertailor-review.md").read_text()
+    assert "rules/framework-changes.md" in skill
+    assert "dev twin" in skill
+    for name in ("supertailor.agent.md", "supercoder.agent.md"):
+        assert name not in skill
+
+
+def test_nothing_live_names_the_folded_role_files(framework_dir: Path) -> None:
+    """Live text never sends a reader to a role file that no longer exists.
+
+    The roadmap, the internal design notes and shipped migrations are history
+    and keep their wording.
+    """
+    history = ("docs/roadmap.md", "docs/_internal/", "migrations/0.", "migrations/_manifest.yaml",
+               "tests/")
+    files = [framework_dir.parent / "AGENTS.md", framework_dir.parent / "README.md"]
+    files += [p for p in framework_dir.rglob("*") if p.is_file() and p.suffix in (".md", ".yaml", ".py")
+              and "__pycache__" not in p.parts
+              and not any(p.relative_to(framework_dir).as_posix().startswith(h) for h in history)]
+    offenders = [str(p.relative_to(framework_dir.parent)) for p in files
+                 if any(name in p.read_text(encoding="utf-8")
+                        for name in ("supertailor.agent.md", "supercoder.agent.md"))]
+    assert not offenders, offenders
 
 
 def _load_config_template(framework_dir: Path) -> dict:
@@ -224,6 +258,31 @@ def test_config_template_declares_watchlist_preferences(framework_dir: Path) -> 
     assert "min_check_interval_minutes" in wl and wl["min_check_interval_minutes"] is None
     assert "ingestion_schedule" not in cfg["preferences"]
     assert "data-sources.yaml" not in (framework_dir / "templates" / "memory" / "config.yaml").read_text()
+
+
+def test_config_template_declares_autocode_defaults(framework_dir: Path) -> None:
+    """0.25.0: the id prefix and the per-tier model defaults (contracts/agents.md § 4).
+
+    The template names no model and no cap: both are the user's to set.
+    """
+    block = _load_config_template(framework_dir)["preferences"]["autocode"]
+    assert block["id_prefix"] == "sa"
+    assert block["models"] == {"runner": {"model": None, "variant": None},
+                               "dev": {"model": None, "variant": None}}
+    assert block["daily_usd"] is None
+    assert "enabled" not in block, "no switch ships before the runtime integration does"
+
+
+def test_agents_registry_template_shape(framework_dir: Path) -> None:
+    """The registry stores names, never ids, and its example row is not an agent."""
+    path = framework_dir / "templates" / "memory" / "agents.yaml"
+    data = yaml.safe_load(path.read_text())
+    assert set(data) == {"schema_version", "last_updated", "agents"}
+    (row,) = data["agents"]
+    assert set(row) == {"name", "role", "handle", "project", "host", "model", "variant",
+                        "daily_usd", "wakes", "status", "notes", "provenance"}
+    assert row["name"] == "" and row["status"] == "off" and row["wakes"] == []
+    assert "id" not in row
 
 
 def test_config_template_declares_outbox_drafts_stale_days(framework_dir: Path) -> None:

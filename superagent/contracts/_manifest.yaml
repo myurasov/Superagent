@@ -126,3 +126,11 @@ contracts:
     slug: watchlist
     title: "Watchlist Contract (change detection for external sources)"
     path: contracts/watchlist.md
+  - id: C-45
+    slug: agents
+    title: "Agents Contract (roles, instances, ids, dev twins, duties)"
+    path: contracts/agents.md
+  - id: C-46
+    slug: autonomy
+    title: "Autonomy Contract (what an agent may do on its own)"
+    path: contracts/autonomy.md

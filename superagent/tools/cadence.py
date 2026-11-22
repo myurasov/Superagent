@@ -23,7 +23,12 @@ abandoned midway used to leave no trace at all. This tool makes both visible:
                        period plus one day of grace (daily 1, weekly 7,
                        monthly 31 days; `manual` watchers are never late);
                      - unfinished runs (see `finish`).
-                   Prints nothing when everything is current. `--stamp` is
+                   Each line starts with the agent whose duty it is, in
+                   brackets (`[superagent]`, `[updater]`), and lines are
+                   grouped by agent in roster order (contracts/agents.md;
+                   `tools/agents.py duties --overdue` lists the same findings
+                   one duty per row). Prints nothing when everything is
+                   current. `--stamp` is
                    the on-open check (AGENTS.md "On workspace open"):
                      - it prints who else wrote here lately (another machine's
                        recent beat, tools/machines.py) and what the conflict
@@ -64,7 +69,7 @@ from typing import Any
 
 import yaml
 
-from superagent.tools import heal, machines
+from superagent.tools import agent_roles, heal, machines
 from superagent.tools import watchlist as wl
 
 FRAMEWORK = Path(__file__).resolve().parent.parent
@@ -360,7 +365,7 @@ def status(workspace: Path, *, now: dt.datetime | None = None, framework: Path =
     runs = ctx.get("last_runs") if isinstance(ctx.get("last_runs"), dict) else {}
     last_check = as_datetime(ctx.get("last_check"))
     stale = last_check is None or now - last_check > dt.timedelta(hours=STALE_CHECK_HOURS)
-    return {
+    report = {
         "now": _iso(now),
         "last_check": _iso(last_check),
         "last_check_stale": stale,
@@ -371,29 +376,71 @@ def status(workspace: Path, *, now: dt.datetime | None = None, framework: Path =
         "unfinished_runs": unfinished_runs(runs),
         "refresh_suggested": machines.read_local_state(workspace).get("refresh_suggested"),
     }
+    return assign_agents(report, workspace, framework)
+
+
+def assign_agents(report: dict[str, Any], workspace: Path, framework: Path = FRAMEWORK
+                  ) -> dict[str, Any]:
+    """Name the agent each finding belongs to (contracts/agents.md "Duties").
+
+    A cadence finding goes to the role with a duty that runs that skill, a
+    watcher finding to the role whose duty sits behind the `watchers` check,
+    and anything unclaimed to the lead. Adds `agent` to every finding row,
+    `last_check_agent`, and `agents` (the roster order `render` groups by).
+    With no readable role file the names are None and `render` prints the
+    lines without a prefix.
+    """
+    roles, _errors = agent_roles.collect(framework, workspace)
+    for row in report["overdue_cadences"] + report["unfinished_runs"]:
+        row["agent"] = agent_roles.duty_owner(roles, row["cadence"])
+    watcher_agent = agent_roles.check_owner(roles, "watchers")
+    for row in report["overdue_watchers"]:
+        row["agent"] = watcher_agent
+    report["last_check_agent"] = agent_roles.duty_owner(roles, "daily-update")
+    report["agents"] = [role.name for role in roles]
+    return report
+
+
+def _by_agent(rows: list[dict[str, Any]]) -> dict[str | None, list[dict[str, Any]]]:
+    """Finding rows keyed by their `agent` (None when a row has none)."""
+    groups: dict[str | None, list[dict[str, Any]]] = {}
+    for row in rows:
+        groups.setdefault(row.get("agent"), []).append(row)
+    return groups
 
 
 def render(report: dict[str, Any]) -> list[str]:
-    """Human lines for the findings in `report`; [] when everything is current."""
-    lines: list[str] = []
+    """Human lines for the findings in `report`, grouped by agent; [] when everything is current.
+
+    A line starts with `[<agent>] ` when the finding has one (`assign_agents`).
+    Agents come in roster order, and one agent's lines stay together: stale
+    context, overdue cadences, overdue watchers, unfinished runs.
+    """
+    found: dict[str | None, list[str]] = {}
     now = as_datetime(report["now"])
     if report["last_check_stale"]:
         last = as_datetime(report["last_check"])
         age = f"{(now - last).days} day(s) ago, {last:%Y-%m-%d}" if last and now else "never"
-        lines.append(f"Context last refreshed {age}: run `daily-update` (or `whatsup`).")
-    if report["overdue_cadences"]:
-        lines.append("Overdue cadences: " + "; ".join(
+        found.setdefault(report.get("last_check_agent"), []).append(
+            f"Context last refreshed {age}: run `daily-update` (or `whatsup`).")
+    for agent, rows in _by_agent(report["overdue_cadences"]).items():
+        found.setdefault(agent, []).append("Overdue cadences: " + "; ".join(
             f"{c['cadence']} ({c['reason']}; last {str(c['last_run'] or 'never')[:10]})"
-            for c in report["overdue_cadences"]) + ".")
-    if report["overdue_watchers"]:
-        lines.append("Watchers overdue for a check: " + "; ".join(
+            for c in rows) + ".")
+    for agent, rows in _by_agent(report["overdue_watchers"]).items():
+        found.setdefault(agent, []).append("Watchers overdue for a check: " + "; ".join(
             f"{w['watcher']} ({w['cycle']}; last success {str(w['last_success'] or 'never')[:10]}"
             + (f", {w['days_since']} day(s) ago)" if w["days_since"] is not None else ")")
-            for w in report["overdue_watchers"]) + ".")
-    if report["unfinished_runs"]:
-        lines.append("Unfinished runs: " + "; ".join(
+            for w in rows) + ".")
+    for agent, rows in _by_agent(report["unfinished_runs"]).items():
+        found.setdefault(agent, []).append("Unfinished runs: " + "; ".join(
             f"{u['cadence']} started {str(u['started'])[:16].replace('T', ' ')} and never finished"
-            for u in report["unfinished_runs"]) + ".")
+            for u in rows) + ".")
+    order = report.get("agents") or []
+    lines: list[str] = []
+    for agent in sorted(found, key=lambda a: order.index(a) if a in order else len(order)):
+        prefix = f"[{agent}] " if agent else ""
+        lines += [prefix + line for line in found[agent]]
     return lines
 
 

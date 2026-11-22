@@ -93,7 +93,7 @@ The 2025-2026 wave of AI life-management apps mostly land on a similar promise: 
 
 - **Local first, your data, your machine.** No cloud account required.
 - **Open source, customizable, self-hostable.** Your skills, your overlays, your ingestors.
-- **Self-improving (Supertailor / Supercoder loop).** Most commercial apps have a fixed feature set; Superagent learns from your usage and ships framework improvements you approve.
+- **Self-improving (the review-and-change loop).** Most commercial apps have a fixed feature set; Superagent learns from your usage and ships framework improvements you approve.
 - **Heavy-import depth.** The data-source catalogue is broader than any commercial app's integration list, by design — you can plug in everything from your fitness ring to your smart home to your bank.
 - **No subscription.** You pay for Cursor and that's it.
 
@@ -138,7 +138,7 @@ Multiple safety nets:
 - **Per-row audit trail.** Every entity-shape index file (`bills.yaml`, `contacts.yaml`, …) gets a sibling `<file>.history.jsonl` written by `tools/audit.py` on every change — so "when did this row change, and to what?" is always answerable.
 - **Reversible archives.** Anything `doctor` moves to `Archive/` is one `mv` away from coming back.
 - **Diff-and-merge, not clobber.** Skills that update markdown files diff against your hand-edits and merge; they don't overwrite blindly.
-- **The hard safeguard.** The Supertailor / Supercoder loop has a token-scan that prevents personal data from accidentally leaking into committed framework code, regardless of what the AI thinks.
+- **The hard safeguard.** The review-and-change loop has a token-scan that prevents personal data from accidentally leaking into committed framework code, regardless of what the AI thinks.
 - **Plain-text data.** Worst case, you open the file in any editor and fix it manually. There's nothing the agent does that you can't undo.
 
 
@@ -152,7 +152,7 @@ There is deliberately **no catalogue of stubs**. A source Superagent does not kn
 
 Yes — drop a markdown file into `workspace/_custom/skills/<your-skill>.md` with the standard frontmatter (`name`, `description`, `triggers`, `mcp_required`, `mcp_optional`). The agent finds it the next turn and treats it as first-class.
 
-If your skill turns out to be useful for everyone, the Supertailor's strategic pass may surface it as a `supertailor-suggestions.yaml` candidate to promote into the committed framework. The Supercoder will only take it if it's generic (the safeguard refuses anything with personal-data tokens).
+If your skill turns out to be useful for everyone, the strategic pass of `supertailor-review` may surface it as a `supertailor-suggestions.yaml` candidate to promote into the committed framework. It is only built into the framework if it's generic (the safeguard refuses anything with personal-data tokens).
 
 ## What's the long-term plan?
 

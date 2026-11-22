@@ -90,3 +90,20 @@ def test_watch_kind_is_canonical() -> None:
     h = parse("watch:solar-permit")
     assert h.kind == "watch" and h.slug == "solar-permit"
     assert is_handle("watch:solar-permit")
+
+
+def test_agent_kind_is_canonical_and_keeps_its_colon() -> None:
+    """0.25.0: an agent has the handle `agent:<instance name>` (contracts/agents.md § 4)."""
+    from superagent.tools.handles import KINDS, collect_handles_in, format, is_handle, parse
+
+    assert "agent" in KINDS
+    h = parse("agent:updater")
+    assert h.kind == "agent" and h.slug == "updater"
+    project = parse("agent:project:tax-2026")
+    assert project.kind == "agent" and project.slug == "project:tax-2026"
+    assert str(project) == format("agent", "project:tax-2026") == "agent:project:tax-2026"
+    assert is_handle("agent:project:tax-2026")
+    found = [str(x) for x in collect_handles_in(
+        "ask agent:project:tax-2026 or agent:updater; see project:tax-2026 and source:a:b")]
+    assert found == ["agent:project:tax-2026", "agent:updater", "project:tax-2026", "source:a"], (
+        "only the agent kind takes further segments")

@@ -1,5 +1,6 @@
 # [Do not change manually — managed by Superagent]
-# Superagent memory: Supertailor improvement suggestions tracked through their lifecycle.
+# Superagent memory: framework-improvement suggestions from the `supertailor-review`
+# skill, tracked through their lifecycle.
 # New suggestions are appended; status is updated in place.
 
 schema_version: 1
@@ -14,16 +15,20 @@ suggestions:
   #   category              — new-skill | skill-improvement | memory-schema |
   #                            template | workflow | hygiene | config |
   #                            new-ingestor | auto-capture-rule | surfacing-rule
-  #   destination           — superagent | _custom (see agents/supertailor.agent.md
-  #                            § Destination Classification).
-  #                            superagent → generic; implemented by Supercoder
-  #                            into the committed framework tree.
-  #                            _custom      → user-specific; implemented by
-  #                            Supertailor directly into workspace/_custom/.
-  #                            Supertailor defaults to _custom for anything referencing
-  #                            specific personal names, addresses, accounts, assets.
-  #                            Supercoder REFUSES briefs whose destination is superagent
-  #                            but whose body contains workspace-specific content.
+  #   destination           — superagent | _custom (see skills/supertailor-review.md
+  #                            § 4 "Destination and agent classification").
+  #                            superagent → generic; built into the committed
+  #                            framework tree.
+  #                            _custom      → user-specific; built into
+  #                            workspace/_custom/.
+  #                            The review defaults to _custom for anything naming
+  #                            specific people, addresses, accounts, assets. A
+  #                            suggestion whose destination is superagent but whose
+  #                            body carries workspace-specific content is REFUSED at
+  #                            the write (rules/framework-changes.md § 2).
+  #   agent                 — Role name of the agent the suggestion concerns
+  #                            (contracts/agents.md); the dev twin of that agent
+  #                            builds it. Empty or absent = the lead.
   #   priority              — high | medium | low
   #   title                 — Short descriptive title.
   #   problem               — What friction or gap was observed.
@@ -35,14 +40,14 @@ suggestions:
   #   risk                  — Migration concerns or breakage potential.
   #   status                — proposed | approved | declined | implemented | deferred
   #   resolved_at           — ISO 8601 when resolved, or null.
-  #   implementation_notes  — Notes after implementation (who: Supertailor-direct for
-  #                            _custom, Supercoder for superagent; files created or
-  #                            modified; safeguard re-routes; commit SHA),
-  #                            or null.
+  #   implementation_notes  — Notes after implementation (which dev twin built it;
+  #                            files created or modified; safeguard re-routes; commit
+  #                            SHA, or "(workspace)" for a _custom change), or null.
   - id: null
     proposed_at: null
     category: ""
     destination: ""
+    agent: ""
     priority: ""
     title: ""
     problem: ""

@@ -10,7 +10,7 @@ Whenever a skill is about to create a new **skill**, **agent role**, **rule**, *
 2. **If unambiguous**, announce the destination at the top of the response and proceed.
 3. **If ambiguous**, **ask the user** with the `AskQuestion` tool: choose `superagent`, `_custom`, or `cancel`.
 4. **Safeguard**: scan the artifact body for any name from `_memory/contacts.yaml`, `domains-index.yaml`, `assets-index.yaml`, `accounts-index.yaml`, address fragments, account numbers, license-plate patterns. On any match, refuse the `superagent/` path and re-route to `workspace/_custom/`.
-5. **NEVER** silently write user-specific content under `superagent/`. The Supercoder enforces this with a refusal on receipt.
+5. **NEVER** silently write user-specific content under `superagent/`. The safeguard runs again at the moment of the write and refuses on a match (`rules/framework-changes.md` § 2).
 
 This contract does NOT govern workspace **data** writes (domain files, contact entries, bill records, appointment rows) — those go to `workspace/` by their own conventions.
 
@@ -24,4 +24,6 @@ This contract does NOT govern workspace **data** writes (domain files, contact e
 | New template that styles output for a specific recipient | `_custom/templates/` | always |
 | New ingestor for a previously unsupported source | `superagent/tools/ingest/` | generic if the source itself is generic |
 | New tool that processes generic data | `superagent/tools/` | otherwise `_custom/tools/` |
+| New agent role that is generic across users | `superagent/agents/` | rare; a role that names a person, project, account or household routine is always custom (`contracts/agents.md` § 7) |
+| New agent role for this household or one of its projects | `_custom/agents/` | always, with its dev twin beside it |
 | New doc page (architecture, faq, …) | `superagent/docs/` | almost always |

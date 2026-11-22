@@ -10,4 +10,5 @@ Per `AGENTS.md` § "Custom overlay — read on every superagent turn" (the autho
 - Custom rules apply additively on top of `AGENTS.md`.
 - Custom skills are first-class. Same-name collision: framework first, then custom as an addendum, with a chat banner.
 - Custom templates override framework templates on same-name match, with a chat banner announcing the override.
+- A file in `_custom/agents/` named like a framework role (`<name>.agent.md`) is an overlay on that role: extra boundaries and preferences, never a weaker safety rule. Any other `<name>.agent.md` there is a custom role, with its own dev twin beside it (per `contracts/agents.md` § 7).
 - Custom watcher packs in `_custom/watchers/<id>/` are discovered alongside `superagent/watchers/<id>/` (per `contracts/watchlist.md`); on an `id` collision the custom pack wins (override, not merge), with a chat banner announcing the override.

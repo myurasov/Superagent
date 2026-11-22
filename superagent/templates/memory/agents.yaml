@@ -1,0 +1,67 @@
+# [Do not change manually — managed by Superagent]
+# Superagent memory: the agent registry (contracts/agents.md).
+#
+# A ROLE is a file: `superagent/agents/<name>.agent.md`, or
+# `workspace/_custom/agents/<name>.agent.md` for a custom role. An INSTANCE is
+# a row here: where one agent runs and what it was granted. A lead or durable
+# role is one agent and needs a row only to carry a setting. A project agent
+# exists only through its row.
+#
+# Ids are never stored. An agent's id is `<id_prefix>:<name>`, built from
+# `config.preferences.autocode.id_prefix`
+# (`uv run python -m superagent.tools.agents id <name>`), so changing the prefix
+# changes every id at once. Read the roster with
+# `uv run python -m superagent.tools.agents list`.
+#
+# Entity-shape (contracts/memory-taxonomy.md): rows are long-lived and edited
+# in place. Re-read this file just before writing it
+# (rules/concurrent-sessions.md).
+
+schema_version: 1
+last_updated: null
+
+agents:
+  # Each agent:
+  #   name        — Instance name: the id without its prefix. The role name for a
+  #                  lead or durable role ("updater"); "project:<slug>" for a
+  #                  project agent ("project:kitchen-reno-2026").
+  #   role        — Role file stem: the framework roles (superagent, updater,
+  #                  bookkeeper, project) or a custom role.
+  #   handle      — Operational handle "agent:<name>" (contracts/operational-handles.md).
+  #   project     — For a project agent: the handle of its Project
+  #                  ("project:kitchen-reno-2026"). null otherwise.
+  #   host        — Machine that runs the agent (`uv run python -m
+  #                  superagent.tools.machines name`). null = not placed.
+  #   model       — "<provider>/<model>" for this agent; null = the default of the
+  #                  role's tier (`config.preferences.autocode.models`).
+  #   variant     — The model's variant for this agent; null = the tier's default.
+  #   daily_usd   — Daily cost cap in USD for this agent; null = the default
+  #                  (`config.preferences.autocode.daily_usd`).
+  #   wakes       — Periodic wakes the owner granted, one mapping each:
+  #                    { name: "<wake name>", trigger: "<when it runs>",
+  #                      purpose: "<why>", cost_per_run_usd: <number or null>,
+  #                      ends: <ISO date or null>, granted_at: <ISO datetime> }
+  #                  A periodic wake with no grant here must not run. Empty for
+  #                  an agent that only wakes on a message.
+  #   status      — off      no session runs it; a chat session takes the role
+  #                  active   a registered session runs it with its granted wakes
+  #                  dormant  a registered session holds it and wakes on a message
+  #                  paused   registered, and nothing is delivered to it
+  #                  retired  the agent ended (a finished or cancelled project)
+  #   notes       — Free-form context.
+  #   provenance  — Where this row came from (contracts/provenance.md):
+  #                  { source: "user|<skill>|migrate", at: <ISO datetime> }
+  - name: ""
+    role: ""
+    handle: ""
+    project: null
+    host: null
+    model: null
+    variant: null
+    daily_usd: null
+    wakes: []
+    status: "off"
+    notes: ""
+    provenance:
+      source: ""
+      at: null

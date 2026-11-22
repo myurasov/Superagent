@@ -142,7 +142,7 @@ git commit --no-verify -m "..."
 
 This rule is enforced at three layers:
 
-1. **Agent discipline** — Superagent / Supercoder agents run `ruff check` as part of every commit cycle. This is policy, not a tool.
+1. **Agent discipline** — every agent that commits framework code runs `ruff check` as part of every commit cycle (`rules/framework-changes.md` § 5). This is policy, not a tool.
 2. **Pre-commit hook** — `./.githooks/pre-commit` blocks the local commit when ruff fails (once `core.hooksPath` is set per the install above).
 3. **CI (future)** — when the project gains CI, the same `uv run ruff check superagent/` runs there as a hard gate.
 

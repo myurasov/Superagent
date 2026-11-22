@@ -31,6 +31,8 @@ EXPECTED_SKILLS = {
     "migrate", "domain-suggest", "browserctl",
     "ad-hoc-task", "refresh", "report", "release",
     "home-assistant",
+    # 0.25.0: the agent roster (contracts/agents.md).
+    "agents",
 }
 
 

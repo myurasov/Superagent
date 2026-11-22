@@ -58,7 +58,7 @@ uv run python -m superagent.tools.version refresh-manifest
 6. Add a one-line "Released" entry to `superagent/docs/roadmap.md`.
 7. Commit per [`AGENTS.md` § "Git commits"](../../AGENTS.md#git-commits).
 
-The Supercoder enforces the safeguard from
+Whoever authors a migration enforces the safeguard from
 [`contracts/framework-artifacts.md`](../contracts/framework-artifacts.md):
 **no personal data** (names, addresses, account numbers) in migration
 file bodies.

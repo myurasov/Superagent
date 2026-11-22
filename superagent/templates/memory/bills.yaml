@@ -1,7 +1,7 @@
 # [Do not change manually — managed by Superagent]
 # Superagent memory: recurring + one-shot bills.
 # This file is the source of truth for "what do I owe and when".
-# The Bookkeeper persona reconciles ingested transactions against these rows.
+# The Bookkeeper role reconciles ingested transactions against these rows.
 
 schema_version: 1
 

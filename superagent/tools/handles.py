@@ -14,6 +14,8 @@ Examples:
     domain:health
     asset:car-blue-camry-2018
     watch:solar-permit           (a Sources/Watchlist/<id>.ref.md watcher)
+    agent:updater                (an agent, per contracts/agents.md)
+    agent:project:tax-2026       (a project agent: the slug is its instance name)
 
 The colon separates the entity kind (the type of thing) from the entity
 slug (the unique-within-kind identifier). Kinds are lowercase singular
@@ -40,8 +42,15 @@ KINDS = frozenset({
     # A watcher (ext-source): `Sources/Watchlist/<slug>.ref.md`, per
     # contracts/watchlist.md. The slug is the ref filename stem.
     "watch",
+    # An agent (contracts/agents.md). The slug is the instance name, which is
+    # the agent's id without its prefix: `updater`, `project:<slug>`. It is the
+    # one kind whose slug may contain a colon.
+    "agent",
     "other",
 })
+
+#: Kinds whose slug may carry further `:`-separated segments.
+MULTI_SEGMENT_KINDS = frozenset({"agent"})
 
 # Common legacy prefixes some ids carry; the parser folds them into kinds.
 LEGACY_PREFIXES = {
@@ -141,15 +150,23 @@ def collect_handles_in(text: str) -> list[Handle]:
 
     >>> sorted(str(h) for h in collect_handles_in('see contact:alice and project:tax-2026'))
     ['contact:alice', 'project:tax-2026']
+    >>> [str(h) for h in collect_handles_in('ask agent:project:tax-2026 about it')]
+    ['agent:project:tax-2026']
     """
     if not text:
         return []
     pattern = re.compile(r"\b([a-z_]{3,20}):([a-z0-9][a-z0-9_-]*)")
+    more = re.compile(r"(?::[a-z0-9][a-z0-9_-]*)+")
     seen: set[str] = set()
     out: list[Handle] = []
-    for match in pattern.finditer(text):
+    pos = 0
+    while (match := pattern.search(text, pos)) is not None:
         kind = match.group(1)
         slug = match.group(2)
+        pos = match.end()
+        if kind in MULTI_SEGMENT_KINDS and (tail := more.match(text, pos)) is not None:
+            slug += tail.group(0)
+            pos = tail.end()
         key = f"{kind}:{slug}"
         if key in seen:
             continue

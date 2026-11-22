@@ -202,9 +202,9 @@ one file, not a chain. Binding at every economy level:
 - **Don't edit `AGENTS.md`, `rules/`, or `contracts/` mid-session.** Mutating
   the docs that anchor the prefix forces a full re-cache, paying the long form
   back to the model on every subsequent turn. Draft the complete change, land
-  it once, and start a fresh session. The Supertailor / Supercoder
-  commit-then-restart cycle is built for this: approve the doc change, let the
-  Supercoder commit, open a new chat — the new session pays the full prompt
+  it once, and start a fresh session. The commit-then-restart cycle of
+  `rules/framework-changes.md` is built for this: approve the doc change, let
+  the dev twin commit, open a new chat — the new session pays the full prompt
   cost ONCE and every later turn reaps the cache savings.
 - **Don't open many framework files mid-session.** Each one bumps the prompt;
   fewer files = better cache reuse. Read `skills/_manifest.yaml`, then the one

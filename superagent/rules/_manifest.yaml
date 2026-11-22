@@ -163,6 +163,16 @@ files:
       - tools/heal.py
       - tools/machines.py
     user_overlay: workspace/_custom/rules/concurrent-sessions.md
+  - path: framework-changes.md
+    kind: doc
+    purpose: "How a change to the framework is built: the gate (an approved suggestion or the owner's direct request), the personal-data safeguard re-run at the write, coding conventions, tests before a commit, git practices, and the workflow every dev twin follows when it edits superagent/."
+    consumed_by:
+      - AGENTS.md
+      - agents/superagent.agent.md
+      - contracts/agents.md
+      - contracts/framework-artifacts.md
+      - skills/supertailor-review.md
+    user_overlay: workspace/_custom/rules/framework-changes.md
   - path: git-commits.md
     kind: doc
     purpose: "Framework git-commit policy: one-sentence imperative subject (<= 72 chars, ASCII, no body), no AI-attribution trailers, strip-after-commit filter-branch recipe (parenthesized vendor alternation) REQUIRED before any push, atomic commits, only framework files (never workspace/), ruff lint gate."

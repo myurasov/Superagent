@@ -1,6 +1,6 @@
 # Rule: Git commits to the framework tree
 
-Canonical git-commit policy for every commit that lands framework code under `superagent/`. `AGENTS.md` § "Git commits" carries the binding floor; this file carries the full text, the strip-after-commit recipe, and the reasoning. Applies whether the commit is authored by a human, by the Supercoder, or by any other agent.
+Canonical git-commit policy for every commit that lands framework code under `superagent/`. `AGENTS.md` § "Git commits" carries the binding floor; this file carries the full text, the strip-after-commit recipe, and the reasoning. Applies whether the commit is authored by a human, by a dev twin (`rules/framework-changes.md`), or by any other agent.
 
 ## 1. Subject line — length and tense
 
@@ -58,7 +58,7 @@ A local `commit-msg` hook (reference implementation: `superagent/templates/githo
 - **Atomic commits.** Unrelated or loosely-related changes go in different commits.
 - **Only framework files** under `superagent/` (plus the repo-root harness shims `AGENTS.md`, `CLAUDE.md`, `.claude/settings.json`, `.cursor/hooks.json`, `pyproject.toml`, `uv.lock`, `.githooks/`) are committed — **never** `workspace/` data.
 - **Commit messages do not mention** anything personally identifying, household-specific, or account-specific.
-- **Commit or push only when the user asks.** The Supercoder commits approved `destination: superagent` briefs; `_custom` work is never committed (`workspace/` is gitignored).
+- **Commit or push only when the user asks.** A dev twin commits an approved `destination: superagent` suggestion (`rules/framework-changes.md`); `_custom` work is never committed (`workspace/` is gitignored).
 
 ## 5. Lint before commit
 

@@ -5,7 +5,7 @@
 ## 1. Data location
 
 - **`workspace/`** (including everything under it) is **gitignored** and **local only** to this machine unless the user copies or syncs it themselves. Do not assume it is backed up or shared anywhere. No agent-initiated upload, sync, or telemetry.
-- Framework code under `superagent/` is committed and may be published; it therefore carries **no personal data** — the Framework Artifact Creation Contract (`contracts/framework-artifacts.md`) and the Supertailor / Supercoder safeguard (§ 5) enforce this.
+- Framework code under `superagent/` is committed and may be published; it therefore carries **no personal data** — the Framework Artifact Creation Contract (`contracts/framework-artifacts.md`) and the personal-data safeguard (§ 5) enforce this.
 
 ## 2. No telemetry
 
@@ -29,7 +29,7 @@ Superagent watchers and harvests are read-only against upstream sources by defau
 
 ## 5. Safeguard on framework-bound writes
 
-The Supertailor / Supercoder safeguard scans every framework-bound write for names from `_memory/contacts.yaml`, `domains-index.yaml`, `assets-index.yaml`, `accounts-index.yaml`, address fragments, account-number patterns, and license-plate patterns. On any match, the destination is forcibly re-routed to `workspace/_custom/` regardless of the original tag. Commit messages never mention anything personally identifying, household-specific, or account-specific (`rules/git-commits.md`).
+The safeguard (run by the `supertailor-review` skill when it writes a suggestion, and again at the write per `rules/framework-changes.md` § 2) scans every framework-bound write for names from `_memory/contacts.yaml`, `domains-index.yaml`, `assets-index.yaml`, `accounts-index.yaml`, address fragments, account-number patterns, and license-plate patterns. On any match, the destination is forcibly re-routed to `workspace/_custom/` regardless of the original tag. Commit messages never mention anything personally identifying, household-specific, or account-specific (`rules/git-commits.md`).
 
 ## 6. Sharing the workspace
 

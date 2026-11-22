@@ -76,6 +76,7 @@ LIST_FILES: dict[str, str] = {
     "personal-signals.yaml": "signals",
     "action-signals.yaml": "signals",
     "supertailor-suggestions.yaml": "suggestions",
+    "agents.yaml": "agents",
 }
 
 # ------------------------------------------------------- watchlist schema

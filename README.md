@@ -77,6 +77,7 @@ Capabilities grouped by intent. The full skill list lives at `superagent/skills/
 | **Surface** (the agent reaches out before you have to ask) | `whatsup`, `daily-update`, `weekly-review`, `monthly-review`, `appointments`, `bills`, `subscriptions`, `important-dates`, `todo` (with an overdue-triage mode), `personal-signals` | The morning briefing tells you the trial converts in 3 days. |
 | **Plan** (time-bounded efforts) | `projects`, `ad-hoc-task`, `report` | "Plan the kitchen renovation. Budget $25k. Done by August." |
 | **Self-improve** (the framework improves itself) | `supertailor-review`, `doctor` | Every 90 days: ranked framework-improvement suggestions, with a hard safeguard against personal-data leakage into committed code. |
+| **Agents** (who does what) | `agents` | "List the agents." "Which duties are overdue?" "Act as the bookkeeper." |
 
 ## Data sources
 
@@ -108,11 +109,11 @@ The long version: [`superagent/docs/faq.md`](superagent/docs/faq.md) and [`super
 | Doc | What's in it |
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | Canonical operating rules — what the agent reads on every Superagent turn |
-| [`superagent/docs/architecture.md`](superagent/docs/architecture.md) | Mental model, repo layout, dual-agent loop, current build status |
+| [`superagent/docs/architecture.md`](superagent/docs/architecture.md) | Mental model, repo layout, agents, the review-and-change loop, current build status |
 | [`superagent/docs/data-sources.md`](superagent/docs/data-sources.md) | The watchlist model + setup for the shipped packs (SimpleFIN, Gmail) and CSV import |
 | [`superagent/docs/domain-guide.md`](superagent/docs/domain-guide.md) | Per-domain practical guide |
 | [`superagent/docs/faq.md`](superagent/docs/faq.md) | Naming, comparisons, security, multi-user, mobile, what-ifs |
-| [`superagent/docs/roadmap.md`](superagent/docs/roadmap.md) | T-shirt-sized backlog, re-prioritized continuously by the Supertailor |
+| [`superagent/docs/roadmap.md`](superagent/docs/roadmap.md) | T-shirt-sized backlog, re-prioritized by the `supertailor-review` skill |
 
 ## Roadmap
 
@@ -120,9 +121,9 @@ T-shirt-sized (XS/S/M/L/XL) with rationale and "done when" criteria. Headline ne
 
 ## Contributing
 
-If you're using this and find friction, the most useful thing you can do is **tell the agent**. Action signals get captured into `_memory/action-signals.yaml`, the Supertailor digests them, and approved fixes ship as code.
+If you're using this and find friction, the most useful thing you can do is **tell the agent**. Action signals get captured into `_memory/action-signals.yaml`, the `supertailor-review` skill digests them, and approved fixes ship as code.
 
-If you want to write code: [`superagent/agents/supercoder.agent.md`](superagent/agents/supercoder.agent.md) documents the conventions. Add a new data source by dropping a watcher pack folder into `superagent/watchers/<id>/` (`pack.yaml`, plus `handler.py` implementing `IngestorBase.run` only if it feeds a typed index), listing it in `watchers/_manifest.yaml`, and adding a pack-loader test — or keep it private under `workspace/_custom/watchers/<id>/`.
+If you want to write code: [`superagent/rules/framework-changes.md`](superagent/rules/framework-changes.md) documents the conventions. Add a new data source by dropping a watcher pack folder into `superagent/watchers/<id>/` (`pack.yaml`, plus `handler.py` implementing `IngestorBase.run` only if it feeds a typed index), listing it in `watchers/_manifest.yaml`, and adding a pack-loader test — or keep it private under `workspace/_custom/watchers/<id>/`.
 
 ## License
 
