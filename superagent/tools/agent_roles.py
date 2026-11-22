@@ -47,7 +47,9 @@ KINDS = ("lead", "durable", "project")
 TIERS = ("act", "approve", "prepare", "owner")
 MODEL_TIERS = ("runner", "dev")
 #: Built-in zero-cost checks a duty may name (contracts/agents.md "Duties").
-CHECKS = ("cadence", "watchers", "none")
+CHECKS = ("cadence", "update", "watchers", "none")
+#: Checks that own the "watchers overdue for a check" finding, first match wins.
+WATCHER_CHECKS = ("update", "watchers")
 #: Schedule values that are not a key of `preferences.cadences`.
 SCHEDULE_WORDS = ("watchlist", "on-request")
 #: `skills:` value that means "any skill"; a lead role only.
@@ -481,3 +483,31 @@ def check_owner(roles: list[Role], check: str) -> str | None:
             return role.name
     head = lead(roles)
     return head.name if head else None
+
+
+def watchers_owner(roles: list[Role]) -> str | None:
+    """Name of the role that owns watcher findings: a duty behind `update`, else `watchers`; else the lead."""
+    for check in WATCHER_CHECKS:
+        for role in roles:
+            if any(d.check == check for d in role.duties):
+                return role.name
+    head = lead(roles)
+    return head.name if head else None
+
+
+def duty_stamp_key(duty: Duty) -> str:
+    """The `context.yaml.last_runs` key of a duty's stamp.
+
+    The duty's `schedule` when that names a key of `preferences.cadences`,
+    else (`watchlist`, `on-request`) the duty's id with `_` for `-`.
+    """
+    return duty.id.replace("-", "_") if duty.schedule in SCHEDULE_WORDS else duty.schedule
+
+
+def stamp_owner(roles: list[Role], key: str) -> tuple[Role, Duty] | None:
+    """The (role, duty) whose stamp is `last_runs.<key>`; None when no duty has that key."""
+    for role in roles:
+        for duty in role.duties:
+            if duty_stamp_key(duty) == key:
+                return role, duty
+    return None

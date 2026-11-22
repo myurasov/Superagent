@@ -111,7 +111,7 @@ For **vehicle** and **home** (asset-bound events):
 4. Update the asset row when one exists: `mileage` (vehicles), and the matching `maintenance[]` item's `last_done` / `next_due` (`next_due` = `last_done` + `interval_days`; compute it from the interval when the user gave one). Call `record_change` per `contracts/audit-trail.md` BEFORE saving so the transition lands in `assets-index.yaml.history.jsonl`; then `uv run python -m superagent.tools.render_domain --domain <vehicles|home>` to refresh the derived blocks. A completed maintenance item also closes any matching open P-task in `todo.yaml` (grep by asset slug + kind) and syncs `Domains/<Vehicles|Home>/status.md`: one bullet under § Recent Progress, and § Next Steps refreshed with the next 1-3 due items from the asset's `maintenance[]`.
 5. If money changed hands and the user has (or can produce) a receipt or invoice, follow `contracts/payment-confirmations.md` — file it under `Sources/` via `add-source` and cross-link from the history entry.
 6. Rolodex: add or update the provider's row in `Domains/<Vehicles|Home>/rolodex.md` (`Last contacted` ← `ts` of the event) per `contracts/domains-and-assets.md` (rolodex sync).
-7. Create a P2 task in `todo.yaml` for each follow-up the user names (a part on order, a re-check in two weeks); when a `next_due` was computed, no task — `daily-update` § "Maintenance windows" surfaces it from the asset row.
+7. Create a P2 task in `todo.yaml` for each follow-up the user names (a part on order, a re-check in two weeks); when a `next_due` was computed, no task — the daily `brief` (maintenance and documents) surfaces it from the asset row.
 
 For **vehicle accident** (steps 1 and 3 of the vehicle flow apply; then):
 
@@ -185,7 +185,7 @@ The home and vehicle maintenance schedule lives on the asset rows (`assets-index
    ```
 
    Then `uv run python -m superagent.tools.render_domain --domain <home|vehicles>`. An asset whose `maintenance[]` was empty gets the default schedule for its kind offered from the `add` skill § 7 (asset) table.
-3. `next_due` within 30 days → one P2 task in `todo.yaml` ("<kind> — <asset>", due `next_due`, `related_asset: <slug>`); otherwise none — `daily-update` § "Maintenance windows" surfaces it from the asset row.
+3. `next_due` within 30 days → one P2 task in `todo.yaml` ("<kind> — <asset>", due `next_due`, `related_asset: <slug>`); otherwise none — the daily `brief` (maintenance and documents) surfaces it from the asset row.
 4. Run the pre-flight `domains ensure <home|vehicles>`, then refresh `Domains/<Home|Vehicles>/status.md` § Next Steps with the next 1-3 due items across that domain's assets.
 
 ## 4. Confirm

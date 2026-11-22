@@ -11,11 +11,18 @@ files) and `tools/cadence.py` (what is late).
   id <name>             the id of an agent: `updater`, `updater:dev`,
                         `project:<slug>` (`--dev` asks for the dev twin)
   duties                every duty with its schedule, last run and state;
-                        `--agent <role>` narrows it, `--overdue` keeps only what
-                        is late (the same findings `cadence status` prints)
+                        `--agent <role>` narrows it, `--due` keeps what a
+                        scheduler would run now, `--overdue` only what is late
+                        (the same findings `cadence status` prints)
   check <agent> <duty>  the zero-cost check of one duty, for a scheduled wake:
                         exit 0 when the duty is due (the reason is printed),
                         exit 1 when it is not (nothing is printed)
+
+A duty's state is one of: `ok`; `due` (its scheduled time has come and it has
+not run since, or its check found work: the stamp against the schedule,
+`tools/cadence.py`); `overdue` (late by the nag rules of `cadence status`);
+`unfinished` (a run began and never finished); `on-request` (no check).
+`check` exits 0 for due, overdue and unfinished alike.
 
 Ids are `<prefix>:<instance name>`; the prefix is
 `config.preferences.autocode.id_prefix` (default `sa`). The registry holds
@@ -41,12 +48,16 @@ from typing import Any
 import yaml
 
 from superagent.tools import agent_roles as ar
-from superagent.tools import cadence
+from superagent.tools import cadence, inbox
+from superagent.tools import watchlist as wl
 
 FRAMEWORK = Path(__file__).resolve().parent.parent
 REGISTRY_REL = "_memory/agents.yaml"
 STATUSES = ("off", "active", "dormant", "paused", "retired")
 DEFAULT_STATUS = "off"
+#: Duty states a scheduler acts on (`check` exits 0), and the ones that are late.
+RUNNABLE = ("due", "overdue", "unfinished")
+LATE = ("overdue", "unfinished")
 
 _LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
@@ -202,18 +213,39 @@ def _age(report: dict[str, Any]) -> str:
     return f"{(now - last).days} day(s) ago" if now and last else "never"
 
 
-def evaluate(duty: ar.Duty, report: dict[str, Any]) -> tuple[str, str]:
+def _names(items: list[str], limit: int = 5) -> str:
+    return ", ".join(items[:limit]) + (f", +{len(items) - limit} more" if len(items) > limit else "")
+
+
+def evaluate(role: ar.Role, duty: ar.Duty, report: dict[str, Any], *, workspace: Path,
+             framework: Path = FRAMEWORK, now: dt.datetime | None = None) -> tuple[str, str]:
     """(state, reason) of one duty against a `cadence.status()` report.
 
-    States: `overdue`, `unfinished` (a run began and never finished), `ok`,
-    and `on-request` for a duty with no check.
+    States: `overdue` (late by the nag rules), `unfinished` (a run began and
+    never finished), `due` (the scheduled time has come, or the check found
+    work), `ok`, and `on-request` for a duty with no check.
     """
-    if duty.check == "watchers":
+    now = now or cadence.as_datetime(report["now"]) or cadence.now_local()
+    key = ar.duty_stamp_key(duty)
+    unfinished = next((row for row in report["unfinished_runs"] if row.get("key") == key), None)
+    if duty.check in ar.WATCHER_CHECKS:
         late = report["overdue_watchers"]
         if late:
-            names = ", ".join(w["watcher"] for w in late)
+            names = _names([w["watcher"] for w in late])
             return "overdue", f"{len(late)} watcher(s) overdue for a check: {names}"
-        return "ok", ""
+        if duty.check == "watchers":
+            return "ok", ""
+        if unfinished:
+            started = str(unfinished["started"])[:16].replace("T", " ")
+            return "unfinished", f"started {started} and never finished"
+        found: list[str] = []
+        due = [row["id"] for row in wl.due_rows(workspace, framework, now=now) if row["due"]]
+        if due:
+            found.append(f"{len(due)} watcher(s) due: {_names(due)}")
+        files = inbox.waiting(workspace, now=now)
+        if files:
+            found.append(f"{len(files)} document(s) waiting in a drop folder")
+        return ("due", "; ".join(found)) if found else ("ok", "")
     if duty.check != "cadence":
         return "on-request", ""
     for row in report["overdue_cadences"]:
@@ -221,11 +253,11 @@ def evaluate(duty: ar.Duty, report: dict[str, Any]) -> tuple[str, str]:
             return "overdue", f"{row['reason']}; last {str(row['last_run'] or 'never')[:10]}"
     if duty.skill == "daily-update" and report["last_check_stale"]:
         return "overdue", f"context last refreshed {_age(report)}"
-    for row in report["unfinished_runs"]:
-        if row["cadence"] == duty.skill:
-            started = str(row["started"])[:16].replace("T", " ")
-            return "unfinished", f"started {started} and never finished"
-    return "ok", ""
+    if unfinished:
+        started = str(unfinished["started"])[:16].replace("T", " ")
+        return "unfinished", f"started {started} and never finished"
+    due_now, why = cadence.duty_due(workspace, f"{role.name}:{duty.id}", now=now, framework=framework)
+    return ("due", why) if due_now else ("ok", "")
 
 
 def duty_rows(workspace: Path, framework: Path = FRAMEWORK, *, now: dt.datetime | None = None,
@@ -243,13 +275,14 @@ def duty_rows(workspace: Path, framework: Path = FRAMEWORK, *, now: dt.datetime 
     report = cadence.status(workspace, now=now, framework=framework)
     _text, ctx = cadence.load_context(workspace)
     runs = ctx.get("last_runs") if isinstance(ctx.get("last_runs"), dict) else {}
-    cadences = ar.load_preferences(workspace).get("cadences")
-    cadences = cadences if isinstance(cadences, dict) else {}
+    cadences = cadence.cadence_values(workspace, framework)
+    moment = now or cadence.as_datetime(report["now"])
     rows: list[dict[str, Any]] = []
     for role in roles:
         for duty in role.duties:
-            state, reason = evaluate(duty, report)
-            last = cadence.as_datetime(runs.get(duty.schedule))
+            state, reason = evaluate(role, duty, report, workspace=workspace, framework=framework,
+                                     now=moment)
+            last = cadence.as_datetime(runs.get(ar.duty_stamp_key(duty)))
             rows.append({
                 "agent": role.name,
                 "duty": duty.id,
@@ -291,7 +324,7 @@ def check(workspace: Path, agent: str, duty_id: str, framework: Path = FRAMEWORK
         known = ", ".join(r["duty"] for r in rows) or "none"
         raise ar.AgentError(f"{ar.split_instance(agent)[0]!r} has no duty {duty_id!r} "
                             f"(duties: {known})")
-    due = row["state"] in ("overdue", "unfinished")
+    due = row["state"] in RUNNABLE
     return due, f"{row['agent']} {row['duty']}: {row['state']}: {row['reason']}" if due else ""
 
 
@@ -320,7 +353,10 @@ def build_parser() -> argparse.ArgumentParser:
     ident.add_argument("--dev", action="store_true", help="The id of the role's dev twin.")
     du = sub.add_parser("duties", parents=[common], help="Duties with schedule, last run and state.")
     du.add_argument("--agent", default=None, help="Only this role's duties.")
-    du.add_argument("--overdue", action="store_true", help="Only duties that are late.")
+    which = du.add_mutually_exclusive_group()
+    which.add_argument("--due", action="store_true",
+                       help="Only duties a scheduler would run now: due, overdue or unfinished.")
+    which.add_argument("--overdue", action="store_true", help="Only duties that are late.")
     du.add_argument("--json", action="store_true", help="Print the rows as JSON.")
     ch = sub.add_parser("check", parents=[common],
                         help="Zero-cost check of one duty: exit 0 due, exit 1 not due.")
@@ -357,7 +393,9 @@ def main(argv: list[str] | None = None) -> int:
             rows, errors = duty_rows(workspace, args.framework, now=args.now, agent=args.agent)
             _warn(errors)
             if args.overdue:
-                rows = [r for r in rows if r["state"] in ("overdue", "unfinished")]
+                rows = [r for r in rows if r["state"] in LATE]
+            elif args.due:
+                rows = [r for r in rows if r["state"] in RUNNABLE]
             if args.json:
                 print(json.dumps(rows, indent=2))
             else:

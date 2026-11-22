@@ -121,7 +121,7 @@ prevent.
 
 `superagent/tools/domain_detector.py` walks these signals on demand (CLI:
 `uv run python -m superagent.tools.domain_detector run`) and on schedule
-(monthly-review § 7b). It surfaces clusters that:
+(the monthly `brief`, domain suggestions). It surfaces clusters that:
 
 - **Off-domain tags** — a tag in `_memory/tags.yaml` used across ≥ N entities
   (default N=5) that doesn't map to any registered domain id, name, or its

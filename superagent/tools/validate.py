@@ -77,6 +77,7 @@ LIST_FILES: dict[str, str] = {
     "action-signals.yaml": "signals",
     "supertailor-suggestions.yaml": "suggestions",
     "agents.yaml": "agents",
+    "asks.yaml": "asks",
 }
 
 # ------------------------------------------------------- watchlist schema
@@ -732,8 +733,43 @@ def check_personal_signals(rows: Any, name: str = PERSONAL_SIGNALS) -> list[str]
     )
 
 
+# Enums from templates/memory/asks.yaml (the writer is tools/asks.py).
+ASKS = "asks.yaml"
+ASK_STATUSES = ("open", "answered", "expired", "withdrawn")
+ASK_TIERS = ("approve", "prepare", "owner")
+ASK_REQUIRED_KEYS = ("id", "asked_at", "agent", "question", "status")
+
+
+def check_asks(rows: Any, name: str = ASKS) -> list[str]:
+    """Soft-check ask rows against templates/memory/asks.yaml (WARNINGS only)."""
+    if not isinstance(rows, list):
+        return []
+    missing: list[str] = []
+    off: dict[str, dict[str, int]] = {"status": {}, "tier": {}}
+    enums = {"status": ASK_STATUSES, "tier": ASK_TIERS}
+    for i, row in enumerate(rows):
+        if not isinstance(row, dict) or (not row.get("id") and not row.get("question")):
+            continue  # the template's example row
+        if any(row.get(k) in (None, "") for k in ASK_REQUIRED_KEYS):
+            missing.append(_row_label(row, i))
+        for field, allowed in enums.items():
+            value = row.get(field)
+            if value not in (None, "") and value not in allowed:
+                text = value if isinstance(value, str) else repr(value)
+                off[field][text] = off[field].get(text, 0) + 1
+    warnings: list[str] = []
+    if missing:
+        warnings.append(f"{name}: {len(missing)} row(s) missing one of {'/'.join(ASK_REQUIRED_KEYS)} "
+                        f"({_labels(missing)})")
+    for field, values in off.items():
+        if values:
+            warnings.append(f"{name}: {sum(values.values())} row(s) with `{field}` outside "
+                            f"{{{', '.join(enums[field])}}}: {_preview(values)}")
+    return warnings
+
+
 def warnings_for(name: str, data: Any, framework: Path, workspace: Path | None) -> list[str]:
-    """Soft checks for one loaded memory file: interaction log, action signals, personal signals."""
+    """Soft checks for one loaded memory file: interaction log, signals, asks."""
     if not isinstance(data, dict):
         return []
     if schema_name(name) == INTERACTION_LOG:
@@ -744,6 +780,8 @@ def warnings_for(name: str, data: Any, framework: Path, workspace: Path | None) 
         return check_action_signals(data.get(LIST_FILES[ACTION_SIGNALS]), name)
     if name == PERSONAL_SIGNALS:
         return check_personal_signals(data.get(LIST_FILES[PERSONAL_SIGNALS]), name)
+    if name == ASKS:
+        return check_asks(data.get(LIST_FILES[ASKS]), name)
     return []
 
 

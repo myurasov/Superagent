@@ -6,12 +6,20 @@
 Normative statement: `superagent/contracts/watchlist.md`. This module is the
 generic runtime: it reads the registry (one `.ref.md` per watcher under
 `Sources/Watchlist/`, path per `config.preferences.watchlist.path`), runs the
-cheap **detect** stage for every watcher eligible in the current cycle
-(cycles nest: slower cycles include faster ones — `weekly-review` also checks
-daily watchers, `monthly-review` checks all three tiers; `CYCLE_RANK`), and
+cheap **detect** stage for every watcher eligible in the current run, and
 dispatches the optional **harvest** handler only when detect fires (or when
 the detect type *is* the harvest, as for SimpleFIN). Nothing source-specific
 lives here — every source is a **pack**.
+
+Which watchers a run covers: `check --due` takes each watcher by ITS OWN
+schedule (a daily watcher once per calendar day, a weekly one every 7 days, a
+monthly one every 30; `CYCLE_PERIOD_DAYS`), so one command serves every
+caller and a run that finds nothing due fetches nothing. `check --cycle <c>`
+takes the watchers of a cadence instead (cycles nest: slower cycles include
+faster ones — `weekly-review` also checks daily watchers, `monthly-review`
+checks all three tiers; `CYCLE_RANK`) and checks them whether or not they are
+due. `due` lists what `check --due` would take, without fetching, and `recap`
+reads back from state what the checks since a given time found.
 
 A `.ref.md` is a WATCHER DEFINITION and nothing else (`ref_version: 2`, since
 0.20.0): `title`, `description`, `related_*`, `tags`, `added_by`, `added_at`
@@ -59,8 +67,10 @@ tailor row when a harvest reports errors).
 
 CLI (`--workspace` / `--framework` may go before or after the subcommand):
 
-    uv run python -m superagent.tools.watchlist check --cycle daily-update \\
+    uv run python -m superagent.tools.watchlist check (--due | --cycle daily-update) \\
         [--timeout 15] [--report] [--no-harvest] [--dry-run] [--id X]
+    uv run python -m superagent.tools.watchlist due [--json]
+    uv run python -m superagent.tools.watchlist recap --since <ISO datetime> [--json]
     uv run python -m superagent.tools.watchlist stamp --id X \\
         (--changed | --unchanged | --unreachable) [--note "..."]
     uv run python -m superagent.tools.watchlist list [--status active|evicted|disabled] [--json]
@@ -169,6 +179,16 @@ SCHEDULE_TO_CYCLES: dict[str, list[str]] = {
 # weekly-review` also checks daily watchers and `monthly-review` checks all
 # three tiers. Unknown / custom cycle names match themselves only.
 CYCLE_RANK: dict[str, int] = {"daily-update": 0, "weekly-review": 1, "monthly-review": 2}
+# `check --due` takes each watcher by its own schedule: it is due when its last
+# successful check lies this many calendar days back. The fastest built-in
+# cycle a watcher lists decides; a watcher that lists none is never due.
+CYCLE_PERIOD_DAYS: dict[str, int] = {"daily-update": 1, "weekly-review": 7, "monthly-review": 30}
+#: The `cycle` a `check --due` run reports.
+DUE_CYCLE = "due"
+#: After a failed check, or a dispatch nobody stamped, a due watcher waits this
+#: long for its next try. The wait doubles with every failure in a row, up to
+#: the watcher's own period.
+RETRY_BASE_MINUTES = 60
 # `watch.` keys copied verbatim into the detect config (locators + url hardening).
 # A row value overrides the same-named pack detect field.
 DETECT_OVERRIDE_KEYS = (
@@ -196,7 +216,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
 OUTCOMES = ("changed", "unchanged", "indeterminate", "unreachable")
 SUMMARY_KEYS = (
     "checked", "changed", "unchanged", "indeterminate", "unreachable",
-    "skipped_throttled", "skipped_cycle", "budget_exceeded", "evicted",
+    "skipped_throttled", "skipped_cycle", "skipped_not_due", "budget_exceeded", "evicted",
     "dispatch", "harvested", "errors",
 )
 # Extra per-bucket lists that carry no summary counter.
@@ -2041,6 +2061,8 @@ class CheckContext:
     no_harvest: bool = False
     only_id: str | None = None
     now: dt.datetime = dc.field(default_factory=_now)
+    #: `check --due`: take each watcher by its own schedule, not by `cycle`.
+    due: bool = False
 
     @property
     def now_iso(self) -> str:
@@ -2105,6 +2127,70 @@ def evaluate_eviction(watcher: Watcher, row: dict[str, Any], now: dt.datetime) -
         return None  # no successful check inside the window: unreachable, kept
     _evict(row, _iso(now), "stale")
     return "stale"
+
+
+def period_days(watcher: Watcher) -> int | None:
+    """Days between scheduled checks of a watcher: its fastest built-in cycle decides.
+
+    None for a watcher that lists no built-in cycle (`schedule: manual`,
+    `cycles: []`, or only a custom cycle): `check --due` never takes it.
+    """
+    periods = [CYCLE_PERIOD_DAYS[c] for c in watcher.cycles if c in CYCLE_PERIOD_DAYS]
+    return min(periods) if periods else None
+
+
+def _days_since(value: Any, now: dt.datetime) -> int | None:
+    """Whole calendar days from an ISO time to `now`, counted in the zone of `now`."""
+    when = _parse_iso(value)
+    return None if when is None else (now.date() - when.astimezone(now.tzinfo).date()).days
+
+
+def due_state(watcher: Watcher, row: dict[str, Any], now: dt.datetime, *,
+              ignore_dispatch: bool = False) -> tuple[bool, str]:
+    """(is the watcher due for a check by its own schedule, why or why not).
+
+    Due means: its last successful check lies a full period back (calendar
+    days, so a daily watcher runs once per day whatever the hour), and nothing
+    holds the next try back. What holds it back: a failure (the wait starts
+    at `RETRY_BASE_MINUTES` and doubles per failure in a row, up to the
+    period), a dispatch nobody stamped yet (a subagent watcher is offered again
+    after `RETRY_BASE_MINUTES`, a harvest that waits for the owner's yes once
+    per day; `ignore_dispatch` leaves this one out), the watcher's own
+    throttle, and for a watcher whose detect is its harvest, the harvest
+    budget. A watcher that could not run now is never reported as due, so a
+    scheduler that asks "is anything due?" is not woken for nothing.
+    """
+    period = period_days(watcher)
+    if period is None:
+        return False, "no schedule of its own (manual, or a custom cycle)"
+    since = _days_since(row.get("last_success"), now)
+    if since is not None and since < period:
+        return False, f"checked {since} day(s) ago; next check in {period - since} day(s)"
+    streak = int(row.get("error_streak") or 0)
+    waited = _minutes_between(row.get("last_checked"), now)
+    if streak > 0 and waited is not None:
+        backoff = min(RETRY_BASE_MINUTES * 2 ** min(streak - 1, 16), period * 1440)
+        if waited < backoff:
+            return False, f"failed {streak} time(s) in a row; next try in {int(backoff - waited)} min"
+    dispatched = _parse_iso(row.get("last_dispatched"))
+    checked = _parse_iso(row.get("last_checked"))
+    if not ignore_dispatch and dispatched is not None and (checked is None or dispatched > checked):
+        if watcher.type == "subagent":
+            minutes = (now - dispatched).total_seconds() / 60.0
+            if minutes < RETRY_BASE_MINUTES:
+                return False, f"dispatched {int(minutes)} min ago; waiting for its stamp"
+        elif _days_since(row.get("last_dispatched"), now) == 0:
+            return False, "offered today; waiting for the owner's yes"
+    if watcher.min_check_interval_minutes and waited is not None \
+            and waited < float(watcher.min_check_interval_minutes):
+        return False, f"throttled (checked {int(waited)} min ago)"
+    if watcher.type == "harvest" and watcher.capture_mode != "manual":
+        reason = budget_check(watcher, row, now)
+        if reason:
+            return False, f"harvest budget: {reason}"
+    if since is None:
+        return True, "never checked" if not row.get("last_checked") else "never succeeded"
+    return True, f"last success {since} day(s) ago"
 
 
 def _detect(ctx: CheckContext, watcher: Watcher, row: dict[str, Any]) -> DetectResult:
@@ -2201,6 +2287,7 @@ def _apply_fingerprint(
         row["fingerprint"] = fingerprint
         row["last_changed"] = now_s
         row["last_outcome"] = "changed"
+        row["last_change_note"] = sanitize_note(detected.detail) or "fingerprint moved"
         item = _item(watcher, detail=detected.detail, fingerprint=fingerprint, previous=prev)
         if not ctx.dry_run:
             item["effects"] = apply_change_effects(
@@ -2221,6 +2308,7 @@ def _harvest_gate(ctx: CheckContext, watcher: Watcher, row: dict[str, Any],
     """capture_mode / --no-harvest gate for cadence runs (budget is separate)."""
     if watcher.capture_mode == "manual":
         _bucket(payload, "dispatch", harvest_dispatch_spec(watcher, row, reason="capture_mode manual"))
+        row["last_dispatched"] = ctx.now_iso
         return False
     if ctx.no_harvest:
         payload["skipped_harvest"].append(_item(watcher, reason="--no-harvest"))
@@ -2298,7 +2386,8 @@ def check_one(ctx: CheckContext, payload: dict[str, Any], watcher: Watcher,
         row["evict_reason"] = None
         payload["warnings"].append(f"`{watcher.id}` revived (status: active); re-baselined")
 
-    # 2. Throttle gate — first. 3. Cycle gate. `--id` bypasses both.
+    # 2. Throttle gate — first. 3. Cycle gate (`--cycle`) or due gate (`--due`).
+    # `--id` bypasses both.
     if not explicit:
         if watcher.min_check_interval_minutes and row.get("last_checked"):
             mins = _minutes_between(row["last_checked"], ctx.now)
@@ -2308,7 +2397,15 @@ def check_one(ctx: CheckContext, payload: dict[str, Any], watcher: Watcher,
                     min_check_interval_minutes=watcher.min_check_interval_minutes,
                 ))
                 return
-        if not cycle_covers(ctx.cycle, watcher.cycles):
+        if ctx.due:
+            if period_days(watcher) is None:
+                _bucket(payload, "skipped_cycle", _item(watcher, cycles=watcher.cycles))
+                return
+            due, why = due_state(watcher, row, ctx.now)
+            if not due:
+                _bucket(payload, "skipped_not_due", _item(watcher, reason=why))
+                return
+        elif not cycle_covers(ctx.cycle, watcher.cycles):
             _bucket(payload, "skipped_cycle", _item(watcher, cycles=watcher.cycles))
             return
 
@@ -2327,6 +2424,7 @@ def check_one(ctx: CheckContext, payload: dict[str, Any], watcher: Watcher,
             _bucket(payload, "evicted", _item(watcher, reason=reason))
             return
         _bucket(payload, "dispatch", subagent_dispatch_spec(watcher, row))
+        row["last_dispatched"] = now_s
         return
     if watcher.type == "harvest":
         if _harvest_gate(ctx, watcher, row, payload):
@@ -2393,10 +2491,194 @@ def run_check(ctx: CheckContext) -> dict[str, Any] | None:
                           for k in ("calls_today", "calls_today_date")}
                 for h in payload["harvested"] if h["id"] in state["watchers"]
             })
-    payload["cycle"] = ctx.cycle
+    payload["cycle"] = DUE_CYCLE if ctx.due else ctx.cycle
     payload["dry_run"] = ctx.dry_run
     payload["checked_at"] = ctx.now_iso
     return payload
+
+
+# ---------------------------------------------------------------------------
+# Due listing and recap (read-only)
+# ---------------------------------------------------------------------------
+
+
+def _read_state_rows(workspace: Path) -> dict[str, dict[str, Any]]:
+    """State rows for a reader: {} for a missing or unreadable file, defaults filled in."""
+    try:
+        data = load_yaml(state_path(workspace))
+    except (OSError, yaml.YAMLError):
+        data = None
+    rows = data.get("watchers") if isinstance(data, dict) else None
+    out: dict[str, dict[str, Any]] = {}
+    for wid, row in (rows.items() if isinstance(rows, dict) else ()):
+        out[str(wid)] = {**default_row(), **(row if isinstance(row, dict) else {})}
+    return out
+
+
+def _live_watchers(workspace: Path, framework: Path) -> list[tuple[Watcher, dict[str, Any]]] | None:
+    """(watcher, state row) for every enabled watcher that is not evicted; None = feature off."""
+    cfg = load_config(workspace)
+    if not registry_dir(workspace, cfg).is_dir():
+        return None
+    packs, _errors = discover_packs(framework, workspace, announce=lambda _msg: None)
+    watchers, _reg_errors = load_registry(workspace, cfg, packs)
+    rows = _read_state_rows(workspace)
+    out: list[tuple[Watcher, dict[str, Any]]] = []
+    for watcher in watchers:
+        row = rows.get(watcher.id) or default_row()
+        if not watcher.enabled or row.get("status") in ("evicted", "disabled"):
+            continue
+        out.append((watcher, row))
+    return out
+
+
+def due_rows(workspace: Path, framework: Path, *, now: dt.datetime | None = None
+             ) -> list[dict[str, Any]]:
+    """Every live watcher with whether `check --due` would take it now, and why.
+
+    Reads the registry and the state file; fetches nothing and writes nothing,
+    so it is the zero-cost question a scheduled run asks first. [] when the
+    watchlist is off.
+    """
+    now = now or _now()
+    live = _live_watchers(workspace, framework)
+    out: list[dict[str, Any]] = []
+    for watcher, row in live or []:
+        if watcher.expires is not None and now.date() > watcher.expires:
+            due, why = False, "expired"
+        else:
+            due, why = due_state(watcher, row, now)
+        out.append(_item(watcher, due=due, reason=why, period_days=period_days(watcher),
+                         last_success=row.get("last_success"), capture_mode=watcher.capture_mode))
+    return out
+
+
+def _alert_notes(workspace: Path) -> dict[str, str]:
+    """`{watcher id: summary}` from the live `[watch:<id>] <ts>: <summary>` alerts in context.yaml."""
+    try:
+        ctx = load_yaml(workspace / "_memory" / "context.yaml")
+    except (OSError, yaml.YAMLError):
+        return {}
+    alerts = ctx.get("alerts") if isinstance(ctx, dict) else None
+    notes: dict[str, str] = {}
+    for alert in alerts if isinstance(alerts, list) else ():
+        match = re.match(rf"^\[{HANDLE_KIND}:([^\]]+)\] \S+: (.*)$", alert) if isinstance(alert, str) else None
+        if match:
+            notes[match.group(1)] = match.group(2)
+    return notes
+
+
+def recap(workspace: Path, framework: Path, *, since: dt.datetime, now: dt.datetime | None = None
+          ) -> dict[str, Any] | None:
+    """What the checks since `since` found, read back from state. None = watchlist off.
+
+    A briefing never checks anything itself: it reads what the last update
+    left behind. This gathers it in one place: watchers that changed, sources
+    that cannot be reached, evictions and harvests since `since`, and the
+    harvests that wait for the owner's yes. Reads only; fetches nothing.
+    """
+    now = now or _now()
+    cfg = load_config(workspace)
+    if not registry_dir(workspace, cfg).is_dir():
+        return None
+    packs, _errors = discover_packs(framework, workspace, announce=lambda _msg: None)
+    watchers, _reg_errors = load_registry(workspace, cfg, packs)
+    rows = _read_state_rows(workspace)
+    notes = _alert_notes(workspace)
+    data: dict[str, Any] = {"since": _iso(since), "now": _iso(now), "changed": [], "unreachable": [],
+                            "evicted": [], "harvested": [], "awaiting": []}
+    checked = 0
+    newest: dt.datetime | None = None
+    live = 0
+
+    def after(value: Any) -> bool:
+        when = _parse_iso(value)
+        return when is not None and when >= since
+
+    for watcher in watchers:
+        row = rows.get(watcher.id) or default_row()
+        if after(row.get("evicted_at")):
+            data["evicted"].append(_item(watcher, at=row.get("evicted_at"), reason=row.get("evict_reason")))
+        if not watcher.enabled or row.get("status") in ("evicted", "disabled"):
+            continue
+        live += 1
+        last = _parse_iso(row.get("last_checked"))
+        if last is not None:
+            newest = last if newest is None or last > newest else newest
+            checked += last >= since
+        if after(row.get("last_changed")):
+            note = row.get("last_change_note") or notes.get(watcher.id) or "fingerprint moved"
+            data["changed"].append(_item(watcher, at=row.get("last_changed"), detail=note))
+        if int(row.get("error_streak") or 0) > 0:
+            data["unreachable"].append(_item(watcher, error=row.get("last_error"),
+                                             since=row.get("error_since"),
+                                             error_streak=int(row.get("error_streak") or 0)))
+        if after(row.get("last_harvest")):
+            result = row.get("last_harvest_result") if isinstance(row.get("last_harvest_result"), dict) else {}
+            data["harvested"].append(_item(watcher, at=row.get("last_harvest"), **result))
+        if (watcher.capture_mode == "manual" and watcher.harvest is not None
+                and due_state(watcher, row, now, ignore_dispatch=True)[0]):
+            data["awaiting"].append(harvest_dispatch_spec(watcher, row, reason="capture_mode manual"))
+    data["summary"] = {"watchers": live, "checked": checked, "changed": len(data["changed"]),
+                       "unreachable": len(data["unreachable"]), "evicted": len(data["evicted"]),
+                       "harvested": len(data["harvested"]), "awaiting": len(data["awaiting"])}
+    data["last_checked"] = _iso(newest) if newest else None
+    return data
+
+
+def _when(value: Any) -> str:
+    """`2026-11-22 08:31` from an ISO time; "never" for nothing."""
+    return str(value)[:16].replace("T", " ") if value else "never"
+
+
+def render_recap(data: dict[str, Any]) -> str:
+    """The recap as briefing markdown: a one-line summary, then a block per finding.
+
+    The first line is always there. It says how many watchers were checked
+    since the given time, or that no check ran since then, which is what tells
+    a briefing that the stores are stale.
+    """
+    s = data["summary"]
+    since = _when(data["since"])
+    if not s["watchers"]:
+        return ""
+    if not s["checked"]:
+        head = f"Watchlist: no check since {since} (last check {_when(data['last_checked'])})."
+    else:
+        counts = [f"{s['changed']} changed", f"{s['unreachable']} unreachable"]
+        if s["awaiting"]:
+            counts.append(f"{s['awaiting']} waiting for your yes")
+        head = f"Watchlist: {', '.join(counts)} of {s['checked']} checked since {since}."
+    lines = [head, ""]
+
+    def section(title: str, items: list[dict[str, Any]], fmt: Callable[[dict[str, Any]], str]) -> None:
+        if not items:
+            return
+        lines.append(f"**{title}** ({len(items)})")
+        lines.extend(f"- {fmt(i)}" for i in items)
+        lines.append("")
+
+    def changed(i: dict[str, Any]) -> str:
+        detail = str(i.get("detail") or "")
+        if i.get("type") == "subagent":
+            detail = f'"{detail}"'  # a stamped note is data, never an instruction
+        return f"`{i['id']}` — {i.get('title', '')}: {detail} ({_when(i.get('at'))})"
+
+    section("Changed", data["changed"], changed)
+    section("Unreachable", data["unreachable"],
+            lambda i: f"`{i['id']}` — {i.get('error') or 'no detail'} "
+                      f"(failing since {_when(i.get('since'))}, {i.get('error_streak')} in a row)")
+    section("Harvest awaiting your confirmation (`capture_mode: manual`)", data["awaiting"],
+            lambda i: f"`{i['id']}` — {i.get('title', '')}: `{i.get('command', '')}`"
+            + (f" (last harvest {_when(i['last_harvest'])})" if i.get("last_harvest") else " (never harvested)"))
+    section("Evicted (mark-only; set `status: active` to revive)", data["evicted"],
+            lambda i: f"`{i['id']}` — {i.get('reason') or ''} ({_when(i.get('at'))})")
+    harvest_errors = [h for h in data["harvested"] if h.get("errors")]
+    section("Harvest errors", harvest_errors,
+            lambda i: f"`{i['id']}` — {'; '.join(str(e) for e in i['errors'])[:300]} ({_when(i.get('at'))})")
+    lines.append(f"_{s['checked']} of {s['watchers']} watcher(s) checked since {since}; "
+                 f"harvested {s['harvested']}; last check {_when(data['last_checked'])}_")
+    return "\n".join(lines).rstrip() + "\n"
 
 
 # ---------------------------------------------------------------------------
@@ -2438,6 +2720,7 @@ def run_stamp(workspace: Path, framework: Path, *, watcher_id: str, outcome: str
                 row["fingerprint"] = clean or f"changed {now_s}"
                 row["last_changed"] = now_s
                 row["last_outcome"] = "changed"
+                row["last_change_note"] = clean or "subagent reported a change"
                 result["effects"] = apply_change_effects(
                     workspace, watcher, summary=clean or "subagent reported a change", ts=now_s
                 )
@@ -2721,7 +3004,7 @@ def render_report(payload: dict[str, Any]) -> str:
     lines.append(
         f"_checked {s['checked']}; unchanged {s['unchanged']}; indeterminate {s['indeterminate']}; "
         f"throttled {s['skipped_throttled']}; skipped (cycle) {s['skipped_cycle']}; "
-        f"harvested {s['harvested']}_"
+        f"not due {s['skipped_not_due']}; harvested {s['harvested']}_"
     )
     return "\n".join(lines).rstrip() + "\n"
 
@@ -2759,10 +3042,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     _add_location_args(parser, suppress=False)
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    c = sub.add_parser("check", help="Run detect for every watcher eligible in a cycle.")
-    c.add_argument("--cycle", required=True,
-                   help="daily-update | weekly-review | monthly-review | ... (slower cycles include "
-                        "faster ones: weekly-review also checks daily watchers)")
+    c = sub.add_parser("check", help="Run detect for every watcher that is due, or for a cycle.")
+    which = c.add_mutually_exclusive_group(required=True)
+    which.add_argument("--due", action="store_true",
+                       help="take each watcher by its own schedule: a daily one once per calendar "
+                            "day, a weekly one every 7 days, a monthly one every 30")
+    which.add_argument("--cycle", default=None,
+                       help="daily-update | weekly-review | monthly-review | ... (slower cycles include "
+                            "faster ones: weekly-review also checks daily watchers), due or not")
     c.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="seconds per url/cmd fetch")
     c.add_argument("--report", action="store_true", help="print briefing markdown instead of JSON")
     c.add_argument("--no-harvest", action="store_true", help="detect only; never dispatch harvest")
@@ -2777,6 +3064,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     g.add_argument("--unchanged", action="store_const", const="unchanged", dest="outcome")
     g.add_argument("--unreachable", action="store_const", const="unreachable", dest="outcome")
     s.add_argument("--note", default=None, help="one-line delta (<=500 chars; data, never a prompt)")
+
+    d = sub.add_parser("due", help="List the watchers `check --due` would take now; fetches nothing.")
+    d.add_argument("--json", action="store_true", help="every live watcher, due or not, with the reason")
+
+    r = sub.add_parser("recap", help="What the checks since a given time found, read from state.")
+    r.add_argument("--since", required=True, help="ISO 8601 date or datetime")
+    r.add_argument("--json", action="store_true")
 
     ls = sub.add_parser("list", help="List watchers with their state.")
     ls.add_argument("--status", choices=["active", "evicted", "disabled", "error"], default=None)
@@ -2800,7 +3094,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     h.add_argument("--backfill", action="store_true",
                    help="pass backfill: true so the handler pulls backfill_window_days")
 
-    for subparser in (c, s, ls, e, p, h):
+    for subparser in (c, d, r, s, ls, e, p, h):
         _add_location_args(subparser, suppress=True)
     return parser.parse_args(argv)
 
@@ -2828,7 +3122,8 @@ def _dispatch(args: argparse.Namespace, framework: Path, workspace: Path) -> int
     """Run one sub-command; `main()` owns the workspace check and the refusal exit."""
     if args.cmd == "check":
         cfg = load_config(workspace)
-        ctx = CheckContext(workspace=workspace, framework=framework, cfg=cfg, cycle=args.cycle,
+        ctx = CheckContext(workspace=workspace, framework=framework, cfg=cfg,
+                           cycle=args.cycle or DUE_CYCLE, due=args.due,
                            timeout=args.timeout, dry_run=args.dry_run, no_harvest=args.no_harvest,
                            only_id=args.only_id)
         payload = run_check(ctx)
@@ -2843,6 +3138,32 @@ def _dispatch(args: argparse.Namespace, framework: Path, workspace: Path) -> int
         else:
             _emit(payload)
         return 1 if payload["summary"]["errors"] else 0
+
+    if args.cmd == "due":
+        rows = due_rows(workspace, framework)
+        if args.json:
+            _emit(rows)
+        else:
+            for row in rows:
+                if row["due"]:
+                    print(f"{row['id']}  {row['type']}  {row['reason']}")
+        return 0
+
+    if args.cmd == "recap":
+        since = _parse_iso(args.since)
+        if since is None:
+            print(f"error: --since is not an ISO 8601 date or datetime: {args.since!r}", file=sys.stderr)
+            return 2
+        data = recap(workspace, framework, since=since)
+        if data is None:
+            if args.json:
+                print("{}")
+            return 0
+        if args.json:
+            _emit(data)
+        else:
+            print(render_recap(data), end="")
+        return 0
 
     if args.cmd == "stamp":
         rc, result = run_stamp(workspace, framework, watcher_id=args.id, outcome=args.outcome,

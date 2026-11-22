@@ -1,23 +1,29 @@
 #!/usr/bin/env -S UV_PROJECT_ENVIRONMENT=.venv uv run python
 # SPDX-FileCopyrightText: 2026 Mikhail Yurasov
 # SPDX-License-Identifier: Apache-2.0
-"""Cadence status, run markers, and the on-open staleness nag.
+"""Duty stamps, schedules, cadence status, and the on-open staleness nag.
 
-Watchers run only inside cadence skills, and the only hook-free prompt to run
-a cadence is the AGENTS.md "On workspace open" nag. When cadences lapse,
+Watchers run only inside an update cycle, and the only hook-free prompt to run
+one is the AGENTS.md "On workspace open" nag. When cadences lapse,
 nothing else fires: watchers go stale with `error_streak: 0`, and a run
 abandoned midway used to leave no trace at all. This tool makes both visible:
 
-  start <skill>    stamp `context.yaml.last_runs.<key>_started` as a cadence run
-                   begins (the "attempted" marker).
-  finish <skill>   stamp `last_runs.<key>` (the "completed" marker) and drop the
+  start <name>     stamp `context.yaml.last_runs.<key>_started` as a run begins
+                   (the "attempted" marker). `<name>` is a duty of any role
+                   (`update-light`, `weekly-review`, a custom role's duty;
+                   `<agent>:<duty>` when two roles share a duty id) or one of
+                   the cadence skills below.
+  finish <name>    stamp `last_runs.<key>` (the "completed" marker) and drop the
                    started marker. A started marker newer than the completed
                    stamp is a run that began and never finished. Readers of
                    `last_runs.<key>` are unaffected: a `_started` key is never
                    a completed run.
+  due <name>       exit 0 when the duty's scheduled time has come and it has
+                   not run since (the reason is printed), exit 1 when it has.
   status           print what is late:
                      - `last_check` older than 24 hours (or never set);
-                     - overdue cadences, by the daily-update § 15 rules;
+                     - overdue cadences, by the nag rules below
+                       (contracts/update-loop.md § 6);
                      - healthy watchers (active, error_streak 0) whose
                        `last_success` is older than their fastest cycle's
                        period plus one day of grace (daily 1, weekly 7,
@@ -43,21 +49,35 @@ abandoned midway used to leave no trace at all. This tool makes both visible:
                        (rules/concurrent-sessions.md).
                    `--json` prints the full structure instead.
 
-Skill -> `last_runs` key: daily-update daily_update, weekly-review
-weekly_review, monthly-review monthly_review, supertailor-review
-tailor_review, doctor doctor, whatsup whatsup.
+Stamps. Every duty has one stamp, `last_runs.<key>`: the key is the duty's
+`schedule` when that names a key of `preferences.cadences`
+(`weekly-review` -> `weekly_review`), else the duty's id with `_` for `-`.
+Cadence skill -> key: daily-update daily_update, weekly-review weekly_review,
+monthly-review monthly_review, supertailor-review tailor_review, doctor
+doctor, whatsup whatsup.
+
+Schedules. A value of `preferences.cadences` is one of `"08:30"` (daily),
+`"Sunday 18:00"` (weekly), `"1st 09:00"` (monthly) or `"every 90 days"`
+(also minutes, hours, weeks). Scheduling goes by the STAMP, never by what day
+it is: a duty is DUE when its stamp is older than its latest scheduled time,
+so a Sunday review that was missed is due on Monday, and one that ran late
+on Wednesday is due again the next Sunday. An `every N` schedule is due when
+the stamp is N old. Due is the question a scheduler asks. OVERDUE is the nag:
+the rules `status` applies (below), which leave room before they speak.
 
 `context.yaml` edits are text-level (only the touched line changes, comments
 survive), parse-checked before (an unparseable file is refused and left
 untouched) and after (the file must read back as exactly the intended edit),
 then written atomically.
 
-Exit codes: 0 ok; 1 runtime error (unparseable file, post-write check
-failed); 2 usage error.
+Exit codes: 0 ok (`due`: the duty is due); 1 runtime error (unparseable file,
+post-write check failed; `due`: not due); 2 usage error (unknown duty).
 """
 from __future__ import annotations
 
 import argparse
+import calendar
+import dataclasses as dc
 import datetime as dt
 import json
 import os
@@ -92,6 +112,112 @@ WORKSPACE_MIN_AGE_DAYS = 180  # fresh installs are never nagged about doctor
 
 _LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 _EVERY_DAYS_RE = re.compile(r"every\s+(\d+)\s+days?", re.IGNORECASE)
+_EVERY_RE = re.compile(r"^every\s+(\d+)\s*(minute|min|hour|day|week)s?$", re.IGNORECASE)
+_CLOCK_RE = re.compile(r"^(?:(?P<word>[A-Za-z]+|\d{1,2}(?:st|nd|rd|th)?)\s+)?(?P<h>\d{1,2}):(?P<m>\d{2})$")
+_WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
+_EVERY_UNIT = {"minute": "minutes", "min": "minutes", "hour": "hours", "day": "days", "week": "weeks"}
+
+
+@dc.dataclass(frozen=True)
+class Schedule:
+    """A parsed value of `preferences.cadences`: when a duty is meant to run."""
+
+    kind: str                        # "daily" | "weekly" | "monthly" | "every"
+    hour: int = 0
+    minute: int = 0
+    weekday: int | None = None       # weekly: 0 = Monday
+    day: int | None = None           # monthly: day of the month (the last day when shorter)
+    every: dt.timedelta | None = None
+
+    def describe(self) -> str:
+        """The schedule in words (`weekly, Sunday 18:00`)."""
+        clock = f"{self.hour:02d}:{self.minute:02d}"
+        if self.kind == "daily":
+            return f"daily, {clock}"
+        if self.kind == "weekly":
+            return f"weekly, {_WEEKDAYS[self.weekday or 0].capitalize()} {clock}"
+        if self.kind == "monthly":
+            return f"monthly, day {self.day} {clock}"
+        return f"every {self.every}"
+
+
+def parse_schedule(value: Any) -> Schedule | None:
+    """A `Schedule` from `"08:30"`, `"Sunday 18:00"`, `"1st 09:00"` or `"every 90 days"`.
+
+    None for anything else (an empty value, free text): such a duty has no
+    schedule and is never due by one.
+    """
+    text = " ".join(str(value or "").split())
+    if not text:
+        return None
+    every = _EVERY_RE.match(text)
+    if every:
+        amount = int(every.group(1))
+        if amount <= 0:
+            return None
+        return Schedule("every", every=dt.timedelta(**{_EVERY_UNIT[every.group(2).lower()]: amount}))
+    clock = _CLOCK_RE.match(text)
+    if not clock:
+        return None
+    hour, minute = int(clock.group("h")), int(clock.group("m"))
+    if hour > 23 or minute > 59:
+        return None
+    word = (clock.group("word") or "").lower()
+    if not word or word == "daily":
+        return Schedule("daily", hour, minute)
+    if word[0].isdigit():
+        day = int(re.match(r"\d+", word).group(0))
+        return Schedule("monthly", hour, minute, day=day) if 1 <= day <= 31 else None
+    days = [i for i, name in enumerate(_WEEKDAYS) if len(word) >= 3 and name.startswith(word)]
+    return Schedule("weekly", hour, minute, weekday=days[0]) if len(days) == 1 else None
+
+
+def latest_occurrence(schedule: Schedule, now: dt.datetime) -> dt.datetime | None:
+    """The latest scheduled time at or before `now`; None for an `every N` schedule."""
+    if schedule.kind == "every":
+        return None
+    at = now.replace(hour=schedule.hour, minute=schedule.minute, second=0, microsecond=0)
+    if schedule.kind == "daily":
+        return at if at <= now else at - dt.timedelta(days=1)
+    if schedule.kind == "weekly":
+        at -= dt.timedelta(days=(now.weekday() - (schedule.weekday or 0)) % 7)
+        return at if at <= now else at - dt.timedelta(days=7)
+    year, month = now.year, now.month
+    for _ in range(2):
+        day = min(schedule.day or 1, calendar.monthrange(year, month)[1])
+        at = now.replace(year=year, month=month, day=day, hour=schedule.hour,
+                         minute=schedule.minute, second=0, microsecond=0)
+        if at <= now:
+            return at
+        year, month = (year - 1, 12) if month == 1 else (year, month - 1)
+    return at
+
+
+def schedule_due(schedule: Schedule | None, last: dt.datetime | None, now: dt.datetime, *,
+                 since: dt.datetime | None = None) -> tuple[bool, str]:
+    """(is a duty with this schedule due, why): the stamp `last` against the schedule.
+
+    A clock schedule is due when the stamp is older than its latest scheduled
+    time, or when there is no stamp. An `every N` schedule is due when the
+    stamp is N old; with no stamp it counts from `since` (when the workspace
+    began), so a new workspace is not due at once. No schedule: never due.
+    """
+    if schedule is None:
+        return False, ""
+    if schedule.kind == "every":
+        start = last or since
+        if start is None:
+            return True, f"never ran ({schedule.describe()})"
+        if now - start >= (schedule.every or dt.timedelta()):
+            what = f"last run {str(_iso(last))[:10]}" if last else "never ran"
+            return True, f"{what} ({schedule.describe()})"
+        return False, ""
+    at = latest_occurrence(schedule, now)
+    if last is None:
+        return True, f"never ran ({schedule.describe()})"
+    if at is not None and last < at:
+        return True, f"due since {at:%Y-%m-%d %H:%M} ({schedule.describe()}); last run {str(_iso(last))[:10]}"
+    return False, ""
 
 
 class CorruptFileError(Exception):
@@ -225,16 +351,63 @@ def _iso(value: dt.datetime | None) -> str | None:
 
 # ----------------------------------------------------------------- markers
 
-def mark(workspace: Path, skill: str, *, phase: str, now: dt.datetime | None = None) -> str:
+def cadence_values(workspace: Path, framework: Path = FRAMEWORK) -> dict[str, Any]:
+    """`preferences.cadences`: the config template's values, overlaid by the workspace's own.
+
+    A workspace that predates a cadence key still gets its default.
+    """
+    values: dict[str, Any] = {}
+    try:
+        template = yaml.load((framework / "templates" / "memory" / "config.yaml")
+                             .read_text(encoding="utf-8"), Loader=_LOADER)  # a safe loader
+    except (OSError, yaml.YAMLError):
+        template = None
+    for prefs in ((template or {}).get("preferences") if isinstance(template, dict) else None,
+                  load_preferences(workspace)):
+        block = prefs.get("cadences") if isinstance(prefs, dict) else None
+        if isinstance(block, dict):
+            values.update({str(k): v for k, v in block.items()})
+    return values
+
+
+def find_duty(name: str, workspace: Path, framework: Path = FRAMEWORK
+              ) -> tuple[agent_roles.Role, agent_roles.Duty] | None:
+    """The (role, duty) that `name` names: a duty id, or `<agent>:<duty>`. None when no role has it.
+
+    Raises ValueError when two roles have a duty with that id and no agent is given.
+    """
+    roles, _errors = agent_roles.collect(framework, workspace)
+    agent, _sep, duty_id = name.rpartition(":")
+    hits = [(role, duty) for role in roles for duty in role.duties
+            if duty.id == duty_id and (not agent or role.name == agent)]
+    if len(hits) > 1:
+        owners = ", ".join(f"{role.name}:{duty.id}" for role, duty in hits)
+        raise ValueError(f"{name!r} is a duty of more than one role; name one of {owners}")
+    return hits[0] if hits else None
+
+
+def stamp_key(name: str, workspace: Path, framework: Path = FRAMEWORK) -> str:
+    """The `last_runs` key of a cadence skill or a duty. Raises ValueError for neither."""
+    if name in CADENCE_KEYS:
+        return CADENCE_KEYS[name]
+    found = find_duty(name, workspace, framework)
+    if found is None:
+        raise ValueError(f"{name!r} is not a cadence skill or a duty of any role "
+                         f"(cadence skills: {', '.join(CADENCE_KEYS)}; duties: "
+                         "`uv run python -m superagent.tools.agents duties`)")
+    return agent_roles.duty_stamp_key(found[1])
+
+
+def mark(workspace: Path, skill: str, *, phase: str, now: dt.datetime | None = None,
+         framework: Path = FRAMEWORK) -> str:
     """`phase` "start" stamps `<key>_started`; "finish" stamps `<key>` and drops the marker.
 
-    Returns the `last_runs` key written. Raises ValueError for a non-cadence
-    skill, CorruptFileError / WriteRefusedError when context.yaml cannot be
-    written safely.
+    `skill` is a cadence skill or a duty of any role (`stamp_key`). Returns
+    the `last_runs` key written. Raises ValueError for a name that is neither,
+    CorruptFileError / WriteRefusedError when context.yaml cannot be written
+    safely.
     """
-    if skill not in CADENCE_KEYS:
-        raise ValueError(f"{skill!r} is not a cadence skill ({', '.join(CADENCE_KEYS)})")
-    key = CADENCE_KEYS[skill]
+    key = stamp_key(skill, workspace, framework)
     stamp = _iso(now or now_local())
     text, ctx = load_context(workspace)
     runs = ctx.get("last_runs")
@@ -281,7 +454,7 @@ def workspace_since(workspace: Path) -> dt.datetime | None:
 
 def overdue_cadences(runs: dict[str, Any], prefs: dict[str, Any], now: dt.datetime,
                      since: dt.datetime | None) -> list[dict[str, Any]]:
-    """Overdue cadences by the daily-update § 15 rules."""
+    """Overdue cadences by the nag rules (contracts/update-loop.md § 6): what is late, not what is due."""
     cadences = prefs.get("cadences") if isinstance(prefs.get("cadences"), dict) else {}
     out: list[dict[str, Any]] = []
 
@@ -353,8 +526,29 @@ def unfinished_runs(runs: dict[str, Any]) -> list[dict[str, Any]]:
         started, done = as_datetime(value), as_datetime(runs.get(base))
         if started and (done is None or done < started):
             skill = next((s for s, k in CADENCE_KEYS.items() if k == base), base)
-            out.append({"cadence": skill, "started": _iso(started), "last_completed": _iso(done)})
+            out.append({"cadence": skill, "key": base, "started": _iso(started),
+                        "last_completed": _iso(done)})
     return out
+
+
+def duty_due(workspace: Path, name: str, *, now: dt.datetime | None = None,
+             framework: Path = FRAMEWORK) -> tuple[bool, str]:
+    """(is the duty's scheduled time here and the duty not run since, why).
+
+    The stamp of the duty against its schedule value in `preferences.cadences`
+    (`schedule_due`). A duty switched off by `preferences.<key>_auto: false`,
+    one with no schedule value, and an on-request duty are never due. Raises
+    ValueError for a name that is no duty and no cadence skill.
+    """
+    now = now or now_local()
+    key = stamp_key(name, workspace, framework)
+    prefs = load_preferences(workspace)
+    if prefs.get(f"{key}_auto") is False:
+        return False, ""
+    _text, ctx = load_context(workspace)
+    runs = ctx.get("last_runs") if isinstance(ctx.get("last_runs"), dict) else {}
+    schedule = parse_schedule(cadence_values(workspace, framework).get(key))
+    return schedule_due(schedule, as_datetime(runs.get(key)), now, since=workspace_since(workspace))
 
 
 def status(workspace: Path, *, now: dt.datetime | None = None, framework: Path = FRAMEWORK,
@@ -391,9 +585,15 @@ def assign_agents(report: dict[str, Any], workspace: Path, framework: Path = FRA
     lines without a prefix.
     """
     roles, _errors = agent_roles.collect(framework, workspace)
-    for row in report["overdue_cadences"] + report["unfinished_runs"]:
+    for row in report["overdue_cadences"]:
         row["agent"] = agent_roles.duty_owner(roles, row["cadence"])
-    watcher_agent = agent_roles.check_owner(roles, "watchers")
+    for row in report["unfinished_runs"]:
+        owner = agent_roles.stamp_owner(roles, row["key"])
+        if owner is not None:
+            row["agent"], row["cadence"] = owner[0].name, owner[1].id
+        else:
+            row["agent"] = agent_roles.duty_owner(roles, row["cadence"])
+    watcher_agent = agent_roles.watchers_owner(roles)
     for row in report["overdue_watchers"]:
         row["agent"] = watcher_agent
     report["last_check_agent"] = agent_roles.duty_owner(roles, "daily-update")
@@ -487,10 +687,12 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("--now", type=_aware, default=None, help=argparse.SUPPRESS)
     parser = argparse.ArgumentParser(prog="cadence", description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
-    for name, text in (("start", "Stamp the attempted marker for a cadence run."),
-                       ("finish", "Stamp the completed marker and drop the attempted one.")):
+    for name, text in (("start", "Stamp the attempted marker for a run of a duty."),
+                       ("finish", "Stamp the completed marker and drop the attempted one."),
+                       ("due", "Exit 0 when the duty's scheduled time has come and it has not run since.")):
         cmd = sub.add_parser(name, parents=[common], help=text)
-        cmd.add_argument("skill", choices=sorted(CADENCE_KEYS))
+        cmd.add_argument("skill", metavar="name",
+                         help="A duty (`update-full`, `<agent>:<duty>`) or a cadence skill.")
     st = sub.add_parser("status", parents=[common], help="Print stale context, overdue cadences / "
                                                           "watchers and unfinished runs.")
     st.add_argument("--stamp", action="store_true",
@@ -510,6 +712,11 @@ def main(argv: list[str] | None = None) -> int:
             key = mark(workspace, args.skill, phase=args.command, now=now)
             print(f"last_runs.{key} = {_iso(now)}")
             return 0
+        if args.command == "due":
+            due, why = duty_due(workspace, args.skill, now=now)
+            if due:
+                print(why)
+            return 0 if due else 1
         report = status(workspace, now=now, grace_days=args.grace_days)
         today = now.date().isoformat()
         open_lines = on_open(workspace, now) if args.stamp else []

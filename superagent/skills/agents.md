@@ -67,12 +67,12 @@ Exit 2 names what is wrong (an unknown role, a project agent without a slug, a p
 ### 2c. Duties — "which duties are overdue", "which agent runs the weekly review"
 
 ```
-uv run python -m superagent.tools.agents duties [--agent <role>] [--overdue]
+uv run python -m superagent.tools.agents duties [--agent <role>] [--due | --overdue]
 ```
 
-One row per duty: agent, duty, skill, tier (`contracts/autonomy.md`), schedule, last run, state (`ok`, `overdue`, `unfinished`, `on-request`). `--overdue` keeps what is late, and prints nothing when all is current; these are the findings the on-open check prints. For each late duty, name the skill that clears it and offer to run it.
+One row per duty: agent, duty, skill, tier (`contracts/autonomy.md`), schedule, last run, state (`ok`, `due`, `overdue`, `unfinished`, `on-request`). A duty is `due` when its scheduled time has come and it has not run since, or its check found work (`contracts/update-loop.md` § 6); it is `overdue` once it is late. `--due` keeps what a scheduler would run now. `--overdue` keeps what is late, and prints nothing when all is current; these are the findings the on-open check prints. For each late duty, name the skill that clears it and offer to run it.
 
-The check of one duty, as a scheduled wake would run it: `uv run python -m superagent.tools.agents check <agent> <duty>` (exit 0 due with the reason printed, exit 1 not due).
+The check of one duty, as a scheduled wake would run it: `uv run python -m superagent.tools.agents check <agent> <duty>` (exit 0 due, overdue or unfinished, with the reason printed; exit 1 not due).
 
 ### 2d. Take a role — "act as the bookkeeper", "work on <project> as its agent"
 

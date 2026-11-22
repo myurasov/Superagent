@@ -4,7 +4,7 @@ The escape hatch: watch anything a read-only prompt can describe — a portal be
 
 ## How a check works
 
-1. `check --cycle <c>` does **not** run the prompt. For every eligible `subagent` watcher it emits a dispatch spec (`kind: subagent`, the resolved prompt, the previous stamped note, the last-changed time, and the required return shape).
+1. `check` (`--due`, or `--cycle <c>`) does **not** run the prompt. For every eligible `subagent` watcher it emits a dispatch spec (`kind: subagent`, the resolved prompt, the previous stamped note, the last-changed time, and the required return shape).
 2. The calling agent runs each prompt as a subagent per `rules/subagents.md` — exact scope, exact procedure, exact return shape, boundaries, active modes restated (including the retention duty: a contact or account number legitimately seen goes to its proper home in the workspace, never into the note).
 3. The agent records the outcome: `stamp --id <id> --changed --note "<one line>"`, `--unchanged`, or `--unreachable`. The note (max 500 characters, control characters stripped) becomes the fingerprint.
 

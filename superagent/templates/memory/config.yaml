@@ -42,13 +42,25 @@ preferences:
     # Pacing budget — integer, or k/m shorthand ("700k", "1m").
     input_tokens_per_minute: "1m"
 
-  # Cadence schedule (when the cadence skills SHOULD run if you let them).
+  # Cadence schedule: when each duty SHOULD run if you let it. A value is
+  # "HH:MM" (daily), "<Weekday> HH:MM" (weekly), "<N>th HH:MM" (monthly) or
+  # "every N minutes|hours|days|weeks". A duty is due when its last run is older
+  # than its latest scheduled time, so a missed run is due at the next look
+  # (tools/cadence.py; contracts/update-loop.md § 6).
   cadences:
     daily_update: "08:30"
     weekly_review: "Sunday 18:00"
     monthly_review: "1st 09:00"
     tailor_review: "every 90 days"
     doctor: "every 180 days"
+    update_light: "every 30 minutes"   # the update cycle's light tier: how often it may look
+    update_full: "06:00"               # the full tier, once a day
+
+  # The update cycle (see contracts/update-loop.md). Absent block = these defaults.
+  update:
+    # Extra folders drained like `Inbox/`: a folder a sync tool shares between
+    # machines, a scanner's output folder. Absolute paths or `~/...`.
+    drop_folders: []
 
   # Watchlist — change detection for external sources, and the registry of
   # data sources (see contracts/watchlist.md). Absent block = these defaults.

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -35,8 +36,9 @@ def _set_runs(ws: Path, *, last_check: str | None, **runs: str) -> None:
 
 
 def _make_current(ws: Path) -> None:
-    _set_runs(ws, last_check=_ago(hours=1), daily_update=_ago(hours=1), weekly_review=_ago(1),
-              monthly_review=_ago(hours=2), tailor_review=_ago(1), doctor=_ago(1))
+    _set_runs(ws, last_check=_ago(hours=0.25), daily_update=_ago(hours=0.25), weekly_review=_ago(1),
+              monthly_review=_ago(hours=2), tailor_review=_ago(1), doctor=_ago(1),
+              update_full=_ago(hours=1), update_light=_ago(hours=0.25))
 
 
 def _registry(ws: Path, rows: list[dict[str, Any]]) -> None:
@@ -172,9 +174,12 @@ def test_duties_of_a_current_workspace(initialized_workspace: Path) -> None:
     assert by_key[("superagent", "weekly-review")]["state"] == "ok"
     assert by_key[("superagent", "weekly-review")]["schedule_value"] == "Sunday 18:00"
     assert by_key[("superagent", "weekly-review")]["last_run"].startswith("2026-10-07")
-    assert by_key[("updater", "watchlist")]["state"] == "ok"
+    assert by_key[("updater", "update-light")]["state"] == "ok"
+    assert by_key[("updater", "update-full")]["state"] == "ok"
+    assert by_key[("updater", "update-full")]["schedule_value"] == "06:00"
+    assert by_key[("updater", "update-full")]["last_run"].startswith("2026-10-08T08:00")
     assert by_key[("bookkeeper", "bills")]["state"] == "on-request"
-    assert not [r for r in rows if r["state"] in ("overdue", "unfinished")]
+    assert not [r for r in rows if r["state"] in ag.RUNNABLE]
 
 
 def test_overdue_duties_match_cadence_status(initialized_workspace: Path) -> None:
@@ -211,10 +216,10 @@ def test_watcher_findings_belong_to_the_updater(initialized_workspace: Path,
         "[updater] Watchers overdue for a check: bank (daily-update; last success never, 9 day(s) ago); "
         "permit (weekly-review; last success never, 30 day(s) ago)."]
     rows, _errors = ag.duty_rows(ws, now=NOW, agent="updater")
-    assert [(r["duty"], r["state"]) for r in rows] == [("watchlist", "overdue")]
+    assert [(r["duty"], r["state"]) for r in rows] == [("update-light", "overdue"), ("update-full", "ok")]
     assert rows[0]["reason"] == "2 watcher(s) overdue for a check: bank, permit"
-    assert ag.check(ws, "updater", "watchlist", now=NOW) == (
-        True, "updater watchlist: overdue: 2 watcher(s) overdue for a check: bank, permit")
+    assert ag.check(ws, "updater", "update-light", now=NOW) == (
+        True, "updater update-light: overdue: 2 watcher(s) overdue for a check: bank, permit")
 
 
 def test_cadence_lines_are_grouped_by_agent(initialized_workspace: Path,
@@ -301,6 +306,78 @@ def test_agents_tool_reads_only(initialized_workspace: Path, capsys: pytest.Capt
 
     before = snapshot()
     for argv in (["list"], ["id", "updater"], ["duties"], ["duties", "--overdue"],
-                 ["check", "updater", "watchlist"]):
+                 ["duties", "--due"], ["check", "updater", "update-light"],
+                 ["check", "updater", "update-full"]):
         _run(argv, ws, capsys)
     assert snapshot() == before
+
+
+# ------------------------------------------------------- due is not overdue
+
+def test_a_duty_is_due_at_its_scheduled_time_before_it_is_late(initialized_workspace: Path,
+                                                             capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    _make_current(ws)
+    # Yesterday's briefing ended at 08:40, and the context was touched an hour ago.
+    _set_runs(ws, last_check=_ago(hours=1), daily_update=_ago(hours=24.33))
+    rows, _errors = ag.duty_rows(ws, now=NOW)
+    daily = next(r for r in rows if r["duty"] == "daily-update")
+    assert daily["state"] == "due", "08:30 has come and it has not run since; nothing is late yet"
+    assert daily["reason"].startswith("due since 2026-10-08 08:30 (daily, 08:30)")
+    code, out, _err = _run(["check", "superagent", "daily-update"], ws, capsys)
+    assert code == 0 and out.startswith("superagent daily-update: due: due since 2026-10-08 08:30")
+    assert _run(["duties", "--overdue"], ws, capsys)[1] == "", "the on-open nag stays quiet"
+    code, out, _err = _run(["duties", "--due"], ws, capsys)
+    assert [line.split()[1] for line in out.splitlines()[1:]] == ["daily-update"]
+    assert cd.render(cd.status(ws, now=NOW)) == []
+
+
+def test_a_review_missed_on_sunday_is_due_on_monday(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    monday = dt.datetime(2026, 10, 5, 9, 0, tzinfo=PDT)
+    stamp = dt.datetime(2026, 9, 28, 10, 0, tzinfo=PDT).isoformat()  # last ran a Monday, late
+    recent = (monday - dt.timedelta(minutes=10)).isoformat()
+    _set_runs(ws, last_check=recent, daily_update=recent, weekly_review=stamp, monthly_review=recent,
+              tailor_review=recent, doctor=recent, update_full=recent)
+    assert ag.check(ws, "superagent", "weekly-review", now=monday)[0] is True
+    weekly = next(r for r in ag.duty_rows(ws, now=monday)[0] if r["duty"] == "weekly-review")
+    assert weekly["state"] == "due" and "due since 2026-10-04 18:00" in weekly["reason"]
+    saturday = dt.datetime(2026, 10, 3, 9, 0, tzinfo=PDT)
+    assert ag.check(ws, "superagent", "weekly-review", now=saturday)[0] is False
+
+
+def test_the_update_duties(initialized_workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    _make_current(ws)
+    assert _run(["check", "updater", "update-light"], ws, capsys) == (1, "", ""), (
+        "nothing due and nothing waiting: the wake costs nothing")
+    assert _run(["check", "updater", "update-full"], ws, capsys)[0] == 1
+    # A watcher that was never checked is due, and so is a document left in the drop folder.
+    target = ws / "watched.txt"
+    target.write_text("v1")
+    registry = ws / "Sources" / "Watchlist"
+    registry.mkdir(parents=True, exist_ok=True)
+    (registry / "Doc.ref.md").write_text(
+        "---\nref_version: 2\ntitle: Doc\nwatch:\n  type: path\n  path: " + str(target)
+        + "\n  schedule: daily\n---\n# Notes\n")
+    code, out, _err = _run(["check", "updater", "update-light"], ws, capsys)
+    assert (code, out.strip()) == (0, "updater update-light: due: 1 watcher(s) due: doc")
+    scan = ws / "Inbox" / "scan.pdf"
+    scan.parent.mkdir(exist_ok=True)
+    scan.write_bytes(b"%PDF")
+    old = (NOW - dt.timedelta(minutes=5)).timestamp()
+    os.utime(scan, (old, old))
+    code, out, _err = _run(["check", "updater", "update-light"], ws, capsys)
+    assert out.strip().endswith("1 watcher(s) due: doc; 1 document(s) waiting in a drop folder")
+    # The full tier goes by its stamp: due once its last run is older than today's 06:00.
+    _set_runs(ws, last_check=_ago(hours=0.25), update_full=_ago(hours=4))
+    code, out, _err = _run(["check", "updater", "update-full"], ws, capsys)
+    assert code == 0 and "update-full: due: due since 2026-10-08 06:00 (daily, 06:00)" in out
+    cd.mark(ws, "update-full", phase="finish", now=NOW)
+    assert ag.check(ws, "updater", "update-full", now=NOW + dt.timedelta(minutes=1))[0] is False
+    cd.mark(ws, "update-light", phase="start", now=NOW - dt.timedelta(minutes=5))
+    target.unlink()
+    (registry / "Doc.ref.md").unlink()
+    scan.unlink()
+    light = next(r for r in ag.duty_rows(ws, now=NOW)[0] if r["duty"] == "update-light")
+    assert light["state"] == "unfinished" and "never finished" in light["reason"]

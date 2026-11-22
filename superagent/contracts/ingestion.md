@@ -13,7 +13,7 @@ Superagent's value scales with the breadth of data it can read. Since 0.19.0 eve
 
 ### 2.2 What a harvest handler is
 
-A **harvest handler** is an `IngestorBase` subclass (`superagent/tools/ingest/_base.py`) that implements `run(config_row, dry_run=False) -> RunResult`. A pack names it with `harvest.handler: <dotted.module>` or ships it as `<pack folder>/handler.py`. The watchlist invokes it — a cadence skill's `check --cycle <cadence>` or an explicit `watchlist harvest --id <id>` — after detect fires and after the budget gate passes. Handlers are not skills and are never invoked by a skill directly. The handler's config row is the pack's `harvest.defaults` overridden by the same-named keys of the ref's `watch:` block (`params`, `auth`, budgets, `recency_window_days`, `max_items_per_run`, ...).
+A **harvest handler** is an `IngestorBase` subclass (`superagent/tools/ingest/_base.py`) that implements `run(config_row, dry_run=False) -> RunResult`. A pack names it with `harvest.handler: <dotted.module>` or ships it as `<pack folder>/handler.py`. The watchlist invokes it — an update cycle's `check --due` (`contracts/update-loop.md`) or an explicit `watchlist harvest --id <id>` — after detect fires and after the budget gate passes. Handlers are not skills and are never invoked by a skill directly. The handler's config row is the pack's `harvest.defaults` overridden by the same-named keys of the ref's `watch:` block (`params`, `auth`, budgets, `recency_window_days`, `max_items_per_run`, ...).
 
 ### 2.3 Handler obligations
 

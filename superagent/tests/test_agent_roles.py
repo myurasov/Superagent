@@ -110,7 +110,10 @@ def test_cadence_skills_each_have_one_owner(framework_dir: Path) -> None:
     for skill in (*CYCLE_PERIOD_DAYS, "supertailor-review", "doctor"):
         owners = [r.name for r in roles if any(d.skill == skill for d in r.duties)]
         assert owners == ["superagent"], skill
-    assert ar.check_owner(roles, "watchers") == "updater"
+    assert ar.watchers_owner(roles) == "updater", "watcher findings are the Updater's"
+    assert ar.check_owner(roles, "update") == "updater"
+    assert [d.id for r in roles if r.name == "updater" for d in r.duties] == [
+        "update-light", "update-full"]
     assert ar.duty_owner(roles, "whatsup") == "superagent", "an unclaimed skill goes to the lead"
 
 

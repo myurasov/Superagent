@@ -117,7 +117,7 @@ User asked "mark <bill> paid", "I just paid <bill>":
 
 User asked to reconcile recently-ingested transactions against open bills:
 
-1. Requires a finance ingestor with a populated ledger — `_memory/transactions.yaml` (SimpleFin is the canonical, shipped source; Plaid / Monarch / YNAB / CSV write to the same file). Do NOT hand-roll the matching; run the shared reconciler (the same tool `weekly-review` § 2 runs on a 7-day window):
+1. Requires a finance ingestor with a populated ledger — `_memory/transactions.yaml` (SimpleFin is the canonical, shipped source; Plaid / Monarch / YNAB / CSV write to the same file). Do NOT hand-roll the matching; run the shared reconciler (the same tool the weekly `brief` shows on a 7-day window; the full tier of `update` runs this mode on that window):
 
    ```bash
    uv run python -m superagent.tools.reconcile_transactions --days 30 --json

@@ -86,7 +86,7 @@ Find files in `Domains/<domain>/Resources/` and `Projects/<slug>/Resources/` whe
 
 Surface; offer `archive` (move to `Archive/<YYYY-MM>/_doctor-resources/`) or `keep`.
 
-**Note**: `doctor` NEVER touches user-curated content under `Sources/` (nothing there is agent-managed; `Sources/Watchlist/` is a reserved name whose watcher refs are user-editable — `doctor` may report an evicted or unreachable watcher from `_memory/watchlist-state.yaml` but never deletes the ref; everything else is read-only per `contracts/sources.md` § 15.7). The strict pass for stale Sources is the user's job, surfaced via `monthly-review` § 7d as a candidate list, never auto-actioned.
+**Note**: `doctor` NEVER touches user-curated content under `Sources/` (nothing there is agent-managed; `Sources/Watchlist/` is a reserved name whose watcher refs are user-editable — `doctor` may report an evicted or unreachable watcher from `_memory/watchlist-state.yaml` but never deletes the ref; everything else is read-only per `contracts/sources.md` § 15.7). The strict pass for stale Sources is the user's job, surfaced by the monthly `brief` (sources hygiene) as a candidate list, never auto-actioned.
 
 ## 4. Duplicates
 
@@ -177,7 +177,7 @@ Run `uv run python -m superagent.tools.events_derive check`. Exit 1 = the
 sources of truth (the interaction-log files / history.md files) have changed since
 the last derivation. Offer `rebuild now`
 (`uv run python -m superagent.tools.events_derive rebuild`) or `skip` —
-the weekly-review § 8b derived-views step is the standing cadence.
+the full tier of the `update` skill (its derived-views step) is the standing cadence.
 
 **Pre-0.16.0 guard:** if `check` reports the stream has never been derived
 AND partition rows are not flagged `legacy: true` (a pre-0.16.0
@@ -246,7 +246,7 @@ Pass 10h (synced-folder health): <N copies merged, M removed, K to fold by hand>
 
 ## 12. Logging
 
-1. `_memory/context.yaml.last_runs.doctor` → now (this is what the `cadences.doctor: "every 180 days"` check in `daily-update` § 15 / `whatsup` § 7 reads; without it the cadence can never be satisfied).
+1. `_memory/context.yaml.last_runs.doctor` → now (this is what the `cadences.doctor: "every 180 days"` check behind the briefing's overdue lines reads (`tools/cadence.py`); without it the cadence can never be satisfied).
 2. Log through `signals log`:
 
    ```yaml

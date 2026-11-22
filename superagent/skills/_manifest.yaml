@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-11-22T02:55:44-08:00'
-skill_count: 38
+generated_at: '2026-11-22T15:12:36-08:00'
+skill_count: 40
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -181,7 +181,7 @@ skills:
   lines: 122
   h2_steps: 5
   h3_subsections: 6
-  typical_token_cost: 1903
+  typical_token_cost: 1966
   typical_files_read:
   - _memory/agents.yaml
   - _memory/config.yaml
@@ -241,11 +241,42 @@ skills:
   lines: 236
   h2_steps: 4
   h3_subsections: 5
-  typical_token_cost: 2996
+  typical_token_cost: 3011
   typical_files_read:
   - _memory/bills.yaml
   - _memory/accounts-index.yaml
   - _memory/transactions.yaml
+  origin: framework
+- name: superagent-brief
+  stem: brief
+  path: superagent/skills/brief.md
+  one_line: 'The briefing: read the stores and tell the owner what matters. Three kinds: daily (full,
+    or the short delta since the last check), weekly (spend, what got done, what slipped, what is coming)
+    and month'
+  triggers:
+  - brief me
+  - daily brief / weekly brief / monthly brief
+  - brief only
+  - briefing only
+  - show the brief
+  - what did the update find
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 364
+  h2_steps: 44
+  h3_subsections: 0
+  typical_token_cost: 6534
+  typical_files_read:
+  - _memory/config.yaml
+  - _memory/context.yaml
+  - _memory/ingestion-log.yaml
+  - _memory/accounts-index.yaml
+  - _memory/decisions.yaml
+  - _memory/appointments.yaml
+  - _memory/bills.yaml
+  - _memory/important-dates.yaml
   origin: framework
 - name: superagent-browserctl
   stem: browserctl
@@ -278,9 +309,9 @@ skills:
 - name: superagent-daily-update
   stem: daily-update
   path: superagent/skills/daily-update.md
-  one_line: 'Daily briefing: check the watchlist (daily-update cycle), then aggregate today''s calendar,
-    bills due, appointments, important dates, P0/P1 tasks, health signals, inbox highlights, and anything
-    the wat'
+  one_line: 'Daily update: bring the stores up to date (the `update` skill), then the daily briefing (the
+    `brief` skill): today''s calendar, bills due, appointments, important dates, P0/P1 tasks, health signals,
+    in'
   triggers:
   - daily update
   - morning briefing
@@ -292,23 +323,14 @@ skills:
   - run an update
   mcp_required: []
   mcp_optional:
-  - any watcher registered in Sources/Watchlist/ whose cycles include daily-update (gmail, url, subagent,
-    …)
+  - whatever the `update` skill reaches: any watcher registered in Sources/Watchlist/ that is due
   cli_required: []
   cli_optional: []
-  lines: 345
-  h2_steps: 26
+  lines: 35
+  h2_steps: 2
   h3_subsections: 0
-  typical_token_cost: 4568
-  typical_files_read:
-  - _memory/config.yaml
-  - _memory/context.yaml
-  - _memory/transactions.yaml
-  - _memory/appointments.yaml
-  - _memory/bills.yaml
-  - _memory/important-dates.yaml
-  - _memory/todo.yaml
-  - _memory/health-records.yaml
+  typical_token_cost: 402
+  typical_files_read: []
   origin: framework
 - name: superagent-doctor
   stem: doctor
@@ -330,7 +352,7 @@ skills:
   lines: 258
   h2_steps: 21
   h3_subsections: 0
-  typical_token_cost: 2998
+  typical_token_cost: 3011
   typical_files_read:
   - _memory/domains-index.yaml
   - _memory/watchlist-state.yaml
@@ -520,7 +542,7 @@ skills:
   lines: 350
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 6171
+  typical_token_cost: 6167
   typical_files_read:
   - _memory/config.yaml
   - _memory/insights.yaml
@@ -565,7 +587,7 @@ skills:
   lines: 219
   h2_steps: 6
   h3_subsections: 2
-  typical_token_cost: 3913
+  typical_token_cost: 3916
   typical_files_read:
   - Domains/Vehicles/history.md
   - Domains/Home/history.md
@@ -601,9 +623,9 @@ skills:
 - name: superagent-monthly-review
   stem: monthly-review
   path: superagent/skills/monthly-review.md
-  one_line: 'Monthly heavy pass: subscription audit (cancel candidates), document expirations in next
-    90 days, vehicle / home maintenance windows in next 60 days, financial month recap, health overdue
-    items, domai'
+  one_line: 'Monthly heavy pass: bring the stores up to date (the `update` skill), then the monthly briefing
+    (the `brief` skill): subscription audit (cancel candidates), document expirations in next 90 days,
+    vehic'
   triggers:
   - monthly review
   - first of the month
@@ -611,22 +633,14 @@ skills:
   - month-end review
   mcp_required: []
   mcp_optional:
-  - any watcher on the watchlist (the monthly cycle covers the weekly and daily tiers too)
+  - whatever the `update` skill reaches: any watcher that is due
   cli_required: []
   cli_optional: []
-  lines: 235
-  h2_steps: 24
+  lines: 31
+  h2_steps: 2
   h3_subsections: 0
-  typical_token_cost: 2461
-  typical_files_read:
-  - _memory/subscriptions.yaml
-  - _memory/documents-index.yaml
-  - _memory/assets-index.yaml
-  - _memory/transactions.yaml
-  - _memory/health-records.yaml
-  - _memory/todo.yaml
-  - _memory/projects-index.yaml
-  - _memory/sources-index.yaml
+  typical_token_cost: 419
+  typical_files_read: []
   origin: framework
 - name: superagent-personal-signals
   stem: personal-signals
@@ -859,7 +873,7 @@ skills:
   lines: 205
   h2_steps: 4
   h3_subsections: 7
-  typical_token_cost: 2317
+  typical_token_cost: 2324
   typical_files_read:
   - _memory/subscriptions.yaml
   - _memory/accounts-index.yaml
@@ -946,6 +960,38 @@ skills:
   - _memory/config.yaml
   - _memory/todo.yaml
   origin: framework
+- name: superagent-update
+  stem: update
+  path: superagent/skills/update.md
+  one_line: 'The update cycle: fetch, capture and reconcile, with no briefing. Light tier: conflict sweep,
+    the watchers that are due (detect and harvest), the drop folders, capture, store reconcile, tasks.
+    Full ti'
+  triggers:
+  - run the update
+  - update only
+  - fetch only
+  - update light / light update
+  - update full / full update
+  - run the update cycle
+  - refresh the stores
+  - update without a briefing
+  mcp_required: []
+  mcp_optional:
+  - any watcher registered in Sources/Watchlist/ that is due (gmail, url, subagent, a harvest pack, …)
+  cli_required: []
+  cli_optional: []
+  lines: 238
+  h2_steps: 12
+  h3_subsections: 0
+  typical_token_cost: 4020
+  typical_files_read:
+  - _memory/config.yaml
+  - _memory/bills.yaml
+  - _memory/important-dates.yaml
+  - _memory/appointments.yaml
+  - _memory/documents-index.yaml
+  - _memory/transactions.yaml
+  origin: framework
 - name: superagent-watch
   stem: watch
   path: superagent/skills/watch.md
@@ -973,16 +1019,16 @@ skills:
   lines: 153
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 3770
+  typical_token_cost: 3858
   typical_files_read:
   - _memory/config.yaml
   origin: framework
 - name: superagent-weekly-review
   stem: weekly-review
   path: superagent/skills/weekly-review.md
-  one_line: 'End-of-week wrap: spend by category vs budget for the trailing 7 days, fitness summary, what
-    got done, what slipped, what''s coming in the next 14 days. Captures one or two reflection notes into
-    `Domai'
+  one_line: 'End-of-week wrap: bring the stores up to date (the `update` skill), then the weekly briefing
+    (the `brief` skill): spend by category for the trailing 7 days, fitness summary, what got done, what
+    slippe'
   triggers:
   - weekly review
   - friday wrap
@@ -991,31 +1037,21 @@ skills:
   - week in review
   mcp_required: []
   mcp_optional:
-  - the simplefin watcher (harvested daily by `daily-update`; rows already in `transactions.yaml`) or
-    a CSV import for the Bookkeeper pass
-  - any health / fitness watcher for the Coach pass
+  - whatever the `update` skill reaches: any watcher that is due (the bank feed among them)
   cli_required: []
   cli_optional: []
-  lines: 269
-  h2_steps: 22
+  lines: 32
+  h2_steps: 2
   h3_subsections: 0
-  typical_token_cost: 2982
-  typical_files_read:
-  - _memory/transactions.yaml
-  - Domains/Hobbies/status.md
-  - _memory/appointments.yaml
-  - _memory/important-dates.yaml
-  - _memory/documents-index.yaml
-  - _memory/projects-index.yaml
-  - _memory/assets-index.yaml
-  - _memory/decisions.yaml
+  typical_token_cost: 412
+  typical_files_read: []
   origin: framework
 - name: superagent-whatsup
   stem: whatsup
   path: superagent/skills/whatsup.md
-  one_line: 'Quick delta since last_check: bills due, today''s appointments, important dates, P0/P1 tasks
-    overdue, anything else needing attention. Updates context.last_check. Designed to be the user''s first
-    comman'
+  one_line: 'Quick delta since last_check: a light update of the stores (the `update` skill), then the
+    short daily briefing (the `brief` skill): bills due, today''s appointments, important dates, P0/P1
+    tasks overdu'
   triggers:
   - what's up
   - status check
@@ -1027,22 +1063,15 @@ skills:
   - what are my top tasks / top tasks to complete
   - steps for today
   mcp_required: []
-  mcp_optional: []
+  mcp_optional:
+  - whatever the `update` skill reaches in its light tier: any watcher that is due
   cli_required: []
   cli_optional: []
-  lines: 159
-  h2_steps: 10
+  lines: 36
+  h2_steps: 2
   h3_subsections: 0
-  typical_token_cost: 1874
-  typical_files_read:
-  - _memory/config.yaml
-  - _memory/context.yaml
-  - _memory/bills.yaml
-  - _memory/appointments.yaml
-  - _memory/important-dates.yaml
-  - _memory/todo.yaml
-  - _memory/ingestion-log.yaml
-  - _memory/alerts-archive.yaml
+  typical_token_cost: 437
+  typical_files_read: []
   origin: framework
 - name: superagent-world
   stem: world

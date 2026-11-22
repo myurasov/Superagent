@@ -64,11 +64,9 @@ def test_a_completed_stamp_newer_than_the_marker_means_finished() -> None:
 
 def test_mark_rejects_unknown_skills_and_refuses_a_broken_file(initialized_workspace: Path) -> None:
     ws = initialized_workspace
-    with pytest.raises(ValueError, match="not a cadence skill"):
+    with pytest.raises(ValueError, match="not a cadence skill or a duty"):
         cd.mark(ws, "todo", phase="start", now=NOW)
-    with pytest.raises(SystemExit) as info:
-        cd.main(["start", "todo", "--workspace", str(ws)])
-    assert info.value.code == 2
+    assert cd.main(["start", "todo", "--workspace", str(ws)]) == 2
     broken = "schema_version: 1\nlast_runs:\n  daily_update: [\n"
     _ctx_path(ws).write_text(broken)
     with pytest.raises(cd.CorruptFileError, match="refusing to rewrite"):
@@ -266,3 +264,149 @@ def test_status_reports_unfinished_runs_and_json(initialized_workspace: Path,
     report = json.loads(capsys.readouterr().out)
     assert report["unfinished_runs"][0]["cadence"] == "daily-update"
     assert set(report) >= {"last_check_stale", "overdue_cadences", "overdue_watchers", "unfinished_runs"}
+
+
+# ------------------------------------------------------ stamps for any duty
+
+def test_any_duty_has_a_stamp(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    assert cd.stamp_key("update-light", ws) == "update_light"
+    assert cd.stamp_key("updater:update-full", ws) == "update_full"
+    assert cd.stamp_key("supertailor-review", ws) == "tailor_review", "the schedule key names the stamp"
+    assert cd.stamp_key("bills", ws) == "bills", "an on-request duty is stamped under its own id"
+    assert cd.mark(ws, "update-full", phase="start", now=NOW) == "update_full_started"
+    assert cd.unfinished_runs(_ctx(ws)["last_runs"])[0]["key"] == "update_full"
+    assert cd.mark(ws, "updater:update-full", phase="finish", now=NOW) == "update_full"
+    assert _ctx(ws)["last_runs"]["update_full"] == NOW.isoformat()
+    assert "update_full_started" not in _ctx(ws)["last_runs"]
+    with pytest.raises(ValueError, match="not a cadence skill or a duty"):
+        cd.stamp_key("superagent:update-full", ws)
+
+
+def test_a_custom_roles_duty_is_stamped_and_an_ambiguous_id_needs_its_agent(
+        initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    folder = ws / "_custom" / "agents"
+    (folder / "gardener.agent.md").write_text(
+        "---\nname: gardener\nkind: durable\ndescription: Waters the plants.\nskills: [todo]\n"
+        "owns: []\nauthority: act\nmodel_tier: runner\nduties:\n"
+        "  - {id: water, skill: todo, tier: act, schedule: on-request, check: none}\n"
+        "  - {id: update-full, skill: todo, tier: act, schedule: on-request, check: none}\n---\n# Gardener\n")
+    (folder / "gardener.agent.dev.md").write_text("---\ndevelops: gardener\nmodel_tier: dev\n---\n# dev\n")
+    assert cd.mark(ws, "water", phase="finish", now=NOW) == "water"
+    assert _ctx(ws)["last_runs"]["water"] == NOW.isoformat()
+    with pytest.raises(ValueError, match="more than one role; name one of updater:update-full, gardener:update-full"):
+        cd.stamp_key("update-full", ws)
+    assert cd.stamp_key("gardener:update-full", ws) == "update_full"
+
+
+def test_an_unfinished_run_of_a_duty_is_named_under_its_agent(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _make_current(ws, NOW)
+    cd.mark(ws, "update-full", phase="start", now=NOW - dt.timedelta(hours=3))
+    assert cd.render(cd.status(ws, now=NOW)) == [
+        "[updater] Unfinished runs: update-full started 2026-10-08 06:00 and never finished."]
+
+
+# -------------------------------------------------- schedules and due-by-stamp
+
+@pytest.mark.parametrize("value, expected", [
+    ("08:30", cd.Schedule("daily", 8, 30)),
+    ("Sunday 18:00", cd.Schedule("weekly", 18, 0, weekday=6)),
+    ("mon 7:05", cd.Schedule("weekly", 7, 5, weekday=0)),
+    ("1st 09:00", cd.Schedule("monthly", 9, 0, day=1)),
+    ("15th 09:00", cd.Schedule("monthly", 9, 0, day=15)),
+    ("every 90 days", cd.Schedule("every", every=dt.timedelta(days=90))),
+    ("every 30 minutes", cd.Schedule("every", every=dt.timedelta(minutes=30))),
+    ("Every 6 hours", cd.Schedule("every", every=dt.timedelta(hours=6))),
+    ("every 2 weeks", cd.Schedule("every", every=dt.timedelta(weeks=2))),
+])
+def test_schedule_values(value: str, expected: cd.Schedule) -> None:
+    assert cd.parse_schedule(value) == expected
+
+
+@pytest.mark.parametrize("value", [None, "", "sometimes", "25:00", "08:75", "32nd 09:00", "every 0 days",
+                                   "every few days", "s 18:00", "funday 18:00"])
+def test_values_that_are_no_schedule(value: object) -> None:
+    assert cd.parse_schedule(value) is None
+
+
+def _at(day: int, hour: int, minute: int = 0, month: int = 10) -> dt.datetime:
+    return dt.datetime(2026, month, day, hour, minute, tzinfo=PDT)
+
+
+def test_latest_scheduled_time() -> None:
+    daily = cd.parse_schedule("08:30")
+    assert cd.latest_occurrence(daily, _at(8, 9)) == _at(8, 8, 30)
+    assert cd.latest_occurrence(daily, _at(8, 8)) == _at(7, 8, 30)
+    weekly = cd.parse_schedule("Sunday 18:00")  # 2026-10-04 is a Sunday
+    assert cd.latest_occurrence(weekly, _at(4, 18)) == _at(4, 18)
+    assert cd.latest_occurrence(weekly, _at(4, 17, 59)) == _at(27, 18, month=9)
+    assert cd.latest_occurrence(weekly, _at(8, 9)) == _at(4, 18)
+    monthly = cd.parse_schedule("1st 09:00")
+    assert cd.latest_occurrence(monthly, _at(1, 8, 59)) == _at(1, 9, month=9)
+    assert cd.latest_occurrence(monthly, _at(1, 9)) == _at(1, 9)
+    last_day = cd.parse_schedule("31st 09:00")
+    assert cd.latest_occurrence(last_day, _at(15, 12)) == _at(30, 9, month=9), "a short month ends early"
+    assert cd.latest_occurrence(cd.parse_schedule("every 3 days"), _at(8, 9)) is None
+
+
+def test_a_missed_sunday_review_is_due_on_monday() -> None:
+    weekly = cd.parse_schedule("Sunday 18:00")
+    ran = _at(27, 18, 20, month=9)  # the review of Sunday 2026-09-27
+    assert cd.schedule_due(weekly, ran, _at(3, 12))[0] is False, "Saturday: not yet"
+    assert cd.schedule_due(weekly, ran, _at(4, 18))[0] is True, "Sunday 18:00: due"
+    due, why = cd.schedule_due(weekly, ran, _at(5, 9))
+    assert due and why == "due since 2026-10-04 18:00 (weekly, Sunday 18:00); last run 2026-09-27", (
+        "the Sunday run was missed: it is due on Monday, by its stamp")
+    late_run = _at(7, 11)  # it ran late, on Wednesday
+    assert cd.schedule_due(weekly, late_run, _at(10, 12))[0] is False
+    assert cd.schedule_due(weekly, late_run, _at(11, 18, 5))[0] is True, "back on schedule the next Sunday"
+    assert cd.schedule_due(weekly, None, _at(5, 9)) == (True, "never ran (weekly, Sunday 18:00)")
+
+
+def test_a_run_that_finishes_after_its_time_is_due_again_at_the_next_one() -> None:
+    daily = cd.parse_schedule("08:30")
+    finished = _at(7, 8, 41)  # yesterday's run ended at 08:41
+    assert cd.schedule_due(daily, finished, _at(8, 8, 29))[0] is False
+    assert cd.schedule_due(daily, finished, _at(8, 8, 30))[0] is True, "no drift: due at 08:30 sharp"
+
+
+def test_every_n_schedules_go_by_the_age_of_the_stamp() -> None:
+    every = cd.parse_schedule("every 90 days")
+    assert cd.schedule_due(every, NOW - dt.timedelta(days=89), NOW)[0] is False
+    assert cd.schedule_due(every, NOW - dt.timedelta(days=90), NOW)[0] is True
+    assert cd.schedule_due(every, None, NOW, since=NOW - dt.timedelta(days=30))[0] is False, (
+        "a new workspace is not due at once")
+    assert cd.schedule_due(every, None, NOW, since=NOW - dt.timedelta(days=100))[0] is True
+    assert cd.schedule_due(every, None, NOW)[0] is True
+    assert cd.schedule_due(None, None, NOW) == (False, "")
+
+
+def test_due_command(initialized_workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    base = ["--workspace", str(ws), "--now", NOW.isoformat()]
+    assert cd.main(["due", "update-full", *base]) == 0
+    assert capsys.readouterr().out.strip() == "never ran (daily, 06:00)"
+    cd.mark(ws, "update-full", phase="finish", now=NOW - dt.timedelta(hours=1))
+    assert cd.main(["due", "update-full", *base]) == 1 and capsys.readouterr().out == ""
+    tomorrow = (NOW + dt.timedelta(days=1)).isoformat()
+    assert cd.main(["due", "update-full", "--workspace", str(ws), "--now", tomorrow]) == 0
+    assert capsys.readouterr().out.startswith("due since 2026-10-09 06:00 (daily, 06:00)")
+    assert cd.main(["due", "bills", *base]) == 1, "an on-request duty is never due"
+    assert cd.main(["due", "nothing-like-it", *base]) == 2
+
+
+def test_auto_flag_and_missing_cadence_key(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    config = ws / "_memory" / "config.yaml"
+    text = config.read_text()
+    assert cd.duty_due(ws, "weekly-review", now=NOW)[0] is True
+    config.write_text(text.replace("weekly_review_auto: true", "weekly_review_auto: false"))
+    assert cd.duty_due(ws, "weekly-review", now=NOW) == (False, ""), "switched off by its auto flag"
+    # A workspace whose config predates a cadence key takes the template's value.
+    lines = [ln for ln in text.splitlines(keepends=True) if "update_full:" not in ln]
+    config.write_text("".join(lines))
+    assert "update_full" not in yaml.safe_load(config.read_text())["preferences"]["cadences"]
+    assert cd.cadence_values(ws)["update_full"] == "06:00"
+    assert cd.duty_due(ws, "update-full", now=NOW)[0] is True

@@ -222,7 +222,7 @@ If the user picks **yes** (per `contracts/watchlist.md`; the `watch` skill is th
 1. Run one check so each new watcher gets its baseline fingerprint:
 
    ```bash
-   uv run python -m superagent.tools.watchlist check --cycle daily-update --report
+   uv run python -m superagent.tools.watchlist check --due --report
    ```
 
 2. For `simplefin` the baseline check above already ran the first incremental harvest (pack default `capture_mode: automatic`, 30-day window, budget-gated) — surface the one-line summary from the `ingestion-log.yaml` row it appended. Offer the backfill explicitly — never silently: *"Pull the last year of transactions now? (yes / later)"* → `uv run python -m superagent.tools.watchlist harvest --id simplefin --backfill`.

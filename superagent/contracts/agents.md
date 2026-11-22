@@ -55,18 +55,21 @@ A duty is one mapping in the role's `duties` list. Every field is required.
 | `id` | `^[a-z][a-z0-9-]{0,40}$`, unique in the role | The duty's name (`agents check <agent> <id>`). |
 | `skill` | a stem from the role's `skills` | The skill a run of the duty executes. |
 | `tier` | `act` \| `approve` \| `prepare` \| `owner` | The autonomy tier of the duty, never looser than the role's `authority`. |
-| `schedule` | a key of `config.preferences.cadences`, `watchlist`, or `on-request` | When the duty runs. Schedule **values** stay in `preferences.cadences` (`weekly_review: "Sunday 18:00"`); the role names the key. The key also names the duty's stamp, `context.yaml.last_runs.<key>`. `watchlist` means each watcher's own cycle. `on-request` means the duty has no schedule. |
-| `check` | `cadence` \| `watchers` \| `none` | The zero-cost check that says whether the duty is due. |
+| `schedule` | a key of `config.preferences.cadences`, `watchlist`, or `on-request` | When the duty runs. Schedule **values** stay in `preferences.cadences` (`weekly_review: "Sunday 18:00"`); the role names the key. The key also names the duty's stamp, `context.yaml.last_runs.<key>`. `watchlist` means each watcher's own cycle and `on-request` means the duty has no schedule; such a duty is stamped under its id (`_` for `-`). |
+| `check` | `cadence` \| `update` \| `watchers` \| `none` | The zero-cost check that says whether the duty is due. |
+
+**A duty's state** is one of `ok`, `due`, `overdue`, `unfinished` and `on-request`. **Due** means the scheduled time has come and the duty has not run since, or its check found work: it is what a scheduler acts on. **Overdue** means late: it is what an attended session is told at open. `contracts/update-loop.md` § 6 defines both, the stamps and the schedule values.
 
 **Checks** are Python and cost no model call:
 
-- `cadence` — the overdue rules of `tools/cadence.py` for the duty's skill (`overdue_cadences`; for `daily-update`, a `last_check` older than 24 hours). A run that began and never finished also counts as due.
-- `watchers` — `tools/cadence.py` `overdue_watchers`: a healthy watcher whose last success is older than its fastest cycle's period plus one day.
+- `cadence` — due by the stamp: the duty's stamp is older than the latest scheduled time of its `preferences.cadences` value (`tools/cadence.py` `duty_due`). Overdue by the nag rules for the duty's skill (`overdue_cadences`; for `daily-update`, a `last_check` older than 24 hours). A run that began and never finished is `unfinished`.
+- `update` — the update duty's check. Due when a watcher is due by its own schedule (`tools/watchlist.py` `due_rows`) or a document waits in a drop folder (`tools/inbox.py`). Overdue when a healthy watcher's last success is older than its fastest cycle's period plus one day (`overdue_watchers`).
+- `watchers` — the overdue half of `update` alone, for a role that watches and does not drain.
 - `none` — never due by a check. An `on-request` duty uses it.
 
-`uv run python -m superagent.tools.agents check <agent> <duty>` runs the check of one duty: **exit 0** when the duty is due (the reason is printed), **exit 1** when it is not (nothing is printed), 2 for an unknown agent or duty, 3 when the check could not run. A scheduled wake runs this first, so a wake with nothing to do costs nothing.
+`uv run python -m superagent.tools.agents check <agent> <duty>` runs the check of one duty: **exit 0** when the duty is due, overdue or unfinished (the reason is printed), **exit 1** when it is not (nothing is printed), 2 for an unknown agent or duty, 3 when the check could not run. A scheduled wake runs this first, so a wake with nothing to do costs nothing.
 
-`uv run python -m superagent.tools.agents duties` lists every duty with its schedule, last run and state; `--overdue` keeps what is late. `uv run python -m superagent.tools.cadence status` prints the same findings as lines, each starting with the agent it belongs to in brackets, grouped by agent. A finding no role claims belongs to the lead.
+`uv run python -m superagent.tools.agents duties` lists every duty with its schedule, last run and state; `--due` keeps what a scheduler would run now, `--overdue` only what is late. `uv run python -m superagent.tools.cadence status` prints the late findings as lines, each starting with the agent it belongs to in brackets, grouped by agent. A finding no role claims belongs to the lead.
 
 ## 4. Ids and the prefix
 

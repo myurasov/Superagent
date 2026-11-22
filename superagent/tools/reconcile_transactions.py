@@ -8,8 +8,9 @@ Read-only analysis. Produces:
     over the last 180 days that are NOT already tracked as bills or subs.
   * Optional --json for skill consumption.
 
-Designed to be called by the weekly-review skill (step 2: Bookkeeper pass)
-or directly from the CLI.
+Called by the weekly `brief` (its Bookkeeper block, read-only), by the
+Reconcile mode of the `bills` skill (which the full `update` tier runs), or
+directly from the CLI.
 
 Usage:
   uv run python -m superagent.tools.reconcile_transactions [--days 7]

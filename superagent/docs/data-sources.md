@@ -42,7 +42,7 @@ The watchlist owns **detect** for every source and invokes **harvest** only wher
 
 **Detect types** (implemented once in the tool): `url` (ETag / Last-Modified, then a scoped content hash), `path` (file hash or directory mtime + count), `cmd` (stdout hash; disabled unless `preferences.watchlist.allow_cmd: true`), `subagent` (the agent runs a read-only prompt and `stamp`s a one-line delta), `gmail` (a **live** Gmail API search using the token the Gmail MCP saved; results capture-through into the local email archive), `harvest` (the pack's handler *is* the detect). Outcomes: `changed | unchanged | indeterminate | unreachable`.
 
-**Cadence wiring.** `daily-update` runs `check --cycle daily-update` (`simplefin` lands here — harvested daily and automatically, budget-gated); `weekly-review` / `monthly-review` run their own cycles, which nest — a weekly check also covers every daily watcher and a monthly check covers all three tiers, so the cadences never have to be run one after another (throttles and budgets make same-day overlap a no-op). `whatsup` never checks — it reads the alerts the last check wrote to `context.yaml.alerts` and labels their age. Changed watchers append an interaction-log row (`action: watch_change_detected`, derived into the events stream as `kind: watch_changed`); harvest runs keep appending to `ingestion-log.yaml`.
+**Cadence wiring.** Every cadence skill (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`) starts with the `update` skill, which runs `check --due`: each watcher is taken by its own schedule (a daily one once per calendar day, a weekly one every 7 days, a monthly one every 30), so the cadences never have to be run one after another and a second run on the same day fetches nothing. `simplefin` is a daily watcher: harvested once a day, automatically and budget-gated. The briefing that follows (the `brief` skill) never checks — it reads back what the checks found (`watchlist recap`) and the alerts they wrote to `context.yaml.alerts`, and labels their age. Changed watchers append an interaction-log row (`action: watch_change_detected`, derived into the events stream as `kind: watch_changed`); harvest runs keep appending to `ingestion-log.yaml`.
 
 **Packs** are self-contained folders: `superagent/watchers/<id>/pack.yaml` (detect config, optional `harvest.handler`, declarative `probe:`, `auth:`, `budget:`, `defaults:`) plus, only when real code is needed, a same-folder `handler.py` and `README.md`. The same folder shape works under `workspace/_custom/watchers/<id>/` — the user's overlay, discovered alongside the shipped packs; on an id collision the custom folder wins and the tool announces it: *"Using `_custom/watchers/<id>` (overrides framework pack)."*
 
@@ -59,8 +59,13 @@ uv run python -m superagent.tools.watchlist enable gmail --id gmail-bills --para
 # inspect
 uv run python -m superagent.tools.watchlist list [--status active|evicted|disabled]
 
-# run a cycle (cadence skills do this); --report renders the briefing block
-uv run python -m superagent.tools.watchlist check --cycle daily-update --report [--no-harvest] [--dry-run]
+# check what is due (the `update` skill does this); --report renders the briefing block
+uv run python -m superagent.tools.watchlist check --due --report [--no-harvest] [--dry-run]
+# check a whole cadence, due or not
+uv run python -m superagent.tools.watchlist check --cycle daily-update --report
+# what is due now, and what the checks since a time found (both read-only)
+uv run python -m superagent.tools.watchlist due
+uv run python -m superagent.tools.watchlist recap --since 2026-01-01T08:00:00-08:00
 
 # on-demand harvest (also the only way a watcher pinned to capture_mode: manual ever pulls)
 uv run python -m superagent.tools.watchlist harvest --id simplefin [--dry-run] [--backfill]
@@ -131,7 +136,7 @@ These do not feed personal-life data into Superagent, but they are useful worksp
   4. `uv run python superagent/watchers/simplefin/claim.py <SETUP_TOKEN>` — claims the token into a long-lived Access URL stored at `workspace/_memory/sensitive/simplefin-credentials.yaml` (mode 600).
   5. `uv run python -m superagent.tools.watchlist enable simplefin --id simplefin` — writes `Sources/Watchlist/Simplefin.ref.md`.
 - **Probe** (declarative, `file_exists`): `_memory/sensitive/simplefin-credentials.yaml` exists; `setup_hint` points at `superagent/watchers/simplefin/claim.py`.
-- **Run**: every `daily-update` (`check --cycle daily-update`) harvests it automatically; on demand, `uv run python -m superagent.tools.watchlist harvest --id simplefin` (incremental delta with 3-day overlap). A full backfill is `uv run python -m superagent.tools.watchlist harvest --id simplefin --backfill` (budget-counted like any harvest). The handler's own CLI keeps only `--dry-run` and the local `--reconcile` repair and refuses live runs, so nothing bypasses the watchlist state.
+- **Run**: the first update cycle of each day (`check --due`) harvests it automatically; on demand, `uv run python -m superagent.tools.watchlist harvest --id simplefin` (incremental delta with 3-day overlap). A full backfill is `uv run python -m superagent.tools.watchlist harvest --id simplefin --backfill` (budget-counted like any harvest). The handler's own CLI keeps only `--dry-run` and the local `--reconcile` repair and refuses live runs, so nothing bypasses the watchlist state.
 - **Reconciliation**: `uv run python -m superagent.tools.reconcile_transactions [--days N] [--json]` — surfaces matched / missed bills and recurring-charge candidates not yet tracked in `bills.yaml` / `subscriptions.yaml`. The `weekly-review` skill calls this from its Bookkeeper pass.
 - **Pending → posted matching**: every run pairs each stored pending row with its later posted twin (same account, same sign, absolute amount delta ≤ $1.00, within the reconcile date window) and marks the pending row `superseded_by: <posted external_id>`. A pending row still orphaned after `stale_pending_days` (a pack `harvest.defaults` key, overridable in the `simplefin` ref's `watch:` block; handler default 14, measured from `transacted_at`) is flagged `stale_pending: true`. Both flags keep the row verbatim for audit; `reconcile_transactions` skips `superseded_by` and `stale_pending` rows so neither double-counts against bills.
 - **Caveats**:

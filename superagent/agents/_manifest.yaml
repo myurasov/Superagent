@@ -20,6 +20,7 @@ roles:
   - _memory/model-context.yaml
   - _memory/todo.yaml
   - _memory/agents.yaml
+  - _memory/asks.yaml
   authority: act
   model_tier: runner
   duties:
@@ -108,9 +109,11 @@ roles:
   origin: framework
   path: superagent/agents/updater.agent.md
   dev_twin: superagent/agents/updater.agent.dev.md
-  description: 'The update loop: checks the watched sources, harvests where a handler exists, captures
-    and reconciles what moved, and reports what it found. It never asks and never sends.'
+  description: 'The update loop: checks the watched sources that are due, harvests where a handler exists,
+    drains the drop folders, captures and reconciles what moved, and reports what it found. It never asks
+    and never sends.'
   skills:
+  - update
   - watch
   - sources
   - add-source
@@ -120,8 +123,13 @@ roles:
   authority: act
   model_tier: runner
   duties:
-  - id: watchlist
-    skill: watch
+  - id: update-light
+    skill: update
     tier: act
-    schedule: watchlist
-    check: watchers
+    schedule: update_light
+    check: update
+  - id: update-full
+    skill: update
+    tier: act
+    schedule: update_full
+    check: cadence

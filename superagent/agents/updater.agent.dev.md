@@ -9,16 +9,18 @@ The notes of the agent that develops and maintains `updater.agent.md`. The runni
 
 ## Purpose and design notes
 
-- One duty, `watchlist`: run the watchlist check for the cycle that is due. Detect is cheap and declarative; harvest runs only where a pack has a handler.
-- The Updater never asks and never sends. A run that needs a decision writes a task or a signal for the lead and goes on.
+- Two duties, both the `update` skill: `update-light` (the watchers that are due, the drop folders, capture, reconcile, tasks) and `update-full` (adds the transaction reconcile, project drift and the derived views). Detect is cheap and declarative; harvest runs only where a pack has a handler.
+- The Updater never asks and never sends. A run that needs a decision writes an ask (`tools/asks.py`) or a task for the lead and goes on.
+- One cycle at a time per machine: the cycle lock (`tools/lock.py`) is a kernel lock held by a small background process, because a cycle spans many commands.
 - Every step is idempotent, so a run that was cut off is safe to start again.
 - The role does not brief. Its report is a list of facts for the lead.
 
 ## Wakes and checks
 
-- Check: the built-in `watchers` check. It is `tools/cadence.py` `overdue_watchers`: a healthy watcher (enabled, `status: active`, `error_streak` 0) whose last success is older than its fastest cycle's period plus one day. `manual` watchers are never late.
-- Wakes: none are set by the framework. With no separate agents running, the cadence skills run the watchlist check as their fetch step.
-- A periodic wake of this role is added only with the owner's approval of its exact terms, and it runs `agents check updater watchlist` first: exit 1 skips the run at no cost.
+- `update-light`: the built-in `update` check. Due when `tools/watchlist.py` `due_rows` names a watcher (its last success lies a full period back, and no backoff, throttle or budget holds it) or `tools/inbox.py` finds a settled document in a drop folder. Overdue (the on-open nag) is `tools/cadence.py` `overdue_watchers`: a healthy watcher past its period plus one day. `manual` watchers are never due and never late.
+- `update-full`: the built-in `cadence` check, by the stamp `last_runs.update_full` against `preferences.cadences.update_full`.
+- Wakes: none are set by the framework. With no separate agents running, the cadence skills run the update cycle as their first step.
+- A periodic wake of this role is added only with the owner's approval of its exact terms, and it runs `agents check updater update-light` first: exit 1 skips the run at no cost.
 
 ## Cost targets
 
@@ -30,8 +32,10 @@ The notes of the agent that develops and maintains `updater.agent.md`. The runni
 
 - Frontmatter and roster: `uv run python -m superagent.tools.agents list` (a role with a problem is named on stderr).
 - Duties: `uv run python -m superagent.tools.agents duties --agent updater`.
-- Check exit codes: `uv run python -m superagent.tools.agents check updater watchlist; echo $?` (0 a watcher is overdue, 1 nothing is late, 2 unknown agent or duty).
-- The watchlist itself: `uv run python -m superagent.tools.watchlist check --cycle daily-update --report --dry-run` against a copy of the workspace.
+- Check exit codes: `uv run python -m superagent.tools.agents check updater update-light; echo $?` (0 there is work, 1 nothing is due, 2 unknown agent or duty).
+- What is due, without fetching: `uv run python -m superagent.tools.watchlist due --json`. The watchlist itself: `uv run python -m superagent.tools.watchlist check --due --report --dry-run` against a copy of the workspace.
+- The lock: `uv run python -m superagent.tools.lock status`; two `hold` calls in a row show the second one waiting, then skipping.
+- Suite for the cycle: `uv run pytest superagent/tests/test_watchlist_due.py superagent/tests/test_lock.py superagent/tests/test_asks.py superagent/tests/test_inbox.py superagent/tests/test_update_and_brief.py -q`.
 - Manifest in step with the role files: `uv run python -m superagent.tools.build_agent_manifest --check`.
 - Suite: `uv run pytest superagent/tests/test_agent_roles.py superagent/tests/test_agents.py -q`, then the whole suite before a commit.
 - Dry-run a duty in a chat session: take the role (`agents` skill, "act as updater") and run the duty's skill against a copy of the workspace.
@@ -55,8 +59,10 @@ The notes of the agent that develops and maintains `updater.agent.md`. The runni
 ## Pitfalls
 
 - A frequent wake with no check in front re-reads the whole context every time and costs real money for nothing. The check comes first, always.
-- A watcher that errors is reported by its own check (`error_streak`), and the `watchers` check leaves it out on purpose: it would otherwise wake the agent every run for something a retry cannot fix.
+- A watcher that errors is reported by its own check (`error_streak`), and the overdue rule leaves it out on purpose. The due rule retries it with a wait that doubles per failure (60 minutes, up to the watcher's period), so a source that is down does not wake the agent every run.
+- A `subagent` watcher that was dispatched and never stamped is offered again after 60 minutes, and each offer costs a model run. The skill stamps every outcome, `--unreachable` included.
 
 ## Changelog
 
+- 0.26.0 — the duty `watchlist` (skill `watch`, check `watchers`) became `update-light` and `update-full` (skill `update`); the cycle lock, the asks queue and `watchlist check --due` came with it. The role no longer asks even with the owner present.
 - 0.25.0 — role file created from the Ingestor persona of `superagent.agent.md`.

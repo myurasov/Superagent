@@ -17,7 +17,7 @@ The notes of the agent that develops and maintains `superagent.agent.md`. The ru
 
 ## Wakes and checks
 
-- Checks: every duty uses the built-in `cadence` check. It reads `context.yaml.last_runs` and `preferences.cadences` and applies the rules in `tools/cadence.py` (`overdue_cadences`, and the 24-hour context rule for `daily-update`).
+- Checks: every duty uses the built-in `cadence` check. It reads `context.yaml.last_runs` and `preferences.cadences`. A duty is **due** when its stamp is older than its latest scheduled time (`tools/cadence.py` `duty_due`: a missed Sunday review is due on Monday), and **overdue** by the nag rules (`overdue_cadences`, and the 24-hour context rule for `daily-update`). The `brief` skill writes the stamps of the three briefing duties.
 - Wakes: none are set by the framework. The on-open check (`cadence status --stamp`) is what tells an attended session which duty is late.
 - A periodic wake of this role is added only with the owner's approval of its exact terms, and each one runs `agents check superagent <duty>` first.
 
@@ -59,4 +59,5 @@ The notes of the agent that develops and maintains `superagent.agent.md`. The ru
 
 ## Changelog
 
+- 0.26.0 — the four cadence skills became entry points over `update` and `brief`; the lead now owns `_memory/asks.yaml` and records the owner's answers; a duty is `due` by its stamp before it is `overdue`, and `agents check` exits 0 for both.
 - 0.25.0 — frontmatter added; the Bookkeeper and the Ingestor persona moved to role files of their own; the framework review became a skill and a rule.

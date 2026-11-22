@@ -33,6 +33,8 @@ EXPECTED_SKILLS = {
     "home-assistant",
     # 0.25.0: the agent roster (contracts/agents.md).
     "agents",
+    # 0.26.0: fetch and tell are separate (contracts/update-loop.md).
+    "update", "brief",
 }
 
 

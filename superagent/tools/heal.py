@@ -17,7 +17,9 @@ nothing reads the copy either. This tool finds every copy and deals with it
                   into the original, then the copy is removed. Logs: the
                   `.jsonl` files under `_memory/` (audit histories, the email
                   sidecar, the prompt log) by line, and `action-signals.yaml`,
-                  `ingestion-log.yaml` and the interaction-log files by row id;
+                  `asks.yaml`, `ingestion-log.yaml` and the interaction-log
+                  files by row id (a signal or an ask closed on one machine
+                  stays closed);
                 - anything else: reported with a short diff and LEFT IN PLACE,
                   to be folded by hand. Diffs of sensitive files are withheld.
               A merge is a function of the two files only (no clock, no
@@ -67,11 +69,19 @@ FRAMEWORK = Path(__file__).resolve().parent.parent
 #: Row-keyed append-only YAML logs, by path relative to `_memory/` -> list key.
 YAML_LOGS = {
     "action-signals.yaml": "signals",
+    "asks.yaml": "asks",
     "ingestion-log.yaml": "runs",
     machines.ILOG_LEGACY: machines.ILOG_KEY,
 }
 SIGNALS_LOG = "action-signals.yaml"
 SIGNAL_CLOSED = ("processed", "declined")
+#: Logs whose rows are closed in place: log -> (closed statuses, the field that
+#: holds when a row was closed). When both versions carry one row id with
+#: different content, the closed version wins, and of two closed ones the later.
+CLOSE_RULES: dict[str, tuple[tuple[str, ...], str]] = {
+    SIGNALS_LOG: (SIGNAL_CLOSED, "processed_at"),
+    "asks.yaml": (("answered", "expired", "withdrawn"), "closed_at"),
+}
 #: Folders never walked: tool state, virtual environments, the sync tool's own.
 SKIP_DIRS = frozenset({"node_modules", "__pycache__"})
 SENSITIVE_PARTS = frozenset({"sensitive", "sealed"})
@@ -165,28 +175,35 @@ def _row_key(row: Any) -> str:
     return json.dumps(row, sort_keys=True, default=str, ensure_ascii=False)
 
 
-def _pick_signal(base: dict[str, Any], other: dict[str, Any]) -> dict[str, Any] | None:
-    """The version of one signal row that wins: the closed one, else the later close."""
-    base_closed, other_closed = (r.get("status") in SIGNAL_CLOSED for r in (base, other))
+def _pick_closed(base: dict[str, Any], other: dict[str, Any],
+                 rule: tuple[tuple[str, ...], str] = CLOSE_RULES[SIGNALS_LOG]
+                 ) -> dict[str, Any] | None:
+    """The version of one row that wins under a close rule: the closed one, else the later close."""
+    closed, stamp = rule
+    base_closed, other_closed = (r.get("status") in closed for r in (base, other))
     if base_closed != other_closed:
         return other if other_closed else base
     if base_closed and other_closed:
-        a, b = str(base.get("processed_at") or ""), str(other.get("processed_at") or "")
+        a, b = str(base.get(stamp) or ""), str(other.get(stamp) or "")
         if a != b:
             return other if b > a else base
     return None
 
 
 def merge_yaml_rows(name: str, base_text: str, copy_text: str, list_key: str, *,
-                    signals_rules: bool = False) -> tuple[str, int, int]:
+                    signals_rules: bool = False,
+                    close_rule: tuple[tuple[str, ...], str] | None = None) -> tuple[str, int, int]:
     """Merge a row-keyed log: returns (new text, rows added, rows replaced).
 
     Rows only the copy has are appended in the copy's order. A row id both
-    carry with different content is a clash: for signals the closed version
-    wins (`signals_rules`), anything else raises Unmergeable. Top-level keys
-    other than the list and `last_updated` must agree. The result depends on
-    the two texts only.
+    carry with different content is a clash: under a `close_rule` (closed
+    statuses, close-time field; `signals_rules` is the signals' one) the closed
+    version wins, anything else raises Unmergeable. Top-level keys other than
+    the list and `last_updated` must agree. The result depends on the two
+    texts only.
     """
+    if close_rule is None and signals_rules:
+        close_rule = CLOSE_RULES[SIGNALS_LOG]
     try:
         base_data, base_rows = signals.parse_rows(name, base_text, list_key)
         copy_data, copy_rows = signals.parse_rows(name, copy_text, list_key)
@@ -212,7 +229,7 @@ def merge_yaml_rows(name: str, base_text: str, copy_text: str, list_key: str, *,
             append.append(row)
             present.add(_row_key(row))
             continue
-        winner = _pick_signal(base_rows[by_id[rid]], row) if signals_rules else None
+        winner = _pick_closed(base_rows[by_id[rid]], row, close_rule) if close_rule else None
         if winner is None:
             clashes.append(str(rid))
         elif winner is row:
@@ -339,7 +356,7 @@ def _resolve(workspace: Path, copy: Path, base: Path, *, mergeable: bool, dry_ru
                 rel = original.relative_to(workspace / "_memory").as_posix()
                 new_text, added, replaced = merge_yaml_rows(
                     original.name, base_text, copy_text, str(list_key),
-                    signals_rules=rel == SIGNALS_LOG)
+                    close_rule=CLOSE_RULES.get(rel))
                 detail = f"+{added} row(s)" + (f", {replaced} updated" if replaced else "")
             if not dry_run:
                 if new_text != base_text:

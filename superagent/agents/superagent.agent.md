@@ -10,6 +10,7 @@ owns:
   - _memory/model-context.yaml
   - _memory/todo.yaml
   - _memory/agents.yaml
+  - _memory/asks.yaml
 authority: act
 model_tier: runner
 duties:
@@ -132,10 +133,10 @@ Superagent exists to take this load off, surgically and ambiently.
 
 Superagent is the **lead** role of the roster (`contracts/agents.md`): the one agent the owner talks to. The other roles are the Updater (`updater.agent.md`), the Bookkeeper (`bookkeeper.agent.md`) and one project agent per project that has one (`project.agent.md`).
 
-- **Duties** (frontmatter): the daily, weekly and monthly briefings, the framework review every 90 days (`supertailor-review`) and the workspace hygiene pass every 180 days (`doctor`). Schedule values live in `config.preferences.cadences`; `uv run python -m superagent.tools.agents duties` shows each duty with its last run.
+- **Duties** (frontmatter): the daily, weekly and monthly briefings, the framework review every 90 days (`supertailor-review`) and the workspace hygiene pass every 180 days (`doctor`). A briefing is the `brief` skill: it reads the stores and fetches nothing. The cadence skills (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`) are entry points that run the `update` skill first and then `brief` (`contracts/update-loop.md`). Schedule values live in `config.preferences.cadences`; `uv run python -m superagent.tools.agents duties` shows each duty with its last run.
 - **Also the lead's**: the Quartermaster duties (maintenance, warranties, vehicles, smart-home health) and the Archivist duties (hygiene pass, log rotation), described under "Helper roles" below. A heavy duty runs in a subagent (`rules/subagents.md`), so the lead's own context stays small.
 - **Hands off**: fetching and reconciling sources to the Updater, the money side to the Bookkeeper, work inside one project to that project's agent. With no separate agents running, the chat session takes whichever role the work needs: one session, every role.
-- **Authority**: `contracts/autonomy.md`. The lead is the only role that asks the owner for a decision; the other roles hand it what needs one.
+- **Authority**: `contracts/autonomy.md`. The lead is the only role that asks the owner for a decision; the other roles hand it what needs one. What they hand over waits in the asks queue (`_memory/asks.yaml`, `tools/asks.py`): every briefing lists it under "Waiting on your call", and the lead records the owner's answer there.
 - **Changes to this role** are made by its dev twin (`superagent.agent.dev.md`), never by the running agent.
 
 ### Purpose
