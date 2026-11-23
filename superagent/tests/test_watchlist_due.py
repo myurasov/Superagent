@@ -273,6 +273,10 @@ def test_due_listing_reads_only(ws: Path, fw: Path, capsys: pytest.CaptureFixtur
     assert rows["fresh"]["due"] is False and rows["manual"]["due"] is False
     assert rows["gone"] == {**rows["gone"], "due": False, "reason": "expired"}
     assert state_file.read_bytes() == before, "the listing writes nothing"
+    # The command line has no clock of its own: restate the stamps against today.
+    today = dt.datetime.now().astimezone()
+    _patch(ws, "fresh", last_success=_ago(today, seconds=0), last_checked=_ago(today, seconds=0))
+    _patch(ws, "late", last_success=_ago(today, days=2), last_checked=_ago(today, days=2))
     assert wl.main(["due", "--workspace", str(ws), "--framework", str(fw)]) == 0
     out = capsys.readouterr().out.splitlines()
     assert len(out) == 1 and out[0].startswith("late  path  last success")
