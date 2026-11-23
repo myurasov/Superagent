@@ -18,8 +18,12 @@ tool works with Autocode off.
                      switch in `config.yaml`, that line only.
   setup apply        Record the settings the owner approved: config values,
                      a registry row per chosen agent, and a grant per wake
-                     with the owner's words. `--dry-run` shows and writes
-                     nothing.
+                     with the owner's words. A time the owner changed
+                     (`--wake AGENT:NAME=TIME`, a cadence value or a trigger)
+                     goes to the grant AND to `preferences.cadences`, so the
+                     duty's due time and the wake agree. A wake that is
+                     already granted is left as it is. `--dry-run` shows and
+                     writes nothing.
   mark <agent>       After this session registered as the agent: mark its
                      registry row (`active` with granted wakes, `dormant`
                      without) and its host. `--off` after it unregistered.
@@ -129,6 +133,11 @@ _HOURS_RE = re.compile(r"^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$")
 _CRON_CLOCK_RE = re.compile(r'^cron\s+"(\d{1,2})\s+(\d{1,2})\s')
 _LINE_RE = re.compile(r"""^(?P<head>\s*[^\s:#][^:#]*:)[ \t]*(?P<value>"(?:[^"\\]|\\.)*"|'[^']*'|[^#]*?)"""
                       r"""(?P<tail>[ \t]+#.*)?$""")
+_EVERY_TRIGGER_RE = re.compile(
+    r"^every\s+((?:\d+\s*[smhd])+)(?:\s+from\s+\d{1,2}:\d{2})?(?:\s+until\s+\S.*)?$", re.IGNORECASE)
+_CRON_TRIGGER_RE = re.compile(
+    r'^cron\s+"(\d{1,2})\s+(\d{1,2})\s+(\*|\d{1,2})\s+\*\s+(\*|[0-7])"(?:\s+until\s+\S.*)?$', re.IGNORECASE)
+_CRON_DAYS = ("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
 _KEEP: Any = object()  # "this setting was not given": keep what the config has
 
 
@@ -310,16 +319,24 @@ def _indent(line: str) -> int:
 
 
 def set_config(workspace: Path, setting: str, value: Any) -> bool:
-    """Set one known setting in `config.yaml`, editing that line only. True when the file changed.
+    """Set one known setting (a key of `SETTABLE`) in `config.yaml`. True when the file changed."""
+    return _write_config(workspace, ("preferences", *SETTABLE[setting]), value)
 
-    `setting` is a key of `SETTABLE`. The key's line is rewritten with its
-    comment kept; a key that is missing is added at the end of its block.
-    The result is parsed and compared with the old content plus the new
-    value before anything is written. Raises ConfigError when the file or the
-    block cannot be read, when the key holds a value over several lines, or
-    when the edit would change anything else.
+
+def set_cadence(workspace: Path, key: str, value: str) -> bool:
+    """Set `preferences.cadences.<key>` in `config.yaml`. True when the file changed."""
+    return _write_config(workspace, ("preferences", "cadences", key), value)
+
+
+def _write_config(workspace: Path, keys: tuple[str, ...], value: Any) -> bool:
+    """Set one key of `config.yaml`, editing that line only. True when the file changed.
+
+    The key's line is rewritten with its comment kept; a key that is missing
+    is added at the end of its block. The result is parsed and compared with
+    the old content plus the new value before anything is written. Raises
+    ConfigError when the file or the block cannot be read, when the key holds
+    a value over several lines, or when the edit would change anything else.
     """
-    keys = ("preferences", *SETTABLE[setting])
     path = workspace / CONFIG_REL
     try:
         text = path.read_text(encoding="utf-8")
@@ -405,14 +422,56 @@ def trigger_for(schedule: cadence.Schedule) -> str:
     return f'cron "{clock} * * *"'
 
 
+def cadence_for(trigger: str) -> str | None:
+    """The cadence value whose times a trigger runs at; None when no cadence value says it.
+
+    `cron "0 8 * * *"` is `08:00`, `cron "0 18 * * 0"` is `Sunday 18:00`,
+    `cron "0 12 1 * *"` is `1st 12:00`, `every 2h from 08:00` is `every 2
+    hours` (an anchor and an end stay in the trigger; a cadence value has
+    neither). A trigger with a list, a range, a step or a time zone has no
+    cadence value: the duty's due time could not follow it.
+    """
+    text = " ".join(str(trigger or "").split())
+    every = _EVERY_TRIGGER_RE.match(text)
+    if every:
+        seconds = sum(int(count) * {"s": 1, "m": 60, "h": 3600, "d": 86400}[unit.lower()]
+                      for count, unit in re.findall(r"(\d+)\s*([smhd])", every.group(1), re.IGNORECASE))
+        if seconds <= 0 or seconds % 60:
+            return None
+        minutes = seconds // 60
+        unit, size = next((u, s) for u, s in (("day", 1440), ("hour", 60), ("minute", 1)) if minutes % s == 0)
+        return f"every {minutes // size} {unit}{'' if minutes // size == 1 else 's'}"
+    cron = _CRON_TRIGGER_RE.match(text)
+    if not cron or (cron.group(3) != "*" and cron.group(4) != "*"):
+        return None
+    clock = f"{int(cron.group(2)):02d}:{int(cron.group(1)):02d}"
+    if cron.group(3) != "*":
+        day = int(cron.group(3))
+        suffix = "th" if 10 <= day % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+        clock = f"{day}{suffix} {clock}"
+    elif cron.group(4) != "*":
+        clock = f"{_CRON_DAYS[int(cron.group(4)) % 7]} {clock}"
+    return clock if cadence.parse_schedule(clock) is not None else None
+
+
+def _in_step(trigger: str, wake: dict[str, Any]) -> bool:
+    """True when a wake's trigger runs at the times its duty is due by (its cadence value)."""
+    if not wake.get("schedule_key"):
+        return True  # fired by another agent: no cadence value stands behind it
+    mine = cadence.parse_schedule(cadence_for(trigger))
+    return mine is not None and mine == cadence.parse_schedule(wake.get("cadence"))
+
+
 def proposed_wakes(workspace: Path, framework: Path, role: ar.Role) -> list[dict[str, Any]]:
     """The wakes proposed for an agent of `role`, from its duties and the cadence values.
 
     One per duty the role may run on its own (tier `act`) that has a schedule
     in `config.preferences.cadences` and a check: the wake's name is the
-    duty's id and its trigger runs at the schedule's times. Plus the wakes
-    another agent fires (`ON_EVENT_WAKES`). A role with neither wakes on a
-    message only.
+    duty's id and its trigger runs at the schedule's times. `schedule_key`
+    and `cadence` name that cadence value: the duty is due by it, so the
+    wake's time and it must say the same. Plus the wakes another agent fires
+    (`ON_EVENT_WAKES`), which have no cadence value. A role with neither
+    wakes on a message only.
     """
     values = cadence.cadence_values(workspace, framework)
     wakes: list[dict[str, Any]] = []
@@ -422,10 +481,11 @@ def proposed_wakes(workspace: Path, framework: Path, role: ar.Role) -> list[dict
             continue
         wakes.append({"name": duty.id, "trigger": trigger_for(schedule), "duty": duty.id,
                       "purpose": f"the duty `{duty.id}` ({values.get(duty.schedule)})",
-                      "held": duty.skill == agents.HELD_SKILL})
+                      "held": duty.skill == agents.HELD_SKILL,
+                      "schedule_key": duty.schedule, "cadence": str(values.get(duty.schedule))})
     for name, trigger, purpose in ON_EVENT_WAKES.get(role.name, ()):
         wakes.append({"name": name, "trigger": trigger, "duty": None, "purpose": purpose,
-                      "held": False})
+                      "held": False, "schedule_key": None, "cadence": None})
     return wakes
 
 
@@ -459,7 +519,10 @@ def setup_state(workspace: Path, framework: Path) -> dict[str, Any]:
     (`setup apply` creates it). `this_session` is the id this session is
     registered under. `settings` are the values now, `proposed` what `setup
     apply` writes when nothing else is said. `agents` lists every agent that
-    can run, with its granted wakes and the wakes proposed for it.
+    can run, with its granted wakes and the wakes proposed for it. A proposed
+    wake that is granted carries the grant's trigger (`granted`), its
+    `status`, and `in_step`: does that trigger run at the times of the duty's
+    cadence value. A granted wake is that wake, whatever form its trigger has.
     """
     roles, _errors = ar.collect(framework, workspace)
     data = agents.roster(workspace, framework)
@@ -479,17 +542,24 @@ def setup_state(workspace: Path, framework: Path) -> dict[str, Any]:
         role = next((r for r in roles if r.name == agent["role"]), None)
         if role is None:
             continue
+        granted = {g["name"]: g for g in agent["grants"]}
+        proposed = proposed_wakes(workspace, framework, role)
+        for wake in proposed:
+            grant = granted.get(wake["name"])
+            wake["granted"] = grant["trigger"] if grant else None
+            wake["status"] = (grant.get("status") or "active") if grant else None
+            wake["in_step"] = grant is None or _in_step(grant["trigger"], wake)
         listed.append({
             "name": agent["name"], "id": agent["id"], "kind": agent["kind"],
             "lead": head is not None and role.name == head.name,
             "recommended": agent["name"] == fetcher,
             "row": agent["registered"], "status": agent["status"], "host": agent["host"],
             "grants": agent["grants"],
-            "proposed": proposed_wakes(workspace, framework, role),
+            "proposed": proposed,
         })
     hours = update.get("work_hours")
     proposed_hours = hours
-    if not hours and not any(_outside_hours(w["trigger"], PROPOSED_WORK_HOURS)
+    if not hours and not any(_outside_hours(w["granted"] or w["trigger"], PROPOSED_WORK_HOURS)
                              for a in listed for w in a["proposed"] if w["held"]):
         proposed_hours = PROPOSED_WORK_HOURS
     lead_row = next((a for a in listed if a["lead"]), None)
@@ -542,19 +612,50 @@ def render_setup(state: dict[str, Any]) -> list[str]:
             if agent["row"] else "no row yet"
         lines.append(f"  {agent['name']} ({agent['id']})" + (f" [{', '.join(tags)}]" if tags else "")
                      + f": {where}")
-        granted = {g["name"]: g for g in agent["grants"]}
         for wake in agent["proposed"]:
-            mark_ = "granted" if wake["name"] in granted and granted[wake["name"]]["trigger"] == wake["trigger"] \
-                else "proposed"
-            lines.append(f"    wake {wake['name']}: {wake['trigger']}  [{mark_}]  {wake['purpose']}")
-        for name, grant in granted.items():
-            if name not in {w["name"] for w in agent["proposed"]} or \
-                    grant["trigger"] != next(w["trigger"] for w in agent["proposed"] if w["name"] == name):
+            if wake["granted"] is None:
+                tag = "proposed"
+            elif wake["status"] == "suspended":
+                tag = "suspended"
+            elif not wake["in_step"]:
+                tag = f'granted; out of step with its cadence value "{wake["cadence"]}"'
+            else:
+                tag = "granted"
+            lines.append(f"    wake {wake['name']}: {wake['granted'] or wake['trigger']}  [{tag}]  "
+                         f"{wake['purpose']}")
+        named = {w["name"] for w in agent["proposed"]}
+        for grant in agent["grants"]:
+            if grant["name"] not in named:
                 state_ = "suspended" if grant.get("status") == "suspended" else "granted"
-                lines.append(f"    wake {name}: {grant['trigger']}  [{state_}]  {grant.get('purpose') or ''}".rstrip())
-        if not agent["proposed"] and not granted:
+                lines.append(f"    wake {grant['name']}: {grant['trigger']}  [{state_}]  "
+                             f"{grant.get('purpose') or ''}".rstrip())
+        if not agent["proposed"] and not agent["grants"]:
             lines.append("    no wake: it wakes on a message")
     return lines
+
+
+def _resolve_time(name: str, wake: dict[str, Any], value: str) -> tuple[str, str | None]:
+    """(the trigger, the cadence value to write or None) for a time the owner gave for a wake.
+
+    `value` is a cadence value (`08:00`, `Sunday 18:00`, `1st 12:00`, `every
+    2 hours`) or a trigger (`cron "0 8 * * *"`, `every 2h from 08:00`). The
+    other one is derived, so the duty's due time and the wake's time always
+    say the same. A trigger no cadence value can say is refused for a duty's
+    wake; a wake another agent fires has no cadence value and takes any.
+    """
+    text = " ".join(str(value).split())
+    schedule = cadence.parse_schedule(text)
+    if not wake.get("schedule_key"):
+        return (trigger_for(schedule) if schedule is not None else text), None
+    if schedule is not None:
+        return trigger_for(schedule), text
+    mapped = cadence_for(text)
+    if mapped is None:
+        raise ar.AgentError(
+            f"{name} `{wake['name']}`: the time {text!r} cannot be kept in step with the duty's due "
+            'time. Give it as a time (08:30, "Sunday 18:00", "1st 09:00", "every 2 hours") or as a '
+            'plain trigger (cron "30 8 * * *", every 2h from 08:00)')
+    return text, mapped
 
 
 def apply_setup(workspace: Path, framework: Path, *, approval: str, names: list[str] | None = None,
@@ -565,16 +666,21 @@ def apply_setup(workspace: Path, framework: Path, *, approval: str, names: list[
     """Record the setup the owner approved; return one line per thing done.
 
     The lead and every agent in `names` get a registry row and a grant per
-    wake: the proposed wakes (`proposed_wakes`), with a trigger from
-    `triggers[(agent, wake)]` where the owner changed one, without the ones
-    in `skip`, and none at all with `no_wakes`. `approval` is what the owner
-    said to these terms and is written on every grant; the tool cannot see an
-    approval, so the skill asks first. Settings that are given are written to
-    `config.yaml`. A grant that already holds the same terms is left alone,
-    so a second run changes nothing.
+    proposed wake (`proposed_wakes`), without the ones in `skip`, and none at
+    all with `no_wakes`. `triggers[(agent, wake)]` is a time the owner
+    changed, as a cadence value or as a trigger: the grant gets the trigger
+    and `preferences.cadences` gets the matching value, so the duty's due
+    time and the wake never disagree. A wake that is already granted is left
+    as it is unless the owner changed its time now: its trigger is the
+    owner's, in whatever form (an anchor, an end). `approval` is what the
+    owner said to these terms and is written on every new grant; the tool
+    cannot see an approval, so the skill asks first. Settings that are given
+    are written to `config.yaml`. A second run with the same terms changes
+    nothing.
 
     Raises AgentError when the mode is off, when an agent or a wake is not
-    known, or when a scheduled update would lie outside the work hours.
+    known, when a changed time has no cadence value, or when a scheduled
+    update (granted or new) would lie outside the work hours.
     """
     if not ar.autocode_enabled(workspace):
         raise ar.AgentError("Autocode mode is off: turn it on first (`setup enable`), on the "
@@ -594,23 +700,36 @@ def apply_setup(workspace: Path, framework: Path, *, approval: str, names: list[
     hours = state["settings"]["work_hours"] if work_hours is _KEEP else work_hours
     if hours is not None and not _HOURS_RE.match(str(hours).strip()):
         raise ar.AgentError(f'work hours {hours!r}: write them as "07:00-22:00", or `none`')
-    for label, value in (("--daily-usd", daily_usd),):
-        if value is not _KEEP and value is not None and not (isinstance(value, (int, float)) and value > 0):
-            raise ar.AgentError(f"{label} takes a positive number, or `none`")
-    plan: list[tuple[str, dict[str, Any]]] = []
+    if daily_usd is not _KEEP and daily_usd is not None and not (
+            isinstance(daily_usd, (int, float)) and daily_usd > 0):
+        raise ar.AgentError("--daily-usd takes a positive number, or `none`")
     known = {(a, w["name"]) for a in chosen for w in by_name[a]["proposed"]}
     stray = sorted(f"{a}:{w}" for a, w in (set(triggers) | skip) - known)
     if stray:
         raise ar.AgentError(f"no such proposed wake: {', '.join(stray)}")
+    plan: list[tuple[str, dict[str, Any], str | None]] = []  # (agent, wake with its trigger, new cadence)
+    notes: list[str] = []
     for name in chosen:
-        for wake in [] if no_wakes else by_name[name]["proposed"]:
-            if (name, wake["name"]) in skip:
+        for wake in by_name[name]["proposed"]:
+            key = (name, wake["name"])
+            if key in skip:
                 continue
-            trigger = " ".join(triggers.get((name, wake["name"]), wake["trigger"]).split())
+            if key in triggers:
+                trigger, value = _resolve_time(name, wake, triggers[key])
+                plan.append((name, {**wake, "trigger": trigger}, value))
+            elif wake["granted"] is not None:
+                trigger = wake["granted"]  # the owner's terms stand until the owner changes them
+                if not wake["in_step"]:
+                    notes.append(f"note: {name} `{wake['name']}` is granted as `{trigger}` and its cadence "
+                                 f"value says \"{wake['cadence']}\": change its time to bring them in step")
+            elif no_wakes:
+                continue
+            else:
+                trigger = wake["trigger"]
+                plan.append((name, dict(wake), None))
             if wake["held"] and _outside_hours(trigger, hours):
                 raise ar.AgentError(f"{name} `{wake['name']}` ({trigger}) lies outside the work hours "
                                     f"{hours}: a held update never runs. Change the time or the hours")
-            plan.append((name, {**wake, "trigger": trigger}))
     said = " ".join(approval.split())
     done: list[str] = []
     tag = "would " if dry_run else ""
@@ -621,12 +740,18 @@ def apply_setup(workspace: Path, framework: Path, *, approval: str, names: list[
         done.append(f"{tag}set {'.'.join(SETTABLE[setting])}: {json.dumps(value)}")
         if not dry_run:
             set_config(workspace, setting, value)
+    for _name, wake, value in plan:
+        if value is None or cadence.parse_schedule(value) == cadence.parse_schedule(wake["cadence"]):
+            continue
+        done.append(f"{tag}set cadences.{wake['schedule_key']}: {json.dumps(value)}")
+        if not dry_run:
+            set_cadence(workspace, wake["schedule_key"], value)
     for name in chosen:
         if not by_name[name]["row"]:
             done.append(f"{tag}add the registry row of {name}")
             if not dry_run:
                 agents.set_row(workspace, name, framework=framework, source="start")
-    for name, wake in plan:
+    for name, wake, _value in plan:
         held = next((g for g in by_name[name]["grants"] if g["name"] == wake["name"]), None)
         if held and held["trigger"] == wake["trigger"] and held.get("duty") == wake["duty"] \
                 and held.get("status", "active") == "active":
@@ -635,7 +760,7 @@ def apply_setup(workspace: Path, framework: Path, *, approval: str, names: list[
         if not dry_run:
             agents.grant(workspace, name, wake=wake["name"], trigger=wake["trigger"],
                          purpose=wake["purpose"], approval=said, duty=wake["duty"], framework=framework)
-    return done or ["nothing to change: the setup already holds these terms"]
+    return (done or ["nothing to change: the setup already holds these terms"]) + notes
 
 
 def mark(workspace: Path, framework: Path, name: str, *, off: bool = False) -> dict[str, Any]:
@@ -925,8 +1050,10 @@ def build_parser() -> argparse.ArgumentParser:
     su.add_argument("--daily-usd", default=None, help="apply: the daily cost cap per agent, or `none`.")
     su.add_argument("--runner-model", default=None, help="apply: the model of agents started in the background.")
     su.add_argument("--runner-variant", default=None, help="apply: that model's variant.")
-    su.add_argument("--wake", action="append", default=[], metavar="AGENT:NAME=TRIGGER",
-                    help="apply: another trigger for a proposed wake (repeatable).")
+    su.add_argument("--wake", action="append", default=[], metavar="AGENT:NAME=TIME",
+                    help='apply: another time for a wake, as a cadence value (08:00, "Sunday 18:00", '
+                         '"1st 12:00", "every 2 hours") or a trigger (every 2h from 08:00); the cadence '
+                         "value in config.yaml follows it (repeatable).")
     su.add_argument("--skip", action="append", default=[], metavar="AGENT:NAME",
                     help="apply: leave a proposed wake out (repeatable).")
     su.add_argument("--no-wakes", action="store_true", help="apply: grant no wake (an idle start).")
@@ -1058,7 +1185,7 @@ def _pairs(items: list[str], *, with_value: bool) -> dict[tuple[str, str], str]:
         left, sep, right = item.partition("=")
         agent, colon, wake = left.strip().rpartition(":")
         if not colon or not agent or not wake or (with_value and (not sep or not right.strip())):
-            form = "AGENT:NAME=TRIGGER" if with_value else "AGENT:NAME"
+            form = "AGENT:NAME=TIME" if with_value else "AGENT:NAME"
             raise ar.AgentError(f"{item!r}: write it as {form}")
         out[(agent, wake)] = right.strip()
     return out

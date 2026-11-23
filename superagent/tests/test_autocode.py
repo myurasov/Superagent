@@ -432,8 +432,11 @@ def test_apply_takes_the_owners_changes(initialized_workspace: Path, fake: Fake,
         "update-light": "every 30m", "update-full": 'cron "15 7 * * *"'}
     assert {g["name"]: g["trigger"] for g in ag.grants(ws, "superagent")} == {
         "daily-update": 'cron "0 7 * * *"', "weekly-review": 'cron "0 18 * * 0"'}
+    cadences = yaml.safe_load(_config(ws).read_text())["preferences"]["cadences"]
+    assert (cadences["update_full"], cadences["daily_update"], cadences["weekly_review"]) == (
+        "07:15", "07:00", "Sunday 18:00"), "a changed time is written as the cadence value too"
     for flags, message in ((["--wake", "updater:nope=every 1h"], "no such proposed wake: updater:nope"),
-                           (["--wake", "updater-update-full"], "write it as AGENT:NAME=TRIGGER"),
+                           (["--wake", "updater-update-full"], "write it as AGENT:NAME=TIME"),
                            (["--work-hours", "all day"], "write them as"),
                            (["--daily-usd", "lots"], "is not a number"),
                            (["--daily-usd", "-1"], "a positive number")):
@@ -463,6 +466,127 @@ def test_mark_follows_the_registration(initialized_workspace: Path, fake: Fake,
     assert ac.mark(ws, ac.FRAMEWORK, "superagent", off=True)["status"] == "off"
     assert _row(ws, "superagent")["status"] == "off"
 
+
+
+# ------------------------- a changed time: the grant and the cadence value agree
+
+@pytest.mark.parametrize("trigger, value", [
+    ('cron "0 8 * * *"', "08:00"), ('cron "30 8 * * *"', "08:30"), ('cron "0 18 * * 0"', "Sunday 18:00"),
+    ('cron "5 7 * * 7"', "Sunday 07:05"), ('cron "0 9 * * 1"', "Monday 09:00"),
+    ('cron "0 12 1 * *"', "1st 12:00"), ('cron "0 9 22 * *"', "22nd 09:00"), ('cron "0 9 13 * *"', "13th 09:00"),
+    ("every 2h", "every 2 hours"), ("every 2h from 08:00", "every 2 hours"), ("every 30m", "every 30 minutes"),
+    ("every 1h30m", "every 90 minutes"), ("every 1d until 2027-03-01", "every 1 day"),
+    ('cron "0 9 * * 1" until 2027-03-01', "Monday 09:00"),
+    ('cron "*/30 8-16 * * 1-5"', None), ('cron "0 9 1 * 1"', None), ('cron "0 9 * * *" Europe/Berlin', None),
+    ("every 90s", None), ("idle 30m", None), ("fire-only", None), ("in 45m", None), ('cron "0 25 * * *"', None),
+])
+def test_a_trigger_becomes_a_cadence_value(trigger: str, value: str | None) -> None:
+    assert ac.cadence_for(trigger) == value
+
+
+@pytest.mark.parametrize("value", ["08:30", "Sunday 18:00", "1st 09:00", "every 30 minutes", "every 2 hours",
+                                   "every 90 days", "every 1 week"])
+def test_a_cadence_value_survives_the_round_trip(value: str) -> None:
+    schedule = cadence.parse_schedule(value)
+    assert cadence.parse_schedule(ac.cadence_for(ac.trigger_for(schedule))) == schedule
+
+
+def _owner_changes(ws: Path) -> list[str]:
+    return ["setup", "apply", "--approval", "daily at 8, monthly on the 1st at 12, light every 2h in the day",
+            "--agents", "updater", "--work-hours", "08:00-20:00",
+            "--wake", "superagent:daily-update=08:00", "--wake", "superagent:monthly-review=1st 12:00",
+            "--wake", "updater:update-light=every 2h from 08:00", "--wake", "updater:update-full=12:00",
+            "--workspace", str(ws)]
+
+
+def test_a_changed_time_goes_to_the_grant_and_to_the_cadence_value(
+        initialized_workspace: Path, fake: Fake, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    ac.set_config(ws, "enabled", True)
+    assert ac.main(_owner_changes(ws)) == 0
+    out = capsys.readouterr().out.splitlines()
+    for line in ('set cadences.daily_update: "08:00"', 'set cadences.monthly_review: "1st 12:00"',
+                 'set cadences.update_light: "every 2 hours"', 'set cadences.update_full: "12:00"',
+                 "grant updater `update-light`: every 2h from 08:00", 'grant superagent `daily-update`: cron "0 8 * * *"'):
+        assert line in out, line
+    assert not [ln for ln in out if "weekly_review" in ln], "a time that was not changed is not written"
+    assert {g["name"]: g["trigger"] for g in ag.grants(ws, "superagent")} == {
+        "daily-update": 'cron "0 8 * * *"', "weekly-review": 'cron "0 18 * * 0"',
+        "monthly-review": 'cron "0 12 1 * *"'}
+    assert {g["name"]: g["trigger"] for g in ag.grants(ws, "updater")} == {
+        "update-light": "every 2h from 08:00", "update-full": 'cron "0 12 * * *"'}
+    cadences = yaml.safe_load(_config(ws).read_text())["preferences"]["cadences"]
+    assert {k: cadences[k] for k in ("daily_update", "weekly_review", "monthly_review", "update_light",
+                                     "update_full")} == {
+        "daily_update": "08:00", "weekly_review": "Sunday 18:00", "monthly_review": "1st 12:00",
+        "update_light": "every 2 hours", "update_full": "12:00"}
+    line = next(ln for ln in _config(ws).read_text().splitlines() if "update_light:" in ln)
+    assert "#" in line, "the line's comment is kept"
+    # The duty is due by the new time: a run after the OLD time (08:30) yesterday no longer hides today's 08:00.
+    context = ws / "_memory" / "context.yaml"
+    ctx = yaml.safe_load(context.read_text())
+    ctx["last_check"] = "2026-10-07T09:00:00-07:00"
+    ctx["last_runs"]["daily_update"] = "2026-10-07T09:00:00-07:00"
+    context.write_text(yaml.safe_dump(ctx, sort_keys=False))
+    at_eight = dt.datetime(2026, 10, 8, 8, 0, tzinfo=dt.timezone(dt.timedelta(hours=-7)))
+    assert ag.check(ws, "superagent", "daily-update", now=at_eight, wake="daily-update")[0] is True
+    assert ag.check(ws, "superagent", "daily-update", now=at_eight - dt.timedelta(minutes=1),
+                    wake="daily-update")[0] is False
+
+
+def test_a_granted_wake_is_the_wake_and_a_plain_apply_leaves_it(
+        initialized_workspace: Path, fake: Fake, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    ac.set_config(ws, "enabled", True)
+    assert ac.main(_owner_changes(ws)) == 0
+    capsys.readouterr()
+    lines = ac.render_setup(ac.setup_state(ws, ac.FRAMEWORK))
+    light = [ln for ln in lines if "wake update-light:" in ln]
+    assert len(light) == 1 and "every 2h from 08:00  [granted]" in light[0], "one line: the grant is the wake"
+    updater = ac.setup_state(ws, ac.FRAMEWORK)["agents"][-1]
+    assert updater["name"] == "updater" and all(w["granted"] and w["in_step"] for w in updater["proposed"])
+    registry = (ws / "_memory" / "agents.yaml").read_text()
+    config = _config(ws).read_text()
+    assert ac.main(["setup", "apply", "--approval", "start with these", "--agents", "updater",
+                    "--workspace", str(ws)]) == 0
+    assert capsys.readouterr().out.strip() == "nothing to change: the setup already holds these terms"
+    assert (ws / "_memory" / "agents.yaml").read_text() == registry and _config(ws).read_text() == config
+    # A cadence value edited behind the grant is flagged, and the owner's grant is never replaced.
+    ac.set_cadence(ws, "update_full", "09:00")
+    text = "\n".join(ac.render_setup(ac.setup_state(ws, ac.FRAMEWORK)))
+    assert 'wake update-full: cron "0 12 * * *"  [granted; out of step with its cadence value "09:00"]' in text
+    registry = (ws / "_memory" / "agents.yaml").read_text()
+    assert ac.main(["setup", "apply", "--approval", "start with these", "--agents", "updater",
+                    "--workspace", str(ws)]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out[0].startswith("nothing to change") and out[1].startswith(
+        'note: updater `update-full` is granted as `cron "0 12 * * *"` and its cadence value says "09:00"')
+    assert (ws / "_memory" / "agents.yaml").read_text() == registry
+    assert ac.main(["setup", "apply", "--approval", "full update at 9:30", "--agents", "updater",
+                    "--wake", "updater:update-full=09:30", "--workspace", str(ws)]) == 0
+    assert capsys.readouterr().out.splitlines() == ['set cadences.update_full: "09:30"',
+                                                    'grant updater `update-full`: cron "30 9 * * *"']
+    full = next(w for w in ac.setup_state(ws, ac.FRAMEWORK)["agents"][-1]["proposed"] if w["name"] == "update-full")
+    assert (full["granted"], full["in_step"]) == ('cron "30 9 * * *"', True)
+
+
+def test_a_time_no_cadence_value_can_say_is_refused_and_hours_hold_for_grants_too(
+        initialized_workspace: Path, fake: Fake, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    ac.set_config(ws, "enabled", True)
+    base = ["setup", "apply", "--approval", "ok", "--agents", "updater,bookkeeper", "--workspace", str(ws)]
+    before = (_config(ws).read_text(), (ws / "_memory" / "agents.yaml").read_text())
+    assert ac.main([*base, "--wake", 'superagent:daily-update=cron "*/30 8-16 * * 1-5"']) == 2
+    assert "cannot be kept in step with the duty's due time" in capsys.readouterr().err
+    assert (_config(ws).read_text(), (ws / "_memory" / "agents.yaml").read_text()) == before
+    # A wake another agent fires has no cadence value behind it and takes any trigger.
+    assert ac.main([*base, "--wake", "bookkeeper:after-harvest=fire-only once"]) == 0
+    capsys.readouterr()
+    assert ag.grants(ws, "bookkeeper")[0]["trigger"] == "fire-only once"
+    # New work hours are checked against what is granted, too: a held update never runs.
+    assert ac.main([*base, "--work-hours", "13:00-20:00"]) == 2
+    assert 'updater `update-full` (cron "0 6 * * *") lies outside the work hours 13:00-20:00' in capsys.readouterr().err
+    assert yaml.safe_load(_config(ws).read_text())["preferences"]["update"]["work_hours"] is None
 
 # ------------------------------------------------- the check of a granted wake
 
