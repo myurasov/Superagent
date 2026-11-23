@@ -52,6 +52,7 @@ Lifecycle commands (all take ``--project P``; omitted = auto-derived):
     cdp-url --profile <name>                    # print http://localhost:<port> for attaching
     icon    [--png F | --icns F] [--color C] [--name "Superagent Browser"]
                                                 # dedicated app bundle: own Dock icon/name
+    doctor  [--install-profile]                 # Chromium is installed; on Linux its sandbox starts
 
 Drive commands (replace the Playwright MCP tools; attach over CDP to a
 running profile and leave the browser open):
@@ -98,6 +99,7 @@ import shutil  # noqa: E402
 import signal  # noqa: E402
 import socket  # noqa: E402
 import subprocess  # noqa: E402
+import tempfile  # noqa: E402
 import time  # noqa: E402
 import urllib.request  # noqa: E402
 
@@ -688,9 +690,213 @@ def _exit_hint(log_path: Path) -> str:
     except OSError:
         return ""
     if _NO_SANDBOX_MARK in tail:
-        return ("; Chromium found no usable sandbox - on Ubuntu 23.10+ install the AppArmor "
-                "profile for Playwright's Chromium (skills/browserctl.md, \"Linux\")")
+        return ("; Chromium found no usable sandbox - run `browserctl doctor` for the cause "
+                "and the exact fix (on Ubuntu 23.10+ an AppArmor profile for Playwright's "
+                "Chromium; skills/browserctl.md, \"Linux\")")
     return ""
+
+
+# ------------------------------------------------- linux sandbox check
+
+# Chromium's sandbox needs unprivileged user namespaces. Ubuntu 23.10 and later
+# grant them per AppArmor profile, so Playwright's Chromium started from an
+# unconfined shell dies with "No usable sandbox!" until a profile covers it.
+SANDBOX_PROFILE_NAME = "playwright-chromium"
+SANDBOX_PROFILE_DIR = Path("/etc/apparmor.d")
+SANDBOX_PROFILE_GLOB = "/home/*/.cache/ms-playwright/chromium-*/chrome-linux*/chrome"
+_USERNS_SYSCTL = Path("/proc/sys/kernel/apparmor_restrict_unprivileged_userns")
+_PLAIN_PATH = re.compile(r"/[A-Za-z0-9_./+@-]+")
+
+
+def _glob_covers(glob: str, path: str) -> bool:
+    """Whether an AppArmor path glob built from literals and `*` matches a path
+    (`*` stands for any run of characters inside one path component)."""
+    rx = "".join("[^/]*" if part == "*" else re.escape(part)
+                 for part in re.split(r"(\*)", glob))
+    return re.fullmatch(rx, path) is not None
+
+
+def _resolved(path: str) -> str:
+    """The path with its symlinks resolved: AppArmor attaches a profile to the
+    file a binary really is, whatever path it was started by."""
+    return os.path.realpath(path)
+
+
+def sandbox_attachment(exe: str) -> str:
+    """The path expression the AppArmor profile attaches to: the standard glob
+    for a Playwright cache under /home/<user>/.cache (it follows Chromium
+    updates), else the binary's own resolved path."""
+    real = _resolved(exe)
+    return SANDBOX_PROFILE_GLOB if _glob_covers(SANDBOX_PROFILE_GLOB, real) else real
+
+
+def sandbox_profile(exe: str) -> tuple[Path, str]:
+    """The AppArmor profile that lets Playwright's Chromium create the user
+    namespaces its sandbox needs, and nothing else (the profile is otherwise
+    unconfined). Returns (the file it belongs in, its text). A binary outside
+    the standard cache gets a profile and a file of its own (`-local`), so it
+    never replaces the standard one."""
+    attachment = sandbox_attachment(exe)
+    name = SANDBOX_PROFILE_NAME + ("" if attachment == SANDBOX_PROFILE_GLOB else "-local")
+    path = SANDBOX_PROFILE_DIR / name
+    return path, (
+        f"# {path}\n"
+        "abi <abi/4.0>,\n"
+        "include <tunables/global>\n"
+        "\n"
+        f"profile {name} {attachment} flags=(unconfined) {{\n"
+        "  userns,\n"
+        "\n"
+        f"  include if exists <local/{name}>\n"
+        "}\n")
+
+
+def userns_restricted(sysctl: Path | None = None) -> bool:
+    """Whether this kernel grants unprivileged user namespaces per AppArmor
+    profile only (Ubuntu 23.10 and later). False when the setting is absent."""
+    try:
+        return (sysctl or _USERNS_SYSCTL).read_text().strip() == "1"
+    except OSError:
+        return False
+
+
+def sandbox_probe(exe: str, timeout: float = 30.0) -> tuple[str, str]:
+    """Start Chromium once, headless, on a throwaway profile, to learn whether
+    its sandbox can start. Returns (state, detail): state is "ok" (detail: the
+    time it took), "no-sandbox" (Chromium refused for want of a sandbox) or
+    "failed" (anything else; detail: the reason). It opens no window, touches no
+    browserctl profile, and takes a fraction of a second."""
+    scratch_root = home() / "tmp"
+    scratch_root.mkdir(parents=True, exist_ok=True)
+    scratch = Path(tempfile.mkdtemp(prefix="probe-", dir=scratch_root))
+    started = time.time()
+    try:
+        r = subprocess.run(
+            [exe, "--headless=new", f"--user-data-dir={scratch}", "--no-first-run",
+             "--use-mock-keychain", "--password-store=basic", "--dump-dom", "about:blank"],
+            capture_output=True, text=True, errors="replace", timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return "failed", f"no answer within {timeout:.0f} s"
+    except OSError as e:
+        return "failed", str(e)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+    if r.returncode == 0:
+        return "ok", f"{time.time() - started:.2f} s"
+    err = r.stderr or ""
+    if _NO_SANDBOX_MARK in err:
+        return "no-sandbox", f"exit code {r.returncode}"
+    tail = " | ".join(line.strip()[:200] for line in err.strip().splitlines()[-3:])
+    return "failed", f"exit code {r.returncode}" + (f": {tail}" if tail else "")
+
+
+def _sandbox_undo(path: Path) -> str:
+    return f"sudo apparmor_parser -R {path} && sudo rm {path}"
+
+
+def install_sandbox_profile(exe: str) -> tuple[int, list[str]]:
+    """Write the AppArmor profile for Playwright's Chromium, load it, and check
+    that Chromium now starts. A system change made with `sudo -n`: the caller
+    has the owner's yes. Returns (exit code, lines to print). Where sudo needs
+    a password the lines carry the commands to run in a terminal."""
+    attachment = sandbox_attachment(exe)
+    if attachment != SANDBOX_PROFILE_GLOB and not _PLAIN_PATH.fullmatch(attachment):
+        return 1, [f"profile: {attachment} holds characters an AppArmor path needs quoted; "
+                   "write the profile by hand (skills/browserctl.md, \"Linux\")"]
+    path, text = sandbox_profile(exe)
+    lines: list[str] = []
+    try:
+        earlier = path.read_text()
+    except OSError:
+        earlier = None
+    staged = home() / f"{path.name}.apparmor"
+    staged.parent.mkdir(parents=True, exist_ok=True)
+    staged.write_text(text)
+    if earlier is not None and earlier != text:
+        backup = home() / "backups" / f"{path.name}.{time.strftime('%Y%m%d-%H%M%S')}"
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        backup.write_text(earlier)
+        lines.append(f"profile: the earlier {path} differs; a copy is kept at {backup}")
+    steps: list[list[str]] = []
+    if earlier != text:
+        steps.append(["install", "-m", "0644", "-o", "root", "-g", "root",
+                      str(staged), str(path)])
+    steps.append(["apparmor_parser", "-r", str(path)])
+    for n, step in enumerate(steps):
+        try:
+            r = subprocess.run(["sudo", "-n", *step], capture_output=True, text=True)
+            failure = "" if r.returncode == 0 else (r.stderr or r.stdout or "").strip()[:300]
+            failed = r.returncode != 0
+        except OSError as e:
+            failure, failed = str(e), True
+        if failed:
+            lines.append(f"profile: `sudo {' '.join(step)}` failed: {failure}")
+            lines.append("  nothing more was changed. Where sudo asks for a password, run "
+                         "these in a terminal, then `browserctl doctor` again:")
+            lines.extend(f"      sudo {' '.join(s)}" for s in steps[n:])
+            return 1, lines
+    state, detail = sandbox_probe(exe)
+    if state != "ok":
+        lines.append(f"profile: {path} is installed and loaded, and Chromium "
+                     f"still does not start ({state}: {detail})")
+        lines.append(f"  undo: {_sandbox_undo(path)}")
+        return 1, lines
+    lines.append(f"profile: installed {path} and loaded it; Chromium now starts ({detail})")
+    lines.append(f"  undo: {_sandbox_undo(path)}")
+    return 0, lines
+
+
+def doctor(install_profile: bool = False, platform: str | None = None) -> tuple[int, list[str]]:
+    """Check what a launch needs on this machine: Playwright's Chromium is
+    installed and, on Linux, its sandbox can start. Returns (exit code, lines
+    to print): 0 when a launch can work, 1 with the cause and the exact fix
+    when it cannot. With install_profile the AppArmor profile is written and
+    loaded, and only when the sandbox refusal is the kind that profile fixes."""
+    try:
+        exe = chromium_executable()
+    except RuntimeError as e:
+        return 1, [f"chromium: {e}"]
+    lines = [f"chromium: {exe}"]
+    if not (platform or sys.platform).startswith("linux"):
+        lines.append("sandbox: nothing to check on this system (the check is for Linux)")
+        return 0, lines
+    state, detail = sandbox_probe(exe)
+    if state == "ok":
+        lines.append(f"sandbox: ok (Chromium started headless in {detail})")
+        if install_profile:
+            lines.append("profile: nothing to install, the sandbox already works")
+        return 0, lines
+    if state == "failed":
+        lines.append(f"sandbox: Chromium did not start ({detail})")
+        lines.append("  this is another failure than the missing sandbox, and the AppArmor "
+                     "profile does not fix it")
+        return 1, lines
+    lines.append("sandbox: Chromium found no usable sandbox")
+    if not userns_restricted():
+        lines.append("  cause: this system gives Chromium no user namespaces, and the AppArmor "
+                     f"setting behind the usual case is off or absent ({_USERNS_SYSCTL})")
+        lines.append("  the profile `--install-profile` writes does not apply here; see "
+                     "Chromium's Linux sandbox notes for this distribution")
+        lines.append("  never start Chromium with --no-sandbox to get past this")
+        return 1, lines
+    if install_profile:
+        code, more = install_sandbox_profile(exe)
+        return code, lines + more
+    path, text = sandbox_profile(exe)
+    lines.append("  cause: this system grants user namespaces per AppArmor profile "
+                 f"({_USERNS_SYSCTL.name} = 1), and no loaded profile covers "
+                 f"{_resolved(exe)}")
+    lines.append("  fix (a system change, so ask the owner first): "
+                 "browserctl doctor --install-profile")
+    lines.append(f"       it writes {path} with sudo and reloads AppArmor")
+    if path.exists():
+        lines.append(f"       {path} exists already: it is reloaded, and rewritten when "
+                     "its text differs (a copy of the earlier text is kept)")
+    lines.append(f"  undo: {_sandbox_undo(path)}")
+    lines.append("  the profile:")
+    lines.extend(f"      {line}" for line in text.splitlines())
+    lines.append("  never start Chromium with --no-sandbox to get past this")
+    return 1, lines
 
 
 def _fresh_name_in(state: dict, project: str, requested: str) -> str:
@@ -1237,6 +1443,13 @@ def main() -> int:
                    help="fill for the generated icon (default teal)")
     p.add_argument("--name", default="Superagent Browser", help="app/Dock name")
 
+    p = sub.add_parser("doctor", parents=[common],
+                       help="check that Chromium is installed and, on Linux, that "
+                            "its sandbox can start")
+    p.add_argument("--install-profile", action="store_true",
+                   help="Linux: write and load the AppArmor profile Chromium's sandbox "
+                        "needs (uses sudo; a system change, so only after the owner's yes)")
+
     p = sub.add_parser("tabs", parents=[common], help="list open tabs")
     p.add_argument("--profile", required=True)
 
@@ -1372,6 +1585,11 @@ def main() -> int:
         print(f"app bundle built: {bundle} - future chromium launches use it "
               "(relaunch running profiles to pick it up)")
         return 0
+
+    if args.cmd == "doctor":
+        code, lines = doctor(install_profile=args.install_profile)
+        print("\n".join(lines))
+        return code
 
     if args.cmd == "tabs":
         for t in tabs(project, args.profile):

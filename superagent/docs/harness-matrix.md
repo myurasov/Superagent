@@ -33,6 +33,7 @@ there is no `.cursor/rules/` shim, since Cursor reads `AGENTS.md` natively.
 |---|---|---|---|
 | Chromium killed at launch (Seatbelt denies mach-bootstrap) | Codex CLI | Solaris `environment.md` + Co-SA harness notes, Aug 2026 | Escalate the `browserctl launch` command; drive commands then work over CDP inside the sandbox (`skills/browserctl.md` § "Sandboxed harnesses") |
 | Clipboard / `open` / `sips` denied by name | Codex CLI | Co-SA `unbox` overlay, Aug 2026 | Pass-through wrappers per `rules/unbox.md`; registry `workspace/_memory/unboxed.yml` |
+| Chromium dies at launch with `No usable sandbox!` (Ubuntu 23.10+ grants user namespaces per AppArmor profile) | Any harness whose shell is unconfined (seen with OpenCode); a harness whose command sandbox has an AppArmor profile of its own passes it to the browser, so the same machine can launch there | A launch from an agent session on Ubuntu, Nov 2026 | `browserctl doctor` names the cause and the fix; `doctor --install-profile` after the owner's yes (`skills/browserctl.md` § "Linux") |
 | `defaults write` denied by sandbox | Codex CLI | Co-SA `run-escalated` overlay, Aug 2026 | Escalate on first attempt per `rules/run-escalated.md`; registry `workspace/_memory/escalate.yml` |
 
 ## Model tiers (abstraction for rules)
