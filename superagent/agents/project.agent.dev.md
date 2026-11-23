@@ -59,4 +59,5 @@ The notes of the agent that develops and maintains `project.agent.md`. The runni
 
 ## Changelog
 
+- 0.27.0 — the role is final for sessions of its own: start, wake rules, the park routine, pause and end. A project agent is created by the `add-agent` skill and retired by the `projects` skill.
 - 0.25.0 — role file created: the generic project role.

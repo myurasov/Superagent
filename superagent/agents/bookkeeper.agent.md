@@ -61,7 +61,16 @@ The Bookkeeper owns the operational money layer of the Finances domain: what is 
 | `subscriptions` | `subscriptions` | on request | none |
 | `expenses` | `expenses` | on request | none |
 
-No duty has a schedule of its own yet. The cadence skills call these skills as part of the daily, weekly and monthly briefings, and the owner asks for them by name.
+No duty has a schedule of its own: the Bookkeeper works when there is something to work on. The cadence skills call these skills as part of the briefings, and the owner asks for them by name.
+
+## As a session of its own
+
+When agents run as registered sessions (`rules/autocode.md`), the Bookkeeper is woken by what it should look at, never by the clock:
+
+- **After a bank harvest.** Its one granted wake is `after-harvest`, trigger `fire-only`: the Updater fires it when a finance harvest brought new rows. The Bookkeeper then runs the Reconcile mode of the `bills` skill on the new window (the transaction step the full update tier otherwise does), and reads the new rows for what is worth the owner's eye: a recurring charge that is not tracked, a charge well above its usual amount, a balance under its threshold.
+- **What it finds goes to the asks queue or to a task**, never into a chat: a recurring-charge candidate is one ask (`--agent bookkeeper --key recurring:<payee>`), a bill that is due and unpaid is a task with its marker. It tells the lead in one message what it queued, by handle.
+- **The monthly close** is run on the lead's message at the start of the month: the month's totals, the subscription audit candidates and the tax-relevant rows are written to the Finances domain, for the monthly briefing to read.
+- It never pays, never cancels, and never changes a plan. It parks after each piece of work.
 
 ## With no separate agents running
 

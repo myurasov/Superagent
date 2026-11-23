@@ -37,12 +37,16 @@ agents:
   #   variant     — The model's variant for this agent; null = the tier's default.
   #   daily_usd   — Daily cost cap in USD for this agent; null = the default
   #                  (`config.preferences.autocode.daily_usd`).
-  #   wakes       — Periodic wakes the owner granted, one mapping each:
+  #   wakes       — Wakes the owner granted, one mapping each, written by
+  #                  `uv run python -m superagent.tools.agents grant`:
   #                    { name: "<wake name>", trigger: "<when it runs>",
+  #                      duty: "<the duty whose check runs first, or null>",
   #                      purpose: "<why>", cost_per_run_usd: <number or null>,
-  #                      ends: <ISO date or null>, granted_at: <ISO datetime> }
-  #                  A periodic wake with no grant here must not run. Empty for
-  #                  an agent that only wakes on a message.
+  #                      ends: <ISO date or null>, status: active | suspended,
+  #                      approval: "<the owner's words>", granted_at: <ISO datetime> }
+  #                  A periodic wake with no grant here must not run: its check
+  #                  (`agents check <agent> [<duty>] --wake <name>`) skips it.
+  #                  Empty for an agent that only wakes on a message.
   #   status      — off      no session runs it; a chat session takes the role
   #                  active   a registered session runs it with its granted wakes
   #                  dormant  a registered session holds it and wakes on a message

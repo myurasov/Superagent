@@ -61,6 +61,11 @@ preferences:
     # Extra folders drained like `Inbox/`: a folder a sync tool shares between
     # machines, a scanner's output folder. Absolute paths or `~/...`.
     drop_folders: []
+    # When a scheduled update may run. Outside these hours, and on an off day,
+    # the update duties are held: their check says "not due". A run you start
+    # by hand always runs.
+    work_hours: null             # "07:00-22:00"; null = any hour
+    off_days: []                 # weekday names ("Saturday") or dates ("2026-12-25")
 
   # Watchlist — change detection for external sources, and the registry of
   # data sources (see contracts/watchlist.md). Absent block = these defaults.
@@ -217,6 +222,11 @@ preferences:
   # chat session takes whichever role the work needs. Absent block = these
   # defaults.
   autocode:
+    # The switch. false (the default): no agent runs as a session of its own,
+    # and the chat session takes whichever role the work needs. true: agents
+    # run as sessions registered with an Autocode server (rules/autocode.md).
+    # `init` never turns it on.
+    enabled: false
     # First part of every agent id (`<id_prefix>:<name>`), so several users can
     # share one Autocode server. A lowercase letter first, then lowercase
     # letters, digits or `-`, 16 characters at most. Reserved: owner, autocode,

@@ -64,5 +64,6 @@ The notes of the agent that develops and maintains `updater.agent.md`. The runni
 
 ## Changelog
 
+- 0.27.0 — "As a session of its own": two granted wakes behind their checks, the registry row names the fetching machine, work hours and off days hold the duties, the Bookkeeper's wake is fired after a bank harvest.
 - 0.26.0 — the duty `watchlist` (skill `watch`, check `watchers`) became `update-light` and `update-full` (skill `update`); the cycle lock, the asks queue and `watchlist check --due` came with it. The role no longer asks even with the owner present.
 - 0.25.0 — role file created from the Ingestor persona of `superagent.agent.md`.

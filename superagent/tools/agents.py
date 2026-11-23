@@ -16,7 +16,25 @@ files) and `tools/cadence.py` (what is late).
                         (the same findings `cadence status` prints)
   check <agent> <duty>  the zero-cost check of one duty, for a scheduled wake:
                         exit 0 when the duty is due (the reason is printed),
-                        exit 1 when it is not (nothing is printed)
+                        exit 1 when it is not (nothing is printed). With
+                        `--wake NAME` it is the check of a granted wake: exit 1
+                        as well when the wake has no grant on the agent's
+                        registry row, or the grant is suspended or past its end
+                        (the duty may then be left out: a wake with no duty is
+                        due whenever its grant holds)
+  grant <agent>         record a wake the owner granted, with its exact terms,
+                        on the agent's registry row (`--suspend` / `--resume`
+                        switch one or all of its grants off and on)
+  revoke <agent>        remove a grant from the row
+  set <agent>           create or update the agent's registry row: `--host`,
+                        `--status`, `--model`, `--variant`, `--daily-usd`,
+                        `--project`, `--notes` (this is how a project agent
+                        comes to exist)
+  may-fetch             exit 0 when this machine may run the update cycle,
+                        exit 1 when the Updater runs on another machine
+  heartbeat             lines for the daily briefing: which agents run as
+                        sessions of their own, when the update loop last ran,
+                        which wakes are granted. Nothing when no agent does
 
 A duty's state is one of: `ok`; `due` (its scheduled time has come and it has
 not run since, or its check found work: the stamp against the schedule,
@@ -28,8 +46,16 @@ Ids are `<prefix>:<instance name>`; the prefix is
 `config.preferences.autocode.id_prefix` (default `sa`). The registry holds
 names, never ids, so changing the prefix changes every id at once.
 
-This tool reads only. It works with Autocode off and never talks to an
-Autocode server.
+`list`, `id`, `duties`, `check`, `may-fetch` and `heartbeat` read only. `grant`, `revoke` and
+`set` write the registry, text-level and parse-checked (the writer of
+`tools/signals.py`). No command talks to an Autocode server: the tool works
+with Autocode off. Setting a wake in a runtime is `tools/autocode.py`'s work.
+
+Held duties. `config.preferences.update.work_hours` ("07:00-22:00") and
+`off_days` (weekday names or dates) say when a scheduled update may run.
+Outside them the duties whose skill is `update` are HELD: `check` exits 1 and
+`duties` shows the state with "held". A run the owner starts by hand always
+runs.
 
 Exit codes: 0 ok (`check`: due); 1 runtime error (`check`: not due); 2 usage
 error (unknown agent or duty, a bad prefix or name); 3 `check` could not run
@@ -41,6 +67,8 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -48,13 +76,24 @@ from typing import Any
 import yaml
 
 from superagent.tools import agent_roles as ar
-from superagent.tools import cadence, inbox
+from superagent.tools import cadence, inbox, machines, signals
 from superagent.tools import watchlist as wl
 
 FRAMEWORK = Path(__file__).resolve().parent.parent
 REGISTRY_REL = "_memory/agents.yaml"
+REGISTRY_KEY = "agents"
+#: Row fields `set` may write. Grants (`wakes`) go through `grant` only.
+ROW_FIELDS = ("host", "model", "variant", "daily_usd", "status", "project", "notes")
+REGISTRY_SKELETON = "schema_version: 1\nlast_updated: null\n"
 STATUSES = ("off", "active", "dormant", "paused", "retired")
 DEFAULT_STATUS = "off"
+#: Duties of this skill are held outside `preferences.update.work_hours` / on `off_days`.
+HELD_SKILL = "update"
+#: The briefing flags an active update loop that made no light run for this long.
+HEARTBEAT_QUIET_HOURS = 2
+CUSTOM_CHECK_TIMEOUT = 120
+_HOURS_RE = re.compile(r"^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$")
+_WAKE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$")
 #: Duty states a scheduler acts on (`check` exits 0), and the ones that are late.
 RUNNABLE = ("due", "overdue", "unfinished")
 LATE = ("overdue", "unfinished")
@@ -149,6 +188,7 @@ def roster(workspace: Path, framework: Path = FRAMEWORK) -> dict[str, Any]:
             "variant": variant,
             "daily_usd": autocode.get("daily_usd") if cap is None else cap,
             "wakes": len(row.get("wakes") or []),
+            "grants": _grants(row),
             "registered": bool(row),
             "dev_id": ar.agent_id(prefix, ar.instance_name(role, dev=True)),
             "dev_model": dev_model,
@@ -184,6 +224,7 @@ def roster(workspace: Path, framework: Path = FRAMEWORK) -> dict[str, Any]:
             errors.append(f"{REGISTRY_REL}: `{name}` {what} (role {role_name!r})")
     return {
         "prefix": prefix,
+        "autocode_enabled": ar.autocode_enabled(workspace),
         "agents": agents,
         "roles": [{"name": r.name, "kind": r.kind, "origin": r.origin,
                    "dev_id": ar.agent_id(prefix, ar.instance_name(r, dev=True)),
@@ -246,6 +287,8 @@ def evaluate(role: ar.Role, duty: ar.Duty, report: dict[str, Any], *, workspace:
         if files:
             found.append(f"{len(files)} document(s) waiting in a drop folder")
         return ("due", "; ".join(found)) if found else ("ok", "")
+    if ar.custom_check_name(duty.check):
+        return "custom", ""  # the role's own script: run by `check`, never by a listing
     if duty.check != "cadence":
         return "on-request", ""
     for row in report["overdue_cadences"]:
@@ -277,6 +320,7 @@ def duty_rows(workspace: Path, framework: Path = FRAMEWORK, *, now: dt.datetime 
     runs = ctx.get("last_runs") if isinstance(ctx.get("last_runs"), dict) else {}
     cadences = cadence.cadence_values(workspace, framework)
     moment = now or cadence.as_datetime(report["now"])
+    held = update_window(workspace, moment) if moment else None
     rows: list[dict[str, Any]] = []
     for role in roles:
         for duty in role.duties:
@@ -294,6 +338,7 @@ def duty_rows(workspace: Path, framework: Path = FRAMEWORK, *, now: dt.datetime 
                 "last_run": last.isoformat(timespec="seconds") if last else None,
                 "state": state,
                 "reason": reason,
+                "held": held if duty.skill == HELD_SKILL else None,
             })
     return rows, errors
 
@@ -308,6 +353,8 @@ def render_duties(rows: list[dict[str, Any]]) -> list[str]:
         if row["schedule_value"]:
             schedule = f"{schedule} ({row['schedule_value']})"
         state = row["state"] + (f": {row['reason']}" if row["reason"] else "")
+        if row.get("held") and row["state"] in RUNNABLE:
+            state += f" [held: {row['held']}]"
         table.append((row["agent"], row["duty"], row["skill"], row["tier"], schedule,
                       str(row["last_run"] or "-")[:10], state))
     widths = [max(len(r[i]) for r in table) for i in range(len(table[0]) - 1)]
@@ -315,17 +362,357 @@ def render_duties(rows: list[dict[str, Any]]) -> list[str]:
             for row in table]
 
 
-def check(workspace: Path, agent: str, duty_id: str, framework: Path = FRAMEWORK, *,
-          now: dt.datetime | None = None) -> tuple[bool, str]:
-    """(is the duty due, why). Raises AgentError for an unknown agent or duty."""
+class CheckFailedError(RuntimeError):
+    """A check could not run (a custom check script failed): never "not due"."""
+
+
+def run_custom_check(workspace: Path, check: str, *, timeout: int = CUSTOM_CHECK_TIMEOUT
+                     ) -> tuple[bool, str]:
+    """Run a custom role's check script: (due, its first lines of output).
+
+    `uv`'s interpreter runs `workspace/_custom/tools/<name>.py --workspace
+    <workspace>`: exit 0 means due (stdout is the reason), exit 1 not due.
+    Any other exit, a missing script or a timeout raises CheckFailedError.
+    """
+    script = ar.custom_check_path(workspace, check)
+    if script is None or not script.is_file():
+        raise CheckFailedError(f"check script for `{check}` does not exist")
+    try:
+        result = subprocess.run([sys.executable, str(script), "--workspace", str(workspace)],
+                                check=False, capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise CheckFailedError(f"`{check}` could not run ({exc})") from exc
+    if result.returncode not in (0, 1):
+        tail = (result.stderr or result.stdout).strip().splitlines()[-1:] or ["no output"]
+        raise CheckFailedError(f"`{check}` failed with exit {result.returncode}: {tail[0][:200]}")
+    reason = " ".join(result.stdout.split())[:300]
+    return result.returncode == 0, reason or "its check says so"
+
+
+def check(workspace: Path, agent: str, duty_id: str | None, framework: Path = FRAMEWORK, *,
+          now: dt.datetime | None = None, wake: str | None = None) -> tuple[bool, str]:
+    """(is the duty due, why). Raises AgentError for an unknown agent or duty.
+
+    With `wake`, the check of a granted wake: not due when the agent's
+    registry row has no grant of that name, or the grant is suspended or past
+    its end. A wake with no duty is due whenever its grant holds. A held duty
+    (outside the update's work hours) is not due. Raises CheckFailedError when
+    a custom check script cannot say.
+    """
+    now = now or cadence.now_local()
+    if wake is not None:
+        ok, why = grant_state(workspace, agent, wake, now)
+        if not ok:
+            return False, why
+    if duty_id is None:
+        if wake is None:
+            raise ar.AgentError("name a duty, or a granted wake with --wake")
+        return True, f"{agent}: wake `{wake}` is granted"
     rows, _errors = duty_rows(workspace, framework, now=now, agent=agent)
     row = next((r for r in rows if r["duty"] == duty_id), None)
     if row is None:
         known = ", ".join(r["duty"] for r in rows) or "none"
         raise ar.AgentError(f"{ar.split_instance(agent)[0]!r} has no duty {duty_id!r} "
                             f"(duties: {known})")
-    due = row["state"] in RUNNABLE
+    if row["state"] == "custom":
+        due, reason = run_custom_check(workspace, row["check"])
+        return due, f"{row['agent']} {row['duty']}: due: {reason}" if due else ""
+    due = row["state"] in RUNNABLE and not row.get("held")
     return due, f"{row['agent']} {row['duty']}: {row['state']}: {row['reason']}" if due else ""
+
+
+# ------------------------------------------------------------------- held
+
+def update_window(workspace: Path, now: dt.datetime) -> str | None:
+    """Why a scheduled update is held right now, or None when it may run.
+
+    `config.preferences.update.work_hours` is "HH:MM-HH:MM" (it may cross
+    midnight); `off_days` lists weekday names and ISO dates. A value that
+    cannot be read holds nothing.
+    """
+    block = ar.load_preferences(workspace).get("update")
+    block = block if isinstance(block, dict) else {}
+    for day in block.get("off_days") or []:
+        if isinstance(day, dt.datetime):
+            day = day.date()
+        if isinstance(day, dt.date):
+            if day == now.date():
+                return f"an off day ({day.isoformat()})"
+            continue
+        text = str(day).strip().lower()
+        if len(text) >= 3 and now.strftime("%A").lower().startswith(text):
+            return f"an off day ({now:%A})"
+        try:
+            if dt.date.fromisoformat(text) == now.date():
+                return f"an off day ({text})"
+        except ValueError:
+            continue
+    match = _HOURS_RE.match(str(block.get("work_hours") or "").strip())
+    if match:
+        start = int(match.group(1)) * 60 + int(match.group(2))
+        end = int(match.group(3)) * 60 + int(match.group(4))
+        minute = now.hour * 60 + now.minute
+        inside = start <= minute < end if start <= end else (minute >= start or minute < end)
+        if not inside:
+            return f"outside work hours ({block['work_hours']})"
+    return None
+
+
+# ------------------------------------------------------------------ grants
+
+def _registry_rows(workspace: Path) -> tuple[Path, list[Any]]:
+    """(the registry path, every row as parsed, the template's example row included)."""
+    path = workspace / REGISTRY_REL
+    _text, _data, rows = signals._read(path, REGISTRY_KEY)  # noqa: SLF001 - the shared reader
+    return path, rows
+
+
+def _row_index(rows: list[Any], name: str) -> int | None:
+    return next((i for i, r in enumerate(rows) if isinstance(r, dict) and r.get("name") == name), None)
+
+
+def _grants(row: dict[str, Any]) -> list[dict[str, Any]]:
+    return [g for g in row.get("wakes") or [] if isinstance(g, dict) and g.get("name")]
+
+
+def grants(workspace: Path, agent: str) -> list[dict[str, Any]]:
+    """The wakes granted to `agent` (its instance name), as written on its registry row."""
+    rows, _errors = load_registry(workspace)
+    row = next((r for r in rows if r.get("name") == agent), None)
+    return _grants(row) if row else []
+
+
+def grant_state(workspace: Path, agent: str, wake: str, now: dt.datetime) -> tuple[bool, str]:
+    """(may the wake `wake` of `agent` run, why not): granted, not suspended, not past its end."""
+    found = next((g for g in grants(workspace, agent) if g.get("name") == wake), None)
+    if found is None:
+        return False, f"{agent}: wake `{wake}` has no grant"
+    if found.get("status") == "suspended":
+        return False, f"{agent}: the grant of wake `{wake}` is suspended"
+    ends = machines.parse_ts(found.get("ends"))
+    if ends is not None:
+        if isinstance(found.get("ends"), dt.date) and not isinstance(found.get("ends"), dt.datetime) \
+                or re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(found.get("ends"))):
+            ends += dt.timedelta(days=1)  # a date alone means through that day
+        if now >= ends:
+            return False, f"{agent}: the grant of wake `{wake}` ended {str(found.get('ends'))[:10]}"
+    return True, ""
+
+
+def _resolve_agent(workspace: Path, framework: Path, agent: str) -> ar.Role:
+    """The role of an instance name; AgentError for a dev twin, an unknown role or a bad name."""
+    role_name, slug, is_dev = ar.split_instance(agent)
+    if is_dev:
+        raise ar.AgentError("a dev twin has no periodic wake: it wakes on a message")
+    roles, _errors = ar.collect(framework, workspace)
+    role = next((r for r in roles if r.name == role_name), None)
+    if role is None:
+        known = ", ".join(r.name for r in roles) or "none"
+        raise ar.AgentError(f"no role named {role_name!r} (roles: {known})")
+    ar.instance_name(role, slug=slug)  # raises when the name does not fit the role's kind
+    return role
+
+
+def grant(workspace: Path, agent: str, *, wake: str, trigger: str, purpose: str, approval: str,
+          duty: str | None = None, cost_per_run_usd: float | None = None, ends: str | None = None,
+          framework: Path = FRAMEWORK, now: dt.datetime | None = None) -> dict[str, Any]:
+    """Record a wake the owner granted on the agent's registry row; return the grant.
+
+    The grant holds the exact terms the owner approved: the trigger, the duty
+    whose check runs first (optional), the purpose, the cost per run and the
+    end. `approval` is what the owner said; the tool cannot see an approval,
+    so the caller asks first and records the words here. A grant of the same
+    name is replaced. The row of a lead or durable role is created when
+    missing; a project agent must have its row already. Raises AgentError for
+    a bad request, CorruptFileError / WriteRefusedError when the registry
+    cannot be written safely.
+    """
+    now = now or cadence.now_local()
+    role = _resolve_agent(workspace, framework, agent)
+    if not _WAKE_RE.match(wake or ""):
+        raise ar.AgentError(f"wake name {wake!r}: use letters, digits and `- _ . :`, 64 at most")
+    for label, value in (("trigger", trigger), ("purpose", purpose), ("approval", approval)):
+        if not value or not str(value).strip():
+            raise ar.AgentError(f"a grant needs its {label}")
+    if duty is not None and role.duty(duty) is None:
+        known = ", ".join(d.id for d in role.duties) or "none"
+        raise ar.AgentError(f"{role.name!r} has no duty {duty!r} (duties: {known})")
+    trigger = " ".join(str(trigger).split())
+    if ends is None:
+        tail = re.search(r"\buntil\s+(\d{4}-\d{2}-\d{2}(?:[T ]\S+)?)\s*$", trigger)
+        ends = tail.group(1) if tail else None
+    if ends is not None and machines.parse_ts(ends) is None:
+        raise ar.AgentError(f"`ends` {ends!r} is not an ISO date or datetime")
+    stamp = now.isoformat(timespec="seconds")
+    entry = {"name": wake, "trigger": trigger, "duty": duty, "purpose": " ".join(purpose.split()),
+             "cost_per_run_usd": cost_per_run_usd, "ends": ends, "status": "active",
+             "approval": " ".join(approval.split()), "granted_at": stamp}
+    path, rows = _registry_rows(workspace)
+    index = _row_index(rows, agent)
+    if index is None:
+        if role.kind == "project":
+            raise ar.AgentError(f"`{agent}` has no registry row: a project agent exists only "
+                                "through its row, so add the row first")
+        row = {"name": agent, "role": role.name, "handle": f"agent:{agent}", "project": None,
+               "host": None, "model": None, "variant": None, "daily_usd": None, "wakes": [entry],
+               "status": DEFAULT_STATUS, "notes": "",
+               "provenance": {"source": "agents", "at": stamp}}
+        signals.append_row(path, REGISTRY_KEY, row, skeleton=REGISTRY_SKELETON, last_updated=stamp)
+    else:
+        row = dict(rows[index])
+        row["wakes"] = [g for g in _grants(row) if g.get("name") != wake] + [entry]
+        signals.replace_row(path, REGISTRY_KEY, index, row, last_updated=stamp)
+    machines.beat(workspace, min_interval_s=60)
+    return entry
+
+
+def change_grants(workspace: Path, agent: str, *, wake: str | None = None, action: str,
+                  now: dt.datetime | None = None) -> list[str]:
+    """`revoke`, `suspend` or `resume` one grant of `agent` (or all, with no `wake`).
+
+    Returns the names changed. Raises AgentError when the agent has no row or
+    no such grant.
+    """
+    now = now or cadence.now_local()
+    path, rows = _registry_rows(workspace)
+    index = _row_index(rows, agent)
+    if index is None:
+        raise ar.AgentError(f"`{agent}` has no registry row, so it has no grant")
+    row = dict(rows[index])
+    current = _grants(row)
+    hit = [g["name"] for g in current if wake is None or g["name"] == wake]
+    if wake is not None and not hit:
+        raise ar.AgentError(f"`{agent}` has no grant named {wake!r}")
+    if action == "revoke":
+        row["wakes"] = [g for g in current if g["name"] not in hit]
+    else:
+        status = "suspended" if action == "suspend" else "active"
+        hit = [name for name in hit
+               if next(g for g in current if g["name"] == name).get("status", "active") != status]
+        row["wakes"] = [{**g, "status": status} if g["name"] in hit else g for g in current]
+    if hit:
+        signals.replace_row(path, REGISTRY_KEY, index, row,
+                            last_updated=now.isoformat(timespec="seconds"))
+        machines.beat(workspace, min_interval_s=60)
+    return hit
+
+
+# --------------------------------------------------------------- heartbeat
+
+def _ago(value: Any, now: dt.datetime) -> str:
+    when = cadence.as_datetime(value)
+    if when is None:
+        return "never"
+    minutes = int((now - when).total_seconds() // 60)
+    if minutes < 90:
+        return f"{max(minutes, 0)} min ago"
+    return f"{minutes // 60} h ago" if minutes < 48 * 60 else f"{minutes // 1440} day(s) ago"
+
+
+def heartbeat_lines(workspace: Path, framework: Path = FRAMEWORK, *,
+                    now: dt.datetime | None = None) -> list[str]:
+    """Lines for the daily briefing about agents that run as sessions of their own.
+
+    [] when no registry row is `active`, `dormant` or `paused` and no wake is
+    granted: with no separate agents there is nothing to say. Otherwise: who
+    runs where, when the update loop last ran (flagged when it went quiet for
+    more than two hours inside its work hours), and the granted wakes.
+    """
+    now = now or cadence.now_local()
+    data = roster(workspace, framework)
+    running = [a for a in data["agents"] if a["status"] in ("active", "dormant", "paused")]
+    granted = [(a, g) for a in data["agents"] for g in a["grants"]]
+    if not running and not granted:
+        return []
+    lines: list[str] = []
+    if running:
+        lines.append("Agents: " + "; ".join(
+            f"{a['name']} {a['status']}" + (f" on {a['host']}" if a["host"] else "") for a in running) + ".")
+    roles, _errors = ar.collect(framework, workspace)
+    owner = ar.check_owner(roles, "update")
+    if any(a["name"] == owner and a["status"] == "active" for a in running):
+        _text, ctx = cadence.load_context(workspace)
+        runs = ctx.get("last_runs") if isinstance(ctx.get("last_runs"), dict) else {}
+        line = (f"Update loop: last light update {_ago(runs.get('update_light'), now)}, "
+                f"last full {_ago(runs.get('update_full'), now)}.")
+        last = cadence.as_datetime(runs.get("update_light"))
+        if update_window(workspace, now) is None and (
+                last is None or now - last > dt.timedelta(hours=HEARTBEAT_QUIET_HOURS)):
+            line += f" No light update in over {HEARTBEAT_QUIET_HOURS} hours: look at the {owner} agent."
+        lines.append(line)
+    active = [f"{a['name']} `{g['name']}` ({g['trigger']})" for a, g in granted
+              if g.get("status", "active") == "active"]
+    paused = [f"{a['name']} `{g['name']}`" for a, g in granted if g.get("status") == "suspended"]
+    if active:
+        lines.append("Granted wakes: " + "; ".join(active) + ".")
+    if paused:
+        lines.append("Suspended grants: " + "; ".join(paused) + ".")
+    return lines
+
+
+# ---------------------------------------------------------------- the row
+
+def set_row(workspace: Path, agent: str, *, framework: Path = FRAMEWORK,
+            now: dt.datetime | None = None, source: str = "agents", **fields: Any) -> dict[str, Any]:
+    """Create or update the registry row of `agent` (its instance name); return the row.
+
+    `fields` may hold `host`, `model`, `variant`, `daily_usd`, `status`,
+    `project`, `notes`; a field that is not given keeps its value. A new row
+    starts `off`, and the row of a project agent names its Project
+    (`project:<slug>`) unless told otherwise. Grants are never written here
+    (`grant`). Raises AgentError for a dev twin, an unknown role, a field that
+    is not a row field or a status that is not one.
+    """
+    now = now or cadence.now_local()
+    role = _resolve_agent(workspace, framework, agent)
+    unknown = sorted(set(fields) - set(ROW_FIELDS))
+    if unknown:
+        raise ar.AgentError(f"not a field of a registry row: {', '.join(unknown)} "
+                            f"(fields: {', '.join(ROW_FIELDS)})")
+    if fields.get("status") is not None and fields["status"] not in STATUSES:
+        raise ar.AgentError(f"status {fields['status']!r} is not one of {', '.join(STATUSES)}")
+    stamp = now.isoformat(timespec="seconds")
+    path, rows = _registry_rows(workspace)
+    index = _row_index(rows, agent)
+    if index is None:
+        _role, slug, _dev = ar.split_instance(agent)
+        row = {"name": agent, "role": role.name, "handle": f"agent:{agent}",
+               "project": f"project:{slug}" if slug else None, "host": None, "model": None,
+               "variant": None, "daily_usd": None, "wakes": [], "status": DEFAULT_STATUS,
+               "notes": "", "provenance": {"source": source, "at": stamp}}
+        row.update(fields)
+        signals.append_row(path, REGISTRY_KEY, row, skeleton=REGISTRY_SKELETON, last_updated=stamp)
+    else:
+        row = dict(rows[index])
+        if all(row.get(k) == v for k, v in fields.items()):
+            return row
+        row.update(fields)
+        signals.replace_row(path, REGISTRY_KEY, index, row, last_updated=stamp)
+    machines.beat(workspace, min_interval_s=60)
+    return row
+
+
+# ------------------------------------------------------- one fetching machine
+
+def may_fetch(workspace: Path, framework: Path = FRAMEWORK) -> tuple[bool, str]:
+    """(may this machine run the update cycle, why not).
+
+    One machine fetches: when the registry row of the role that runs the
+    update is `active` and names a `host`, the cycle belongs to that machine,
+    and any other machine reads the stores it fills. With no such row (no
+    separate Updater runs) every machine may fetch.
+    """
+    roles, _errors = ar.collect(framework, workspace)
+    owner = ar.check_owner(roles, "update")
+    rows, _problems = load_registry(workspace)
+    row = next((r for r in rows if r.get("name") == owner), None)
+    if not row or row.get("status") != "active" or not row.get("host"):
+        return True, ""
+    here = machines.machine_name(create=False)
+    if row["host"] == here:
+        return True, ""
+    return False, (f"the {owner} agent runs on {row['host']}: this machine ({here}) does not fetch; "
+                   "the stores are kept current from there")
 
 
 # --------------------------------------------------------------------- CLI
@@ -361,7 +748,38 @@ def build_parser() -> argparse.ArgumentParser:
     ch = sub.add_parser("check", parents=[common],
                         help="Zero-cost check of one duty: exit 0 due, exit 1 not due.")
     ch.add_argument("agent")
-    ch.add_argument("duty")
+    ch.add_argument("duty", nargs="?", default=None)
+    ch.add_argument("--wake", default=None,
+                    help="The granted wake this check runs for: no grant, no run.")
+    gr = sub.add_parser("grant", parents=[common],
+                        help="Record a wake the owner granted, or suspend / resume grants.")
+    gr.add_argument("agent", help="`<role>` or `project:<slug>`.")
+    gr.add_argument("--wake", default=None, help="The wake's name.")
+    gr.add_argument("--trigger", default=None, help='When it runs: "every 30m", "cron ...", "... until 2027-03-01".')
+    gr.add_argument("--purpose", default=None, help="Why, in a line.")
+    gr.add_argument("--approval", default=None, help="The owner's words that approved these exact terms.")
+    gr.add_argument("--duty", default=None, help="The duty whose check runs before the wake.")
+    gr.add_argument("--cost", type=float, default=None, dest="cost", help="Expected cost per run, in USD.")
+    gr.add_argument("--ends", default=None, help="ISO date or datetime the grant ends.")
+    switch = gr.add_mutually_exclusive_group()
+    switch.add_argument("--suspend", action="store_true", help="Switch the grant (or all) off.")
+    switch.add_argument("--resume", action="store_true", help="Switch the grant (or all) back on.")
+    rv = sub.add_parser("revoke", parents=[common], help="Remove a grant from the agent's row.")
+    rv.add_argument("agent")
+    rv.add_argument("--wake", required=True)
+    st = sub.add_parser("set", parents=[common], help="Create or update an agent's registry row.")
+    st.add_argument("agent", help="`<role>` or `project:<slug>`.")
+    st.add_argument("--host", default=None, help="The machine that runs it.")
+    st.add_argument("--status", default=None, choices=STATUSES)
+    st.add_argument("--model", default=None)
+    st.add_argument("--variant", default=None)
+    st.add_argument("--daily-usd", type=float, default=None, dest="daily_usd")
+    st.add_argument("--project", default=None, help="The Project's handle, for a project agent.")
+    st.add_argument("--notes", default=None)
+    sub.add_parser("heartbeat", parents=[common],
+                   help="Lines for the briefing about agents that run as sessions of their own.")
+    sub.add_parser("may-fetch", parents=[common],
+                   help="Exit 0 when this machine may run the update cycle.")
     return parser
 
 
@@ -395,20 +813,65 @@ def main(argv: list[str] | None = None) -> int:
             if args.overdue:
                 rows = [r for r in rows if r["state"] in LATE]
             elif args.due:
-                rows = [r for r in rows if r["state"] in RUNNABLE]
+                rows = [r for r in rows if r["state"] in RUNNABLE and not r.get("held")]
             if args.json:
                 print(json.dumps(rows, indent=2))
             else:
                 for line in render_duties(rows):
                     print(line)
             return 0
-        due, why = check(workspace, args.agent, args.duty, args.framework, now=args.now)
+        if args.command == "heartbeat":
+            for line in heartbeat_lines(workspace, args.framework, now=args.now):
+                print(line)
+            return 0
+        if args.command == "may-fetch":
+            ok, why = may_fetch(workspace, args.framework)
+            if not ok:
+                print(why)
+            return 0 if ok else 1
+        if args.command == "set":
+            given = {k: getattr(args, k) for k in ROW_FIELDS if getattr(args, k) is not None}
+            row = set_row(workspace, args.agent, framework=args.framework, now=args.now, **given)
+            print(f"{args.agent}: status {row.get('status')}, host {row.get('host') or '-'}")
+            return 0
+        if args.command == "revoke":
+            for name in change_grants(workspace, args.agent, wake=args.wake, action="revoke", now=args.now):
+                print(f"{args.agent}: grant `{name}` removed")
+            return 0
+        if args.command == "grant":
+            if args.suspend or args.resume:
+                action = "suspend" if args.suspend else "resume"
+                changed = change_grants(workspace, args.agent, wake=args.wake, action=action, now=args.now)
+                for name in changed:
+                    print(f"{args.agent}: grant `{name}` {'suspended' if args.suspend else 'resumed'}")
+                return 0
+            missing = [f"--{k}" for k in ("wake", "trigger", "purpose", "approval") if not getattr(args, k)]
+            if missing:
+                raise ar.AgentError(f"a grant needs {', '.join(missing)}")
+            entry = grant(workspace, args.agent, wake=args.wake, trigger=args.trigger,
+                          purpose=args.purpose, approval=args.approval, duty=args.duty,
+                          cost_per_run_usd=args.cost, ends=args.ends, framework=args.framework,
+                          now=args.now)
+            check_cmd = " ".join(filter(None, [
+                "uv run python -m superagent.tools.agents check", args.agent, entry["duty"],
+                "--wake", entry["name"]]))
+            print(f"{args.agent}: wake `{entry['name']}` granted ({entry['trigger']})")
+            print(f"its check: {check_cmd}")
+            return 0
+        due, why = check(workspace, args.agent, args.duty, args.framework, now=args.now,
+                         wake=args.wake)
         if due:
             print(why)
         return 0 if due else 1
     except ar.AgentError as exc:
         print(f"agents: {exc}", file=sys.stderr)
         return 2
+    except CheckFailedError as exc:
+        print(f"agents: {exc}", file=sys.stderr)
+        return 3
+    except (signals.CorruptFileError, signals.WriteRefusedError) as exc:
+        print(f"agents: {exc}", file=sys.stderr)
+        return 1
     except (cadence.CorruptFileError, OSError) as exc:
         print(f"agents: {exc}", file=sys.stderr)
         return 3 if args.command == "check" else 1

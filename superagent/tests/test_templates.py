@@ -270,7 +270,7 @@ def test_config_template_declares_autocode_defaults(framework_dir: Path) -> None
     assert block["models"] == {"runner": {"model": None, "variant": None},
                                "dev": {"model": None, "variant": None}}
     assert block["daily_usd"] is None
-    assert "enabled" not in block, "no switch ships before the runtime integration does"
+    assert block["enabled"] is False, "0.27.0: the switch ships off; `init` never turns it on"
 
 
 def test_agents_registry_template_shape(framework_dir: Path) -> None:

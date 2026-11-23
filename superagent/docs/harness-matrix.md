@@ -18,6 +18,7 @@ self-identifies its row; no code detection beyond `tools/ide.py`
 | Subagent / task tool | Yes | Yes | Yes (runs in the background; the result arrives in a later turn) | No | Assume none |
 | Ranged file reads | Yes (`Read --offset --limit`) | Yes | Yes (`read` with `offset` / `limit`) | Shell equivalents (`sed -n`) | Assume shell |
 | MCP config file | `.cursor/mcp.json` | `.mcp.json` | `opencode.jsonc` (`mcp.servers`) | TOML config (own format) | Varies |
+| Agents as registered sessions (Autocode mode, `rules/autocode.md`) | No | No | Yes (OpenCode 2.3+ with the Autocode plugin; `tools/autocode.py`) | No | No |
 
 Per-file wiring (which harness reads which setup file, and whether it is
 committed) is tabulated in [`harness-setup.md`](harness-setup.md); `AGENTS.md`

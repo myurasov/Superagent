@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-11-22T15:12:36-08:00'
-skill_count: 40
+generated_at: '2026-11-22T21:42:13-08:00'
+skill_count: 41
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -25,6 +25,31 @@ skills:
   typical_files_read:
   - _memory/config.yaml
   - _memory/todo.yaml
+  origin: framework
+- name: superagent-add-agent
+  stem: add-agent
+  path: superagent/skills/add-agent.md
+  one_line: 'Create an agent: a project agent (one for a Project that exists; a registry row, no new file)
+    or a custom agent in the overlay (a role file and its dev twin from the templates, an optional check
+    scrip'
+  triggers:
+  - add an agent
+  - new agent
+  - create an agent for <project>
+  - create a custom agent
+  - make an agent for <X>
+  - give <project> an agent
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 152
+  h2_steps: 7
+  h3_subsections: 4
+  typical_token_cost: 1795
+  typical_files_read:
+  - _memory/agents.yaml
+  - _memory/projects-index.yaml
   origin: framework
 - name: superagent-add-contact
   stem: add-contact
@@ -178,10 +203,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 122
+  lines: 164
   h2_steps: 5
-  h3_subsections: 6
-  typical_token_cost: 1966
+  h3_subsections: 8
+  typical_token_cost: 2769
   typical_files_read:
   - _memory/agents.yaml
   - _memory/config.yaml
@@ -264,10 +289,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 364
+  lines: 372
   h2_steps: 44
   h3_subsections: 0
-  typical_token_cost: 6534
+  typical_token_cost: 6622
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
@@ -300,10 +325,10 @@ skills:
   cli_optional:
   - playwright (Chromium install — one-time per machine; browserctl prints the exact command when the
     browser is missing)
-  lines: 349
+  lines: 351
   h2_steps: 11
   h3_subsections: 0
-  typical_token_cost: 5366
+  typical_token_cost: 5454
   typical_files_read: []
   origin: framework
 - name: superagent-daily-update
@@ -707,12 +732,13 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 196
+  lines: 201
   h2_steps: 5
   h3_subsections: 8
-  typical_token_cost: 1731
+  typical_token_cost: 1999
   typical_files_read:
   - _memory/projects-index.yaml
+  - _memory/agents.yaml
   origin: framework
 - name: superagent-refresh
   stem: refresh
@@ -980,10 +1006,10 @@ skills:
   - any watcher registered in Sources/Watchlist/ that is due (gmail, url, subagent, a harvest pack, …)
   cli_required: []
   cli_optional: []
-  lines: 238
+  lines: 246
   h2_steps: 12
   h3_subsections: 0
-  typical_token_cost: 4020
+  typical_token_cost: 4214
   typical_files_read:
   - _memory/config.yaml
   - _memory/bills.yaml

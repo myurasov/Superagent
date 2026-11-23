@@ -56,7 +56,7 @@ A duty is one mapping in the role's `duties` list. Every field is required.
 | `skill` | a stem from the role's `skills` | The skill a run of the duty executes. |
 | `tier` | `act` \| `approve` \| `prepare` \| `owner` | The autonomy tier of the duty, never looser than the role's `authority`. |
 | `schedule` | a key of `config.preferences.cadences`, `watchlist`, or `on-request` | When the duty runs. Schedule **values** stay in `preferences.cadences` (`weekly_review: "Sunday 18:00"`); the role names the key. The key also names the duty's stamp, `context.yaml.last_runs.<key>`. `watchlist` means each watcher's own cycle and `on-request` means the duty has no schedule; such a duty is stamped under its id (`_` for `-`). |
-| `check` | `cadence` \| `update` \| `watchers` \| `none` | The zero-cost check that says whether the duty is due. |
+| `check` | `cadence` \| `update` \| `watchers` \| `none`, or `tool:<name>` in a custom role | The zero-cost check that says whether the duty is due. |
 
 **A duty's state** is one of `ok`, `due`, `overdue`, `unfinished` and `on-request`. **Due** means the scheduled time has come and the duty has not run since, or its check found work: it is what a scheduler acts on. **Overdue** means late: it is what an attended session is told at open. `contracts/update-loop.md` § 6 defines both, the stamps and the schedule values.
 
@@ -66,6 +66,9 @@ A duty is one mapping in the role's `duties` list. Every field is required.
 - `update` — the update duty's check. Due when a watcher is due by its own schedule (`tools/watchlist.py` `due_rows`) or a document waits in a drop folder (`tools/inbox.py`). Overdue when a healthy watcher's last success is older than its fastest cycle's period plus one day (`overdue_watchers`).
 - `watchers` — the overdue half of `update` alone, for a role that watches and does not drain.
 - `none` — never due by a check. An `on-request` duty uses it.
+- `tool:<name>` — a custom role's own check: the script `workspace/_custom/tools/<name>.py`, run with `--workspace <path>`. Exit 0 means due and what it prints is the reason; exit 1 means not due; any other exit is a failed check (exit 3 from `agents check`). It reads local files and writes nothing. A listing shows the state `custom`; only `check` runs the script. A framework role cannot name one.
+
+**Held.** A duty whose skill is `update` is held outside `config.preferences.update.work_hours` and on its `off_days`: its state stays what it is, and `agents check` exits 1 (`contracts/update-loop.md` § 6).
 
 `uv run python -m superagent.tools.agents check <agent> <duty>` runs the check of one duty: **exit 0** when the duty is due, overdue or unfinished (the reason is printed), **exit 1** when it is not (nothing is printed), 2 for an unknown agent or duty, 3 when the check could not run. A scheduled wake runs this first, so a wake with nothing to do costs nothing.
 
@@ -116,6 +119,9 @@ Per `contracts/custom-overlay.md`:
 A wake is a prompt a runtime types into an agent's session later. The rules hold whatever the runtime:
 
 - **Every periodic wake is a recorded grant the owner approved**: its exact trigger, purpose, cost per run and end date, on the instance's registry row (`wakes`). A periodic wake with no grant must not run.
+- **`agents grant <agent> --wake <name> --trigger ... --purpose ... --approval "<the owner's words>"`** records a grant, after the owner said yes to those terms; the tool cannot see an approval, so the skill asks first. `--suspend` / `--resume` switch grants off and on (a paused project), `agents revoke` removes one.
+- **The check of a granted wake** is `agents check <agent> [<duty>] --wake <name>`: it exits 1 when the row has no grant of that name, or the grant is suspended or past its end, and otherwise runs the duty's check. A wake with no duty is due whenever its grant holds. So a wake that was set without a grant never costs a model call, and an audit names it (`tools/autocode.py wakes`; an agent compares its own wakes with its grants).
+- **A runtime may have a gate of its own** (Autocode's `wake_mode`). It is separate from the grant and never replaces it.
 - **Every periodic wake runs a check first** (§ 3). Nothing due means no model call.
 - **A project agent and a dev twin have no periodic wake by default.** They wake on a message.
 - **A one-time self-wake needs no grant** when all of these hold: the owner started the work it belongs to; it fires once and belongs to that task; it lies at most 24 hours ahead; at most 3 follow one another for the same task. The agent names each one when it sets it.
@@ -123,11 +129,13 @@ A wake is a prompt a runtime types into an agent's session later. The rules hold
 ## 9. With and without Autocode
 
 - **Off (the default).** No agent runs as a session of its own. The chat session takes the lead's role and any other role the work needs: it reads that role's file (and its overlay) and works inside its boundaries. The on-open check (`cadence status --stamp`) names what is late and whose duty it is. Every tool in this contract works in this mode.
-- **On.** An agent runs as a session registered with an Autocode server under its id (§ 4), and its duties run from granted wakes behind their checks. The framework never needs Autocode: no tool in this contract talks to an Autocode server, and the test suite passes without one.
+- **On** (`config.preferences.autocode.enabled: true`; the owner sets it, `init` never does). An agent runs as a session registered with an Autocode server under its id (§ 4), and its duties run from granted wakes behind their checks. `rules/autocode.md` is the rule such a session follows. `tools/autocode.py` is the one module that calls the runtime: `start` (a session with the start prompt and the model of the agent's tier), `park`, `stop`, `retire` (a message to the agent, then the row), `wakes` and `status` (audits, in the owner's shell), `settings` (prints the owner-side lines). The registry row says what is meant to run: `active` (a session with granted wakes), `dormant` (a session that wakes on a message), `off`, `paused`, `retired`.
+- **One machine fetches.** The `active` row of the role that runs the update names its `host`; `agents may-fetch` exits 1 on every other machine (`contracts/update-loop.md` § 3).
+- **The framework never needs Autocode.** No other tool imports `tools/autocode.py` (a test enforces it), and the test suite passes without the runtime.
 - **Compaction** is the harness's own (and Autocode's for a registered agent). The framework ships no compaction mechanism.
 
 ## 10. Manifest and tooling
 
 - `agents/_manifest.yaml` is the roster in one small file: one row per role with its kind, description, skills, duties and dev twin. It is generated by `uv run python -m superagent.tools.build_agent_manifest` (`--check` exits 1 when it is out of date) and carries no timestamp. The tools read the role files themselves, so a stale manifest never changes behavior.
-- `tools/agent_roles.py` is the library (frontmatter, validation, ids, the prefix). `tools/agents.py` is the CLI (`list`, `id`, `duties`, `check`). The `agents` skill is the way in for a person.
+- `tools/agent_roles.py` is the library (frontmatter, validation, ids, the prefix). `tools/agents.py` is the CLI (`list`, `id`, `duties`, `check`, `set`, `grant`, `revoke`, `may-fetch`, `heartbeat`). `tools/autocode.py` is the runtime side (§ 9). The `add-agent` skill creates a project agent or a custom role. The `agents` skill is the way in for a person.
 - Tests keep the contract: the manifest is in step with the role files, every frontmatter is valid, every role has a dev twin, every referenced skill exists, and no role file or agent tool carries personal data or a hardcoded prefix.

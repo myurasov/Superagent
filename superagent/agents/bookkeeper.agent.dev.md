@@ -58,4 +58,5 @@ The notes of the agent that develops and maintains `bookkeeper.agent.md`. The ru
 
 ## Changelog
 
+- 0.27.0 — "As a session of its own": woken by a `fire-only` wake the Updater fires after a bank harvest, and by the lead's message for the monthly close. No scheduled duty, so nothing of it can be late.
 - 0.25.0 — role file created from the Bookkeeper persona of `superagent.agent.md`.

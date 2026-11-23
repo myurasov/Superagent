@@ -104,7 +104,8 @@ def test_migrated_keys_match_the_config_template(tmp_path: Path, framework_dir: 
     template = yaml.safe_load((framework_dir / "templates" / "memory" / "config.yaml").read_text())
     wanted = template["preferences"]
     got = _prefs(ws)
-    assert got["update"] == wanted["update"]
+    assert got["update"]["drop_folders"] == wanted["update"]["drop_folders"], (
+        "the other keys of the block came with 0.27.0 and its own migration")
     assert {k: got["cadences"][k] for k in ("update_light", "update_full")} == {
         k: wanted["cadences"][k] for k in ("update_light", "update_full")}
     assert (ws / "_memory" / "asks.yaml").read_text() == (
@@ -244,6 +245,6 @@ def test_migration_is_registered(framework_dir: Path) -> None:
     manifest = yaml.safe_load((framework_dir / "migrations" / "_manifest.yaml").read_text())
     row = next(m for m in manifest["migrations"] if m["to_version"] == "0.26.0")
     assert row["from_version"] == "0.25.0" and row["revertible"] is True and row["breaking"] is False
-    assert current_version() == "0.26.0"
+    assert current_version() >= "0.26.0"
     chain = find_chain("0.25.0", "0.26.0")
     assert [step.to_version for step in chain] == ["0.26.0"]

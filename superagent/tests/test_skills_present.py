@@ -35,6 +35,8 @@ EXPECTED_SKILLS = {
     "agents",
     # 0.26.0: fetch and tell are separate (contracts/update-loop.md).
     "update", "brief",
+    # 0.27.0: creating project agents and custom agents.
+    "add-agent",
 }
 
 

@@ -50,6 +50,9 @@ MODEL_TIERS = ("runner", "dev")
 CHECKS = ("cadence", "update", "watchers", "none")
 #: Checks that own the "watchers overdue for a check" finding, first match wins.
 WATCHER_CHECKS = ("update", "watchers")
+#: A custom role's own check: `tool:<name>` runs `workspace/_custom/tools/<name>.py`.
+TOOL_CHECK_RE = re.compile(r"^tool:([a-z][a-z0-9_]{0,40})$")
+CUSTOM_TOOLS_REL = "_custom/tools"
 #: Schedule values that are not a key of `preferences.cadences`.
 SCHEDULE_WORDS = ("watchlist", "on-request")
 #: `skills:` value that means "any skill"; a lead role only.
@@ -148,6 +151,23 @@ def autocode_preferences(workspace: Path | None) -> dict[str, Any]:
     """`preferences.autocode` ({} when the block is absent)."""
     block = load_preferences(workspace).get("autocode")
     return block if isinstance(block, dict) else {}
+
+
+def autocode_enabled(workspace: Path | None) -> bool:
+    """`preferences.autocode.enabled`: True when agents run as registered sessions (default False)."""
+    return autocode_preferences(workspace).get("enabled") is True
+
+
+def custom_check_name(check: Any) -> str | None:
+    """`water_due` for the check value `tool:water_due`; None for a built-in check."""
+    match = TOOL_CHECK_RE.match(check) if isinstance(check, str) else None
+    return match.group(1) if match else None
+
+
+def custom_check_path(workspace: Path, check: str) -> Path | None:
+    """The script a `tool:<name>` check runs, `<workspace>/_custom/tools/<name>.py`; None for a built-in."""
+    name = custom_check_name(check)
+    return None if name is None else workspace / CUSTOM_TOOLS_REL / f"{name}.py"
 
 
 def id_prefix(workspace: Path | None) -> str:
@@ -277,8 +297,12 @@ def skill_stems(framework: Path, workspace: Path | None) -> set[str]:
 
 
 def check_frontmatter(fm: dict[str, Any] | None, path: Path, *, skills: set[str],
-                      schedules: set[str]) -> list[str]:
-    """Every problem with a role file's frontmatter, as readable lines ([] = valid)."""
+                      schedules: set[str], tools_dir: Path | None = None) -> list[str]:
+    """Every problem with a role file's frontmatter, as readable lines ([] = valid).
+
+    `tools_dir` is given for a custom role only (`workspace/_custom/tools/`):
+    its duties may then name a check script there, `check: tool:<name>`.
+    """
     label = path.name
     if fm is None:
         return [f"{label}: missing or unparseable YAML frontmatter (`---` block)"]
@@ -378,8 +402,15 @@ def check_frontmatter(fm: dict[str, Any] | None, path: Path, *, skills: set[str]
                     errors.append(f"{where}: `schedule` {schedule!r} is not a key of "
                                   f"`preferences.cadences` nor one of {', '.join(SCHEDULE_WORDS)}")
                 if "check" in duty and duty["check"] not in CHECKS:
-                    errors.append(f"{where}: `check` {duty['check']!r} is not one of "
-                                  f"{', '.join(CHECKS)}")
+                    script = custom_check_name(duty["check"])
+                    if script is None or tools_dir is None:
+                        errors.append(f"{where}: `check` {duty['check']!r} is not one of "
+                                      f"{', '.join(CHECKS)}"
+                                      + (" (a custom role may also say `tool:<name>`)"
+                                         if tools_dir is None and script else ""))
+                    elif not (tools_dir / f"{script}.py").is_file():
+                        errors.append(f"{where}: check script `{CUSTOM_TOOLS_REL}/{script}.py` "
+                                      "does not exist")
     return errors
 
 
@@ -449,7 +480,8 @@ def collect(framework: Path = FRAMEWORK, workspace: Path | None = None
                 roles[by_name[stem]] = dc.replace(roles[by_name[stem]], overlay=path)
                 continue
             fm = read_frontmatter(path)
-            problems = check_frontmatter(fm, path, skills=skills, schedules=schedules)
+            problems = check_frontmatter(fm, path, skills=skills, schedules=schedules,
+                                         tools_dir=workspace / CUSTOM_TOOLS_REL)
             problems += check_dev_twin(path)
             if problems:
                 errors += problems

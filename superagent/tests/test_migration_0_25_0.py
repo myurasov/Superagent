@@ -95,8 +95,11 @@ def test_migrate_seeds_the_block_and_the_registry_and_touches_nothing_else(tmp_p
 
 def test_migrated_block_matches_the_config_template(tmp_path: Path, framework_dir: Path) -> None:
     """A migrated workspace and a freshly initialized one get the same block."""
-    template = (framework_dir / "templates" / "memory" / "config.yaml").read_text(encoding="utf-8")
-    assert _load("migrate").AUTOCODE_BLOCK in template
+    template = yaml.safe_load(
+        (framework_dir / "templates" / "memory" / "config.yaml").read_text(encoding="utf-8"))
+    block = dict(template["preferences"]["autocode"])
+    assert block.pop("enabled") is False, "the switch came with 0.27.0 and its own migration"
+    assert block == yaml.safe_load(_load("migrate").AUTOCODE_BLOCK)["autocode"]
 
 
 def test_migrate_is_idempotent_and_dry_run_writes_nothing(tmp_path: Path) -> None:

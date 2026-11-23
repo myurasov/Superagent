@@ -69,6 +69,10 @@ A source that cannot be reached is reported and kept. It is never evicted silent
 
 The update cycle runs as the first step of the cadence skills (`daily-update`, `whatsup`, `weekly-review`, `monthly-review`), or on its own when the owner says "run the update". The chat session takes this role for that step and follows the same boundaries: it asks nothing during the cycle, and what the cycle queued shows up in the briefing that follows, under "Waiting on your call".
 
+## As a session of its own
+
+When agents run as registered sessions (`rules/autocode.md`), the Updater has two granted wakes, one per duty, each behind its check: `update-light` (every 30 minutes by default) and `update-full` (once a day). Its registry row is `active` and names its machine, which makes that machine the one that fetches (`agents may-fetch`). Work hours and off days (`config.preferences.update`) hold both duties. After a cycle it sends the lead one message with what needs attention, by handle, fires the Bookkeeper's `after-harvest` wake when a finance harvest brought new rows and a Bookkeeper runs on its own (in that case it skips the transaction step of the full tier), and parks.
+
 ## Hand-offs
 
 - **To the lead**: the run report, the asks it queued, and the sources that need attention.

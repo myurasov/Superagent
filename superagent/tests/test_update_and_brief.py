@@ -105,6 +105,7 @@ def test_the_update_renders_no_briefing_and_asks_nothing(framework_dir: Path) ->
         assert marker not in body, f"update.md carries a piece of the briefing: {marker!r}"
     assert "asks no question in chat" in body
     assert "superagent.tools.asks add --agent updater" in body, "what needs the owner's word is queued"
+    assert body.index("agents may-fetch") < body.index("tools.lock hold"), "one machine fetches: asked first"
     for command in ("tools.lock hold", "tools.lock release --token", "watchlist check --due",
                     "tools.inbox list", "tools.heal sweep", "cadence start update-",
                     "cadence finish update-", "signals log --skill update"):

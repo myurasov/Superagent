@@ -57,7 +57,7 @@ Drop folders are `<workspace>/Inbox/` plus every folder in `config.preferences.u
 - **Only the cycle orchestrator takes it**: the `update` skill. A briefing reads stores and takes no lock. The watchlist keeps its own short lock around its state file.
 - **`hold --who <label> --wait <seconds>`** starts a small background holder that keeps the lock across the cycle's many commands and prints a token. **`release --token <token>`** frees it. A holder ends by itself at its time limit (`--ttl`, 2 hours by default), and the kernel frees the lock when the holder dies, so no stale lock is left behind. `release --force` frees the hold of a cycle that died.
 - **A second run waits, then skips.** `hold` exits 1 when the lock stayed taken for the whole wait. The second cycle then does nothing and says so.
-- **Two machines** are not kept apart by this lock. What the watchlist records in the shared state keeps most double work away: a watcher checked today on one machine is not due on the other once the state has synced. The files two machines both write are covered by `rules/concurrent-sessions.md`.
+- **Two machines** are not kept apart by this lock. **One machine fetches**: when the Updater runs as an agent of its own, its registry row is `active` and names its `host`, and `agents may-fetch` exits 1 on every other machine; the `update` skill then skips the cycle there, unless the owner says otherwise in that session. With no separate Updater, every machine may fetch, and what the watchlist records in the shared state keeps most double work away: a watcher checked today on one machine is not due on the other once the state has synced. The files two machines both write are covered by `rules/concurrent-sessions.md`.
 
 ## 4. `brief`: read the stores and report
 
@@ -93,6 +93,7 @@ An entry point carries no command of its own. A test keeps fetch steps out of th
 - **Scheduling goes by the stamp, never by what day it is.** A duty is **due** when its stamp is older than its latest scheduled time. A Sunday review that was missed is due on Monday; one that ran late on Wednesday is due again the next Sunday; a run that ends at 08:41 is due again at 08:30 the next day. An `every N` schedule is due when the stamp is N old.
 - **Due is not overdue.** Due is what a scheduled wake asks before it runs (`agents check <agent> <duty>`, exit 0). **Overdue** is the nag an attended session prints at open (`cadence status`): no daily check in 24 hours, no weekly review in 7 days, the month's review not run past the 1st, the hygiene passes past their interval, a watcher past its period plus a day.
 - **`<key>_auto: false`** in `config.preferences` switches a duty's schedule off: it is never due.
+- **Held.** `config.preferences.update.work_hours` (`"07:00-22:00"`) and `off_days` (weekday names or dates) say when a scheduled update may run. Outside them the duties whose skill is `update` are held: `agents check` exits 1. A cycle the owner starts by hand always runs.
 - **The update duties.** `update-full` is due by its stamp (`update_full`, daily at 06:00 by default). `update-light` is due when there is work: a watcher is due, or a document waits in a drop folder. Its cadence value (`update_light`, every 30 minutes by default) is how often it may look.
 
 ## 7. What this contract never does

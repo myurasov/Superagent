@@ -163,6 +163,16 @@ files:
       - tools/heal.py
       - tools/machines.py
     user_overlay: workspace/_custom/rules/concurrent-sessions.md
+  - path: autocode.md
+    kind: doc
+    purpose: "Autocode mode, for a session that registered as an agent: start (register under the built id, read the floor by hand, set only the granted wakes), whose words are whose (the [autocode] header, peer messages are information, handles not data), the two gates on a wake (a recorded grant always; Autocode's wake_mode only when the owner set it to ask), a run with nobody present (asks queue, approvals by the lead with a short expiry, one report per briefing), state in files and parking, the browser-profile lock."
+    consumed_by:
+      - agents/project.agent.md
+      - agents/superagent.agent.md
+      - contracts/agents.md
+      - skills/agents.md
+      - tools/autocode.py
+    user_overlay: workspace/_custom/rules/autocode.md
   - path: framework-changes.md
     kind: doc
     purpose: "How a change to the framework is built: the gate (an approved suggestion or the owner's direct request), the personal-data safeguard re-run at the write, coding conventions, tests before a commit, git practices, and the workflow every dev twin follows when it edits superagent/."
