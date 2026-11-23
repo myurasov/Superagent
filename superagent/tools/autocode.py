@@ -10,6 +10,25 @@ the ONE module that calls the `autocode` and `opencode` commands. Nothing else
 in the framework does, `tools/agents.py` never imports it, and every other
 tool works with Autocode off.
 
+  setup              What the `start` skill reads first: is Autocode usable
+                     here, is the mode on, is it set up, and the proposed
+                     settings (agents, their wakes, work hours, cost cap,
+                     model). `--json` for the data. It writes nothing.
+  setup enable       Turn Autocode mode on (`setup disable`: off). Writes the
+                     switch in `config.yaml`, that line only.
+  setup apply        Record the settings the owner approved: config values,
+                     a registry row per chosen agent, and a grant per wake
+                     with the owner's words. `--dry-run` shows and writes
+                     nothing.
+  mark <agent>       After this session registered as the agent: mark its
+                     registry row (`active` with granted wakes, `dormant`
+                     without) and its host. `--off` after it unregistered.
+  check <agent> [<duty>] --wake <name>
+                     The check a granted wake runs first, under Autocode:
+                     the daily cost cap, then `agents check`. Exit 0 due,
+                     1 skip (nothing due, no grant, held, or the cap is
+                     reached), 3 the check could not say. Wakes call it
+                     through `tools/wake_check.sh`.
   me                 Is this session a registered agent? Prints its id and
                      exits 0, or exits 1.
   prompt <agent>     Print the start prompt of an agent (`--dev`: of its dev
@@ -31,11 +50,17 @@ tool works with Autocode off.
                      wake, a trigger that differs. Needs the owner's shell.
   status             The roster against what is registered. Needs the owner's
                      shell.
-  settings           Print the owner-side settings lines for this prefix. It
-                     sets nothing: only the owner sets Autocode settings.
+  settings           Print optional Autocode settings lines for this prefix
+                     (hardening; nothing needs them). It sets nothing: only
+                     the owner sets Autocode settings.
   lock-name browser <profile>
                      The name of the Autocode lock two agents share for one
                      browser profile.
+
+No step asks the owner to edit a file or to run a command: the `start` skill
+asks in question cards and this tool does the writes (`setup enable`, `setup
+apply`, `mark`). Autocode's own settings stay at their defaults; the daily
+cost cap is kept by the wake's check, which needs no Autocode setting.
 
 Who can run what. In an agent's own shell the `autocode` command only sends
 messages, fires wakes and says who it is; listing agents and wakes is the
@@ -48,6 +73,8 @@ registered; a message that could not be sent; `wakes`: something differs);
 `opencode` command is missing, or refused this shell.
 
 CLI:
+    uv run python -m superagent.tools.autocode setup [--json]
+    uv run python -m superagent.tools.autocode setup apply --approval "<the owner's words>" --agents updater
     uv run python -m superagent.tools.autocode start updater [--print]
     uv run python -m superagent.tools.autocode park project:<slug>
     uv run python -m superagent.tools.autocode wakes [updater]
@@ -56,16 +83,22 @@ CLI:
 from __future__ import annotations
 
 import argparse
+import copy
+import datetime as dt
 import json
 import os
+import re
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from superagent.tools import agent_roles as ar
-from superagent.tools import agents, machines
+from superagent.tools import agents, cadence, machines
 
 FRAMEWORK = Path(__file__).resolve().parent.parent
 RULE_REL = "superagent/rules/autocode.md"
@@ -74,10 +107,37 @@ STRIP_ENV_PREFIXES = ("AUTOCODE_", "OPENCODE")
 START_TIMEOUT_S = 900
 CLI_TIMEOUT_S = 60
 BROWSER_LOCK = "browser"
+CONFIG_REL = "_memory/config.yaml"
+#: The script a wake's check goes through: it finds `uv` whatever PATH the runtime has.
+WAKE_CHECK = "sh superagent/tools/wake_check.sh"
+#: What `setup` may write in config.yaml: setting -> the key's path under `preferences`.
+SETTABLE: dict[str, tuple[str, ...]] = {
+    "enabled": ("autocode", "enabled"),
+    "daily_usd": ("autocode", "daily_usd"),
+    "runner_model": ("autocode", "models", "runner", "model"),
+    "runner_variant": ("autocode", "models", "runner", "variant"),
+    "work_hours": ("update", "work_hours"),
+}
+#: Proposed when no work hours are set: scheduled updates stay out of the night.
+PROPOSED_WORK_HOURS = "06:00-23:00"
+#: Wakes another agent fires, by role: (name, trigger, purpose). The role file says who fires it.
+ON_EVENT_WAKES: dict[str, tuple[tuple[str, str, str], ...]] = {
+    "bookkeeper": (("after-harvest", "fire-only",
+                    "reconcile and review the new rows after a bank harvest"),),
+}
+_HOURS_RE = re.compile(r"^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$")
+_CRON_CLOCK_RE = re.compile(r'^cron\s+"(\d{1,2})\s+(\d{1,2})\s')
+_LINE_RE = re.compile(r"""^(?P<head>\s*[^\s:#][^:#]*:)[ \t]*(?P<value>"(?:[^"\\]|\\.)*"|'[^']*'|[^#]*?)"""
+                      r"""(?P<tail>[ \t]+#.*)?$""")
+_KEEP: Any = object()  # "this setting was not given": keep what the config has
 
 
 class Unavailable(RuntimeError):
     """The `autocode` / `opencode` command is missing, or refused this shell."""
+
+
+class ConfigError(RuntimeError):
+    """`config.yaml` could not be changed safely; nothing was written."""
 
 
 # ------------------------------------------------------------------- running
@@ -179,8 +239,12 @@ def _rel(path: Path, framework: Path) -> str:
 
 
 def check_command(agent: str, grant: dict[str, Any]) -> str:
-    """The zero-cost check a granted wake runs first (`contracts/agents.md` § 8)."""
-    parts = ["uv run python -m superagent.tools.agents check", agent]
+    """The zero-cost check a granted wake runs first (`contracts/agents.md` § 8).
+
+    It goes through `tools/wake_check.sh` (which finds `uv` on any PATH) to
+    `autocode check`: the daily cost cap, then `agents check ... --wake`.
+    """
+    parts = [WAKE_CHECK, agent]
     if grant.get("duty"):
         parts.append(str(grant["duty"]))
     return " ".join([*parts, "--wake", str(grant["name"])])
@@ -237,6 +301,433 @@ def start_prompt(workspace: Path, framework: Path, name: str, *, dev: bool = Fal
                  "5. Tell the owner in one report message that you are started.")
     lines.append("6. Do no other work now. End your turn and go idle: you will be woken.")
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------- setup
+
+def _indent(line: str) -> int:
+    return len(line) - len(line.lstrip(" "))
+
+
+def set_config(workspace: Path, setting: str, value: Any) -> bool:
+    """Set one known setting in `config.yaml`, editing that line only. True when the file changed.
+
+    `setting` is a key of `SETTABLE`. The key's line is rewritten with its
+    comment kept; a key that is missing is added at the end of its block.
+    The result is parsed and compared with the old content plus the new
+    value before anything is written. Raises ConfigError when the file or the
+    block cannot be read, when the key holds a value over several lines, or
+    when the edit would change anything else.
+    """
+    keys = ("preferences", *SETTABLE[setting])
+    path = workspace / CONFIG_REL
+    try:
+        text = path.read_text(encoding="utf-8")
+        before = yaml.safe_load(text)
+    except (OSError, yaml.YAMLError) as exc:
+        raise ConfigError(f"{CONFIG_REL} cannot be read ({exc})") from exc
+    where = ".".join(keys[:-1])
+    node: Any = before
+    for part in keys[:-1]:
+        node = node.get(part) if isinstance(node, dict) else None
+    if not isinstance(node, dict):
+        raise ConfigError(f"{CONFIG_REL} has no `{where}` block")
+    if keys[-1] in node and node[keys[-1]] == value and type(node[keys[-1]]) is type(value):
+        return False
+    lines = text.splitlines(keepends=True)
+    if lines and not lines[-1].endswith("\n"):
+        lines[-1] += "\n"
+    lo, hi, indent = 0, len(lines), 0
+    for depth, part in enumerate(keys):
+        key_re = re.compile(rf"^ {{{indent}}}{re.escape(part)}\s*:")
+        hit = next((j for j in range(lo, hi) if key_re.match(lines[j])), None)
+        if depth == len(keys) - 1:
+            rendered = json.dumps(value)
+            if hit is None:
+                body = [j for j in range(lo, hi)
+                        if lines[j].strip() and not lines[j].lstrip().startswith("#")]
+                lines.insert(body[-1] + 1 if body else lo, f"{' ' * indent}{part}: {rendered}\n")
+                break
+            found = _LINE_RE.match(lines[hit].rstrip("\n"))
+            after = next((j for j in range(hit + 1, hi)
+                          if lines[j].strip() and not lines[j].lstrip().startswith("#")), None)
+            spans = after is not None and (_indent(lines[after]) > indent
+                                           or lines[after].lstrip().startswith("- "))
+            if found is None or (not found.group("value").strip() and spans):
+                raise ConfigError(f"{CONFIG_REL}: `{'.'.join(keys)}` holds a value over several "
+                                  "lines; nothing written")
+            lines[hit] = f"{found.group('head')} {rendered}{found.group('tail') or ''}\n"
+            break
+        if hit is None:
+            raise ConfigError(f"{CONFIG_REL} has no `{where}` block")
+        end = next((j for j in range(hit + 1, hi) if lines[j].strip()
+                    and not lines[j].lstrip().startswith("#") and _indent(lines[j]) <= indent), hi)
+        inner = [j for j in range(hit + 1, end)
+                 if lines[j].strip() and not lines[j].lstrip().startswith("#")]
+        if not inner:
+            raise ConfigError(f"{CONFIG_REL}: `{'.'.join(keys[:depth + 1])}` is not a block mapping")
+        lo, hi, indent = hit + 1, end, _indent(lines[inner[0]])
+    new_text = "".join(lines)
+    expected = copy.deepcopy(before)
+    node = expected
+    for part in keys[:-1]:
+        node = node[part]
+    node[keys[-1]] = value
+    try:
+        same = yaml.safe_load(new_text) == expected
+    except yaml.YAMLError:
+        same = False
+    if not same:
+        raise ConfigError(f"{CONFIG_REL}: setting `{'.'.join(keys)}` would change another key; "
+                          "nothing written")
+    mode = stat.S_IMODE(path.stat().st_mode)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(new_text, encoding="utf-8")
+    os.chmod(tmp, mode)
+    tmp.replace(path)
+    machines.beat(workspace, min_interval_s=60)
+    return True
+
+
+def trigger_for(schedule: cadence.Schedule) -> str:
+    """The Autocode trigger that runs at a cadence schedule's times (the server's time zone)."""
+    if schedule.kind == "every":
+        minutes = max(int((schedule.every or dt.timedelta()).total_seconds() // 60), 1)
+        for unit, size in (("d", 1440), ("h", 60)):
+            if minutes % size == 0:
+                return f"every {minutes // size}{unit}"
+        return f"every {minutes}m"
+    clock = f"{schedule.minute} {schedule.hour}"
+    if schedule.kind == "weekly":
+        return f'cron "{clock} * * {((schedule.weekday or 0) + 1) % 7}"'
+    if schedule.kind == "monthly":
+        return f'cron "{clock} {schedule.day} * *"'
+    return f'cron "{clock} * * *"'
+
+
+def proposed_wakes(workspace: Path, framework: Path, role: ar.Role) -> list[dict[str, Any]]:
+    """The wakes proposed for an agent of `role`, from its duties and the cadence values.
+
+    One per duty the role may run on its own (tier `act`) that has a schedule
+    in `config.preferences.cadences` and a check: the wake's name is the
+    duty's id and its trigger runs at the schedule's times. Plus the wakes
+    another agent fires (`ON_EVENT_WAKES`). A role with neither wakes on a
+    message only.
+    """
+    values = cadence.cadence_values(workspace, framework)
+    wakes: list[dict[str, Any]] = []
+    for duty in role.duties:
+        schedule = cadence.parse_schedule(values.get(duty.schedule))
+        if duty.tier != "act" or duty.check == "none" or schedule is None:
+            continue
+        wakes.append({"name": duty.id, "trigger": trigger_for(schedule), "duty": duty.id,
+                      "purpose": f"the duty `{duty.id}` ({values.get(duty.schedule)})",
+                      "held": duty.skill == agents.HELD_SKILL})
+    for name, trigger, purpose in ON_EVENT_WAKES.get(role.name, ()):
+        wakes.append({"name": name, "trigger": trigger, "duty": None, "purpose": purpose,
+                      "held": False})
+    return wakes
+
+
+def _outside_hours(trigger: str, work_hours: Any) -> bool:
+    """True when a `cron "M H ..."` trigger runs at a time outside `work_hours` ("HH:MM-HH:MM")."""
+    clock = _CRON_CLOCK_RE.match(trigger.strip())
+    window = _HOURS_RE.match(str(work_hours or "").strip())
+    if not clock or not window:
+        return False
+    minute = int(clock.group(2)) * 60 + int(clock.group(1))
+    start = int(window.group(1)) * 60 + int(window.group(2))
+    end = int(window.group(3)) * 60 + int(window.group(4))
+    inside = start <= minute < end if start <= end else (minute >= start or minute < end)
+    return not inside
+
+
+def _has(name: str) -> bool:
+    try:
+        _binary(name)
+    except Unavailable:
+        return False
+    return True
+
+
+def setup_state(workspace: Path, framework: Path) -> dict[str, Any]:
+    """Everything the `start` skill needs to ask its questions. Reads only.
+
+    `available`: is the `autocode` command here, the `opencode` command, and
+    does this shell belong to a session the Autocode plugin runs in. `enabled`
+    is the switch. `configured` is true once the lead has a registry row
+    (`setup apply` creates it). `this_session` is the id this session is
+    registered under. `settings` are the values now, `proposed` what `setup
+    apply` writes when nothing else is said. `agents` lists every agent that
+    can run, with its granted wakes and the wakes proposed for it.
+    """
+    roles, _errors = ar.collect(framework, workspace)
+    data = agents.roster(workspace, framework)
+    prefs = ar.load_preferences(workspace)
+    update = prefs.get("update") if isinstance(prefs.get("update"), dict) else {}
+    auto = ar.autocode_preferences(workspace)
+    runner = (auto.get("models") or {}).get("runner") if isinstance(auto.get("models"), dict) else None
+    runner = runner if isinstance(runner, dict) else {}
+    head = ar.lead(roles)
+    fetcher = ar.check_owner(roles, "update")
+    try:
+        mine = me() if _has("autocode") else None
+    except Unavailable:
+        mine = None
+    listed: list[dict[str, Any]] = []
+    for agent in data["agents"]:
+        role = next((r for r in roles if r.name == agent["role"]), None)
+        if role is None:
+            continue
+        listed.append({
+            "name": agent["name"], "id": agent["id"], "kind": agent["kind"],
+            "lead": head is not None and role.name == head.name,
+            "recommended": agent["name"] == fetcher,
+            "row": agent["registered"], "status": agent["status"], "host": agent["host"],
+            "grants": agent["grants"],
+            "proposed": proposed_wakes(workspace, framework, role),
+        })
+    hours = update.get("work_hours")
+    proposed_hours = hours
+    if not hours and not any(_outside_hours(w["trigger"], PROPOSED_WORK_HOURS)
+                             for a in listed for w in a["proposed"] if w["held"]):
+        proposed_hours = PROPOSED_WORK_HOURS
+    lead_row = next((a for a in listed if a["lead"]), None)
+    return {
+        "available": {"autocode": _has("autocode"), "opencode": _has("opencode"),
+                      "plugin": bool(os.environ.get("AUTOCODE_SESSION"))},
+        "enabled": ar.autocode_enabled(workspace),
+        "configured": bool(lead_row and lead_row["row"]),
+        "this_session": mine,
+        "prefix": data["prefix"],
+        "lead": lead_row["name"] if lead_row else None,
+        "settings": {"work_hours": hours, "off_days": update.get("off_days") or [],
+                     "daily_usd": auto.get("daily_usd"), "runner_model": runner.get("model"),
+                     "runner_variant": runner.get("variant")},
+        "proposed": {"work_hours": proposed_hours},
+        "agents": listed,
+    }
+
+
+def render_setup(state: dict[str, Any]) -> list[str]:
+    """`setup_state` as the lines the `start` skill shows the owner."""
+    have = state["available"]
+    if not have["autocode"]:
+        first = "Autocode: not installed on this machine. Agents cannot run as sessions of their own here."
+    elif not have["plugin"]:
+        first = "Autocode: installed, and this session does not run its plugin, so it cannot register."
+    else:
+        first = "Autocode: available in this session."
+    lines = [first,
+             f"Mode: {'ON' if state['enabled'] else 'OFF'}. "
+             + ("Set up." if state["configured"] else "Not set up yet."),
+             "This session: " + (f"registered as {state['this_session']}." if state["this_session"]
+                                 else "not registered.")]
+    now, plan = state["settings"], state["proposed"]
+    hours = now["work_hours"] or "any hour"
+    if plan["work_hours"] != now["work_hours"]:
+        hours += f" (proposed: {plan['work_hours']})"
+    model = now["runner_model"] or "the harness's default"
+    if now["runner_model"] and now["runner_variant"]:
+        model += f"#{now['runner_variant']}"
+    cap = f"${now['daily_usd']:g}" if isinstance(now["daily_usd"], (int, float)) else "none"
+    lines += ["", "Settings:",
+              f"  work hours of the scheduled update: {hours}",
+              f"  daily cost cap per agent: {cap}",
+              f"  model of agents started in the background: {model}",
+              "", "Agents:"]
+    for agent in state["agents"]:
+        tags = [t for t, on in (("the lead", agent["lead"]), ("recommended", agent["recommended"])) if on]
+        where = f"row {agent['status']}" + (f" on {agent['host']}" if agent["host"] else "") \
+            if agent["row"] else "no row yet"
+        lines.append(f"  {agent['name']} ({agent['id']})" + (f" [{', '.join(tags)}]" if tags else "")
+                     + f": {where}")
+        granted = {g["name"]: g for g in agent["grants"]}
+        for wake in agent["proposed"]:
+            mark_ = "granted" if wake["name"] in granted and granted[wake["name"]]["trigger"] == wake["trigger"] \
+                else "proposed"
+            lines.append(f"    wake {wake['name']}: {wake['trigger']}  [{mark_}]  {wake['purpose']}")
+        for name, grant in granted.items():
+            if name not in {w["name"] for w in agent["proposed"]} or \
+                    grant["trigger"] != next(w["trigger"] for w in agent["proposed"] if w["name"] == name):
+                state_ = "suspended" if grant.get("status") == "suspended" else "granted"
+                lines.append(f"    wake {name}: {grant['trigger']}  [{state_}]  {grant.get('purpose') or ''}".rstrip())
+        if not agent["proposed"] and not granted:
+            lines.append("    no wake: it wakes on a message")
+    return lines
+
+
+def apply_setup(workspace: Path, framework: Path, *, approval: str, names: list[str] | None = None,
+                work_hours: Any = _KEEP, daily_usd: Any = _KEEP, runner_model: Any = _KEEP,
+                runner_variant: Any = _KEEP, triggers: dict[tuple[str, str], str] | None = None,
+                skip: set[tuple[str, str]] | None = None, no_wakes: bool = False,
+                dry_run: bool = False) -> list[str]:
+    """Record the setup the owner approved; return one line per thing done.
+
+    The lead and every agent in `names` get a registry row and a grant per
+    wake: the proposed wakes (`proposed_wakes`), with a trigger from
+    `triggers[(agent, wake)]` where the owner changed one, without the ones
+    in `skip`, and none at all with `no_wakes`. `approval` is what the owner
+    said to these terms and is written on every grant; the tool cannot see an
+    approval, so the skill asks first. Settings that are given are written to
+    `config.yaml`. A grant that already holds the same terms is left alone,
+    so a second run changes nothing.
+
+    Raises AgentError when the mode is off, when an agent or a wake is not
+    known, or when a scheduled update would lie outside the work hours.
+    """
+    if not ar.autocode_enabled(workspace):
+        raise ar.AgentError("Autocode mode is off: turn it on first (`setup enable`), on the "
+                            "owner's yes")
+    if not approval or not approval.strip():
+        raise ar.AgentError("`setup apply` needs --approval: the owner's words to these terms")
+    state = setup_state(workspace, framework)
+    by_name = {a["name"]: a for a in state["agents"]}
+    if state["lead"] is None:
+        raise ar.AgentError("no lead role is defined")
+    chosen = [state["lead"]] + [n for n in dict.fromkeys(names or []) if n != state["lead"]]
+    unknown = [n for n in chosen if n not in by_name]
+    if unknown:
+        raise ar.AgentError(f"no agent named {', '.join(unknown)} (agents: {', '.join(by_name)}). "
+                            "A project agent is created with the `add-agent` skill first")
+    triggers, skip = dict(triggers or {}), set(skip or ())
+    hours = state["settings"]["work_hours"] if work_hours is _KEEP else work_hours
+    if hours is not None and not _HOURS_RE.match(str(hours).strip()):
+        raise ar.AgentError(f'work hours {hours!r}: write them as "07:00-22:00", or `none`')
+    for label, value in (("--daily-usd", daily_usd),):
+        if value is not _KEEP and value is not None and not (isinstance(value, (int, float)) and value > 0):
+            raise ar.AgentError(f"{label} takes a positive number, or `none`")
+    plan: list[tuple[str, dict[str, Any]]] = []
+    known = {(a, w["name"]) for a in chosen for w in by_name[a]["proposed"]}
+    stray = sorted(f"{a}:{w}" for a, w in (set(triggers) | skip) - known)
+    if stray:
+        raise ar.AgentError(f"no such proposed wake: {', '.join(stray)}")
+    for name in chosen:
+        for wake in [] if no_wakes else by_name[name]["proposed"]:
+            if (name, wake["name"]) in skip:
+                continue
+            trigger = " ".join(triggers.get((name, wake["name"]), wake["trigger"]).split())
+            if wake["held"] and _outside_hours(trigger, hours):
+                raise ar.AgentError(f"{name} `{wake['name']}` ({trigger}) lies outside the work hours "
+                                    f"{hours}: a held update never runs. Change the time or the hours")
+            plan.append((name, {**wake, "trigger": trigger}))
+    said = " ".join(approval.split())
+    done: list[str] = []
+    tag = "would " if dry_run else ""
+    for setting, value in (("work_hours", work_hours), ("daily_usd", daily_usd),
+                           ("runner_model", runner_model), ("runner_variant", runner_variant)):
+        if value is _KEEP or state["settings"][setting] == value:
+            continue
+        done.append(f"{tag}set {'.'.join(SETTABLE[setting])}: {json.dumps(value)}")
+        if not dry_run:
+            set_config(workspace, setting, value)
+    for name in chosen:
+        if not by_name[name]["row"]:
+            done.append(f"{tag}add the registry row of {name}")
+            if not dry_run:
+                agents.set_row(workspace, name, framework=framework, source="start")
+    for name, wake in plan:
+        held = next((g for g in by_name[name]["grants"] if g["name"] == wake["name"]), None)
+        if held and held["trigger"] == wake["trigger"] and held.get("duty") == wake["duty"] \
+                and held.get("status", "active") == "active":
+            continue
+        done.append(f"{tag}grant {name} `{wake['name']}`: {wake['trigger']}")
+        if not dry_run:
+            agents.grant(workspace, name, wake=wake["name"], trigger=wake["trigger"],
+                         purpose=wake["purpose"], approval=said, duty=wake["duty"], framework=framework)
+    return done or ["nothing to change: the setup already holds these terms"]
+
+
+def mark(workspace: Path, framework: Path, name: str, *, off: bool = False) -> dict[str, Any]:
+    """Mark the registry row of the agent this session registered as (or, with `off`, left).
+
+    `active` with granted wakes, `dormant` without, and this machine as its
+    host; `off` after it unregistered. The row follows the registration and
+    never leads it: raises RuntimeError when this session is not registered
+    under the agent's id (or, with `off`, still is).
+    """
+    info = _agent(workspace, framework, name)
+    mine = me()
+    if off:
+        if mine == info["id"]:
+            raise RuntimeError(f"this session is still registered as {mine}: unregister first")
+        agents.set_row(workspace, name, framework=framework, source="start", status="off")
+        return {"id": info["id"], "status": "off", "host": None}
+    if mine != info["id"]:
+        raise RuntimeError(f"this session is not registered as {info['id']}"
+                           + (f" (it is {mine})" if mine else "") + ": register first")
+    status_ = "active" if info["grants"] else "dormant"
+    host = machines.machine_name(create=False)
+    agents.set_row(workspace, name, framework=framework, source="start", status=status_, host=host)
+    return {"id": info["id"], "status": status_, "host": host}
+
+
+# ------------------------------------------------------- the check of a wake
+
+def daily_cap(workspace: Path, framework: Path, name: str) -> float | None:
+    """The agent's daily cost cap in USD: its registry row's, else `preferences.autocode.daily_usd`."""
+    row = next((a for a in agents.roster(workspace, framework)["agents"] if a["name"] == name), None)
+    for value in ((row or {}).get("daily_usd"), ar.autocode_preferences(workspace).get("daily_usd")):
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
+            return float(value)
+    return None
+
+
+def spend_today() -> tuple[str | None, float | None]:
+    """(the id this session is registered under, what it spent today in USD), from `autocode me`."""
+    result = _autocode(["me", "--json"])
+    try:
+        data = json.loads(result.stdout or "null")
+    except ValueError:
+        return None, None
+    if not isinstance(data, dict):
+        return None, None
+    agent = data.get("agent") if isinstance(data.get("agent"), dict) else {}
+    cost = agent.get("cost") if isinstance(agent.get("cost"), dict) else data.get("cost")
+    spent = cost.get("today_usd") if isinstance(cost, dict) else None
+    return (str(agent["id"]) if agent.get("id") else None,
+            float(spent) if isinstance(spent, (int, float)) else None)
+
+
+def _cap_notice(workspace: Path, framework: Path, info: dict[str, Any], spent: float, cap: float) -> None:
+    """Say once a day that an agent reached its cap: to the lead, or from the lead to the owner."""
+    today = cadence.now_local().date().isoformat()
+    noticed = machines.read_local_state(workspace).get("cap_noticed")
+    noticed = noticed if isinstance(noticed, dict) else {}
+    if noticed.get(info["id"]) == today:
+        return
+    text = (f"Cost cap: {info['name']} spent ${spent:.2f} of its ${cap:g} daily cap. Its scheduled "
+            "runs are skipped until tomorrow. A message still wakes it.")
+    to_owner = info["id"] == info["lead_id"]
+    args = ["send", "owner" if to_owner else info["lead_id"], text, "--subject", "Cost cap"]
+    try:
+        _autocode(args + (["--report"] if to_owner else []))
+        machines.write_local_state(workspace, cap_noticed={**noticed, info["id"]: today})
+    except (Unavailable, OSError):
+        return  # the run is skipped either way; the notice is tried again at the next check
+
+
+def run_check(workspace: Path, framework: Path, name: str, duty: str | None, wake: str
+              ) -> tuple[int, str]:
+    """(exit code, line to print) of a granted wake's check under Autocode.
+
+    First the daily cost cap, when the agent has one: at or past it the run is
+    skipped (1), and one notice a day goes out. Then `agents check ... --wake`
+    (0 due, 1 not due). 3 when the cap cannot be checked or a custom check
+    failed: a check that cannot say is a failure, never "not due".
+    """
+    cap = daily_cap(workspace, framework, name)
+    if cap is not None:
+        info = _agent(workspace, framework, name)
+        agent_id, spent = spend_today()
+        if agent_id != info["id"] or spent is None:
+            return 3, (f"{name}: a daily cap of ${cap:g} is set and today's spend cannot be read "
+                       f"here (this session is {agent_id or 'not registered'})")
+        if spent >= cap:
+            _cap_notice(workspace, framework, info, spent, cap)
+            return 1, ""
+    due, why = agents.check(workspace, name, duty, framework, wake=wake)
+    return (0, why) if due else (1, "")
 
 
 # -------------------------------------------------------------------- actions
@@ -385,10 +876,12 @@ def settings_lines(workspace: Path, framework: Path) -> list[str]:
     head = ar.lead(roles)
     lead_id = ar.agent_id(prefix, head.name) if head else None
     cap = ar.autocode_preferences(workspace).get("daily_usd")
-    lines = ["# Owner-side settings for the agents of this workspace. Run them in a terminal on the",
-             "# Autocode server's machine. Only the owner sets these; nothing here was run."]
+    lines = ["# Optional Autocode settings for the agents of this workspace. Nothing needs them: the",
+             "# agents run on Autocode's defaults, and the daily cost cap is kept by each wake's check.",
+             "# They harden the setup. Only the owner sets them, in a terminal on the Autocode",
+             "# server's machine; nothing here was run."]
     lines.append(f"autocode settings set daily_usd {cap} --match '{prefix}:*'" if cap is not None else
-                 f"# no daily cap is configured (preferences.autocode.daily_usd): "
+                 f"# a hard cap enforced by Autocode itself: "
                  f"autocode settings set daily_usd <USD> --match '{prefix}:*'")
     for agent in data["agents"]:
         if agent["daily_usd"] is not None and agent["daily_usd"] != cap:
@@ -421,6 +914,32 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="autocode", description=__doc__.split("\n\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("me", parents=[common], help="Is this session a registered agent?")
+    su = sub.add_parser("setup", parents=[common],
+                        help="The state and the proposed settings; enable, disable, apply.")
+    su.add_argument("action", nargs="?", default="status",
+                    choices=["status", "enable", "disable", "apply"])
+    su.add_argument("--json", action="store_true", help="status: print the data.")
+    su.add_argument("--approval", default=None, help="apply: the owner's words to these terms.")
+    su.add_argument("--agents", default="", help="apply: the agents to set up beside the lead, a comma list.")
+    su.add_argument("--work-hours", default=None, help='apply: "07:00-22:00", or `none` for any hour.')
+    su.add_argument("--daily-usd", default=None, help="apply: the daily cost cap per agent, or `none`.")
+    su.add_argument("--runner-model", default=None, help="apply: the model of agents started in the background.")
+    su.add_argument("--runner-variant", default=None, help="apply: that model's variant.")
+    su.add_argument("--wake", action="append", default=[], metavar="AGENT:NAME=TRIGGER",
+                    help="apply: another trigger for a proposed wake (repeatable).")
+    su.add_argument("--skip", action="append", default=[], metavar="AGENT:NAME",
+                    help="apply: leave a proposed wake out (repeatable).")
+    su.add_argument("--no-wakes", action="store_true", help="apply: grant no wake (an idle start).")
+    su.add_argument("--dry-run", action="store_true", help="apply: show what would be written.")
+    mk = sub.add_parser("mark", parents=[common],
+                        help="Mark the row of the agent this session registered as.")
+    mk.add_argument("agent")
+    mk.add_argument("--off", action="store_true", help="The session unregistered: the row becomes `off`.")
+    ck = sub.add_parser("check", parents=[common],
+                        help="The check of a granted wake: the cost cap, then `agents check`.")
+    ck.add_argument("agent")
+    ck.add_argument("duty", nargs="?", default=None)
+    ck.add_argument("--wake", required=True)
     for name, text in (("prompt", "Print an agent's start prompt."),
                        ("start", "Start a session for an agent.")):
         cmd = sub.add_parser(name, parents=[common], help=text)
@@ -457,7 +976,17 @@ def main(argv: list[str] | None = None) -> int:
             if agent_id:
                 print(agent_id)
             return 0 if agent_id else 1
-        if args.command == "prompt":
+        if args.command == "check":
+            code, line = run_check(workspace, fw, args.agent, args.duty, args.wake)
+            if line:
+                print(line, file=sys.stderr if code == 3 else sys.stdout)
+            return code
+        if args.command == "setup":
+            return _setup_command(args, workspace, fw)
+        if args.command == "mark":
+            done = mark(workspace, fw, args.agent, off=args.off)
+            print(f"{done['id']}: row `{done['status']}`" + (f" on {done['host']}" if done["host"] else ""))
+        elif args.command == "prompt":
             print(start_prompt(workspace, fw, args.agent, dev=args.dev))
         elif args.command == "start":
             if args.show:
@@ -499,12 +1028,65 @@ def main(argv: list[str] | None = None) -> int:
     except ar.AgentError as exc:
         print(f"autocode: {exc}", file=sys.stderr)
         return 2
-    except Unavailable as exc:
+    except (Unavailable, agents.CheckFailedError) as exc:
         print(f"autocode: {exc}", file=sys.stderr)
         return 3
     except RuntimeError as exc:
         print(f"autocode: {exc}", file=sys.stderr)
         return 1
+    return 0
+
+
+def _value(text: str | None, kind: type = str) -> Any:
+    """A `setup apply` flag as a value: not given keeps the config's, `none` clears it."""
+    if text is None:
+        return _KEEP
+    if text.strip().lower() in ("none", "null", ""):
+        return None
+    if kind is float:
+        try:
+            return float(text.strip().lstrip("$"))
+        except ValueError as exc:
+            raise ar.AgentError(f"{text!r} is not a number") from exc
+    return text.strip()
+
+
+def _pairs(items: list[str], *, with_value: bool) -> dict[tuple[str, str], str]:
+    """`AGENT:NAME[=TRIGGER]` flags as {(agent, wake): trigger}. An agent name may hold a colon."""
+    out: dict[tuple[str, str], str] = {}
+    for item in items:
+        left, sep, right = item.partition("=")
+        agent, colon, wake = left.strip().rpartition(":")
+        if not colon or not agent or not wake or (with_value and (not sep or not right.strip())):
+            form = "AGENT:NAME=TRIGGER" if with_value else "AGENT:NAME"
+            raise ar.AgentError(f"{item!r}: write it as {form}")
+        out[(agent, wake)] = right.strip()
+    return out
+
+
+def _setup_command(args: argparse.Namespace, workspace: Path, fw: Path) -> int:
+    if args.action in ("enable", "disable"):
+        on = args.action == "enable"
+        changed = set_config(workspace, "enabled", on)
+        print(f"Autocode mode is {'on' if on else 'off'}" + ("" if changed else " (it already was)"))
+        return 0
+    if args.action == "apply":
+        for line in apply_setup(
+                workspace, fw, approval=args.approval or "",
+                names=[n.strip() for n in args.agents.split(",") if n.strip()],
+                work_hours=_value(args.work_hours), daily_usd=_value(args.daily_usd, float),
+                runner_model=_value(args.runner_model), runner_variant=_value(args.runner_variant),
+                triggers=_pairs(args.wake, with_value=True),
+                skip=set(_pairs(args.skip, with_value=False)), no_wakes=args.no_wakes,
+                dry_run=args.dry_run):
+            print(line)
+        return 0
+    state = setup_state(workspace, fw)
+    if args.json:
+        print(json.dumps(state, indent=2, default=str))
+    else:
+        for line in render_setup(state):
+            print(line)
     return 0
 
 

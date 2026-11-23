@@ -37,6 +37,8 @@ EXPECTED_SKILLS = {
     "update", "brief",
     # 0.27.0: creating project agents and custom agents.
     "add-agent",
+    # Autocode mode from one prompt ("start superagent").
+    "start",
 }
 
 

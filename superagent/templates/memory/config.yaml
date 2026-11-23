@@ -225,7 +225,7 @@ preferences:
     # The switch. false (the default): no agent runs as a session of its own,
     # and the chat session takes whichever role the work needs. true: agents
     # run as sessions registered with an Autocode server (rules/autocode.md).
-    # `init` never turns it on.
+    # "start superagent" asks and writes it; nothing turns it on unasked.
     enabled: false
     # First part of every agent id (`<id_prefix>:<name>`), so several users can
     # share one Autocode server. A lowercase letter first, then lowercase
@@ -243,6 +243,7 @@ preferences:
         model: null
         variant: null
     # Daily cost cap per agent, in USD; null = no cap. A registry row overrides it.
+    # Kept by each wake's check: at the cap, scheduled runs wait for the next day.
     daily_usd: null
 
 # --- Data sources (which MCPs / CLI tools you've authorized) ---

@@ -1,6 +1,6 @@
 schema_version: 1
-generated_at: '2026-11-22T21:42:13-08:00'
-skill_count: 41
+generated_at: '2026-11-23T01:00:19-08:00'
+skill_count: 42
 skills:
 - name: superagent-ad-hoc-task
   stem: ad-hoc-task
@@ -203,10 +203,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 164
+  lines: 166
   h2_steps: 5
   h3_subsections: 8
-  typical_token_cost: 2769
+  typical_token_cost: 2985
   typical_files_read:
   - _memory/agents.yaml
   - _memory/config.yaml
@@ -564,10 +564,10 @@ skills:
   cli_required: []
   cli_optional:
   - any of the CLI tools catalogued in superagent/docs/data-sources.md
-  lines: 350
+  lines: 352
   h2_steps: 14
   h3_subsections: 1
-  typical_token_cost: 6167
+  typical_token_cost: 6301
   typical_files_read:
   - _memory/config.yaml
   - _memory/insights.yaml
@@ -873,6 +873,31 @@ skills:
   - _memory/sources-index.yaml
   - _memory/watchlist-state.yaml
   - _memory/transactions.yaml
+  origin: framework
+- name: superagent-start
+  stem: start
+  path: superagent/skills/start.md
+  one_line: Start Superagent in Autocode mode from one prompt. Asks whether to turn the mode on, shows
+    the proposed settings (the agents, their wakes, work hours, cost cap, model) for the owner to approve
+    or chan
+  triggers:
+  - start superagent / start the superagent / launch superagent
+  - start the agents / start all agents / start my agents
+  - start autocode mode / turn on autocode mode / enable autocode mode
+  - run superagent in the background / run the agents on a schedule
+  - change the agents' schedule / change the autocode settings
+  - stop superagent / stop the agents / stop all agents
+  - turn off autocode mode / disable autocode mode
+  mcp_required: []
+  mcp_optional: []
+  cli_required: []
+  cli_optional: []
+  lines: 165
+  h2_steps: 10
+  h3_subsections: 0
+  typical_token_cost: 2413
+  typical_files_read:
+  - _memory/config.yaml
   origin: framework
 - name: superagent-subscriptions
   stem: subscriptions

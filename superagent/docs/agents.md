@@ -22,15 +22,20 @@ Superagent's work is divided among **agents**: roles that run skills. This page 
 
 ## Turning Autocode mode on
 
-1. Set `preferences.autocode.enabled: true` in `_memory/config.yaml`, and the models and cost cap you want under `preferences.autocode`.
-2. Run the owner-side settings in a terminal on the Autocode server's machine. `uv run python -m superagent.tools.autocode settings` prints the lines: cost caps, questions of the other agents routed to the lead, no expiry for idle agents.
-3. Grant the wakes. Each periodic wake is yours to approve, with its exact terms (`agents` skill): for example `update-light` every 30 minutes and `update-full` once a day for the Updater, and the 08:30 briefing for the lead.
-4. Start the agents: `uv run python -m superagent.tools.autocode start superagent`, then `start updater`. A project agent is started the same way and sits idle until written to.
-5. Look at it: `autocode status` and `autocode wakes` (owner's shell), and the heartbeat lines in the daily briefing.
+Say **"start superagent"** in a session. You answer three question cards, and Superagent does the rest; you edit no file and run no command.
+
+1. **The switch.** "Run Superagent's agents in the background?" A yes turns the mode on.
+2. **The settings.** You see the proposed schedule (the briefings at their cadence times, the light update every 30 minutes, the full update once a day), the work hours of the scheduled update, the daily cost cap per agent and the model. Approve them, change any of them, or start idle with no schedule.
+3. **The other agents.** Pick which ones start with the lead: the Updater (recommended), the Bookkeeper, a project agent.
+
+Then the session you are in becomes the lead, and the agents you picked start in the background. Each wake you approved is recorded as a grant with your words. "Change the agents' schedule" changes a time later; "stop superagent" stops everything.
+
+Autocode's own settings stay at their defaults. `uv run python -m superagent.tools.autocode settings` prints a few optional lines for an owner who wants more (a hard cap enforced by Autocode, no expiry for idle agents).
 
 ## What keeps it cheap and safe
 
-- **A check runs before every wake.** Nothing due means no model call (`agents check <agent> <duty> --wake <name>`).
+- **A check runs before every wake.** Nothing due means no model call.
+- **A daily cost cap per agent**, when you set one: at the cap an agent's scheduled runs are skipped until the next day, and you are told once.
 - **A wake with no grant never runs**, and an audit names it.
 - **A run with nobody present never asks in chat, never sends, never pays.** Its questions wait in the asks queue, and the briefing shows them under "Waiting on your call".
 - **One update cycle at a time, on one machine.**
@@ -39,4 +44,4 @@ Superagent's work is divided among **agents**: roles that run skills. This page 
 
 ## Turning it off
 
-`uv run python -m superagent.tools.autocode stop <agent>` for each agent (or pause them in Autocode), then `preferences.autocode.enabled: false`. Everything works as before: the chat session takes the roles again.
+Say **"stop superagent"**. Superagent asks which agents to stop, stops them, and offers to turn the mode off. Everything then works as before: the chat session takes the roles again. The approved settings stay recorded for the next start.

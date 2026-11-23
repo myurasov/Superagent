@@ -13,6 +13,8 @@ The start prompt (`tools/autocode.py prompt <agent>`) names the id, the role fil
 3. **Set the wakes that are granted to you, and no other periodic wake** (§ 3).
 4. Tell the lead you started (the lead tells the owner), and go idle.
 
+**Started by the owner in a chat session.** "Start superagent" runs the `start` skill: the owner answers its question cards (the switch, the settings, which agents), the tool records what was approved, and that chat session itself registers as the lead and sets the lead's granted wakes. The other agents are started in the background with the start prompt above. The owner edits no file and runs no command for any of it.
+
 ## 2. Whose words are whose
 
 - **A prompt is Autocode's when it starts with `[autocode]`.** Match that header and nothing else: the last line of such a prompt has changed between versions.
@@ -30,7 +32,7 @@ Two gates exist, and they are not the same thing:
 
 The rest:
 
-- **Every granted wake has a check, and the check runs first.** Set the wake with the check the grant gives: `uv run python -m superagent.tools.agents check <agent> [<duty>] --wake <name>`. It exits 1, at no cost, when nothing is due, when the grant is suspended or ended, and when the duty is held outside the update's work hours.
+- **Every granted wake has a check, and the check runs first.** Set the wake with the check line the start prompt gives: `sh superagent/tools/wake_check.sh <agent> [<duty>] --wake <name>`. The script finds `uv` whatever `PATH` the runtime has and runs `tools/autocode.py check`: the daily cost cap first, then `agents check <agent> [<duty>] --wake <name>`. It exits 1, at no cost, when nothing is due, when the grant is suspended or ended, when the duty is held outside the update's work hours, and when the agent reached its daily cap.
 - **An end goes into the trigger** (`every 1d until 2027-03-01`). The grant's `ends` says the same date.
 - **Setting a wake again with the terms it has changes nothing**, so set your granted wakes at every start.
 - **Audit yourself.** When a turn starts from a wake, compare your wakes (your Autocode wake tool, action `list`) with your grants. A periodic wake with no grant: cancel it and tell the lead. A grant with no wake: set it.
@@ -52,6 +54,7 @@ The rest:
 - **On `[autocode] compaction next`**: write what is in flight to your files first. After a compaction, read your role file again.
 - **Park after every piece of work**: write state, compact when the work was long, go idle. An idle agent costs nothing.
 - **Heavy work runs in a subagent** (`rules/subagents.md`), so your own context stays small.
+- **The daily cost cap** (`config.preferences.autocode.daily_usd`, or `daily_usd` on your registry row) is kept by your wakes' check: at or past it your scheduled runs are skipped until the next day, and one notice goes to the lead (from the lead: to the owner). A message still wakes you; past the cap, answer it briefly and leave the work for the next day.
 - **One update cycle at a time, on one machine**: the cycle lock and `agents may-fetch` are in the `update` skill. Do not work around a busy lock.
 - **One agent drives a browser profile at a time.** Before a browser errand, take the Autocode lock `uv run python -m superagent.tools.autocode lock-name browser <profile>` prints (your Autocode lock tool, action `acquire`, a time limit of 30 minutes, renewed while you work), and release it when done. A lock that is taken means another agent is in that profile: wait or hand the errand over.
 
@@ -64,6 +67,6 @@ The rest:
 ## 7. What a registered agent never does
 
 - It never edits its own role file, duties or checks. It files a change request, and its dev twin builds the change (`contracts/agents.md` § 6).
-- It never changes an Autocode setting and never asks another agent to: only the owner sets them (`tools/autocode.py settings` prints the lines for the owner).
+- It never changes an Autocode setting and never asks another agent to: only the owner sets them, and nothing in Superagent needs one set. Superagent's own settings (the switch, the schedule, work hours, the cap) are changed through the `start` skill, on the owner's answer.
 - It never registers a second id, never takes over another agent's id, and never unregisters another agent.
 - It never copies a token into a file, a message or a log.
