@@ -120,7 +120,7 @@ The asks queue is where every agent leaves what needs the owner's word (`contrac
 uv run python -m superagent.tools.asks list --open
 ```
 
-Render one line per ask: `<question> [<options>] (<agent>, asked <age>)`, oldest first. Add, in the same block: open tasks blocked on a decision (the task's `notes` carry `blocked_on: decision`), `_memory/decisions.yaml` rows whose `review_at` is due, and questions the owner explicitly deferred. The daily kinds show five lines at most and count the rest (`+3 more: say "show what waits on me"`); weekly and monthly show them all.
+Render one line per ask: `<question> [<options>] (<agent>, asked <age>)`, oldest first. An ask the list marks `blocking` stops its agent's work: put those first and end the line with `, in your Inbox` when it names a card (the owner can answer there or here), or `, blocking` when it names none. Add, in the same block: open tasks blocked on a decision (the task's `notes` carry `blocked_on: decision`), `_memory/decisions.yaml` rows whose `review_at` is due, and questions the owner explicitly deferred. The daily kinds show five lines at most and count the rest (`+3 more: say "show what waits on me"`); weekly and monthly show them all.
 
 ## 5. Daily: gather
 

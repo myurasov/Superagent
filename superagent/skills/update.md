@@ -61,7 +61,7 @@ This is the Updater's skill (`agents/updater.agent.md`). With no separate Update
 
 ## 1. Ground rules and tier
 
-**The run asks no question in chat and sends nothing**, with the owner present or not (`contracts/autonomy.md` § 5). The same run must work at 03:00 with nobody there. Whatever needs the owner's word becomes one row in the asks queue and the run goes on:
+**The run asks no question in chat and sends nothing**, with the owner present or not (`contracts/autonomy.md` § 5). The same run must work at 03:00 with nobody there. Whatever needs the owner's word becomes one row in the asks queue and the run goes on (never `--blocking`: an update run stops for no answer, and the tool refuses it):
 
 ```bash
 uv run python -m superagent.tools.asks add --agent updater --key "<kind>:<subject>" \

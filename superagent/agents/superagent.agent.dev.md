@@ -59,6 +59,7 @@ The notes of the agent that develops and maintains `superagent.agent.md`. The ru
 
 ## Changelog
 
+- Unreleased — an agent whose work is stopped adds a blocking ask and raises its card in the owner's Inbox itself; the answer goes to that agent, which records it. The lead stays the role that asks in briefings and the one that writes reports (the owner's request, after an ask sat in the queue unseen).
 - Unreleased — `setup apply` keeps a duty's cadence value in step with a changed wake time, and a granted wake is never offered again or replaced by a plain apply (change request from the lead after the first live start).
 - Unreleased — the lead is started by the `start` skill: the owner's chat session registers as the lead after the question cards; wakes are proposed from the duties and go through `tools/wake_check.sh` (cost cap first).
 - 0.27.0 — the lead as a registered session: briefing duties from granted wakes, `brief` run directly while the Updater is active, one report per briefing, the heartbeat lines.

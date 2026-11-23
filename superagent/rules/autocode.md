@@ -44,8 +44,13 @@ The rest:
 `contracts/autonomy.md` § 5 holds in full: never ask in chat, never send, never pay.
 
 - **A question for the owner goes to the asks queue**: `uv run python -m superagent.tools.asks add --agent <you> --key <kind>:<subject> --question "..."`. The lead shows it in the next briefing and records the answer.
-- **Only the lead raises an Autocode approval**, at the moment of action, with the exact terms and a short expiry (hours, a day at most). An approval that expires counts as a no. Another agent hands the lead what needs one.
-- **Only the lead writes to the owner**, and once per briefing: the briefing itself, sent as a report. It does not forward each update run. An alert that cannot wait for the next briefing (an overdue bill found today, a source that fails for a day) is one short message.
+- **An ask that stops your work goes to the owner's Inbox at once, and you raise the card yourself.** Add it with `--blocking` when your work, or an action that is ready, waits on this one answer (tier `approve` or `prepare`). Then raise one Autocode approval for it (your Autocode approval tool, action `ask`): the question first, why in a line, the options, an expiry of 24 hours. Record the card on the row: `uv run python -m superagent.tools.asks card <ask-id> --inbox <approval-id>`. The answer comes to you as Autocode's notice, and it is the owner's own word: record it (`asks answer <ask-id> --answer "<the option> (owner, Inbox card <approval-id>)"`) and go on.
+  - One card per ask, and two open blocking asks per agent at most (the tool refuses a third).
+  - While your card is open, Autocode holds your wakes and messages; they come once the owner answers or the card expires. So an ask that can wait for the briefing is not blocking.
+  - A card that expires counts as no answer: the ask stays open in the queue for the next briefing, and no second card is raised for it.
+  - The Updater never adds a blocking ask: an update run carries on.
+- **An approval of an outward action** (a send, a payment, a push) is such a card, raised at the moment of action with the exact terms and a short expiry (hours, a day at most). A yes covers that one action, and an approval that expires counts as a no.
+- **Only the lead writes to the owner otherwise**, and once per briefing: the briefing itself, sent as a report. It does not forward each update run. An alert that cannot wait for the next briefing (an overdue bill found today, a source that fails for a day) is one short message.
 - **Close what you put into the owner's Inbox** once the owner no longer needs it: the owner answered in a session, the matter was overtaken, a newer report replaces an old one. Give the reason.
 
 ## 5. State, context and cost

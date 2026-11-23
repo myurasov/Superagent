@@ -37,7 +37,7 @@ Autocode's own settings stay at their defaults. `uv run python -m superagent.too
 - **A check runs before every wake.** Nothing due means no model call.
 - **A daily cost cap per agent**, when you set one: at the cap an agent's scheduled runs are skipped until the next day, and you are told once.
 - **A wake with no grant never runs**, and an audit names it.
-- **A run with nobody present never asks in chat, never sends, never pays.** Its questions wait in the asks queue, and the briefing shows them under "Waiting on your call".
+- **A run with nobody present never asks in chat, never sends, never pays.** Its questions wait in the asks queue, and the briefing shows them under "Waiting on your call". A question that stops an agent's work also comes to your Inbox at once, as one card from that agent that stays for 24 hours; the agent holds its other work until you answer or the card expires.
 - **One update cycle at a time, on one machine.**
 - **State lives in files.** An agent parks after each piece of work: it writes its state, compacts and goes idle.
 - **Work hours and off days** (`preferences.update.work_hours`, `off_days`) hold the scheduled update.

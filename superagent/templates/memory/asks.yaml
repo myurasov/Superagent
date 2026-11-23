@@ -11,10 +11,14 @@
 # of an outward action is asked for at the moment of action and covers that
 # one action (contracts/autonomy.md § 4).
 #
-# One writer: `uv run python -m superagent.tools.asks` (`add`, `list --open`,
-# `answer`, `expire`). Time-shape (contracts/memory-taxonomy.md): rows are
-# appended and never deleted; an existing row changes only its `status`,
-# `answer`, `closed_at`, `closed_by` and `notes`.
+# An ask that stops an agent's work is added as blocking: that agent raises one
+# card for it in the owner's Inbox at once and records the card here
+# (rules/autocode.md § 4). Every other ask waits for the briefing.
+#
+# One writer: `uv run python -m superagent.tools.asks` (`add`, `card`,
+# `list --open`, `answer`, `expire`). Time-shape (contracts/memory-taxonomy.md):
+# rows are appended and never deleted; an existing row changes only its `inbox`,
+# `status`, `answer`, `closed_at`, `closed_by` and `notes`.
 
 schema_version: 1
 last_updated: null
@@ -33,6 +37,9 @@ asks:
   #                  approve  the agent then carries the action out
   #                  prepare  the agent prepares, the owner does the last step
   #                  owner    the decision and the action are the owner's
+  #   blocking    — true when the agent's work is stopped on the answer (tier
+  #                  approve or prepare; never an update run; two open per
+  #                  agent at most). Absent on rows older than 0.30.0 = false.
   #   key         — Optional. One open ask per key: adding an ask whose key
   #                  matches an open one adds nothing, so a finding that
   #                  repeats every cycle asks once.
@@ -40,6 +47,8 @@ asks:
   #                  "project:kitchen-reno-2026", "task:20260428-001").
   #   expires_at  — ISO 8601 datetime; null = it waits until answered. Past it,
   #                  `asks expire` closes the row, and that counts as no answer.
+  #   inbox       — The id of the Inbox card raised for a blocking ask, written
+  #                  once by `asks card`; null while there is none.
   #   status      — open | answered | expired | withdrawn
   #   answer      — The owner's answer; for `withdrawn`, why it is no longer needed.
   #   closed_at   — ISO 8601 datetime the row left `open`.
@@ -52,9 +61,11 @@ asks:
     context: null
     options: []
     tier: "approve"
+    blocking: false
     key: null
     related: []
     expires_at: null
+    inbox: null
     status: "open"
     answer: null
     closed_at: null

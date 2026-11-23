@@ -1013,7 +1013,8 @@ def settings_lines(workspace: Path, framework: Path) -> list[str]:
             lines.append(f"autocode settings set daily_usd {agent['daily_usd']} --agent {agent['id']}")
     lines.append(f"autocode settings set retry_attempts 3 --match '{prefix}:*'")
     if lead_id:
-        lines.append("# Questions of the other agents go to the lead, the one role that asks the owner:")
+        lines.append("# Question prompts of the other agents go to the lead (the card of a blocking ask "
+                     "still comes to you):")
         for role in roles:
             if role.kind == "lead":
                 continue

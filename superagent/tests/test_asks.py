@@ -5,6 +5,8 @@
 A run with nobody present writes its question here and carries on
 (contracts/autonomy.md § 7). The tests pin the row shape, the idempotency key,
 answers, expiry, the conflict merge, and that the template survives a write.
+An ask that stops an agent's work is blocking: it gets one card in the owner's
+Inbox, recorded on the row (rules/autocode.md § 4).
 """
 from __future__ import annotations
 
@@ -51,8 +53,8 @@ def test_add_writes_the_canonical_row_and_keeps_the_template(initialized_workspa
         "id": ask_id, "asked_at": "2026-11-22T09:00:00-08:00", "agent": "updater",
         "question": "The bank feed is set to manual capture. Pull it now?",
         "context": "Last pulled 9 days ago.", "options": ["yes", "skip"], "tier": "approve",
-        "key": "harvest:simplefin", "related": ["watch:simplefin"],
-        "expires_at": "2026-11-29T09:00:00-08:00", "status": "open", "answer": None,
+        "blocking": False, "key": "harvest:simplefin", "related": ["watch:simplefin"],
+        "expires_at": "2026-11-29T09:00:00-08:00", "inbox": None, "status": "open", "answer": None,
         "closed_at": None, "closed_by": None, "notes": None,
     }
     after = _file(ws).read_text()
@@ -227,3 +229,120 @@ def test_a_conflict_copy_of_the_queue_merges_and_a_closed_ask_stays_closed(
         "asks.yaml", base_text, answered_text, "asks", close_rule=heal.CLOSE_RULES["asks.yaml"])
     assert (added, replaced) == (0, 1)
     assert yaml.safe_load(text)["asks"][-1]["status"] == "answered"
+
+
+# ------------------------------------------------------------- blocking asks
+
+def test_a_blocking_ask_is_marked_and_waits_for_its_card(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    ask_id, created = asks.add_ask(ws, agent="project:kitchen-reno", blocking=True,
+                                   question="Send the signed quote now?", options=["send", "hold"],
+                                   now=NOW)
+    row = _rows(ws)[0]
+    assert created and row["blocking"] is True and row["inbox"] is None
+    assert tuple(row) == asks.FIELDS
+    assert [r["id"] for r in asks.blocking_asks(ws, "project:kitchen-reno", now=NOW)] == [ask_id]
+    assert "blocking, no card yet" in asks.render_line(row, NOW)
+    plain, _ = asks.add_ask(ws, agent="project:kitchen-reno", question="Which tile?", now=NOW)
+    assert asks.blocking_asks(ws, "project:kitchen-reno", now=NOW)[0]["id"] == ask_id
+    assert "blocking" not in asks.render_line(_rows(ws)[1], NOW) and plain != ask_id
+    assert validate.validate_file(_file(ws), validate.Path(asks.FRAMEWORK)) == []
+
+
+def test_the_card_is_recorded_once(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    ask_id, _ = asks.add_ask(ws, agent="bookkeeper", blocking=True, tier="prepare",
+                             question="Prepare the water bill payment?", now=NOW)
+    row = asks.record_card(ws, ask_id, inbox="ask_0123abcd", now=NOW)
+    assert row["inbox"] == "ask_0123abcd" and _rows(ws)[0]["inbox"] == "ask_0123abcd"
+    assert tuple(_rows(ws)[0]) == asks.FIELDS, "the row keeps its field order"
+    assert "blocking, card ask_0123abcd" in asks.render_line(_rows(ws)[0], NOW)
+    with pytest.raises(asks.signals.WriteRefusedError, match="one card per ask"):
+        asks.record_card(ws, ask_id, inbox="ask_other", now=NOW)
+    with pytest.raises(ValueError, match="card id"):
+        asks.record_card(ws, ask_id, inbox="not a card id", now=NOW)
+    asks.answer_ask(ws, ask_id, answer="prepare it", now=NOW)
+    closed = _rows(ws)[0]
+    assert closed["status"] == "answered" and closed["inbox"] == "ask_0123abcd"
+    assert "blocking" not in asks.render_line(closed, NOW), "a closed ask is no longer waiting"
+
+
+def test_only_an_open_blocking_ask_gets_a_card(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    plain, _ = asks.add_ask(ws, agent="bookkeeper", question="Track it as a bill?", now=NOW)
+    with pytest.raises(asks.signals.WriteRefusedError, match="not a blocking ask"):
+        asks.record_card(ws, plain, inbox="ask_1", now=NOW)
+    blocking, _ = asks.add_ask(ws, agent="bookkeeper", blocking=True, question="Renew now?", now=NOW)
+    asks.answer_ask(ws, blocking, withdraw="renewed by hand", now=NOW)
+    with pytest.raises(asks.signals.WriteRefusedError, match="already withdrawn"):
+        asks.record_card(ws, blocking, inbox="ask_1", now=NOW)
+    with pytest.raises(asks.signals.WriteRefusedError, match="0 rows with id"):
+        asks.record_card(ws, "ask-2026-11-22-testbox-999", inbox="ask_1", now=NOW)
+
+
+def test_a_blocking_ask_needs_work_that_waits(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    with pytest.raises(ValueError, match="tier approve or prepare"):
+        asks.add_ask(ws, agent="bookkeeper", blocking=True, tier="owner", question="Sell it?", now=NOW)
+    with pytest.raises(ValueError, match="never adds a blocking ask"):
+        asks.add_ask(ws, agent="updater", blocking=True, question="Pull the feed?", now=NOW)
+    assert _rows(ws) == [], "a refused ask writes nothing"
+    asks.add_ask(ws, agent="updater", question="Pull the feed?", now=NOW)  # a plain ask is fine
+
+
+def test_two_open_blocking_asks_per_agent_at_most(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    first, _ = asks.add_ask(ws, agent="bookkeeper", blocking=True, question="One?", now=NOW)
+    asks.add_ask(ws, agent="bookkeeper", blocking=True, question="Two?", now=NOW)
+    with pytest.raises(ValueError, match="2 blocking asks of bookkeeper wait"):
+        asks.add_ask(ws, agent="bookkeeper", blocking=True, question="Three?", now=NOW)
+    assert len(_rows(ws)) == 2
+    asks.add_ask(ws, agent="bookkeeper", question="Three, for the briefing?", now=NOW)
+    asks.add_ask(ws, agent="project:kitchen-reno", blocking=True, question="Mine?", now=NOW)
+    asks.answer_ask(ws, first, answer="yes", now=NOW)  # an answer frees a place
+    asks.add_ask(ws, agent="bookkeeper", blocking=True, question="Three?", now=NOW)
+    assert len(asks.blocking_asks(ws, "bookkeeper", now=NOW)) == 2
+
+
+def test_an_open_ask_with_the_same_key_stays_as_it_is(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    plain, _ = asks.add_ask(ws, agent="bookkeeper", key="renew:dmv", question="Renew?", now=NOW)
+    again, created = asks.add_ask(ws, agent="bookkeeper", key="renew:dmv", blocking=True,
+                                  question="Renew now?", now=NOW)
+    assert again == plain and not created
+    assert _rows(ws)[0]["blocking"] is False, "a repeat never turns an ask blocking"
+
+
+def test_a_row_from_before_the_fields_reads_as_a_plain_ask(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    ask_id, _ = asks.add_ask(ws, agent="bookkeeper", question="Track it?", now=NOW)
+    text = _file(ws).read_text()
+    older = "\n".join(line for line in text.splitlines()
+                      if line.strip() not in ("blocking: false", "inbox: null")) + "\n"
+    assert older != text
+    _file(ws).write_text(older)
+    row = _rows(ws)[0]
+    assert "blocking" not in row and "inbox" not in row
+    assert asks.blocking_asks(ws, "bookkeeper", now=NOW) == []
+    assert "blocking" not in asks.render_line(row, NOW)
+    with pytest.raises(asks.signals.WriteRefusedError, match="not a blocking ask"):
+        asks.record_card(ws, ask_id, inbox="ask_1", now=NOW)
+    assert asks.answer_ask(ws, ask_id, answer="yes", now=NOW)["status"] == "answered"
+
+
+def test_cli_blocking_and_card(initialized_workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    base = ["--workspace", str(ws), "--now", "2026-11-22T09:00:00-08:00"]
+    assert asks.main(["add", "--agent", "bookkeeper", "--blocking", "--question", "Renew now?",
+                      *base]) == 0
+    out = capsys.readouterr()
+    ask_id = out.out.strip()
+    assert ask_id.startswith("ask-") and f"asks card {ask_id} --inbox" in out.err
+    assert asks.main(["card", ask_id, "--inbox", "ask_0123abcd", *base]) == 0
+    assert capsys.readouterr().out.strip() == f"{ask_id}: card ask_0123abcd"
+    assert asks.main(["card", ask_id, "--inbox", "ask_second", *base]) == 1
+    assert asks.main(["list", "--open", *base]) == 0
+    assert "blocking, card ask_0123abcd" in capsys.readouterr().out
+    assert asks.main(["add", "--agent", "updater", "--blocking", "--question", "q", *base]) == 2
+    assert asks.main(["add", "--agent", "bookkeeper", "--blocking", "--tier", "owner",
+                      "--question", "q", *base]) == 2

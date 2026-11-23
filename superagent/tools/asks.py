@@ -13,6 +13,12 @@ run.
   add      append one ask and print its id. `--key` makes it idempotent: when
            an open ask with the same key exists, its id is printed and no row
            is added, so a finding that repeats every cycle asks once.
+           `--blocking` marks an ask that stops the agent's work: it gets one
+           card in the owner's Inbox at once, raised by the agent that asks
+           (rules/autocode.md § 4). Tier `approve` or `prepare` only, never
+           from an update run, and two open ones per agent at most.
+  card     record the Inbox card raised for a blocking ask (`--inbox ID`, the
+           card's id in the runtime). One card per ask.
   list     print asks, oldest first. `--open` keeps the rows still waiting
            (status `open` and not past `expires_at`); `--agent` narrows to one
            asker; `--count` prints `open=N`; `--json` prints whole rows.
@@ -25,8 +31,8 @@ An ask is not an approval. It records that a decision is wanted. An approval
 of an outward action is asked for at the moment of action and covers that one
 action (contracts/autonomy.md § 4).
 
-Rows are append-only: an existing row changes only its `status`, `answer`,
-`closed_at`, `closed_by` and `notes`. Writes are text-level, parse-checked
+Rows are append-only: an existing row changes only its `inbox`, `status`,
+`answer`, `closed_at`, `closed_by` and `notes`. Writes are text-level, parse-checked
 before and after, and atomic (the writer of `tools/signals.py`). The free text
 of a row (`question`, `context`, `answer`) passes through
 `log_user_query.redact()` first: the file sits outside the sensitive tier.
@@ -39,6 +45,9 @@ CLI:
         --question "The bank feed is set to manual capture. Pull it now?" \\
         [--context "..."] [--option yes --option skip] [--tier approve] \\
         [--key harvest:simplefin] [--related watch:simplefin] [--expires 7d]
+    uv run python -m superagent.tools.asks add --agent project:kitchen --blocking \\
+        --question "Send the signed quote to the contractor now?" --option send --option hold
+    uv run python -m superagent.tools.asks card <ask-id> --inbox <card-id>
     uv run python -m superagent.tools.asks list --open [--agent updater] [--count | --json]
     uv run python -m superagent.tools.asks answer <ask-id> --answer "yes, pull it"
     uv run python -m superagent.tools.asks answer <ask-id> --withdraw "the feed was pulled by hand"
@@ -71,11 +80,20 @@ DEFAULT_TIER = "approve"
 OWNER = "owner"
 SKELETON = "schema_version: 1\nlast_updated: null\n"
 #: Row fields in template order.
-FIELDS = ("id", "asked_at", "agent", "question", "context", "options", "tier", "key", "related",
-          "expires_at", "status", "answer", "closed_at", "closed_by", "notes")
+FIELDS = ("id", "asked_at", "agent", "question", "context", "options", "tier", "blocking", "key",
+          "related", "expires_at", "inbox", "status", "answer", "closed_at", "closed_by", "notes")
+#: A blocking ask stops its agent's work until the owner answers, so it gets one
+#: card in the owner's Inbox at once (rules/autocode.md § 4). With tier `owner`
+#: nothing of the agent's waits on the answer.
+BLOCKING_TIERS = ("approve", "prepare")
+#: Open blocking asks one agent may have: each stands for a card in the Inbox.
+MAX_BLOCKING = 2
+#: Roles whose runs carry on and never stop for an answer (contracts/update-loop.md).
+NEVER_BLOCKING_ROLES = ("updater",)
 _DURATION_RE = re.compile(r"^(\d+)\s*([mhdw])$")
 _DURATION_UNIT = {"m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
 _KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,119}$")
+_CARD_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$")
 
 
 # --------------------------------------------------------------------- helpers
@@ -139,8 +157,14 @@ def open_asks(workspace: Path, *, agent: str | None = None, now: dt.datetime | N
             if is_waiting(r, now) and (agent is None or r.get("agent") == agent)]
 
 
-def _check_agent(agent: str, workspace: Path) -> None:
-    """Raise ValueError unless `agent` is an instance name of a known role."""
+def blocking_asks(workspace: Path, agent: str, *, now: dt.datetime | None = None
+                  ) -> list[dict[str, Any]]:
+    """The blocking asks of one agent that still wait on the owner, oldest first."""
+    return [r for r in open_asks(workspace, agent=agent, now=now) if r.get("blocking") is True]
+
+
+def _check_agent(agent: str, workspace: Path) -> str:
+    """Return the role of `agent`; raise ValueError unless it is an instance name of a known role."""
     try:
         role, _slug, _dev = ar.split_instance(agent)
     except ar.AgentError as exc:
@@ -149,6 +173,7 @@ def _check_agent(agent: str, workspace: Path) -> None:
     if role not in {r.name for r in roles}:
         known = ", ".join(r.name for r in roles) or "none"
         raise ValueError(f"no role named {role!r} (roles: {known})")
+    return role
 
 
 # ---------------------------------------------------------------------- writes
@@ -156,12 +181,16 @@ def _check_agent(agent: str, workspace: Path) -> None:
 def add_ask(workspace: Path, *, agent: str, question: str, context: str | None = None,
             options: list[str] | None = None, tier: str = DEFAULT_TIER, key: str | None = None,
             related: list[str] | None = None, expires: str | None = None,
-            now: dt.datetime | None = None) -> tuple[str, bool]:
+            blocking: bool = False, now: dt.datetime | None = None) -> tuple[str, bool]:
     """Append one ask; return (its id, True), or (the id of the open ask with the same key, False).
 
+    `blocking` marks an ask the agent's work is stopped on: the agent raises
+    one Inbox card for it at once and records the card with `record_card`.
+
     Raises ValueError for an unknown agent, an off-list tier, a bad key or
-    expiry, or an empty question; CorruptFileError / WriteRefusedError when
-    the file cannot be written safely.
+    expiry, an empty question, or a blocking ask that is not allowed (tier
+    `owner`, a role whose runs carry on, the agent's limit reached);
+    CorruptFileError / WriteRefusedError when the file cannot be written safely.
     """
     now = now or _now()
     if not question or not question.strip():
@@ -170,7 +199,13 @@ def add_ask(workspace: Path, *, agent: str, question: str, context: str | None =
         raise ValueError(f"tier must be one of {', '.join(TIERS)}")
     if key is not None and not _KEY_RE.match(key):
         raise ValueError(f"key {key!r}: use letters, digits and `_ . : / -`, 120 characters at most")
-    _check_agent(agent, workspace)
+    role = _check_agent(agent, workspace)
+    if blocking and tier not in BLOCKING_TIERS:
+        raise ValueError(f"a blocking ask has tier {' or '.join(BLOCKING_TIERS)}: with tier "
+                         f"{tier!r} nothing of the agent's waits on the answer")
+    if blocking and role in NEVER_BLOCKING_ROLES:
+        raise ValueError(f"{agent} never adds a blocking ask: its run carries on and the "
+                         "question waits for the briefing")
     expires_at = parse_expiry(expires, now)
     path = asks_path(workspace)
     signals._read(path, ASKS_KEY)  # noqa: SLF001 - refuse a broken file before minting
@@ -178,6 +213,12 @@ def add_ask(workspace: Path, *, agent: str, question: str, context: str | None =
         for row in load_asks(workspace):
             if row.get("key") == key and is_waiting(row, now):
                 return str(row["id"]), False
+    if blocking:
+        waiting = blocking_asks(workspace, agent, now=now)
+        if len(waiting) >= MAX_BLOCKING:
+            ids = ", ".join(str(r["id"]) for r in waiting)
+            raise ValueError(f"{len(waiting)} blocking asks of {agent} wait on the owner already "
+                             f"({ids}); add this one without --blocking, or withdraw one first")
     stamp = _iso(now)
     ask_id = next_id("ask", stamp[:10], path)
     row: dict[str, Any] = {
@@ -188,9 +229,11 @@ def add_ask(workspace: Path, *, agent: str, question: str, context: str | None =
         "context": redact(context.strip()) if context and context.strip() else None,
         "options": [str(o).strip() for o in (options or []) if str(o).strip()],
         "tier": tier,
+        "blocking": bool(blocking),
         "key": key,
         "related": [str(h).strip() for h in (related or []) if str(h).strip()],
         "expires_at": expires_at,
+        "inbox": None,
         "status": OPEN,
         "answer": None,
         "closed_at": None,
@@ -218,6 +261,38 @@ def _close(workspace: Path, ask_id: str, *, status: str, answer: str | None, by:
     new = dict(old)
     new.update({"status": status, "answer": answer, "closed_at": _iso(now), "closed_by": by})
     signals.replace_row(path, ASKS_KEY, hits[0], new, last_updated=_iso(now))
+    return new
+
+
+def record_card(workspace: Path, ask_id: str, *, inbox: str,
+                now: dt.datetime | None = None) -> dict[str, Any]:
+    """Record the Inbox card raised for an open blocking ask (the card's id in the runtime).
+
+    One card per ask: the row's `inbox` is written once. Raises ValueError for
+    a bad card id, WriteRefusedError for an unknown or closed ask, an ask that
+    is not blocking, or an ask that has a card already.
+    """
+    now = now or _now()
+    card = str(inbox or "").strip()
+    if not _CARD_RE.match(card):
+        raise ValueError(f"card id {inbox!r}: use letters, digits and `_ . : -`, 120 characters at most")
+    path = asks_path(workspace)
+    _text, _data, rows = signals._read(path, ASKS_KEY)  # noqa: SLF001 - the shared reader
+    hits = [i for i, r in enumerate(rows) if isinstance(r, dict) and r.get("id") == ask_id]
+    if len(hits) != 1:
+        raise signals.WriteRefusedError(f"{len(hits)} rows with id {ask_id!r} in {ASKS_FILE}")
+    old = rows[hits[0]]
+    if old.get("status") != OPEN:
+        raise signals.WriteRefusedError(f"{ask_id} is already {old.get('status')}; nothing changed")
+    if old.get("blocking") is not True:
+        raise signals.WriteRefusedError(f"{ask_id} is not a blocking ask: only a blocking ask gets "
+                                        "an Inbox card, and it waits for the briefing")
+    if old.get("inbox"):
+        raise signals.WriteRefusedError(f"{ask_id} has the card {old['inbox']} already: one card per ask")
+    new = dict(old)
+    new["inbox"] = card
+    signals.replace_row(path, ASKS_KEY, hits[0], new, last_updated=_iso(now))
+    machines.beat(workspace, min_interval_s=60)
     return new
 
 
@@ -267,6 +342,8 @@ def render_line(row: dict[str, Any], now: dt.datetime) -> str:
     parts = [str(row.get("id")), str(row.get("agent")), str(status), str(row.get("asked_at") or "")[:10]]
     if row.get("expires_at") and row.get("status") == OPEN:
         parts.append(f"expires {str(row['expires_at'])[:10]}")
+    if row.get("blocking") is True and row.get("status") == OPEN:
+        parts.append(f"blocking, card {row['inbox']}" if row.get("inbox") else "blocking, no card yet")
     line = "  ".join(parts) + "  " + str(row.get("question") or "")
     if row.get("options"):
         line += "  [" + " / ".join(str(o) for o in row["options"]) + "]"
@@ -303,6 +380,9 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("--related", action="append", default=None, metavar="HANDLE",
                      help="An operational handle the ask is about; repeatable.")
     add.add_argument("--expires", default=None, help="90m, 36h, 7d, 2w, or an ISO date; default never.")
+    add.add_argument("--blocking", action="store_true",
+                     help="Your work is stopped on this answer: raise one Inbox card for it at once "
+                          f"(tier approve or prepare; {MAX_BLOCKING} open per agent at most).")
 
     lst = sub.add_parser("list", parents=[common], help="List asks (all, or --open).")
     lst.add_argument("--open", action="store_true", help="Only the asks still waiting.")
@@ -319,6 +399,12 @@ def build_parser() -> argparse.ArgumentParser:
                       help="Close it without an answer: it is no longer needed.")
     ans.add_argument("--by", default=None, help="Who closed it (default: owner; the asker for --withdraw).")
 
+    card = sub.add_parser("card", parents=[common],
+                          help="Record the Inbox card raised for a blocking ask.")
+    card.add_argument("id")
+    card.add_argument("--inbox", required=True, metavar="CARD_ID",
+                      help="The card's id in the runtime (an Autocode approval's id).")
+
     sub.add_parser("expire", parents=[common], help="Close the open asks past their `expires_at`.")
     return parser
 
@@ -332,10 +418,15 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "add":
             ask_id, created = add_ask(workspace, agent=args.agent, question=args.question,
                                       context=args.context, options=args.options, tier=args.tier,
-                                      key=args.key, related=args.related, expires=args.expires, now=now)
+                                      key=args.key, related=args.related, expires=args.expires,
+                                      blocking=args.blocking, now=now)
             print(ask_id)
             if not created:
                 print(f"asks: an open ask with key {args.key!r} exists; nothing added", file=sys.stderr)
+            elif args.blocking:
+                print("asks: blocking. Where the runtime has an Inbox, raise one card for it now "
+                      "(the question, why, the options; 24 hours at most), then record it: "
+                      f"asks card {ask_id} --inbox <card id>  (rules/autocode.md § 4)", file=sys.stderr)
         elif args.command == "list":
             if args.count:
                 print(f"open={len(open_asks(workspace, agent=args.agent, now=now))}")
@@ -351,6 +442,9 @@ def main(argv: list[str] | None = None) -> int:
             row = answer_ask(workspace, args.id, answer=args.answer, withdraw=args.withdraw,
                              by=args.by, now=now)
             print(f"{args.id}: {row['status']}")
+        elif args.command == "card":
+            row = record_card(workspace, args.id, inbox=args.inbox, now=now)
+            print(f"{args.id}: card {row['inbox']}")
         else:
             for row in expire_asks(workspace, now=now):
                 print(render_line(row, now))
