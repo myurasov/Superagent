@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-11-23T05:41:16+00:00'
+generated_at: '2026-11-23T09:20:10+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -202,6 +202,14 @@ migrations:
   file: 0.27.0.md
   title: 'Autocode mode and agent creation: the switch and the update''s work hours
     in config'
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute
+- to_version: 0.28.0
+  from_version: 0.27.0
+  file: 0.28.0.md
+  title: 'Start superagent from one prompt (the start skill): no workspace data to
+    convert'
   breaking: false
   revertible: true
   estimated_duration: <1 minute

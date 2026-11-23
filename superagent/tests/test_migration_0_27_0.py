@@ -165,7 +165,7 @@ def test_revert_restores_the_workspace_and_keeps_edited_lines(tmp_path: Path) ->
 
 def test_on_an_initialized_workspace_it_is_a_version_stamp_only_and_is_registered(
         initialized_workspace: Path, framework_dir: Path) -> None:
-    from superagent.tools.version import current_version, find_chain
+    from superagent.tools.version import current_version, find_chain, parse
 
     ws = initialized_workspace
     set_workspace_version(ws, "0.26.0")
@@ -176,5 +176,5 @@ def test_on_an_initialized_workspace_it_is_a_version_stamp_only_and_is_registere
     manifest = yaml.safe_load((framework_dir / "migrations" / "_manifest.yaml").read_text())
     row = next(m for m in manifest["migrations"] if m["to_version"] == "0.27.0")
     assert row["from_version"] == "0.26.0" and row["revertible"] is True and row["breaking"] is False
-    assert current_version() == "0.27.0"
+    assert parse(current_version()) >= parse("0.27.0")
     assert [step.to_version for step in find_chain("0.26.0", "0.27.0")] == ["0.27.0"]
