@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-11-24T00:53:13+00:00'
+generated_at: '2026-11-24T02:57:31+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -226,6 +226,13 @@ migrations:
   file: 0.30.0.md
   title: 'Blocking asks (an Inbox card from the agent that asks): two optional fields,
     no data to convert'
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute
+- to_version: 0.31.0
+  from_version: 0.30.0
+  file: 0.31.0.md
+  title: 'Agent interests: each running agent''s role interests on its registry row'
   breaking: false
   revertible: true
   estimated_duration: <1 minute
