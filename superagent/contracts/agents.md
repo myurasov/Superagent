@@ -12,7 +12,7 @@ Agents do not need a runtime. With no separate agents running (the default), one
 |---|---|
 | **role** | What an agent is for: a markdown file `<name>.agent.md` with frontmatter (§ 2). Generic and committed, or custom in the overlay. |
 | **instance** | One agent of a role: where it runs and what it was granted. A row in `_memory/agents.yaml` (§ 5). |
-| **lead** | The one role the owner talks to (`superagent`). It briefs, routes work to the other roles, and is the only role that asks the owner for a decision. |
+| **lead** | The one role the owner talks to (`superagent`). It talks with the owner and briefs, decides what the agents cannot settle among themselves, coordinates the agents and the workspace, and asks the owner for decisions. It relays no messages (§ 8a). |
 | **durable role** | A role with standing work (`updater`, `bookkeeper`). One instance. |
 | **project role** | The generic role for work inside one Project (`project`). One instance per project that has an agent. |
 | **dev twin** | The agent that develops and maintains a role: `<name>.agent.dev.md` beside the role file (§ 6). |
@@ -29,7 +29,7 @@ workspace/_custom/agents/<name>.agent.md     custom role, or an overlay on a
 workspace/_custom/agents/<name>.agent.dev.md   framework role of the same name (§ 7)
 ```
 
-A role file opens with YAML frontmatter. Every field is required; an unknown field is an error.
+A role file opens with YAML frontmatter. Every field is required except `interests`; an unknown field is an error.
 
 | Field | Value | Meaning |
 |---|---|---|
@@ -41,6 +41,7 @@ A role file opens with YAML frontmatter. Every field is required; an unknown fie
 | `authority` | `act` \| `approve` \| `prepare` \| `owner` | The loosest autonomy tier the role may use (`contracts/autonomy.md` § 2). |
 | `model_tier` | `runner` \| `dev` | Which default model the role uses (`config.preferences.autocode.models.<tier>`). |
 | `duties` | list (may be empty) | The role's duties (§ 3). |
+| `interests` | list (optional) | What the role's agents ask the update cycle to tell them about (§ 8a): one mapping each, `pattern`, `why`, and optionally `when` and `fire`. A project role writes `project:<slug>` for the project of each instance. |
 
 The body of the file is the role in words: purpose, what it does, boundaries, hand-offs. Templates: `templates/agents/agent.md` and `templates/agents/agent.dev.md`.
 
@@ -85,7 +86,7 @@ An id is `<prefix>:<instance name>`.
 
 ## 5. The registry: `_memory/agents.yaml`
 
-One file holds every instance (template `templates/memory/agents.yaml`; entity-shape per `contracts/memory-taxonomy.md`). A row carries `name` (the instance name), `role`, `handle`, `project` (for a project agent), `host` (the machine that runs it), `model` / `variant` / `daily_usd` (each overrides the default in `preferences.autocode`), `wakes` (the granted periodic wakes, § 8), `status`, `notes`, `provenance`.
+One file holds every instance (template `templates/memory/agents.yaml`; entity-shape per `contracts/memory-taxonomy.md`). A row carries `name` (the instance name), `role`, `handle`, `project` (for a project agent), `host` (the machine that runs it), `model` / `variant` / `daily_usd` (each overrides the default in `preferences.autocode`), `wakes` (the granted periodic wakes, § 8), `interests` (what the agent wants to hear about, § 8a), `status`, `notes`, `provenance`.
 
 - **Ids are never stored**: a row holds the name, and the id is built from the prefix.
 - **A lead or durable role is one agent with or without a row.** It needs a row only to carry a setting (a host, a model, a grant).
@@ -125,6 +126,15 @@ A wake is a prompt a runtime types into an agent's session later. The rules hold
 - **Every periodic wake runs a check first** (§ 3). Nothing due means no model call.
 - **A project agent and a dev twin have no periodic wake by default.** They wake on a message.
 - **A one-time self-wake needs no grant** when all of these hold: the owner started the work it belongs to; it fires once and belongs to that task; it lies at most 24 hours ahead; at most 3 follow one another for the same task. The agent names each one when it sets it.
+
+## 8a. Interests, and who hears what
+
+- **An interest** is one kind of update an agent wants to hear about. It is a mapping on the agent's registry row (`interests`): a `pattern` (a handle or a handle glob: `project:<slug>`, `domain:finances`, `contact:<slug>`, `tag:<tag>`, `watch:<id>`, `bill:*`), its `why`, an optional `when` that narrows it to one kind of update (`changed`: a watcher saw a change; `harvest`: a harvest brought new rows; `filed`: a document was filed; `captured`: a fact landed in a store), and an optional `fire` (a granted `fire-only` wake to fire in place of a message).
+- **The agent sets its own.** `agents interest <agent> --add <pattern> --why "..."` records one, `--remove <pattern>` drops one, and `--defaults` writes the ones its role file names. Twelve per agent at most. The role that runs the update cycle and a dev twin keep none. An interest needs no approval; a wake it fires is a grant like any other (§ 8). The owner sees every agent's interests in the daily briefing (`agents heartbeat`) and can have any dropped.
+- **The Updater tells.** After a cycle it asks, for each thing that moved, who is interested: `agents interested --when <kind> --handle <its handle> --handle <each handle it relates to>`. Each such agent gets one message per cycle that names what moved by handle and path, or the wake its interest names is fired. Only an agent a session holds (`active` or `dormant`) is told; with no separate agents the run report is the hand-off.
+- **Agents write to each other directly**, by id. Nothing is relayed through the lead.
+- **The lead is told only** what needs a decision the agents cannot settle among themselves or one about the workspace, what the owner must hear before the next briefing, and an agent's start, end and reached cost cap. Everything else the lead reads from the stores when it briefs: no agent reports to it after a piece of work, and the Updater sends it no run report.
+- **The owner's answer is passed on by the tool.** `tools/autocode.py answer <ask-id> --answer "..."` records the answer on the ask and tells the agent that asked, when a session holds it.
 
 ## 9. With and without Autocode
 

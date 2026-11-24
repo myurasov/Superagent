@@ -381,3 +381,176 @@ def test_the_update_duties(initialized_workspace: Path, capsys: pytest.CaptureFi
     scan.unlink()
     light = next(r for r in ag.duty_rows(ws, now=NOW)[0] if r["duty"] == "update-light")
     assert light["state"] == "unfinished" and "never finished" in light["reason"]
+
+
+# ---------------------------------------------------------------- interests
+
+def _agents_running(ws: Path) -> None:
+    """A registry with a Bookkeeper and two project agents held by sessions, and one that is off."""
+    _registry(ws, [
+        {"name": "bookkeeper", "role": "bookkeeper", "handle": "agent:bookkeeper", "project": None,
+         "status": "active", "wakes": [
+             {"name": "after-harvest", "trigger": "fire-only", "duty": None, "purpose": "reconcile",
+              "status": "active", "approval": "yes", "granted_at": _ago(1)},
+             {"name": "monthly", "trigger": 'cron "0 9 1 * *"', "duty": None, "purpose": "close",
+              "status": "active", "approval": "yes", "granted_at": _ago(1)}]},
+        {"name": "project:kitchen-reno", "role": "project", "handle": "agent:project:kitchen-reno",
+         "project": "project:kitchen-reno", "status": "dormant", "wakes": []},
+        {"name": "project:garden", "role": "project", "handle": "agent:project:garden",
+         "project": "project:garden", "status": "off", "wakes": []},
+    ])
+
+
+def _told(ws: Path, *handles: str, when: str | None = None) -> dict[str, str]:
+    return {r["agent"]: (r["deliver"] if r["deliver"] != "fire" else f"fire {r['wake']}")
+            for r in ag.interested(ws, list(handles), when=when, now=NOW)}
+
+
+def test_an_agent_records_and_drops_its_own_interests(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _agents_running(ws)
+    entry, changed = ag.add_interest(ws, "project:kitchen-reno", pattern="contact:tile-supplier",
+                                     why="a vendor that quotes the tiles", now=NOW)
+    assert changed and entry == {"pattern": "contact:tile-supplier", "when": None,
+                                 "why": "a vendor that quotes the tiles", "fire": None,
+                                 "added_at": NOW.isoformat(timespec="seconds")}
+    assert ag.add_interest(ws, "project:kitchen-reno", pattern="contact:tile-supplier", now=NOW)[1] is False
+    assert ag.add_interest(ws, "project:kitchen-reno", pattern="contact:tile-supplier", why="quotes and delivery",
+                           now=NOW)[1] is True, "the same interest is updated in place"
+    ag.add_interest(ws, "project:kitchen-reno", pattern="watch:tile-price", when="changed", why="price moves",
+                    now=NOW)
+    assert [ag.interest_label(i) for i in ag.interests(ws, "project:kitchen-reno")] == [
+        "contact:tile-supplier", "watch:tile-price (changed)"]
+    assert ag.remove_interest(ws, "project:kitchen-reno", "contact:tile-supplier", now=NOW) == 1
+    assert [i["pattern"] for i in ag.interests(ws, "project:kitchen-reno")] == ["watch:tile-price"]
+    with pytest.raises(ag.ar.AgentError, match="has no interest"):
+        ag.remove_interest(ws, "project:kitchen-reno", "contact:tile-supplier", now=NOW)
+    row = next(r for r in ag.roster(ws)["agents"] if r["name"] == "project:kitchen-reno")
+    assert [i["pattern"] for i in row["interests"]] == ["watch:tile-price"]
+
+
+def test_bad_interests_are_refused(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _agents_running(ws)
+    refused = [
+        (dict(agent="project:kitchen-reno", pattern="kitchen", why="w"), "not a handle or a handle glob"),
+        (dict(agent="project:kitchen-reno", pattern="tag:tile-order"), "needs its why"),
+        (dict(agent="project:kitchen-reno", pattern="tag:tile-order", why="w", when="later"), "`when` 'later'"),
+        (dict(agent="project:kitchen-reno", pattern="tag:tile-order", why="w", fire="after-harvest"), "has no grant"),
+        (dict(agent="bookkeeper", pattern="bill:*", why="w", fire="monthly"), "runs on a schedule"),
+        (dict(agent="updater", pattern="tag:tile-order", why="w"), "keeps no interests of its own"),
+        (dict(agent="bookkeeper:dev", pattern="tag:tile-order", why="w"), "a dev twin keeps no interests"),
+        (dict(agent="project:nowhere", pattern="tag:tile-order", why="w"), "has no registry row"),
+        (dict(agent="nobody", pattern="tag:tile-order", why="w"), "no role named"),
+    ]
+    for kwargs, match in refused:
+        agent = kwargs.pop("agent")
+        with pytest.raises(ag.ar.AgentError, match=match):
+            ag.add_interest(ws, agent, now=NOW, **kwargs)
+    for n in range(ag.ar.MAX_INTERESTS):
+        ag.add_interest(ws, "project:kitchen-reno", pattern=f"tag:t{n}", why="w", now=NOW)
+    with pytest.raises(ag.ar.AgentError, match="the most an agent keeps"):
+        ag.add_interest(ws, "project:kitchen-reno", pattern="tag:one-more", why="w", now=NOW)
+
+
+def test_the_roles_own_interests_are_written_once(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _agents_running(ws)
+    added, notes = ag.default_interests(ws, "project:kitchen-reno", now=NOW)
+    assert [i["pattern"] for i in added] == ["project:kitchen-reno"] and notes == [], (
+        "`project:<slug>` stands for the agent's own project")
+    assert ag.default_interests(ws, "project:kitchen-reno", now=NOW) == ([], [])
+    added, notes = ag.default_interests(ws, "bookkeeper", now=NOW)
+    assert notes == []
+    assert [ag.interest_label(i) for i in added] == [
+        "domain:finances (harvest) -> wake `after-harvest`", "bill:* (captured)",
+        "subscription:* (captured)", "domain:finances (filed)"]
+    ag.add_interest(ws, "bookkeeper", pattern="bill:*", when="captured", why="my own words", now=NOW)
+    assert ag.default_interests(ws, "bookkeeper", now=NOW) == ([], []), "an agent's own wording stays"
+    assert next(i for i in ag.interests(ws, "bookkeeper") if i["pattern"] == "bill:*")["why"] == "my own words"
+
+
+def test_a_default_that_fires_a_wake_waits_for_its_grant(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _registry(ws, [{"name": "bookkeeper", "role": "bookkeeper", "handle": "agent:bookkeeper",
+                    "project": None, "status": "active", "wakes": []}])
+    added, notes = ag.default_interests(ws, "bookkeeper", now=NOW)
+    assert len(added) == 3 and len(notes) == 1 and "has no grant for the wake `after-harvest`" in notes[0]
+
+
+def test_the_updater_learns_who_to_tell(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _agents_running(ws)
+    for agent in ("bookkeeper", "project:kitchen-reno", "project:garden"):
+        ag.default_interests(ws, agent, now=NOW)
+    assert _told(ws, "watch:simplefin", "domain:finances", when="harvest") == {
+        "bookkeeper": "fire after-harvest"}
+    assert _told(ws, "bill:phone-plan", "domain:home", when="captured") == {"bookkeeper": "message"}
+    assert _told(ws, "document:doc-1", "domain:finances", "project:kitchen-reno", when="filed") == {
+        "bookkeeper": "message", "project:kitchen-reno": "message"}
+    assert _told(ws, "watch:permit-page", "project:kitchen-reno", when="changed") == {"project:kitchen-reno": "message"}
+    assert _told(ws, "watch:permit-page", "project:garden", when="changed") == {}, (
+        "no session holds the garden agent, so the run report is its hand-off")
+    assert _told(ws, "watch:simplefin", "domain:finances", when="changed") == {}, (
+        "an interest narrowed to a harvest is not told about a mere change")
+    assert _told(ws, "bill:phone-plan") == {}, "narrowed interests need the kind of update"
+    assert _told(ws, "task:t-1", "project:kitchen-reno") == {"project:kitchen-reno": "message"}
+    row = ag.interested(ws, ["project:kitchen-reno"], when="filed", now=NOW)[0]
+    assert row["id"] == "sa:project:kitchen-reno" and row["patterns"] == ["project:kitchen-reno"]
+
+
+def test_a_wake_that_may_not_run_is_skipped_not_replaced_by_a_message(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _agents_running(ws)
+    ag.default_interests(ws, "bookkeeper", now=NOW)
+    ag.change_grants(ws, "bookkeeper", wake="after-harvest", action="suspend", now=NOW)
+    (row,) = ag.interested(ws, ["domain:finances"], when="harvest", now=NOW)
+    assert row["deliver"] == "skip" and "suspended" in row["reason"]
+    ag.add_interest(ws, "bookkeeper", pattern="watch:simplefin", why="the feed itself", now=NOW)
+    (row,) = ag.interested(ws, ["watch:simplefin", "domain:finances"], when="harvest", now=NOW)
+    assert row["deliver"] == "message", "a plain interest that also matches is still delivered"
+
+
+def test_interested_wants_handles(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    with pytest.raises(ag.ar.AgentError, match="is not a handle"):
+        ag.interested(ws, ["kitchen tiles"], now=NOW)
+    with pytest.raises(ag.ar.AgentError, match="at least one handle"):
+        ag.interested(ws, [], now=NOW)
+    with pytest.raises(ag.ar.AgentError, match="`when` 'later'"):
+        ag.interested(ws, ["tag:tile-order"], when="later", now=NOW)
+
+
+def test_interest_commands(initialized_workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    _agents_running(ws)
+    assert _run(["interest", "bookkeeper", "--defaults"], ws, capsys)[0] == 0
+    code, out, _err = _run(["interest", "project:kitchen-reno", "--add", "project:<slug>", "--why", "mine"], ws, capsys)
+    assert code == 0 and "project:kitchen-reno: interest project:kitchen-reno recorded" in out
+    code, out, _err = _run(["interest", "project:kitchen-reno", "--add", "project:kitchen-reno"], ws, capsys)
+    assert code == 0 and "is there already" in out
+    code, out, _err = _run(["interest", "bookkeeper"], ws, capsys)
+    assert code == 0 and "domain:finances (harvest) -> wake `after-harvest`  reconcile" in out
+    code, out, _err = _run(["interest", "bookkeeper", "--json"], ws, capsys)
+    assert code == 0 and json.loads(out)[0]["fire"] == "after-harvest"
+    code, out, _err = _run(["interested", "--when", "harvest", "--handle", "watch:simplefin",
+                            "--handle", "domain:finances"], ws, capsys)
+    assert code == 0 and out.strip() == "sa:bookkeeper  fire after-harvest  domain:finances"
+    code, out, _err = _run(["interested", "--when", "filed", "--handle", "project:kitchen-reno", "--json"], ws, capsys)
+    assert code == 0 and json.loads(out)[0]["deliver"] == "message"
+    code, out, _err = _run(["interested", "--handle", "tag:nobody-cares"], ws, capsys)
+    assert code == 0 and out == ""
+    assert _run(["interest", "project:kitchen-reno", "--remove", "project:kitchen-reno"], ws, capsys)[0] == 0
+    assert _run(["interest", "project:kitchen-reno", "--remove", "project:kitchen-reno"], ws, capsys)[0] == 2
+    assert _run(["interest", "updater", "--add", "tag:x", "--why", "w"], ws, capsys)[0] == 2
+    assert _run(["interested", "--handle", "not a handle"], ws, capsys)[0] == 2
+
+
+def test_the_briefing_lines_carry_each_agents_interests(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _agents_running(ws)
+    assert not any(line.startswith("Interests") for line in ag.heartbeat_lines(ws, now=NOW))
+    ag.default_interests(ws, "project:kitchen-reno", now=NOW)
+    ag.add_interest(ws, "project:garden", pattern="tag:tile", why="w", now=NOW)
+    (line,) = [ln for ln in ag.heartbeat_lines(ws, now=NOW) if ln.startswith("Interests")]
+    assert line == "Interests (what the update cycle tells each agent): project:kitchen-reno: project:kitchen-reno."

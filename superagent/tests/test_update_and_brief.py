@@ -141,3 +141,17 @@ def test_triggers_route_to_the_right_skill(prompt: str, skill: str) -> None:
 def test_new_triggers_do_not_over_fire(prompt: str) -> None:
     fired = {s["name"] for s in skill_loader.match_skills(prompt, skill_loader.discover_skills())}
     assert not {"superagent-update", "superagent-brief"} & fired, f"{prompt!r} fired {sorted(fired)}"
+
+
+def test_hand_offs_go_by_interests_and_not_through_the_lead(framework_dir: Path) -> None:
+    """After a cycle the Updater tells the agents that asked; the lead gets no run report."""
+    body = (framework_dir / "skills" / "update.md").read_text(encoding="utf-8")
+    assert "superagent.tools.agents interested --when <kind> --handle" in body
+    assert "One message per agent per cycle" in body and "The lead gets no run report" in body
+    assert "sends the lead one message" not in body
+    rule = (framework_dir / "rules" / "autocode.md").read_text(encoding="utf-8")
+    assert "The lead is no messenger" in rule and "Say what you want to hear about" in rule
+    assert "tell the lead what changed" not in rule
+    for role in ("project", "bookkeeper"):
+        text = (framework_dir / "agents" / f"{role}.agent.md").read_text(encoding="utf-8")
+        assert "Tell the lead in one message" not in text and "tells the lead in one message" not in text

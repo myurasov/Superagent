@@ -343,3 +343,80 @@ def test_sync_leftovers_are_not_roles(framework_dir: Path, initialized_workspace
     (folder / ".syncthing.helper.agent.md.tmp").write_text("junk")
     roles, errors = ar.collect(framework_dir, ws)
     assert errors == [] and [r.name for r in roles if r.origin == "custom"] == ["gardener"]
+
+
+# ---------------------------------------------------------------- interests
+
+INTERESTS = """interests:
+  - pattern: "domain:finances"
+    when: harvest
+    why: reconcile the new rows
+    fire: after-harvest
+  - pattern: "bill:*"
+    why: check the bill's row
+---
+"""
+
+
+def _with_interests(block: str = INTERESTS) -> str:
+    head, _sep, tail = ROLE_BODY.format(name="helper").partition("---\n\n# helper")
+    return head + block + "\n# helper" + tail
+
+
+def test_a_role_may_name_what_its_agents_want_to_hear_about(tmp_path: Path) -> None:
+    assert _problems(tmp_path, "helper", _with_interests()) == []
+    path = tmp_path / "helper.agent.md"
+    role = ar._build(ar.read_frontmatter(path), path, "custom")
+    assert [(i.pattern, i.when, i.fire) for i in role.interests] == [
+        ("domain:finances", "harvest", "after-harvest"), ("bill:*", None, None)]
+    plain = ar._build(ar.read_frontmatter(_plain(tmp_path)), _plain(tmp_path), "custom")
+    assert plain.interests == (), "the field is optional"
+
+
+def _plain(tmp_path: Path) -> Path:
+    _problems(tmp_path, "plain", ROLE_BODY.format(name="plain"))
+    return tmp_path / "plain.agent.md"
+
+
+def test_a_bad_interest_is_named(tmp_path: Path) -> None:
+    cases = {
+        'pattern: "bill:*"': ('pattern: "bills"', "is not a handle or a handle glob"),
+        'pattern: "domain:finances"': ('pattern: "nokind:finances"', "`nokind` is not a handle kind"),
+        "when: harvest": ("when: sometimes", "`when` 'sometimes' is not one of"),
+        "fire: after-harvest": ("fire: not a wake", "is not a wake name"),
+        "why: check the bill's row": ("why: ''", "`why` is empty"),
+        "why: reconcile the new rows": ("why: reconcile the new rows\n    extra: 1", "unknown field(s) ['extra']"),
+    }
+    for old, (new, expected) in cases.items():
+        problems = _problems(tmp_path, "helper", _with_interests(INTERESTS.replace(old, new)))
+        assert any(expected in line for line in problems), (new, problems)
+    assert any("`interests` is not a list" in line
+               for line in _problems(tmp_path, "helper", _with_interests("interests: none\n---\n")))
+    many = "interests:\n" + "".join(
+        f'  - pattern: "tag:t{n}"\n    why: w\n' for n in range(ar.MAX_INTERESTS + 1)) + "---\n"
+    assert any(f"{ar.MAX_INTERESTS} at most" in line
+               for line in _problems(tmp_path, "helper", _with_interests(many)))
+
+
+def test_a_yaml_word_for_true_is_no_field_name() -> None:
+    """`on`, `yes` and `y` are read as true by YAML: a field named so breaks every role file."""
+    assert not {"on", "off", "yes", "no", "y", "n"} & set(ar.INTEREST_FIELDS)
+
+
+def test_the_project_placeholder_is_for_a_project_role_only(tmp_path: Path) -> None:
+    block = 'interests:\n  - pattern: "project:<slug>"\n    why: w\n---\n'
+    assert any("is not a handle or a handle glob" in line
+               for line in _problems(tmp_path, "helper", _with_interests(block)))
+    assert ar.interest_problem(ar.PROJECT_PLACEHOLDER, placeholder=True) is None
+
+
+def test_shipped_roles_name_their_interests(framework_dir: Path) -> None:
+    roles, errors = ar.collect(framework_dir)
+    assert errors == []
+    by_name = {r.name: r for r in roles}
+    assert by_name["superagent"].interests == () and by_name["updater"].interests == ()
+    assert [(i.pattern, i.when, i.fire) for i in by_name["project"].interests] == [
+        (ar.PROJECT_PLACEHOLDER, None, None)]
+    fired = [i for i in by_name["bookkeeper"].interests if i.fire]
+    assert [(i.pattern, i.when, i.fire) for i in fired] == [("domain:finances", "harvest", "after-harvest")]
+    assert {i.pattern for i in by_name["bookkeeper"].interests} >= {"bill:*", "subscription:*"}

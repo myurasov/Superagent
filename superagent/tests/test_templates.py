@@ -280,8 +280,9 @@ def test_agents_registry_template_shape(framework_dir: Path) -> None:
     assert set(data) == {"schema_version", "last_updated", "agents"}
     (row,) = data["agents"]
     assert set(row) == {"name", "role", "handle", "project", "host", "model", "variant",
-                        "daily_usd", "wakes", "status", "notes", "provenance"}
+                        "daily_usd", "wakes", "interests", "status", "notes", "provenance"}
     assert row["name"] == "" and row["status"] == "off" and row["wakes"] == []
+    assert row["interests"] == [], "an agent keeps no interest until it writes one"
     assert "id" not in row
 
 

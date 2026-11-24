@@ -71,13 +71,13 @@ The update cycle runs as the first step of the cadence skills (`daily-update`, `
 
 ## As a session of its own
 
-When agents run as registered sessions (`rules/autocode.md`), the Updater has two granted wakes, one per duty, each behind its check: `update-light` (every 30 minutes by default) and `update-full` (once a day). Its registry row is `active` and names its machine, which makes that machine the one that fetches (`agents may-fetch`). Work hours and off days (`config.preferences.update`) hold both duties. After a cycle it sends the lead one message with what needs attention, by handle, fires the Bookkeeper's `after-harvest` wake when a finance harvest brought new rows and a Bookkeeper runs on its own (in that case it skips the transaction step of the full tier), and parks.
+When agents run as registered sessions (`rules/autocode.md`), the Updater has two granted wakes, one per duty, each behind its check: `update-light` (every 30 minutes by default) and `update-full` (once a day). Its registry row is `active` and names its machine, which makes that machine the one that fetches (`agents may-fetch`). Work hours and off days (`config.preferences.update`) hold both duties. After a cycle it tells each agent that asked to hear about what moved (`uv run python -m superagent.tools.agents interested`, step 10 of the `update` skill): one message per agent, by handle and path, or the wake that agent's interest names. The Bookkeeper's `after-harvest` is such a wake: when it was fired after a finance harvest, the cycle skips the transaction step of the full tier. The lead gets no run report: the log row is the report and the briefing reads it. The Updater messages the lead only for what needs the lead (a source unreachable for a day, a conflict copy to fold by hand, a cycle that could not finish), and parks.
 
 ## Hand-offs
 
-- **To the lead**: the run report, the asks it queued, and the sources that need attention.
-- **To the Bookkeeper**: new rows from a finance harvest are ready to reconcile (`bookkeeper.agent.md`).
-- **To a project agent**: a watched source that belongs to a project changed.
+- **To every agent that asked**: what moved and matches one of its interests (`contracts/agents.md` § 8a). The Bookkeeper's interests cover new rows from a finance harvest; a project agent's cover what moved for its project.
+- **To the lead**: only what needs it: a source that stays unreachable, a conflict copy to fold by hand, a cycle that could not finish. The asks it queued and the run report are in the stores, where the briefing reads them.
+- **It keeps no interests of its own**, and it asks nobody: an update run carries on.
 
 ## Changes to this role
 

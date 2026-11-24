@@ -64,6 +64,7 @@ The notes of the agent that develops and maintains `updater.agent.md`. The runni
 
 ## Changelog
 
+- Unreleased — hand-offs go by interests: after a cycle the Updater asks `agents interested` who wants to hear about each thing that moved and tells those agents directly (a message, or the wake the interest names). No run report to the lead; a message to the lead only when something is broken (the owner's request).
 - 0.27.0 — "As a session of its own": two granted wakes behind their checks, the registry row names the fetching machine, work hours and off days hold the duties, the Bookkeeper's wake is fired after a bank harvest.
 - 0.26.0 — the duty `watchlist` (skill `watch`, check `watchers`) became `update-light` and `update-full` (skill `update`); the cycle lock, the asks queue and `watchlist check --due` came with it. The role no longer asks even with the owner present.
 - 0.25.0 — role file created from the Ingestor persona of `superagent.agent.md`.

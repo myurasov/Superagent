@@ -59,5 +59,6 @@ The notes of the agent that develops and maintains `project.agent.md`. The runni
 
 ## Changelog
 
+- Unreleased — frontmatter `interests`: its own project by default; it adds and drops its own (a vendor, a page, a tag). Woken by the Updater when something its interests name moved, it writes to other agents directly, and the park routine sends the lead no report (the owner's request).
 - 0.27.0 — the role is final for sessions of its own: start, wake rules, the park routine, pause and end. A project agent is created by the `add-agent` skill and retired by the `projects` skill.
 - 0.25.0 — role file created: the generic project role.

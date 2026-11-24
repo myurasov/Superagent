@@ -57,6 +57,11 @@ tool works with Autocode off.
   settings           Print optional Autocode settings lines for this prefix
                      (hardening; nothing needs them). It sets nothing: only
                      the owner sets Autocode settings.
+  answer <ask-id> --answer TEXT
+                     Record the owner's answer on an open ask (the record is
+                     `tools/asks.py`'s) and tell the agent that asked, when a
+                     session holds it: one message naming the ask. Nobody has
+                     to carry the answer over.
   lock-name browser <profile>
                      The name of the Autocode lock two agents share for one
                      browser profile.
@@ -102,7 +107,7 @@ from typing import Any
 import yaml
 
 from superagent.tools import agent_roles as ar
-from superagent.tools import agents, cadence, machines
+from superagent.tools import agents, asks, cadence, machines, signals
 
 FRAMEWORK = Path(__file__).resolve().parent.parent
 RULE_REL = "superagent/rules/autocode.md"
@@ -305,10 +310,16 @@ def start_prompt(workspace: Path, framework: Path, name: str, *, dev: bool = Fal
                              f"`{check_command(info['name'], grant)}`; text: \"{wake_text(info, grant)}\"")
         else:
             lines.append("4. Set no wake: none is granted to you. You wake on a message.")
-    lines.append(f"5. Send one message to `{info['lead_id']}`: `Started: {info['name']}`."
+    step = 5
+    if not info["dev"] and role.interests:
+        lines.append(f"{step}. Write your role's interests onto your row, so the Updater tells you "
+                     "what moved for you: `uv run python -m superagent.tools.agents interest "
+                     f"{info['name']} --defaults`.")
+        step += 1
+    lines.append(f"{step}. Send one message to `{info['lead_id']}`: `Started: {info['name']}`."
                  if info["id"] != info["lead_id"] else
-                 "5. Tell the owner in one report message that you are started.")
-    lines.append("6. Do no other work now. End your turn and go idle: you will be woken.")
+                 f"{step}. Tell the owner in one report message that you are started.")
+    lines.append(f"{step + 1}. Do no other work now. End your turn and go idle: you will be woken.")
     return "\n".join(lines)
 
 
@@ -909,6 +920,56 @@ MESSAGES = {
 }
 
 
+def notify(workspace: Path, framework: Path, name: str, subject: str, text: str
+           ) -> tuple[bool, str]:
+    """Send one message to the agent `name` when a session holds it; return (sent, why not).
+
+    Nothing is sent, and that is no error, when Autocode mode is off, when no
+    session holds the agent (its registry row is not `active` or `dormant`; a
+    dev twin has no row and is always tried), when this session is that agent,
+    or when the runtime refuses. The text carries handles and paths, never data.
+    """
+    if not ar.autocode_enabled(workspace):
+        return False, "Autocode mode is off"
+    try:
+        info = _agent(workspace, framework, name)
+    except ar.AgentError as exc:
+        return False, str(exc)
+    if not info["dev"]:
+        rows, _errors = agents.load_registry(workspace)
+        status = next((r.get("status") for r in rows if r.get("name") == info["name"]), None)
+        if status not in agents.REACHABLE:
+            return False, f"no session holds {info['name']}"
+    try:
+        if me() == info["id"]:
+            return False, "this session is that agent"
+        result = _autocode(["send", info["id"], text, "--subject", subject])
+    except Unavailable as exc:
+        return False, str(exc)
+    if result.returncode != 0:
+        why = (result.stderr or result.stdout).strip().splitlines()[-1:] or ["no output"]
+        return False, why[0][:160]
+    return True, ""
+
+
+def answer(workspace: Path, framework: Path, ask_id: str, text: str, *, by: str | None = None
+           ) -> dict[str, Any]:
+    """Record the owner's answer on an open ask and tell the agent that asked.
+
+    The record is `asks.answer_ask`. Then one message goes to the asking agent
+    when a session holds it, naming the ask and where its answer is; the
+    answer itself stays on the row. Returns the row, `told` and `why_not`.
+    """
+    row = asks.answer_ask(workspace, ask_id, answer=text, by=by)
+    agent = str(row.get("agent") or "")
+    told, why = notify(
+        workspace, framework, agent, "Ask answered",
+        f"Answered: {row.get('id')}. The owner's answer is on the row in `_memory/{asks.ASKS_FILE}` "
+        f"(`uv run python -m superagent.tools.asks list --agent {agent} --json`). "
+        "Read it and go on with the work that waited.")
+    return {"row": row, "agent": agent, "told": told, "why_not": why}
+
+
 def tell(workspace: Path, framework: Path, name: str, action: str) -> dict[str, Any]:
     """Send the agent its `park` / `stop` / `retire` message, then mark its registry row.
 
@@ -1087,6 +1148,11 @@ def build_parser() -> argparse.ArgumentParser:
     st = sub.add_parser("status", parents=[common], help="The roster against what is registered.")
     st.add_argument("--json", action="store_true")
     sub.add_parser("settings", parents=[common], help="Print the owner-side settings lines.")
+    an = sub.add_parser("answer", parents=[common],
+                        help="Record the owner's answer on an ask and tell the agent that asked.")
+    an.add_argument("id")
+    an.add_argument("--answer", required=True, help="The owner's answer.")
+    an.add_argument("--by", default=None, help="Who answered (default: owner).")
     ln = sub.add_parser("lock-name", parents=[common], help="The name of a shared Autocode lock.")
     ln.add_argument("kind", choices=[BROWSER_LOCK])
     ln.add_argument("name", help="The browser profile.")
@@ -1151,11 +1217,20 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "settings":
             for line in settings_lines(workspace, fw):
                 print(line)
+        elif args.command == "answer":
+            done = answer(workspace, fw, args.id, args.answer, by=args.by)
+            print(f"{args.id}: {done['row']['status']}")
+            print(f"{args.id}: {done['agent']} was told" if done["told"] else
+                  f"{args.id}: {done['agent']} was not told ({done['why_not']}); it reads the "
+                  "answer at its next run")
         else:
             print(lock_name(workspace, args.kind, args.name))
-    except ar.AgentError as exc:
+    except (ar.AgentError, ValueError) as exc:
         print(f"autocode: {exc}", file=sys.stderr)
         return 2
+    except (signals.CorruptFileError, signals.WriteRefusedError) as exc:
+        print(f"autocode: {exc}", file=sys.stderr)
+        return 1
     except (Unavailable, agents.CheckFailedError) as exc:
         print(f"autocode: {exc}", file=sys.stderr)
         return 3

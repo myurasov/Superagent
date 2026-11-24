@@ -23,7 +23,9 @@ run.
            (status `open` and not past `expires_at`); `--agent` narrows to one
            asker; `--count` prints `open=N`; `--json` prints whole rows.
   answer   record the owner's answer on an open ask (`--answer TEXT`), or close
-           an ask that no longer needs one (`--withdraw REASON`).
+           an ask that no longer needs one (`--withdraw REASON`). While agents
+           run as sessions of their own, `tools/autocode.py answer` records the
+           answer the same way and tells the agent that asked.
   expire   close every open ask whose `expires_at` has passed (status
            `expired`) and print them. An expired ask counts as no answer.
 

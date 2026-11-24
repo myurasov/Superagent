@@ -34,6 +34,7 @@ from typing import Any
 
 import yaml
 
+from superagent.tools import handles
 from superagent.tools.syncnames import is_sync_artifact
 
 FRAMEWORK = Path(__file__).resolve().parent.parent
@@ -72,7 +73,21 @@ DUTY_ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,40}$")
 OWNS_RE = re.compile(r"^(_memory|Domains|Projects|Sources|Outbox|Inbox|Archive)/[A-Za-z0-9_<>./-]*$")
 
 REQUIRED_FIELDS = ("name", "kind", "description", "skills", "owns", "duties", "authority", "model_tier")
+#: Fields a role file may leave out.
+OPTIONAL_FIELDS = ("interests",)
 DUTY_FIELDS = ("id", "skill", "tier", "schedule", "check")
+#: An interest says which updates an agent wants to hear about: a handle or a
+#: handle glob (`project:kitchen-reno`, `domain:finances`, `bill:*`), optionally only
+#: for one kind of update, and optionally delivered by a wake that is fired.
+INTEREST_FIELDS = ("pattern", "when", "why", "fire")
+#: What an update cycle can move: a watcher saw a change, a harvest brought new
+#: rows, a document was filed, a fact was captured into a store.
+INTEREST_WHEN = ("changed", "harvest", "filed", "captured")
+#: In a project role's file: stands for the project of each instance.
+PROJECT_PLACEHOLDER = "project:<slug>"
+MAX_INTERESTS = 12
+INTEREST_RE = re.compile(r"^([a-z_]+):([A-Za-z0-9*][A-Za-z0-9_.*/-]{0,79})$")
+WAKE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$")
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 _LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
@@ -94,6 +109,16 @@ class Duty:
 
 
 @dc.dataclass(frozen=True)
+class Interest:
+    """One kind of update a role's agents want to hear about."""
+
+    pattern: str
+    when: str | None
+    why: str
+    fire: str | None
+
+
+@dc.dataclass(frozen=True)
 class Role:
     """A parsed role file."""
 
@@ -109,6 +134,7 @@ class Role:
     dev_path: Path | None
     origin: str  # "framework" | "custom"
     overlay: Path | None = None  # a same-named file in _custom/agents/ on a framework role
+    interests: tuple[Interest, ...] = ()  # what its agents ask the update cycle to tell them
 
     def duty(self, duty_id: str) -> Duty | None:
         """The duty with this id, or None."""
@@ -117,6 +143,30 @@ class Role:
     def runs(self, skill: str) -> bool:
         """True when this role lists `skill` (a lead with `skills: all` runs every skill)."""
         return self.skills == ALL_SKILLS or skill in self.skills
+
+
+# ---------------------------------------------------------------- interests
+
+def interest_problem(pattern: Any, when: Any = None, fire: Any = None, *,
+                     placeholder: bool = False) -> str | None:
+    """What is wrong with an interest, as one line; None when it is well-formed.
+
+    A pattern is a handle or a handle glob: a known handle kind, a colon, and a
+    slug that may hold `*`. `placeholder` allows `project:<slug>`, which a
+    project role's file uses for the project of each instance.
+    """
+    if placeholder and pattern == PROJECT_PLACEHOLDER:
+        pass
+    elif not isinstance(pattern, str) or not (match := INTEREST_RE.match(pattern)):
+        return (f"pattern {pattern!r} is not a handle or a handle glob "
+                "(`project:kitchen-reno`, `domain:finances`, `bill:*`)")
+    elif match.group(1) not in handles.KINDS:
+        return f"pattern {pattern!r}: `{match.group(1)}` is not a handle kind"
+    if when is not None and when not in INTEREST_WHEN:
+        return f"`when` {when!r} is not one of {', '.join(INTEREST_WHEN)}"
+    if fire is not None and not (isinstance(fire, str) and WAKE_NAME_RE.match(fire)):
+        return f"`fire` {fire!r} is not a wake name"
+    return None
 
 
 # ------------------------------------------------------------------- prefix
@@ -310,7 +360,7 @@ def check_frontmatter(fm: dict[str, Any] | None, path: Path, *, skills: set[str]
     for field in REQUIRED_FIELDS:
         if field not in fm:
             errors.append(f"{label}: missing `{field}`")
-    unknown = sorted(set(fm) - set(REQUIRED_FIELDS))
+    unknown = sorted(set(fm) - set(REQUIRED_FIELDS) - set(OPTIONAL_FIELDS))
     if unknown:
         errors.append(f"{label}: unknown field(s) {unknown} (contracts/agents.md lists the fields)")
     name = fm.get("name")
@@ -411,6 +461,27 @@ def check_frontmatter(fm: dict[str, Any] | None, path: Path, *, skills: set[str]
                     elif not (tools_dir / f"{script}.py").is_file():
                         errors.append(f"{where}: check script `{CUSTOM_TOOLS_REL}/{script}.py` "
                                       "does not exist")
+    interests = fm.get("interests")
+    if "interests" in fm:
+        if not isinstance(interests, list):
+            errors.append(f"{label}: `interests` is not a list")
+        else:
+            if len(interests) > MAX_INTERESTS:
+                errors.append(f"{label}: {len(interests)} interests; {MAX_INTERESTS} at most")
+            for i, entry in enumerate(interests):
+                where = f"{label}: interests[{i}]"
+                if not isinstance(entry, dict):
+                    errors.append(f"{where} is not a mapping")
+                    continue
+                extra = sorted(set(entry) - set(INTEREST_FIELDS))
+                if extra:
+                    errors.append(f"{where}: unknown field(s) {extra}")
+                if not (isinstance(entry.get("why"), str) and entry["why"].strip()):
+                    errors.append(f"{where}: `why` is empty")
+                problem = interest_problem(entry.get("pattern"), entry.get("when"), entry.get("fire"),
+                                           placeholder=kind == "project")
+                if problem:
+                    errors.append(f"{where}: {problem}")
     return errors
 
 
@@ -449,6 +520,9 @@ def _build(fm: dict[str, Any], path: Path, origin: str) -> Role:
         path=path,
         dev_path=dev if dev.is_file() else None,
         origin=origin,
+        interests=tuple(Interest(pattern=e["pattern"], when=e.get("when"),
+                                 why=" ".join(str(e["why"]).split()), fire=e.get("fire"))
+                        for e in fm.get("interests") or []),
     )
 
 

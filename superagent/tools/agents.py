@@ -30,11 +30,25 @@ files) and `tools/cadence.py` (what is late).
                         `--status`, `--model`, `--variant`, `--daily-usd`,
                         `--project`, `--notes` (this is how a project agent
                         comes to exist)
+  interest <agent>      the agent's interests: the kinds of update it wants to
+                        hear about, as handles or handle globs (`project:kitchen-reno`,
+                        `domain:finances`, `bill:*`). `--add PATTERN --why TEXT`
+                        records one (`--when changed|harvest|filed|captured`
+                        narrows it to one kind of update; `--fire WAKE` has the
+                        update cycle fire a granted `fire-only` wake in place of
+                        a message), `--remove PATTERN` drops one, `--defaults`
+                        writes the role's own. Twelve per agent at most
+  interested            who to tell about one thing an update cycle moved:
+                        `--handle` its own handle and each handle it relates to
+                        (`--when` says what kind of update it is). One line per
+                        agent a session holds: its id, then `message` or
+                        `fire <wake>`
   may-fetch             exit 0 when this machine may run the update cycle,
                         exit 1 when the Updater runs on another machine
   heartbeat             lines for the daily briefing: which agents run as
                         sessions of their own, when the update loop last ran,
-                        which wakes are granted. Nothing when no agent does
+                        which wakes are granted, and each agent's interests.
+                        Nothing when no agent does
 
 A duty's state is one of: `ok`; `due` (its scheduled time has come and it has
 not run since, or its check found work: the stamp against the schedule,
@@ -46,8 +60,8 @@ Ids are `<prefix>:<instance name>`; the prefix is
 `config.preferences.autocode.id_prefix` (default `sa`). The registry holds
 names, never ids, so changing the prefix changes every id at once.
 
-`list`, `id`, `duties`, `check`, `may-fetch` and `heartbeat` read only. `grant`, `revoke` and
-`set` write the registry, text-level and parse-checked (the writer of
+`list`, `id`, `duties`, `check`, `interested`, `may-fetch` and `heartbeat` read only. `grant`,
+`revoke`, `set` and `interest` write the registry, text-level and parse-checked (the writer of
 `tools/signals.py`). No command talks to an Autocode server: the tool works
 with Autocode off. Setting a wake in a runtime is `tools/autocode.py`'s work.
 
@@ -66,6 +80,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import fnmatch
 import json
 import re
 import subprocess
@@ -86,6 +101,8 @@ REGISTRY_KEY = "agents"
 ROW_FIELDS = ("host", "model", "variant", "daily_usd", "status", "project", "notes")
 REGISTRY_SKELETON = "schema_version: 1\nlast_updated: null\n"
 STATUSES = ("off", "active", "dormant", "paused", "retired")
+#: Statuses of an agent a message reaches: a session holds it.
+REACHABLE = ("active", "dormant")
 DEFAULT_STATUS = "off"
 #: Duties of this skill are held outside `preferences.update.work_hours` / on `off_days`.
 HELD_SKILL = "update"
@@ -94,6 +111,7 @@ HEARTBEAT_QUIET_HOURS = 2
 CUSTOM_CHECK_TIMEOUT = 120
 _HOURS_RE = re.compile(r"^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$")
 _WAKE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$")
+_HANDLE_RE = re.compile(r"^[a-z_]+:[A-Za-z0-9][A-Za-z0-9_.:/-]{0,119}$")
 #: Duty states a scheduler acts on (`check` exits 0), and the ones that are late.
 RUNNABLE = ("due", "overdue", "unfinished")
 LATE = ("overdue", "unfinished")
@@ -189,6 +207,7 @@ def roster(workspace: Path, framework: Path = FRAMEWORK) -> dict[str, Any]:
             "daily_usd": autocode.get("daily_usd") if cap is None else cap,
             "wakes": len(row.get("wakes") or []),
             "grants": _grants(row),
+            "interests": _interests(row),
             "registered": bool(row),
             "dev_id": ar.agent_id(prefix, ar.instance_name(role, dev=True)),
             "dev_model": dev_model,
@@ -597,6 +616,220 @@ def change_grants(workspace: Path, agent: str, *, wake: str | None = None, actio
     return hit
 
 
+# --------------------------------------------------------------- interests
+
+def _interests(row: dict[str, Any]) -> list[dict[str, Any]]:
+    return [i for i in row.get("interests") or [] if isinstance(i, dict) and i.get("pattern")]
+
+
+def interest_label(interest: dict[str, Any]) -> str:
+    """One interest in a few words: its pattern, the kind of update, the wake it fires."""
+    label = str(interest.get("pattern"))
+    if interest.get("when"):
+        label += f" ({interest['when']})"
+    if interest.get("fire"):
+        label += f" -> wake `{interest['fire']}`"
+    return label
+
+
+def interests(workspace: Path, agent: str) -> list[dict[str, Any]]:
+    """The interests on the registry row of `agent` (its instance name)."""
+    rows, _errors = load_registry(workspace)
+    row = next((r for r in rows if r.get("name") == agent), None)
+    return _interests(row) if row else []
+
+
+def _interest_role(workspace: Path, framework: Path, agent: str) -> ar.Role:
+    """The role of an agent that may keep interests; AgentError for one that may not."""
+    _role_name, _slug, is_dev = ar.split_instance(agent)
+    if is_dev:
+        raise ar.AgentError("a dev twin keeps no interests: it wakes on a message from its "
+                            "agent or the owner")
+    role = _resolve_agent(workspace, framework, agent)
+    roles, _errors = ar.collect(framework, workspace)
+    if role.name == ar.check_owner(roles, HELD_SKILL):
+        raise ar.AgentError(f"`{agent}` runs the update cycle: it tells the others what moved, "
+                            "and keeps no interests of its own")
+    return role
+
+
+def _placeholder(pattern: str, agent: str, row: dict[str, Any] | None) -> str:
+    """`project:<slug>` as the project of this agent; any other pattern as it is."""
+    if pattern != ar.PROJECT_PLACEHOLDER:
+        return pattern
+    project = (row or {}).get("project")
+    if not project:
+        raise ar.AgentError(f"`{agent}` has no project on its row, so `{pattern}` stands for nothing")
+    return str(project)
+
+
+def add_interest(workspace: Path, agent: str, *, pattern: str, when: str | None = None,
+                 why: str | None = None, fire: str | None = None, framework: Path = FRAMEWORK,
+                 now: dt.datetime | None = None) -> tuple[dict[str, Any], bool]:
+    """Record one kind of update `agent` wants to hear about; return (the interest, changed).
+
+    The pattern is a handle or a handle glob; `when` narrows it to one kind of
+    update; `why` says what the agent does with it. `fire` names a wake the
+    owner granted to the agent with the trigger `fire-only`: the update cycle
+    then fires that wake in place of a message. An interest with the same
+    pattern and `when` is updated in place. Raises AgentError for a bad
+    interest, an agent that keeps none (a dev twin, the role that runs the
+    update cycle), a project agent with no row, or a full list.
+    """
+    now = now or cadence.now_local()
+    role = _interest_role(workspace, framework, agent)
+    path, rows = _registry_rows(workspace)
+    index = _row_index(rows, agent)
+    if index is None and role.kind == "project":
+        raise ar.AgentError(f"`{agent}` has no registry row: a project agent exists only "
+                            "through its row, so add the row first")
+    row = dict(rows[index]) if index is not None else None
+    pattern = _placeholder(str(pattern or "").strip(), agent, row)
+    problem = ar.interest_problem(pattern, when, fire)
+    if problem:
+        raise ar.AgentError(problem)
+    if fire is not None:
+        granted = next((g for g in _grants(row or {}) if g.get("name") == fire), None)
+        if granted is None:
+            raise ar.AgentError(f"`{agent}` has no grant for the wake `{fire}`: an interest fires "
+                                "only a wake the owner granted")
+        if not str(granted.get("trigger") or "").startswith("fire-only"):
+            raise ar.AgentError(f"the wake `{fire}` of `{agent}` runs on a schedule "
+                                f"({granted.get('trigger')}); an interest fires a `fire-only` wake")
+    stamp = now.isoformat(timespec="seconds")
+    current = _interests(row or {})
+    old = next((i for i in current if i.get("pattern") == pattern and i.get("when") == when), None)
+    reason = " ".join(why.split()) if why and why.strip() else (old or {}).get("why")
+    if not reason:
+        raise ar.AgentError("an interest needs its why: what the agent does with such an update")
+    entry = {"pattern": pattern, "when": when, "why": reason, "fire": fire,
+             "added_at": (old or {}).get("added_at") or stamp}
+    if old == entry:
+        return entry, False
+    if old is None and len(current) >= ar.MAX_INTERESTS:
+        raise ar.AgentError(f"`{agent}` has {len(current)} interests, the most an agent keeps; "
+                            "drop one first")
+    updated = [entry if i is old else i for i in current] if old is not None else [*current, entry]
+    if row is None:
+        row = {"name": agent, "role": role.name, "handle": f"agent:{agent}", "project": None,
+               "host": None, "model": None, "variant": None, "daily_usd": None, "wakes": [],
+               "interests": updated, "status": DEFAULT_STATUS, "notes": "",
+               "provenance": {"source": "agents", "at": stamp}}
+        signals.append_row(path, REGISTRY_KEY, row, skeleton=REGISTRY_SKELETON, last_updated=stamp)
+    else:
+        row["interests"] = updated
+        signals.replace_row(path, REGISTRY_KEY, index, row, last_updated=stamp)
+    machines.beat(workspace, min_interval_s=60)
+    return entry, True
+
+
+def remove_interest(workspace: Path, agent: str, pattern: str, *, when: str | None = None,
+                    now: dt.datetime | None = None) -> int:
+    """Drop the interests of `agent` with this pattern (every `when`, or the one given); return how many."""
+    now = now or cadence.now_local()
+    path, rows = _registry_rows(workspace)
+    index = _row_index(rows, agent)
+    if index is None:
+        raise ar.AgentError(f"`{agent}` has no registry row, so it has no interest")
+    row = dict(rows[index])
+    pattern = _placeholder(str(pattern or "").strip(), agent, row)
+    current = _interests(row)
+    kept = [i for i in current
+            if not (i.get("pattern") == pattern and (when is None or i.get("when") == when))]
+    if len(kept) == len(current):
+        raise ar.AgentError(f"`{agent}` has no interest {pattern!r}" + (f" when {when}" if when else ""))
+    row["interests"] = kept
+    signals.replace_row(path, REGISTRY_KEY, index, row, last_updated=now.isoformat(timespec="seconds"))
+    machines.beat(workspace, min_interval_s=60)
+    return len(current) - len(kept)
+
+
+def default_interests(workspace: Path, agent: str, *, framework: Path = FRAMEWORK,
+                      now: dt.datetime | None = None) -> tuple[list[dict[str, Any]], list[str]]:
+    """Write the role's own interests onto the row of `agent`; return (those added, what was left out).
+
+    An interest the agent has already (the same pattern and `when`) is left as
+    the agent wrote it. One that cannot be recorded, such as a wake to fire
+    that has no grant yet, is named in the second list and skipped.
+    """
+    role = _interest_role(workspace, framework, agent)
+    added: list[dict[str, Any]] = []
+    notes: list[str] = []
+    for default in role.interests:
+        try:
+            rows, _errors = load_registry(workspace)
+            row = next((r for r in rows if r.get("name") == agent), None)
+            pattern = _placeholder(default.pattern, agent, row)
+            if any(i.get("pattern") == pattern and i.get("when") == default.when for i in _interests(row or {})):
+                continue
+            entry, _changed = add_interest(workspace, agent, pattern=pattern, when=default.when,
+                                           why=default.why, fire=default.fire, framework=framework,
+                                           now=now)
+        except ar.AgentError as exc:
+            notes.append(f"{default.pattern}: {exc}")
+            continue
+        added.append(entry)
+    return added, notes
+
+
+def interested(workspace: Path, handles: list[str], *, when: str | None = None,
+               now: dt.datetime | None = None) -> list[dict[str, Any]]:
+    """Who to tell about one thing an update cycle moved; one row per agent, by name.
+
+    `handles` are the thing's own handle and the handles it relates to (its
+    project, its domain, a contact, tags); `when` is the kind of update. An
+    agent is named when a session holds it (`active` or `dormant`) and one of
+    its interests matches a handle. Each row says how to deliver: `message`,
+    or `fire` with the wake to fire, or `skip` with the reason when the only
+    matching interest fires a wake that may not run now (no grant, suspended,
+    ended). An interest narrowed to one kind of update matches that kind only.
+    """
+    now = now or cadence.now_local()
+    if when is not None and when not in ar.INTEREST_WHEN:
+        raise ar.AgentError(f"`when` {when!r} is not one of {', '.join(ar.INTEREST_WHEN)}")
+    given = [str(h).strip() for h in handles or []]
+    for handle in given:
+        if not _HANDLE_RE.match(handle):
+            raise ar.AgentError(f"{handle!r} is not a handle (`<kind>:<slug>`)")
+    if not given:
+        raise ar.AgentError("give at least one handle")
+    prefix = ar.id_prefix(workspace)
+    rows, _errors = load_registry(workspace)
+    found: list[dict[str, Any]] = []
+    for row in sorted(rows, key=lambda r: str(r.get("name"))):
+        if row.get("status") not in REACHABLE:
+            continue
+        hits = [i for i in _interests(row)
+                if (i.get("when") is None or i.get("when") == when)
+                and any(fnmatch.fnmatchcase(h, str(i["pattern"])) for h in given)]
+        if not hits:
+            continue
+        name = str(row["name"])
+        fired = [i for i in hits if i.get("fire")]
+        plain = [i for i in hits if not i.get("fire")]
+        deliver, wake, reason = "message", None, None
+        if fired:
+            ok, why_not = grant_state(workspace, name, str(fired[0]["fire"]), now)
+            if ok:
+                deliver, wake = "fire", str(fired[0]["fire"])
+            elif not plain:
+                deliver, reason = "skip", why_not
+        found.append({"agent": name, "id": ar.agent_id(prefix, name), "deliver": deliver,
+                      "wake": wake, "reason": reason,
+                      "patterns": sorted({str(i["pattern"]) for i in hits})})
+    return found
+
+
+def render_interested(rows: list[dict[str, Any]]) -> list[str]:
+    """One line per agent to tell: its id, how to deliver, what matched."""
+    lines: list[str] = []
+    for row in rows:
+        how = {"message": "message", "fire": f"fire {row['wake']}",
+               "skip": f"skip ({row['reason']})"}[row["deliver"]]
+        lines.append(f"{row['id']}  {how}  {', '.join(row['patterns'])}")
+    return lines
+
+
 # --------------------------------------------------------------- heartbeat
 
 def _ago(value: Any, now: dt.datetime) -> str:
@@ -647,6 +880,10 @@ def heartbeat_lines(workspace: Path, framework: Path = FRAMEWORK, *,
         lines.append("Granted wakes: " + "; ".join(active) + ".")
     if paused:
         lines.append("Suspended grants: " + "; ".join(paused) + ".")
+    keen = [f"{a['name']}: " + ", ".join(interest_label(i) for i in a["interests"])
+            for a in running if a["interests"]]
+    if keen:
+        lines.append("Interests (what the update cycle tells each agent): " + "; ".join(keen) + ".")
     return lines
 
 
@@ -776,6 +1013,26 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--daily-usd", type=float, default=None, dest="daily_usd")
     st.add_argument("--project", default=None, help="The Project's handle, for a project agent.")
     st.add_argument("--notes", default=None)
+    it = sub.add_parser("interest", parents=[common],
+                        help="An agent's interests: what the update cycle should tell it about.")
+    it.add_argument("agent", help="`<role>` or `project:<slug>`.")
+    what = it.add_mutually_exclusive_group()
+    what.add_argument("--add", default=None, metavar="PATTERN",
+                      help="A handle or a handle glob: project:kitchen-reno, domain:finances, bill:*.")
+    what.add_argument("--remove", default=None, metavar="PATTERN", help="Drop this interest.")
+    what.add_argument("--defaults", action="store_true", help="Write the role's own interests.")
+    it.add_argument("--when", default=None, choices=ar.INTEREST_WHEN,
+                    help="Only this kind of update (default: any).")
+    it.add_argument("--why", default=None, help="What the agent does with such an update.")
+    it.add_argument("--fire", default=None, metavar="WAKE",
+                    help="Fire this granted `fire-only` wake in place of a message.")
+    it.add_argument("--json", action="store_true", help="Print the agent's interests as JSON.")
+    who = sub.add_parser("interested", parents=[common],
+                         help="Who to tell about one thing an update cycle moved.")
+    who.add_argument("--handle", action="append", required=True, dest="handles", metavar="HANDLE",
+                     help="The thing's own handle, and each handle it relates to; repeatable.")
+    who.add_argument("--when", default=None, choices=ar.INTEREST_WHEN, help="The kind of update.")
+    who.add_argument("--json", action="store_true", help="Print the rows as JSON.")
     sub.add_parser("heartbeat", parents=[common],
                    help="Lines for the briefing about agents that run as sessions of their own.")
     sub.add_parser("may-fetch", parents=[common],
@@ -823,6 +1080,39 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "heartbeat":
             for line in heartbeat_lines(workspace, args.framework, now=args.now):
                 print(line)
+            return 0
+        if args.command == "interest":
+            if args.add:
+                entry, changed = add_interest(workspace, args.agent, pattern=args.add, when=args.when,
+                                              why=args.why, fire=args.fire,
+                                              framework=args.framework, now=args.now)
+                print(f"{args.agent}: interest {interest_label(entry)} "
+                      + ("recorded" if changed else "is there already"))
+            elif args.remove:
+                count = remove_interest(workspace, args.agent, args.remove, when=args.when, now=args.now)
+                print(f"{args.agent}: {count} interest(s) removed")
+            elif args.defaults:
+                added, notes = default_interests(workspace, args.agent, framework=args.framework,
+                                                 now=args.now)
+                for entry in added:
+                    print(f"{args.agent}: interest {interest_label(entry)} recorded")
+                if not added:
+                    print(f"{args.agent}: the role's interests are there already"
+                          if not notes else f"{args.agent}: no interest added")
+                _warn(notes)
+            elif args.json:
+                print(json.dumps(interests(workspace, args.agent), indent=2, default=str))
+            else:
+                for entry in interests(workspace, args.agent):
+                    print(f"{interest_label(entry)}  {entry.get('why') or ''}".rstrip())
+            return 0
+        if args.command == "interested":
+            rows = interested(workspace, args.handles, when=args.when, now=args.now)
+            if args.json:
+                print(json.dumps(rows, indent=2))
+            else:
+                for line in render_interested(rows):
+                    print(line)
             return 0
         if args.command == "may-fetch":
             ok, why = may_fetch(workspace, args.framework)

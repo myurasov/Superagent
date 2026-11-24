@@ -22,8 +22,8 @@ import yaml
 
 from superagent.tools import agent_roles as ar
 from superagent.tools import agents as ag
+from superagent.tools import asks, cadence
 from superagent.tools import autocode as ac
-from superagent.tools import cadence
 
 
 class Fake:
@@ -690,3 +690,78 @@ def test_the_start_skill_asks_in_cards_and_names_only_real_commands(framework_di
     for flag in re.findall(r"--[a-z][a-z-]+", body):
         assert flag in {"--json", "--approval", "--agents", "--work-hours", "--daily-usd", "--wake", "--skip",
                         "--no-wakes", "--runner-model", "--runner-variant", "--dry-run", "--off"}, flag
+
+
+# ------------------------------------------- answers are passed on by the tool
+
+ME_LEAD = (0, json.dumps({"registered": True, "agent": {"id": "sa:superagent"}}), "")
+
+
+def _ask_from(ws: Path, agent: str = "bookkeeper", *, status: str | None = "active") -> str:
+    if status is not None:
+        ag.set_row(ws, agent, status=status)
+    ask_id, _created = asks.add_ask(ws, agent=agent, question="Track it as a bill?")
+    return ask_id
+
+
+def test_answer_records_the_owners_word_and_tells_the_agent_that_asked(initialized_workspace: Path,
+                                                                        fake: Fake) -> None:
+    ws = initialized_workspace
+    _enable(ws)
+    ask_id = _ask_from(ws)
+    fake.answers["autocode me"] = ME_LEAD
+    done = ac.answer(ws, ac.FRAMEWORK, ask_id, "yes, as a bill")
+    assert done["told"] is True and done["agent"] == "bookkeeper"
+    assert done["row"]["status"] == "answered" and done["row"]["answer"] == "yes, as a bill"
+    (send,) = [c["cmd"] for c in fake.calls if c["cmd"][1] == "send"]
+    assert send[2] == "sa:bookkeeper" and send[-2:] == ["--subject", "Ask answered"]
+    assert ask_id in send[3] and "_memory/asks.yaml" in send[3]
+    assert "as a bill" not in send[3], "the message names the ask; the answer stays on the row"
+
+
+def test_answer_is_recorded_also_when_nobody_can_be_told(initialized_workspace: Path, fake: Fake) -> None:
+    ws = initialized_workspace
+    off = ac.answer(ws, ac.FRAMEWORK, _ask_from(ws), "yes")
+    assert off["row"]["status"] == "answered" and off["told"] is False
+    assert off["why_not"] == "Autocode mode is off" and fake.calls == []
+    _enable(ws)
+    fake.answers["autocode me"] = ME_LEAD
+    ag.set_row(ws, "bookkeeper", status="off")
+    idle = ac.answer(ws, ac.FRAMEWORK, _ask_from(ws, status=None), "yes")
+    assert idle["told"] is False and idle["why_not"] == "no session holds bookkeeper"
+    ag.set_row(ws, "bookkeeper", status="active")
+    fake.answers["autocode me"] = (0, json.dumps({"registered": True, "agent": {"id": "sa:bookkeeper"}}), "")
+    own = ac.answer(ws, ac.FRAMEWORK, _ask_from(ws, status=None), "yes")
+    assert own["told"] is False and own["why_not"] == "this session is that agent"
+    fake.answers["autocode me"] = ME_LEAD
+    fake.answers["autocode send"] = (1, "", "error: unknown agent")
+    refused = ac.answer(ws, ac.FRAMEWORK, _ask_from(ws, status=None), "yes")
+    assert refused["told"] is False and refused["why_not"] == "error: unknown agent"
+    assert all(r["status"] == "answered" for r in asks.load_asks(ws))
+
+
+def test_answer_command(initialized_workspace: Path, fake: Fake,
+                        capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    _enable(ws)
+    ask_id = _ask_from(ws)
+    fake.answers["autocode me"] = ME_LEAD
+    assert ac.main(["answer", ask_id, "--answer", "yes", "--workspace", str(ws)]) == 0
+    out = capsys.readouterr().out
+    assert f"{ask_id}: answered" in out and f"{ask_id}: bookkeeper was told" in out
+    assert ac.main(["answer", ask_id, "--answer", "yes", "--workspace", str(ws)]) == 1, (
+        "an ask that is closed already is refused")
+    assert "already answered" in capsys.readouterr().err
+
+
+def test_the_start_prompt_has_an_agent_write_its_roles_interests(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    text = ac.start_prompt(ws, ac.FRAMEWORK, "bookkeeper")
+    assert "`uv run python -m superagent.tools.agents interest bookkeeper --defaults`" in text
+    assert "6. Send one message to `sa:superagent`: `Started: bookkeeper`." in text
+    assert "7. Do no other work now." in text
+    ag.set_row(ws, "project:kitchen-reno", status="dormant")
+    assert "agents interest project:kitchen-reno --defaults" in ac.start_prompt(ws, ac.FRAMEWORK, "project:kitchen-reno")
+    for name, dev in (("updater", False), ("superagent", False), ("bookkeeper", True)):
+        plain = ac.start_prompt(ws, ac.FRAMEWORK, name, dev=dev)
+        assert "--defaults" not in plain and "6. Do no other work now." in plain

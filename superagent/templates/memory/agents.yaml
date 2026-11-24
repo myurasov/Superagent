@@ -47,6 +47,18 @@ agents:
   #                  A periodic wake with no grant here must not run: its check
   #                  (`agents check <agent> [<duty>] --wake <name>`) skips it.
   #                  Empty for an agent that only wakes on a message.
+  #   interests   — The kinds of update this agent wants to hear about, one
+  #                  mapping each, written by `uv run python -m
+  #                  superagent.tools.agents interest <agent> --add ...`:
+  #                    { pattern: "<a handle or a handle glob: project:kitchen-reno,
+  #                               domain:finances, bill:*>",
+  #                      when: changed | harvest | filed | captured | null (any),
+  #                      why: "<what the agent does with such an update>",
+  #                      fire: "<a granted fire-only wake to fire, or null for a
+  #                             message>", added_at: <ISO datetime> }
+  #                  After a cycle the Updater tells each agent whose interest
+  #                  matches what moved (`agents interested`). Twelve at most.
+  #                  Absent on rows older than 0.31.0 = none.
   #   status      — off      no session runs it; a chat session takes the role
   #                  active   a registered session runs it with its granted wakes
   #                  dormant  a registered session holds it and wakes on a message
@@ -64,6 +76,7 @@ agents:
     variant: null
     daily_usd: null
     wakes: []
+    interests: []
     status: "off"
     notes: ""
     provenance:

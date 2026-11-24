@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-11-23T16:53:48-08:00'
+generated_at: '2026-11-23T18:29:37-08:00'
 skill_count: 42
 skills:
 - name: superagent-ad-hoc-task
@@ -199,14 +199,15 @@ skills:
   - act as the <agent> / take the <agent> role / work as the <agent>
   - develop the <agent> agent / work as the dev twin / dev twin of <agent>
   - add an agent row / place the <agent> agent / agent registry
+  - agent interests / what is the <agent> told about / drop the <agent>'s interest in <thing>
   mcp_required: []
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 166
+  lines: 181
   h2_steps: 5
-  h3_subsections: 8
-  typical_token_cost: 2985
+  h3_subsections: 9
+  typical_token_cost: 3318
   typical_files_read:
   - _memory/agents.yaml
   - _memory/config.yaml
@@ -289,10 +290,10 @@ skills:
   mcp_optional: []
   cli_required: []
   cli_optional: []
-  lines: 372
+  lines: 374
   h2_steps: 44
   h3_subsections: 0
-  typical_token_cost: 6674
+  typical_token_cost: 6738
   typical_files_read:
   - _memory/config.yaml
   - _memory/context.yaml
@@ -1031,10 +1032,10 @@ skills:
   - any watcher registered in Sources/Watchlist/ that is due (gmail, url, subagent, a harvest pack, …)
   cli_required: []
   cli_optional: []
-  lines: 246
+  lines: 258
   h2_steps: 12
   h3_subsections: 0
-  typical_token_cost: 4234
+  typical_token_cost: 4660
   typical_files_read:
   - _memory/config.yaml
   - _memory/bills.yaml
