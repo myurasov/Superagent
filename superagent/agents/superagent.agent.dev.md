@@ -59,6 +59,7 @@ The notes of the agent that develops and maintains `superagent.agent.md`. The ru
 
 ## Changelog
 
+- Unreleased — the lead and its dev twin take no default model: the lead is the owner's own session, and its dev twin is started on the model and effort of the session that starts it (`tools/autocode.py` `session_model`). Other agents keep the default the owner sets in config, and a model named on a row comes first (the owner's decision).
 - Unreleased — the lead is no messenger: agents write to each other, the Updater tells each agent what moved for it (interests), and the lead hears only what needs a decision, what the owner must hear, and starts and ends. It records answers with `tools/autocode.py answer`, which tells the agent that asked (the owner's request).
 - Unreleased — an agent whose work is stopped adds a blocking ask and raises its card in the owner's Inbox itself; the answer goes to that agent, which records it. The lead stays the role that asks in briefings and the one that writes reports (the owner's request, after an ask sat in the queue unseen).
 - Unreleased — `setup apply` keeps a duty's cadence value in step with a changed wake time, and a granted wake is never offered again or replaced by a plain apply (change request from the lead after the first live start).

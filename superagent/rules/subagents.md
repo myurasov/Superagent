@@ -166,6 +166,10 @@ fallback.
 
 ## Model tiering
 
+**The default is the parent session's model.** A subagent is started on the
+model of the session that starts it. Another model is named only by the tier
+rules below, or on the owner's word for that task.
+
 Rules speak in abstract tiers — Superagent uses three (**frontier /
 balanced / fast**). The tier definitions, current model examples, AND the
 task-class → tier mapping per posture live in `docs/harness-matrix.md`

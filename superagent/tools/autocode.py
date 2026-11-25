@@ -210,6 +210,23 @@ def me() -> str | None:
     return str(agent.get("id")) if isinstance(agent, dict) and agent.get("id") else None
 
 
+def session_model() -> tuple[str | None, str | None]:
+    """(model, effort) of the session this tool runs in, when it is a registered agent.
+
+    (None, None) for a shell that is no registered session, or when Autocode
+    cannot say. The lead's dev twin is started on this: the model of the
+    session that starts it, read at that moment and stored nowhere.
+    """
+    try:
+        data = json.loads(_autocode(["me", "--json"]).stdout or "null")
+    except (Unavailable, ValueError):
+        return None, None
+    agent = data.get("agent") if isinstance(data, dict) and data.get("registered") else None
+    if not isinstance(agent, dict) or not agent.get("model"):
+        return None, None
+    return str(agent["model"]), (str(agent["effort"]) if agent.get("effort") else None)
+
+
 def lock_name(workspace: Path, kind: str, name: str) -> str:
     """`<prefix>:<kind>:<name>`: the Autocode lock agents of this workspace share for one thing."""
     if not ar.SLUG_RE.match(name):
@@ -234,11 +251,12 @@ def _agent(workspace: Path, framework: Path, name: str, *, dev: bool = False) ->
                             f"(`uv run python -m superagent.tools.agents set {name}`)")
     tier = ar.autocode_preferences(workspace).get("models")
     tier = (tier.get("dev") if isinstance(tier, dict) else None) or {}
+    follows = dev and role.kind == "lead"  # no default: the model of the session that starts it
     return {
         "name": instance, "id": ar.agent_id(data["prefix"], instance), "role": role, "dev": dev,
-        "slug": slug,
-        "model": (tier.get("model") if dev else (row or {}).get("model")),
-        "variant": (tier.get("variant") if dev else (row or {}).get("variant")),
+        "slug": slug, "follows_starter": follows,
+        "model": None if follows else (tier.get("model") if dev else (row or {}).get("model")),
+        "variant": None if follows else (tier.get("variant") if dev else (row or {}).get("variant")),
         "grants": [] if dev else [g for g in (row or {}).get("grants", [])
                                   if g.get("status", "active") == "active"],
         "lead_id": ar.agent_id(data["prefix"], (ar.lead(roles) or role).name),
@@ -875,6 +893,8 @@ def start_command(workspace: Path, framework: Path, name: str, *, dev: bool = Fa
     cmd = [_binary("opencode"), "run", "--title", f"@{info['id']}"]
     if auto:
         cmd.append("--auto")
+    if info["follows_starter"]:
+        info["model"], info["variant"] = session_model()
     if info["model"]:
         cmd += ["--model", f"{info['model']}#{info['variant']}" if info["variant"] else info["model"]]
     cmd.append(start_prompt(workspace, framework, name, dev=dev))
@@ -901,7 +921,9 @@ def start(workspace: Path, framework: Path, name: str, *, dev: bool = False, aut
     if result.returncode != 0:
         tail = (result.stderr or result.stdout).strip().splitlines()[-1:] or ["no output"]
         raise Unavailable(f"`opencode run` ended with exit {result.returncode}: {tail[0][:200]}")
-    done = {"id": info["id"], "name": info["name"], "status": None, "host": None}
+    done = {"id": info["id"], "name": info["name"], "status": None, "host": None,
+            "model": (f"{info['model']}#{info['variant']}" if info["variant"] else info["model"])
+            if info["model"] else None, "follows_starter": info["follows_starter"]}
     if not info["dev"]:
         status = "active" if info["grants"] else "dormant"
         host = machines.machine_name(create=False)
@@ -1191,6 +1213,10 @@ def main(argv: list[str] | None = None) -> int:
             done = start(workspace, fw, args.agent, dev=args.dev, auto=not args.no_auto)
             print(f"started {done['id']}" + (f": row `{done['status']}` on {done['host']}"
                                              if done["status"] else " (a dev twin has no row)"))
+            print(f"model: {done['model']}" + (" (the model of this session)" if done["follows_starter"] else "")
+                  if done["model"] else "model: none named, so the harness default applies"
+                  + (" (this shell is no registered session, so there is no model to follow)"
+                     if done["follows_starter"] else ""))
             print("confirm it registered: `autocode agents` in the owner's shell, or "
                   "`autocode_me action=discover` in a session")
         elif args.command in MESSAGES:

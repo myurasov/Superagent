@@ -131,7 +131,8 @@ def test_start_runs_opencode_with_the_tier_model_and_marks_the_row(
     monkeypatch.setenv("AUTOCODE_SESSION", "ses_parent")
     monkeypatch.setenv("OPENCODE_SESSION_ID", "ses_parent")
     done = ac.start(ws, ac.FRAMEWORK, "updater")
-    assert done == {"id": "sa:updater", "name": "updater", "status": "active", "host": "testbox"}
+    assert done == {"id": "sa:updater", "name": "updater", "status": "active", "host": "testbox",
+                    "model": "prov/big#high", "follows_starter": False}, "the start says which model it gave"
     call = fake.calls[0]
     assert call["cmd"][:7] == ["opencode", "run", "--title", "@sa:updater", "--auto", "--model", "prov/big#high"]
     assert call["cmd"][-1] == ac.start_prompt(ws, ac.FRAMEWORK, "updater")
@@ -765,3 +766,49 @@ def test_the_start_prompt_has_an_agent_write_its_roles_interests(initialized_wor
     for name, dev in (("updater", False), ("superagent", False), ("bookkeeper", True)):
         plain = ac.start_prompt(ws, ac.FRAMEWORK, name, dev=dev)
         assert "--defaults" not in plain and "6. Do no other work now." in plain
+
+
+# --------------------------------- the lead and its dev twin take no default
+
+def test_the_leads_dev_twin_starts_on_the_model_of_the_session_that_starts_it(
+        initialized_workspace: Path, fake: Fake) -> None:
+    ws = initialized_workspace
+    _enable(ws)
+    fake.answers["autocode me"] = (0, json.dumps({"registered": True, "agent": {
+        "id": "sa:superagent", "model": "prov/strong", "effort": "xhigh"}}), "")
+    cmd, info = ac.start_command(ws, ac.FRAMEWORK, "superagent", dev=True)
+    assert cmd[cmd.index("--model") + 1] == "prov/strong#xhigh" and info["follows_starter"] is True
+    fake.answers["autocode me"] = (0, json.dumps({"registered": True, "agent": {
+        "id": "sa:superagent", "model": "prov/strong"}}), "")
+    cmd, _info = ac.start_command(ws, ac.FRAMEWORK, "superagent", dev=True)
+    assert cmd[cmd.index("--model") + 1] == "prov/strong", "a model with no effort is passed as it is"
+    fake.answers["autocode me"] = (0, json.dumps({"registered": False}), "")
+    cmd, info = ac.start_command(ws, ac.FRAMEWORK, "superagent", dev=True)
+    assert "--model" not in cmd and info["model"] is None, (
+        "a shell that is no registered session has no model to follow: the harness default applies")
+
+
+def test_other_agents_keep_the_default_the_owner_set(initialized_workspace: Path, fake: Fake) -> None:
+    ws = initialized_workspace
+    _enable(ws)
+    fake.answers["autocode me"] = (0, json.dumps({"registered": True, "agent": {
+        "id": "sa:superagent", "model": "prov/strong", "effort": "xhigh"}}), "")
+    cmd, info = ac.start_command(ws, ac.FRAMEWORK, "updater", dev=True)
+    assert cmd[cmd.index("--model") + 1] == "prov/big#xhigh" and info["follows_starter"] is False
+    cmd, _info = ac.start_command(ws, ac.FRAMEWORK, "updater")
+    assert cmd[cmd.index("--model") + 1] == "prov/big#high", "the runner default of the config"
+    ag.set_row(ws, "updater", variant="medium")
+    cmd, _info = ac.start_command(ws, ac.FRAMEWORK, "updater")
+    assert cmd[cmd.index("--model") + 1] == "prov/big#medium", "an effort named on the row comes first"
+    assert not [c for c in fake.calls if c["cmd"][1] == "me"], "no session is asked for its model"
+
+
+def test_the_roster_names_no_default_model_for_the_lead(initialized_workspace: Path) -> None:
+    ws = initialized_workspace
+    _enable(ws)
+    by_name = {a["name"]: a for a in ag.roster(ws)["agents"]}
+    assert by_name["superagent"]["model"] is None and by_name["superagent"]["dev_model"] is None
+    assert by_name["updater"]["model"] == "prov/big" and by_name["updater"]["dev_model"] == "prov/big"
+    ag.set_row(ws, "superagent", model="prov/own", variant="high")
+    lead = next(a for a in ag.roster(ws)["agents"] if a["name"] == "superagent")
+    assert (lead["model"], lead["variant"]) == ("prov/own", "high"), "a model named on its row is shown"

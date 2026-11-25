@@ -39,7 +39,7 @@ A role file opens with YAML frontmatter. Every field is required except `interes
 | `skills` | list of skill stems, or `all` (lead only) | The skills the role runs as its job. Each must exist (`superagent/skills/` or `workspace/_custom/skills/`). A durable or project agent stays inside this list and hands anything else to the lead. |
 | `owns` | list of workspace-relative paths | The stores the role is the main writer of (`_memory/bills.yaml`, `Projects/<slug>/`). Another role that needs a change there asks the owner of the store. |
 | `authority` | `act` \| `approve` \| `prepare` \| `owner` | The loosest autonomy tier the role may use (`contracts/autonomy.md` § 2). |
-| `model_tier` | `runner` \| `dev` | Which default model the role uses (`config.preferences.autocode.models.<tier>`). |
+| `model_tier` | `runner` \| `dev` | Which default model the role uses (`config.preferences.autocode.models.<tier>`): the owner's setting, never chosen by the framework. A model named on an agent's registry row comes first. The lead and its dev twin take no default: the lead is the owner's own session, and its dev twin is started on the model and effort of the session that starts it. |
 | `duties` | list (may be empty) | The role's duties (§ 3). |
 | `interests` | list (optional) | What the role's agents ask the update cycle to tell them about (§ 8a): one mapping each, `pattern`, `why`, and optionally `when` and `fire`. A project role writes `project:<slug>` for the project of each instance. |
 

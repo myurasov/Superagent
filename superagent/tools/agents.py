@@ -165,7 +165,15 @@ def load_registry(workspace: Path) -> tuple[list[dict[str, Any]], list[str]]:
 
 def _model_for(role: ar.Role, row: dict[str, Any], autocode: dict[str, Any], *, dev: bool = False
                ) -> tuple[str | None, str | None]:
-    """(model, variant): the registry row's own, else the configured default of the tier."""
+    """(model, variant): the registry row's own, else the configured default of the tier.
+
+    The lead and its dev twin take no default. The lead is the owner's own
+    session, on the model the owner chose there, so only a model named on its
+    row is reported. Its dev twin is started on the model of the session that
+    starts it (`tools/autocode.py`): (None, None) here.
+    """
+    if role.kind == "lead":
+        return (None, None) if dev else (row.get("model"), row.get("variant"))
     models = autocode.get("models") if isinstance(autocode.get("models"), dict) else {}
     tier = models.get("dev" if dev else role.model_tier)
     tier = tier if isinstance(tier, dict) else {}
