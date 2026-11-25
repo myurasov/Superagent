@@ -377,6 +377,27 @@ def test_heartbeat_is_silent_without_separate_agents_and_flags_a_quiet_loop(
     ]
     later = NOW + dt.timedelta(hours=3)
     assert ag.heartbeat_lines(ws, now=later)[1].endswith(
-        "No light update in over 2 hours: look at the updater agent.")
+        "No light update in over 60 minutes of work hours, where every slot runs one: "
+        "look at the updater agent."), "the light period (30 minutes) plus half an hour"
     _set_update_block(ws, work_hours="13:00-14:00")
     assert "No light update" not in ag.heartbeat_lines(ws, now=later)[1], "quiet on purpose: outside work hours"
+
+
+def test_a_loop_held_overnight_is_not_quiet_when_the_day_begins(initialized_workspace: Path) -> None:
+    """The quiet time counts from the start of work hours: no alarm at the first slot of the day."""
+    ws = initialized_workspace
+    _make_current(ws)
+    _grant(ws)
+    ag.set_row(ws, "updater", status="active", host="box1", now=NOW)
+    _set_update_block(ws, work_hours="08:45-20:00")
+    assert ag.window_opened(ws, NOW) == NOW.replace(hour=8, minute=45)
+    assert ag.light_period(ws) == dt.timedelta(minutes=30)
+    path = ws / "_memory" / "context.yaml"
+    ctx = yaml.safe_load(path.read_text())
+    ctx["last_runs"]["update_light"] = (NOW - dt.timedelta(hours=14)).isoformat(timespec="seconds")
+    path.write_text(yaml.safe_dump(ctx, sort_keys=False))
+    assert "No light update" not in ag.heartbeat_lines(ws, now=NOW)[1], (
+        "work hours began 15 minutes ago: the first slot may still be running")
+    late = NOW + dt.timedelta(minutes=50)
+    assert "No light update in over 60 minutes of work hours" in ag.heartbeat_lines(ws, now=late)[1], (
+        "65 minutes into work hours with no run: a true alarm")

@@ -106,8 +106,10 @@ REACHABLE = ("active", "dormant")
 DEFAULT_STATUS = "off"
 #: Duties of this skill are held outside `preferences.update.work_hours` / on `off_days`.
 HELD_SKILL = "update"
-#: The briefing flags an active update loop that made no light run for this long.
-HEARTBEAT_QUIET_HOURS = 2
+#: The briefing flags an active update loop whose last light run lies further back than the
+#: light update's period plus this slack, counted inside work hours: every slot runs one.
+HEARTBEAT_SLACK_MINUTES = 30
+DEFAULT_LIGHT_PERIOD = dt.timedelta(hours=2)
 CUSTOM_CHECK_TIMEOUT = 120
 _HOURS_RE = re.compile(r"^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$")
 _WAKE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$")
@@ -298,6 +300,9 @@ def evaluate(role: ar.Role, duty: ar.Duty, report: dict[str, Any], *, workspace:
         if unfinished:
             started = str(unfinished["started"])[:16].replace("T", " ")
             return "unfinished", f"started {started} and never finished"
+        # Every slot runs an update: the check names what waits, and no longer skips a slot
+        # in which nothing does (the owner's decision; work hours, the grant and the cost cap
+        # still hold a scheduled run).
         found: list[str] = []
         due = [row["id"] for row in wl.due_rows(workspace, framework, now=now) if row["due"]]
         if due:
@@ -305,7 +310,7 @@ def evaluate(role: ar.Role, duty: ar.Duty, report: dict[str, Any], *, workspace:
         files = inbox.waiting(workspace, now=now)
         if files:
             found.append(f"{len(files)} document(s) waiting in a drop folder")
-        return ("due", "; ".join(found)) if found else ("ok", "")
+        return "due", "; ".join(found) or "every slot runs an update"
     if ar.custom_check_name(duty.check):
         return "custom", ""  # the role's own script: run by `check`, never by a listing
     if duty.check != "cadence":
@@ -475,6 +480,30 @@ def update_window(workspace: Path, now: dt.datetime) -> str | None:
         if not inside:
             return f"outside work hours ({block['work_hours']})"
     return None
+
+
+def light_period(workspace: Path) -> dt.timedelta:
+    """How far apart the light update's slots lie: `preferences.cadences.update_light`
+    when it is an `every N ...` value, else two hours."""
+    cadences = ar.load_preferences(workspace).get("cadences")
+    value = cadences.get("update_light") if isinstance(cadences, dict) else None
+    schedule = cadence.parse_schedule(value)
+    return schedule.every if schedule is not None and schedule.every else DEFAULT_LIGHT_PERIOD
+
+
+def window_opened(workspace: Path, now: dt.datetime) -> dt.datetime | None:
+    """When the work hours `now` lies in began; None with no work hours set.
+
+    A loop that was held overnight is not quiet at the start of the day: the
+    time it could have run counts from here.
+    """
+    block = ar.load_preferences(workspace).get("update")
+    block = block if isinstance(block, dict) else {}
+    match = _HOURS_RE.match(str(block.get("work_hours") or "").strip())
+    if not match:
+        return None
+    opened = now.replace(hour=int(match.group(1)), minute=int(match.group(2)), second=0, microsecond=0)
+    return opened if opened <= now else opened - dt.timedelta(days=1)
 
 
 # ------------------------------------------------------------------ grants
@@ -849,7 +878,8 @@ def heartbeat_lines(workspace: Path, framework: Path = FRAMEWORK, *,
     [] when no registry row is `active`, `dormant` or `paused` and no wake is
     granted: with no separate agents there is nothing to say. Otherwise: who
     runs where, when the update loop last ran (flagged when it went quiet for
-    more than two hours inside its work hours), and the granted wakes.
+    longer than the light update's period plus half an hour inside its work
+    hours, where every slot runs one), and the granted wakes.
     """
     now = now or cadence.now_local()
     data = roster(workspace, framework)
@@ -869,9 +899,13 @@ def heartbeat_lines(workspace: Path, framework: Path = FRAMEWORK, *,
         line = (f"Update loop: last light update {_ago(runs.get('update_light'), now)}, "
                 f"last full {_ago(runs.get('update_full'), now)}.")
         last = cadence.as_datetime(runs.get("update_light"))
-        if update_window(workspace, now) is None and (
-                last is None or now - last > dt.timedelta(hours=HEARTBEAT_QUIET_HOURS)):
-            line += f" No light update in over {HEARTBEAT_QUIET_HOURS} hours: look at the {owner} agent."
+        if update_window(workspace, now) is None:
+            since = max((t for t in (last, window_opened(workspace, now)) if t is not None),
+                        default=None)
+            limit = light_period(workspace) + dt.timedelta(minutes=HEARTBEAT_SLACK_MINUTES)
+            if since is None or now - since > limit:
+                line += (f" No light update in over {int(limit.total_seconds() // 60)} minutes of work "
+                         f"hours, where every slot runs one: look at the {owner} agent.")
         lines.append(line)
     active = [f"{a['name']} `{g['name']}` ({g['trigger']})" for a, g in granted
               if g.get("status", "active") == "active"]

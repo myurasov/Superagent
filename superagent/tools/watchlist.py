@@ -12,9 +12,11 @@ the detect type *is* the harvest, as for SimpleFIN). Nothing source-specific
 lives here — every source is a **pack**.
 
 Which watchers a run covers: `check --due` takes each watcher by ITS OWN
-schedule (a daily watcher once per calendar day, a weekly one every 7 days, a
+schedule (a daily watcher at every update run, a weekly one every 7 days, a
 monthly one every 30; `CYCLE_PERIOD_DAYS`), so one command serves every
-caller and a run that finds nothing due fetches nothing. `check --cycle <c>`
+caller. How often a daily watcher is looked at is how often an update runs;
+its throttle (`min_check_interval_minutes`) and its pack's budget cap that.
+`check --cycle <c>`
 takes the watchers of a cadence instead (cycles nest: slower cycles include
 faster ones — `weekly-review` also checks daily watchers, `monthly-review`
 checks all three tiers; `CYCLE_RANK`) and checks them whether or not they are
@@ -2150,8 +2152,10 @@ def due_state(watcher: Watcher, row: dict[str, Any], now: dt.datetime, *,
     """(is the watcher due for a check by its own schedule, why or why not).
 
     Due means: its last successful check lies a full period back (calendar
-    days, so a daily watcher runs once per day whatever the hour), and nothing
-    holds the next try back. What holds it back: a failure (the wait starts
+    days, for a weekly or a monthly watcher), and nothing holds the next try
+    back. A daily watcher is due at every update run: how often it is looked
+    at is how often an update runs, capped by its throttle and its pack's
+    budget. What holds a watcher back: a failure (the wait starts
     at `RETRY_BASE_MINUTES` and doubles per failure in a row, up to the
     period), a dispatch nobody stamped yet (a subagent watcher is offered again
     after `RETRY_BASE_MINUTES`, a harvest that waits for the owner's yes once
@@ -2164,7 +2168,7 @@ def due_state(watcher: Watcher, row: dict[str, Any], now: dt.datetime, *,
     if period is None:
         return False, "no schedule of its own (manual, or a custom cycle)"
     since = _days_since(row.get("last_success"), now)
-    if since is not None and since < period:
+    if period > 1 and since is not None and since < period:
         return False, f"checked {since} day(s) ago; next check in {period - since} day(s)"
     streak = int(row.get("error_streak") or 0)
     waited = _minutes_between(row.get("last_checked"), now)
@@ -2190,6 +2194,8 @@ def due_state(watcher: Watcher, row: dict[str, Any], now: dt.datetime, *,
             return False, f"harvest budget: {reason}"
     if since is None:
         return True, "never checked" if not row.get("last_checked") else "never succeeded"
+    if since == 0:
+        return True, "a daily watcher: checked by every update run"
     return True, f"last success {since} day(s) ago"
 
 

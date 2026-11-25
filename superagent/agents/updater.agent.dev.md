@@ -17,14 +17,14 @@ The notes of the agent that develops and maintains `updater.agent.md`. The runni
 
 ## Wakes and checks
 
-- `update-light`: the built-in `update` check. Due when `tools/watchlist.py` `due_rows` names a watcher (its last success lies a full period back, and no backoff, throttle or budget holds it) or `tools/inbox.py` finds a settled document in a drop folder. Overdue (the on-open nag) is `tools/cadence.py` `overdue_watchers`: a healthy watcher past its period plus one day. `manual` watchers are never due and never late.
+- `update-light`: the built-in `update` check. Due at every look (`tools/agents.py` `evaluate`): every slot runs a light update, and the reason names the watchers `tools/watchlist.py` `due_rows` finds due and the settled documents `tools/inbox.py` finds in a drop folder. A daily watcher is due at every update run (`due_state`); a weekly or monthly one when its last success lies a full period back; backoff, throttle and budget hold any of them. Overdue (the on-open nag) is `tools/cadence.py` `overdue_watchers`: a healthy watcher past its period plus one day. `manual` watchers are never due and never late.
 - `update-full`: the built-in `cadence` check, by the stamp `last_runs.update_full` against `preferences.cadences.update_full`.
 - Wakes: none are set by the framework. With no separate agents running, the cadence skills run the update cycle as their first step.
-- A periodic wake of this role is added only with the owner's approval of its exact terms, and it runs `agents check updater update-light` first: exit 1 skips the run at no cost.
+- A periodic wake of this role is added only with the owner's approval of its exact terms, and it runs `agents check updater update-light` first: exit 1 skips the run at no cost when it is held (work hours, an off day, the grant, the cost cap).
 
 ## Cost targets
 
-- A scheduled run with nothing to do costs no model call: every periodic wake sits behind a check.
+- `update-light` runs at every slot inside work hours, whether or not something moved (the owner's decision of 2026-11-25: a simple loop and a cheaper model over a per-source interval). A slot costs a model run; the owner was shown about $2-4 a day for six slots. The checks that cost nothing are the ones that hold a run: work hours, off days, the grant, the cost cap. `update-full` goes by its stamp, once a day.
 - A wake re-reads the agent's whole context, so the role keeps its state in files and its context small.
 - Measured cost per wake: none yet (no wake of this role has run).
 
@@ -64,6 +64,7 @@ The notes of the agent that develops and maintains `updater.agent.md`. The runni
 
 ## Changelog
 
+- Unreleased — every `update-light` slot inside work hours runs (the check no longer skips a slot with nothing due), and every update run checks every daily watcher inside its throttle and budget; weekly and monthly watchers keep their periods. The briefing's quiet-loop line counts from the start of work hours and allows the light period plus half an hour (the owner's request; settles the two heartbeat signals and the request for a per-watcher interval).
 - Unreleased — hand-offs go by interests: after a cycle the Updater asks `agents interested` who wants to hear about each thing that moved and tells those agents directly (a message, or the wake the interest names). No run report to the lead; a message to the lead only when something is broken (the owner's request).
 - 0.27.0 — "As a session of its own": two granted wakes behind their checks, the registry row names the fetching machine, work hours and off days hold the duties, the Bookkeeper's wake is fired after a bank harvest.
 - 0.26.0 — the duty `watchlist` (skill `watch`, check `watchers`) became `update-light` and `update-full` (skill `update`); the cycle lock, the asks queue and `watchlist check --due` came with it. The role no longer asks even with the owner present.

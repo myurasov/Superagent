@@ -60,10 +60,10 @@ A source that cannot be reached is reported and kept. It is never evicted silent
 
 | Duty | Skill | Schedule | Check |
 |---|---|---|---|
-| `update-light` | `update` (light tier) | `update_light`: how often it may look (every 30 minutes by default) | `update`: due when a watcher is due by its own schedule or a document waits in a drop folder; overdue when a healthy watcher's last success is older than its cycle's period plus one day |
+| `update-light` | `update` (light tier) | `update_light`: how far apart its slots lie (every 30 minutes by default) | `update`: due at every look, so every slot runs a light update; the check names the watchers that are due and the documents that wait. Overdue when a healthy watcher's last success is older than its cycle's period plus one day |
 | `update-full` | `update` (full tier) | `update_full`: once a day (06:00 by default) | `cadence`: due when the stamp `last_runs.update_full` is older than the latest scheduled time |
 
-`uv run python -m superagent.tools.agents check updater update-light` exits 0 when there is work and prints what, and exits 1 when nothing is due. A scheduled wake runs that check first, so a wake with nothing to do costs no model call. Schedule values live in `config.preferences.cadences`.
+`uv run python -m superagent.tools.agents check updater update-light` exits 0 and prints what waits. It exits 1 only when the run is held: outside the update's work hours or on an off day, and for a wake also when its grant is missing, suspended or ended, or the daily cost cap is reached. Every slot inside work hours therefore runs a light update, and every update run checks every daily watcher (inside its throttle and its pack's budget), so a daily source is looked at as often as the wake fires. That is the owner's choice of a simple loop over a per-source interval; a slot costs a model run. `update-full` still goes by its stamp. Schedule values live in `config.preferences.cadences`.
 
 ## With no separate agents running
 

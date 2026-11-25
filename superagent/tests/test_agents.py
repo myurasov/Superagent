@@ -174,12 +174,13 @@ def test_duties_of_a_current_workspace(initialized_workspace: Path) -> None:
     assert by_key[("superagent", "weekly-review")]["state"] == "ok"
     assert by_key[("superagent", "weekly-review")]["schedule_value"] == "Sunday 18:00"
     assert by_key[("superagent", "weekly-review")]["last_run"].startswith("2026-10-07")
-    assert by_key[("updater", "update-light")]["state"] == "ok"
+    assert by_key[("updater", "update-light")]["state"] == "due", "every slot runs a light update"
+    assert by_key[("updater", "update-light")]["reason"] == "every slot runs an update"
     assert by_key[("updater", "update-full")]["state"] == "ok"
     assert by_key[("updater", "update-full")]["schedule_value"] == "06:00"
     assert by_key[("updater", "update-full")]["last_run"].startswith("2026-10-08T08:00")
     assert by_key[("bookkeeper", "bills")]["state"] == "on-request"
-    assert not [r for r in rows if r["state"] in ag.RUNNABLE]
+    assert [r["duty"] for r in rows if r["state"] in ag.RUNNABLE] == ["update-light"]
 
 
 def test_overdue_duties_match_cadence_status(initialized_workspace: Path) -> None:
@@ -328,7 +329,7 @@ def test_a_duty_is_due_at_its_scheduled_time_before_it_is_late(initialized_works
     assert code == 0 and out.startswith("superagent daily-update: due: due since 2026-10-08 08:30")
     assert _run(["duties", "--overdue"], ws, capsys)[1] == "", "the on-open nag stays quiet"
     code, out, _err = _run(["duties", "--due"], ws, capsys)
-    assert [line.split()[1] for line in out.splitlines()[1:]] == ["daily-update"]
+    assert [line.split()[1] for line in out.splitlines()[1:]] == ["daily-update", "update-light"]
     assert cd.render(cd.status(ws, now=NOW)) == []
 
 
@@ -349,8 +350,9 @@ def test_a_review_missed_on_sunday_is_due_on_monday(initialized_workspace: Path)
 def test_the_update_duties(initialized_workspace: Path, capsys: pytest.CaptureFixture[str]) -> None:
     ws = initialized_workspace
     _make_current(ws)
-    assert _run(["check", "updater", "update-light"], ws, capsys) == (1, "", ""), (
-        "nothing due and nothing waiting: the wake costs nothing")
+    assert _run(["check", "updater", "update-light"], ws, capsys) == (
+        0, "updater update-light: due: every slot runs an update\n", ""), (
+        "nothing due and nothing waiting: the slot runs all the same")
     assert _run(["check", "updater", "update-full"], ws, capsys)[0] == 1
     # A watcher that was never checked is due, and so is a document left in the drop folder.
     target = ws / "watched.txt"

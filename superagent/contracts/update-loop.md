@@ -94,7 +94,7 @@ An entry point carries no command of its own. A test keeps fetch steps out of th
 - **Due is not overdue.** Due is what a scheduled wake asks before it runs (`agents check <agent> <duty>`, exit 0). **Overdue** is the nag an attended session prints at open (`cadence status`): no daily check in 24 hours, no weekly review in 7 days, the month's review not run past the 1st, the hygiene passes past their interval, a watcher past its period plus a day.
 - **`<key>_auto: false`** in `config.preferences` switches a duty's schedule off: it is never due.
 - **Held.** `config.preferences.update.work_hours` (`"07:00-22:00"`) and `off_days` (weekday names or dates) say when a scheduled update may run. Outside them the duties whose skill is `update` are held: `agents check` exits 1. A cycle the owner starts by hand always runs.
-- **The update duties.** `update-full` is due by its stamp (`update_full`, daily at 06:00 by default). `update-light` is due when there is work: a watcher is due, or a document waits in a drop folder. Its cadence value (`update_light`, every 30 minutes by default) is how often it may look.
+- **The update duties.** `update-full` is due by its stamp (`update_full`, daily at 06:00 by default). `update-light` is due at every look: every slot of its wake inside work hours runs a light update, and every update run checks every daily watcher (`contracts/watchlist.md` § 7). Its cadence value (`update_light`, every 30 minutes by default) is how far apart the slots lie, so it is also how often a daily source is looked at.
 
 ## 7. What this contract never does
 

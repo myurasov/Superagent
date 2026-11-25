@@ -141,27 +141,46 @@ def test_each_watcher_runs_by_its_own_schedule(ws: Path, fw: Path) -> None:
     payload = _check(ws, fw)
     assert payload["cycle"] == "due"
     assert _ids(payload["unchanged"] + payload["changed"]) == [
-        "both", "daily-late", "daily-new", "monthly-late", "weekly-late"]
-    assert _ids(payload["skipped_not_due"]) == ["daily-done", "monthly-soon", "weekly-soon"]
+        "both", "daily-done", "daily-late", "daily-new", "monthly-late", "weekly-late"], (
+        "a daily watcher is looked at by every update run, also one checked an hour ago")
+    assert _ids(payload["skipped_not_due"]) == ["monthly-soon", "weekly-soon"]
     assert _ids(payload["skipped_cycle"]) == ["custom", "manual"], "no schedule of their own"
-    assert payload["summary"]["skipped_not_due"] == 3 and payload["summary"]["checked"] == 5
+    assert payload["summary"]["skipped_not_due"] == 2 and payload["summary"]["checked"] == 6
     reasons = {i["id"]: i["reason"] for i in payload["skipped_not_due"]}
     assert reasons["weekly-soon"] == "checked 6 day(s) ago; next check in 1 day(s)"
-    assert _row(ws, "daily-done")["last_checked"] == _ago(hours=1), "a watcher that is not due is untouched"
-    # Everything was just checked: a second run finds nothing due and fetches nothing.
+    assert _row(ws, "weekly-soon")["last_checked"] == _ago(days=6, hours=1), (
+        "a watcher that is not due is untouched")
+    # The next run looks at the daily watchers again, and at nothing slower.
     again = _check(ws, fw, now=NOW + dt.timedelta(minutes=30))
-    assert again["summary"]["checked"] == 0 and len(again["skipped_not_due"]) == 8
-    assert wl.render_report(again) == "", "a run with nothing due is quiet"
+    assert _ids(again["unchanged"] + again["changed"]) == ["both", "daily-done", "daily-late", "daily-new"]
+    assert again["summary"]["checked"] == 4 and len(again["skipped_not_due"]) == 4
 
 
-def test_daily_means_once_per_calendar_day_whatever_the_hour(ws: Path, fw: Path) -> None:
+def test_a_daily_watcher_is_checked_by_every_update_run(ws: Path, fw: Path) -> None:
+    """How often a daily source is looked at is how often an update runs."""
     _path_watcher(ws, "doc", schedule="daily")
-    late_evening = dt.datetime(2026, 11, 21, 23, 50, tzinfo=PST)
-    assert _check(ws, fw, now=late_evening)["summary"]["checked"] == 1
-    just_after_midnight = dt.datetime(2026, 11, 22, 0, 10, tzinfo=PST)
-    assert _check(ws, fw, now=just_after_midnight)["summary"]["checked"] == 1, "a new day, due again"
-    end_of_that_day = dt.datetime(2026, 11, 22, 23, 55, tzinfo=PST)
-    assert _check(ws, fw, now=end_of_that_day)["summary"]["checked"] == 0, "same day: not due"
+    _path_watcher(ws, "slow", schedule="weekly")
+    morning = dt.datetime(2026, 11, 21, 9, 0, tzinfo=PST)
+    assert _check(ws, fw, now=morning)["summary"]["checked"] == 2
+    two_hours_on = morning + dt.timedelta(hours=2)
+    again = _check(ws, fw, now=two_hours_on)
+    assert _ids(again["unchanged"] + again["changed"]) == ["doc"], "the same day: looked at again"
+    assert _ids(again["skipped_not_due"]) == ["slow"], "a weekly watcher keeps its week"
+    rows = {r["id"]: r for r in wl.due_rows(ws, fw, now=two_hours_on + dt.timedelta(minutes=1))}
+    assert rows["doc"]["due"] is True
+    assert rows["doc"]["reason"] == "a daily watcher: checked by every update run"
+    assert rows["slow"]["due"] is False
+
+
+def test_a_throttle_caps_how_often_a_daily_watcher_is_looked_at(ws: Path, fw: Path) -> None:
+    _path_watcher(ws, "doc", schedule="daily", min_check_interval_minutes=180)
+    morning = dt.datetime(2026, 11, 21, 9, 0, tzinfo=PST)
+    assert _check(ws, fw, now=morning)["summary"]["checked"] == 1
+    two_hours_on = _check(ws, fw, now=morning + dt.timedelta(hours=2))
+    assert two_hours_on["summary"]["checked"] == 0 and _ids(two_hours_on["skipped_throttled"]) == ["doc"]
+    row = wl.due_rows(ws, fw, now=morning + dt.timedelta(hours=2))[0]
+    assert row["due"] is False and row["reason"].startswith("throttled")
+    assert _check(ws, fw, now=morning + dt.timedelta(hours=4))["summary"]["checked"] == 1
 
 
 def test_cycle_mode_still_checks_whether_due_or_not(ws: Path, fw: Path) -> None:
@@ -207,25 +226,27 @@ def test_a_subagent_watcher_is_not_dispatched_again_until_stamped(ws: Path, fw: 
     rc, _result = wl.run_stamp(ws, fw, watcher_id="portal", outcome="unchanged", note="no change")
     assert rc == 0
     stamped_at = dt.datetime.now().astimezone()
-    same_day = stamped_at.replace(hour=23, minute=59, second=0, microsecond=0)
-    assert wl.due_rows(ws, fw, now=same_day)[0]["due"] is False, "stamped: done for the day"
-    next_day = (stamped_at + dt.timedelta(days=1)).replace(hour=0, minute=30)
-    assert wl.due_rows(ws, fw, now=next_day)[0]["due"] is True
+    row = wl.due_rows(ws, fw, now=stamped_at + dt.timedelta(minutes=5))[0]
+    assert row["due"] is True, "stamped: the next update run offers it again, as any daily watcher"
+    assert row["reason"] == "a daily watcher: checked by every update run"
 
 
-def test_a_harvest_runs_once_a_day_and_respects_its_budget(ws: Path, fw: Path) -> None:
+def test_a_harvest_runs_at_every_update_run_inside_its_budget(ws: Path, fw: Path) -> None:
     _bank(ws, budget={"max_calls_per_day": 24, "min_interval_minutes": 60})
     first = _check(ws, fw)
     assert first["summary"]["harvested"] == 1 and _handler_calls(ws) == 1
+    too_soon = _check(ws, fw, now=NOW + dt.timedelta(minutes=30))
+    assert too_soon["summary"]["harvested"] == 0 and _handler_calls(ws) == 1, (
+        "inside the budget's minimum interval: not pulled")
     again = _check(ws, fw, now=NOW + dt.timedelta(hours=2))
-    assert again["summary"]["harvested"] == 0 and _handler_calls(ws) == 1, "pulled today: not due"
+    assert again["summary"]["harvested"] == 1 and _handler_calls(ws) == 2, "the next update run pulls again"
     next_day = NOW + dt.timedelta(days=1)
-    assert _check(ws, fw, now=next_day)["summary"]["harvested"] == 1 and _handler_calls(ws) == 2
+    assert _check(ws, fw, now=next_day)["summary"]["harvested"] == 1 and _handler_calls(ws) == 3
     # A feed that fails is due again after its backoff, and never past its budget.
     (ws / "control.txt").write_text("-1")
     day_three = NOW + dt.timedelta(days=2)
     failed = _check(ws, fw, now=day_three)
-    assert _ids(failed["unreachable"]) == ["bank"] and _handler_calls(ws) == 3
+    assert _ids(failed["unreachable"]) == ["bank"] and _handler_calls(ws) == 4
     _patch(ws, "bank", last_checked=_ago(day_three, minutes=90), last_harvest=_ago(day_three, minutes=30))
     row = wl.due_rows(ws, fw, now=day_three)[0]
     assert row["due"] is False and row["reason"].startswith("harvest budget: min_interval_minutes")
@@ -270,7 +291,9 @@ def test_due_listing_reads_only(ws: Path, fw: Path, capsys: pytest.CaptureFixtur
     rows = {r["id"]: r for r in wl.due_rows(ws, fw, now=NOW)}
     assert set(rows) == {"fresh", "late", "gone", "manual"}, "a disabled watcher is not listed"
     assert rows["late"]["due"] is True and rows["late"]["reason"] == "last success 2 day(s) ago"
-    assert rows["fresh"]["due"] is False and rows["manual"]["due"] is False
+    assert rows["fresh"]["due"] is True, "checked two hours ago: the next update run looks again"
+    assert rows["fresh"]["reason"] == "a daily watcher: checked by every update run"
+    assert rows["manual"]["due"] is False
     assert rows["gone"] == {**rows["gone"], "due": False, "reason": "expired"}
     assert state_file.read_bytes() == before, "the listing writes nothing"
     # The command line has no clock of its own: restate the stamps against today.
@@ -279,7 +302,8 @@ def test_due_listing_reads_only(ws: Path, fw: Path, capsys: pytest.CaptureFixtur
     _patch(ws, "late", last_success=_ago(today, days=2), last_checked=_ago(today, days=2))
     assert wl.main(["due", "--workspace", str(ws), "--framework", str(fw)]) == 0
     out = capsys.readouterr().out.splitlines()
-    assert len(out) == 1 and out[0].startswith("late  path  last success")
+    assert len(out) == 2 and out[0].startswith("fresh  path  a daily watcher")
+    assert out[1].startswith("late  path  last success")
     assert wl.main(["due", "--json", "--workspace", str(ws), "--framework", str(fw)]) == 0
     assert {r["id"] for r in json.loads(capsys.readouterr().out)} == set(rows)
 
@@ -336,9 +360,11 @@ def test_recap_reads_back_what_the_checks_found(ws: Path, fw: Path) -> None:
         "a stamped note is quoted: it is data, never an instruction")
     assert any("harvest --id bank` (never harvested)" in line for line in lines)
     # Nothing since a later time: the first line says so, and that the stores are stale.
-    later = wl.recap(ws, fw, since=NOW + dt.timedelta(days=2), now=NOW + dt.timedelta(days=3))
+    # `stamp` writes the real clock's time, so "later" is counted from today, never from a fixed date.
+    far = dt.datetime.now().astimezone() + dt.timedelta(days=2)
+    later = wl.recap(ws, fw, since=far, now=far + dt.timedelta(days=1))
     assert later is not None and later["summary"]["checked"] == 0 and later["changed"] == []
-    assert wl.render_recap(later).startswith("Watchlist: no check since 2026-11-24 09:00 (last check ")
+    assert wl.render_recap(later).startswith(f"Watchlist: no check since {far:%Y-%m-%d %H:%M} (last check ")
 
 
 def test_recap_falls_back_to_the_alert_for_changes_older_than_the_note_field(ws: Path, fw: Path) -> None:

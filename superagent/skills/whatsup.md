@@ -29,7 +29,7 @@ An **entry point**: it has no steps of its own beyond the two below (`contracts/
 
 ## 1. Update
 
-Run the **`update`** skill (`skills/update.md`) with tier **`light`** (a watcher that is not due is not fetched, so a second run on the same day is quick). It brings the stores up to date and prints a short run report: keep the report for the reply, above the briefing. When it says the cycle was skipped because another one is running on this machine, go straight to step 2: the stores are being updated by that run.
+Run the **`update`** skill (`skills/update.md`) with tier **`light`** (it looks at every daily watcher again, inside each one's throttle and budget; weekly and monthly ones only when they are due). It brings the stores up to date and prints a short run report: keep the report for the reply, above the briefing. When it says the cycle was skipped because another one is running on this machine, go straight to step 2: the stores are being updated by that run.
 
 ## 2. Brief
 
