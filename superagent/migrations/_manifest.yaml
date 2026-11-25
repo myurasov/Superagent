@@ -5,7 +5,7 @@
 #
 # Citation form: `migrations/<to_version>.md`.
 schema_version: 1
-generated_at: '2026-11-25T21:05:06+00:00'
+generated_at: '2026-11-25T21:52:58+00:00'
 migrations:
 - to_version: 0.2.0
   from_version: 0.1.0
@@ -241,6 +241,14 @@ migrations:
   file: 0.32.0.md
   title: 'Every update slot runs and daily watchers are checked at every run: no workspace
     data to convert'
+  breaking: false
+  revertible: true
+  estimated_duration: <1 minute
+- to_version: 0.33.0
+  from_version: 0.32.0
+  file: 0.33.0.md
+  title: 'One-off runs for named sources, and no default model for the lead''s dev
+    twin: no workspace data to convert'
   breaking: false
   revertible: true
   estimated_duration: <1 minute
