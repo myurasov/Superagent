@@ -1,5 +1,5 @@
 schema_version: 1
-generated_at: '2026-11-25T13:05:43-08:00'
+generated_at: '2026-11-25T13:26:12-08:00'
 skill_count: 42
 skills:
 - name: superagent-ad-hoc-task
@@ -1023,6 +1023,7 @@ skills:
   - update only
   - fetch only
   - update light / light update
+  - check <source> now / a one-off run for <source> (an agent's request to the Updater)
   - update full / full update
   - run the update cycle
   - refresh the stores
@@ -1032,10 +1033,10 @@ skills:
   - any watcher registered in Sources/Watchlist/ that is due (gmail, url, subagent, a harvest pack, …)
   cli_required: []
   cli_optional: []
-  lines: 258
-  h2_steps: 12
+  lines: 280
+  h2_steps: 13
   h3_subsections: 0
-  typical_token_cost: 4692
+  typical_token_cost: 5362
   typical_files_read:
   - _memory/config.yaml
   - _memory/bills.yaml
@@ -1071,7 +1072,7 @@ skills:
   lines: 153
   h2_steps: 9
   h3_subsections: 0
-  typical_token_cost: 3872
+  typical_token_cost: 3918
   typical_files_read:
   - _memory/config.yaml
   origin: framework

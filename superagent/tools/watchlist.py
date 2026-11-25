@@ -16,7 +16,10 @@ schedule (a daily watcher at every update run, a weekly one every 7 days, a
 monthly one every 30; `CYCLE_PERIOD_DAYS`), so one command serves every
 caller. How often a daily watcher is looked at is how often an update runs;
 its throttle (`min_check_interval_minutes`) and its pack's budget cap that.
-`check --cycle <c>`
+`check --requested --id <id> [--id <id> ...]` takes exactly the named
+watchers, for an agent that asked for a look now: their schedule is left
+out, and their own limits hold (throttle, the wait after a failure, a
+dispatch nobody stamped, the harvest budget). `check --cycle <c>`
 takes the watchers of a cadence instead (cycles nest: slower cycles include
 faster ones — `weekly-review` also checks daily watchers, `monthly-review`
 checks all three tiers; `CYCLE_RANK`) and checks them whether or not they are
@@ -187,6 +190,8 @@ CYCLE_RANK: dict[str, int] = {"daily-update": 0, "weekly-review": 1, "monthly-re
 CYCLE_PERIOD_DAYS: dict[str, int] = {"daily-update": 1, "weekly-review": 7, "monthly-review": 30}
 #: The `cycle` a `check --due` run reports.
 DUE_CYCLE = "due"
+#: `payload["cycle"]` of a `check --requested` run: the watchers an agent asked for.
+REQUESTED_CYCLE = "requested"
 #: After a failed check, or a dispatch nobody stamped, a due watcher waits this
 #: long for its next try. The wait doubles with every failure in a row, up to
 #: the watcher's own period.
@@ -2065,6 +2070,8 @@ class CheckContext:
     now: dt.datetime = dc.field(default_factory=_now)
     #: `check --due`: take each watcher by its own schedule, not by `cycle`.
     due: bool = False
+    #: `check --requested`: exactly these watchers, whatever their schedule, inside their limits.
+    requested: tuple[str, ...] = ()
 
     @property
     def now_iso(self) -> str:
@@ -2148,7 +2155,7 @@ def _days_since(value: Any, now: dt.datetime) -> int | None:
 
 
 def due_state(watcher: Watcher, row: dict[str, Any], now: dt.datetime, *,
-              ignore_dispatch: bool = False) -> tuple[bool, str]:
+              ignore_dispatch: bool = False, ignore_schedule: bool = False) -> tuple[bool, str]:
     """(is the watcher due for a check by its own schedule, why or why not).
 
     Due means: its last successful check lies a full period back (calendar
@@ -2163,17 +2170,21 @@ def due_state(watcher: Watcher, row: dict[str, Any], now: dt.datetime, *,
     throttle, and for a watcher whose detect is its harvest, the harvest
     budget. A watcher that could not run now is never reported as due, so a
     scheduler that asks "is anything due?" is not woken for nothing.
+
+    `ignore_schedule` is a look somebody asked for (`check --requested`): the
+    period is left out, so a weekly watcher or one with no schedule of its own
+    may run now, and everything that holds a watcher back still does.
     """
     period = period_days(watcher)
-    if period is None:
+    if period is None and not ignore_schedule:
         return False, "no schedule of its own (manual, or a custom cycle)"
     since = _days_since(row.get("last_success"), now)
-    if period > 1 and since is not None and since < period:
+    if not ignore_schedule and period > 1 and since is not None and since < period:
         return False, f"checked {since} day(s) ago; next check in {period - since} day(s)"
     streak = int(row.get("error_streak") or 0)
     waited = _minutes_between(row.get("last_checked"), now)
     if streak > 0 and waited is not None:
-        backoff = min(RETRY_BASE_MINUTES * 2 ** min(streak - 1, 16), period * 1440)
+        backoff = min(RETRY_BASE_MINUTES * 2 ** min(streak - 1, 16), (period or 1) * 1440)
         if waited < backoff:
             return False, f"failed {streak} time(s) in a row; next try in {int(backoff - waited)} min"
     dispatched = _parse_iso(row.get("last_dispatched"))
@@ -2194,6 +2205,8 @@ def due_state(watcher: Watcher, row: dict[str, Any], now: dt.datetime, *,
             return False, f"harvest budget: {reason}"
     if since is None:
         return True, "never checked" if not row.get("last_checked") else "never succeeded"
+    if ignore_schedule:
+        return True, "asked for"
     if since == 0:
         return True, "a daily watcher: checked by every update run"
     return True, f"last success {since} day(s) ago"
@@ -2393,7 +2406,8 @@ def check_one(ctx: CheckContext, payload: dict[str, Any], watcher: Watcher,
         payload["warnings"].append(f"`{watcher.id}` revived (status: active); re-baselined")
 
     # 2. Throttle gate — first. 3. Cycle gate (`--cycle`) or due gate (`--due`).
-    # `--id` bypasses both.
+    # `--id` bypasses both. `--requested` keeps the throttle and every hold of the
+    # due gate, and leaves the schedule out.
     if not explicit:
         if watcher.min_check_interval_minutes and row.get("last_checked"):
             mins = _minutes_between(row["last_checked"], ctx.now)
@@ -2403,7 +2417,12 @@ def check_one(ctx: CheckContext, payload: dict[str, Any], watcher: Watcher,
                     min_check_interval_minutes=watcher.min_check_interval_minutes,
                 ))
                 return
-        if ctx.due:
+        if ctx.requested:
+            due, why = due_state(watcher, row, ctx.now, ignore_schedule=True)
+            if not due:
+                _bucket(payload, "skipped_not_due", _item(watcher, reason=why))
+                return
+        elif ctx.due:
             if period_days(watcher) is None:
                 _bucket(payload, "skipped_cycle", _item(watcher, cycles=watcher.cycles))
                 return
@@ -2476,6 +2495,10 @@ def run_check(ctx: CheckContext) -> dict[str, Any] | None:
     payload["warnings"].extend(f"{reg_rel}/{msg}" for msg in registry_stray_files(folder))
     if ctx.only_id is not None and not any(w.id == ctx.only_id for w in watchers):
         _bucket(payload, "errors", {"id": ctx.only_id, "error": f"no watcher `{ctx.only_id}`"})
+    for wanted in ctx.requested:
+        if not any(w.id == wanted for w in watchers):
+            _bucket(payload, "errors", {"id": wanted, "error": f"no watcher `{wanted}`: only a "
+                                        "registered source can be asked for"})
     with state_lock(ctx.workspace):
         state = load_state(ctx.workspace)
         known_ids = {w.id for w in watchers} | {e["id"] for e in reg_errors if e.get("id")}
@@ -2488,6 +2511,8 @@ def run_check(ctx: CheckContext) -> dict[str, Any] | None:
         for watcher in watchers:
             if ctx.only_id is not None and watcher.id != ctx.only_id:
                 continue
+            if ctx.requested and watcher.id not in ctx.requested:
+                continue
             check_one(ctx, payload, watcher, state)
         if not ctx.dry_run:
             save_state(ctx.workspace, state)
@@ -2497,7 +2522,7 @@ def run_check(ctx: CheckContext) -> dict[str, Any] | None:
                           for k in ("calls_today", "calls_today_date")}
                 for h in payload["harvested"] if h["id"] in state["watchers"]
             })
-    payload["cycle"] = DUE_CYCLE if ctx.due else ctx.cycle
+    payload["cycle"] = REQUESTED_CYCLE if ctx.requested else DUE_CYCLE if ctx.due else ctx.cycle
     payload["dry_run"] = ctx.dry_run
     payload["checked_at"] = ctx.now_iso
     return payload
@@ -3051,8 +3076,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     c = sub.add_parser("check", help="Run detect for every watcher that is due, or for a cycle.")
     which = c.add_mutually_exclusive_group(required=True)
     which.add_argument("--due", action="store_true",
-                       help="take each watcher by its own schedule: a daily one once per calendar "
-                            "day, a weekly one every 7 days, a monthly one every 30")
+                       help="take each watcher by its own schedule: a daily one at every run, "
+                            "a weekly one every 7 days, a monthly one every 30")
+    which.add_argument("--requested", action="store_true",
+                       help="take exactly the watchers named with --id, for an agent that asked: "
+                            "the schedule is left out, the watcher's own limits hold")
     which.add_argument("--cycle", default=None,
                        help="daily-update | weekly-review | monthly-review | ... (slower cycles include "
                             "faster ones: weekly-review also checks daily watchers), due or not")
@@ -3060,8 +3088,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     c.add_argument("--report", action="store_true", help="print briefing markdown instead of JSON")
     c.add_argument("--no-harvest", action="store_true", help="detect only; never dispatch harvest")
     c.add_argument("--dry-run", action="store_true", help="detect but write no state/alerts/logs")
-    c.add_argument("--id", dest="only_id", default=None,
-                   help="check one watcher (bypasses throttle + cycle gates, never the harvest gate)")
+    c.add_argument("--id", dest="ids", action="append", default=None, metavar="ID",
+                   help="check one watcher (bypasses throttle + cycle gates, never the harvest "
+                        "gate); with --requested: the watchers asked for, repeatable")
 
     s = sub.add_parser("stamp", help="Record a dispatched subagent outcome.")
     s.add_argument("--id", required=True)
@@ -3127,11 +3156,19 @@ def main(argv: list[str] | None = None) -> int:
 def _dispatch(args: argparse.Namespace, framework: Path, workspace: Path) -> int:
     """Run one sub-command; `main()` owns the workspace check and the refusal exit."""
     if args.cmd == "check":
+        ids = [str(i).removeprefix("watch:") for i in args.ids or []]
+        if args.requested and not ids:
+            print("error: `check --requested` needs the watchers asked for (--id <id>)", file=sys.stderr)
+            return 2
+        if not args.requested and len(ids) > 1:
+            print("error: more than one --id is for `check --requested`", file=sys.stderr)
+            return 2
         cfg = load_config(workspace)
         ctx = CheckContext(workspace=workspace, framework=framework, cfg=cfg,
                            cycle=args.cycle or DUE_CYCLE, due=args.due,
                            timeout=args.timeout, dry_run=args.dry_run, no_harvest=args.no_harvest,
-                           only_id=args.only_id)
+                           only_id=None if args.requested or not ids else ids[0],
+                           requested=tuple(ids) if args.requested else ())
         payload = run_check(ctx)
         if payload is None:
             if not args.report:

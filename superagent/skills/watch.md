@@ -101,7 +101,7 @@ Refs are workspace data: `Sources/Watchlist/` is a reserved *name* with user-edi
 
 ## 4. Check
 
-1. Choose what to check. The routine run is the `update` skill's: `check --due` takes each watcher by its own schedule (a daily one at every update run, a weekly one every 7 days, a monthly one every 30; § 7 step 3). A daily source that should be looked at less often carries a throttle: `min_check_interval_minutes` on its ref. An ad-hoc "check everything now" uses `--cycle monthly-review`, which takes every watcher of every built-in cycle, due or not (cycles nest, § 2). A named source uses `--id <id>`, which bypasses the throttle and the due and cycle gates but never the harvest gate. `uv run python -m superagent.tools.watchlist due` lists what is due without fetching.
+1. Choose what to check. The routine run is the `update` skill's: `check --due` takes each watcher by its own schedule (a daily one at every update run, a weekly one every 7 days, a monthly one every 30; § 7 step 3). A daily source that should be looked at less often carries a throttle: `min_check_interval_minutes` on its ref. An ad-hoc "check everything now" uses `--cycle monthly-review`, which takes every watcher of every built-in cycle, due or not (cycles nest, § 2). A named source uses `--id <id>`, which bypasses the throttle and the due and cycle gates but never the harvest gate. An agent's request to the Updater uses `--requested --id <id> [--id <id> ...]`: exactly the named sources, their schedule left out, their own limits kept (`skills/update.md` step 12). `uv run python -m superagent.tools.watchlist due` lists what is due without fetching.
 
    ```
    uv run python -m superagent.tools.watchlist check (--due | --cycle <cycle>) --report [--timeout 15] [--id <id>]

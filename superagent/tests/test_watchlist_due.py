@@ -411,3 +411,71 @@ def test_check_needs_exactly_one_of_due_and_cycle(ws: Path, fw: Path,
     assert json.loads(capsys.readouterr().out)["cycle"] == "daily-update"
     assert wl.main(["recap", "--since", "not-a-date", *base]) == 2
     assert "not an ISO 8601" in capsys.readouterr().err
+
+
+# ------------------------------------------------- a look an agent asked for
+
+def test_a_requested_check_takes_the_named_sources_whatever_their_schedule(ws: Path, fw: Path) -> None:
+    for wid, watch in {"weekly": {"schedule": "weekly"}, "manual": {"schedule": "manual"},
+                       "daily": {"schedule": "daily"}, "other": {"schedule": "weekly"}}.items():
+        _path_watcher(ws, wid, **watch)
+    stamp = _ago(days=3)
+    for wid in ("weekly", "other"):
+        _patch(ws, wid, last_success=stamp, last_checked=stamp, fingerprint="x", baseline_at=stamp)
+    payload = _check(ws, fw, requested=("weekly", "manual"))
+    assert payload["cycle"] == wl.REQUESTED_CYCLE
+    assert _ids(payload["unchanged"] + payload["changed"]) == ["manual", "weekly"], (
+        "a weekly source checked three days ago, and one with no schedule of its own")
+    assert payload["summary"]["checked"] == 2
+    assert _row(ws, "other")["last_checked"] == stamp, "a source nobody asked for is untouched"
+    assert "daily" not in wl.load_state(ws)["watchers"], "and one never looked at gets no row"
+
+
+def test_a_requested_check_keeps_the_sources_own_limits(ws: Path, fw: Path) -> None:
+    _path_watcher(ws, "slow", schedule="weekly", min_check_interval_minutes=120)
+    _path_watcher(ws, "broken", schedule="weekly")
+    _bank(ws, budget={"max_calls_per_day": 24, "min_interval_minutes": 60})
+    recent = _ago(minutes=30)
+    _patch(ws, "slow", last_success=recent, last_checked=recent, fingerprint="x", baseline_at=recent)
+    _patch(ws, "broken", last_checked=recent, error_streak=1)
+    assert _check(ws, fw, requested=("bank",))["summary"]["harvested"] == 1
+    payload = _check(ws, fw, now=NOW + dt.timedelta(minutes=10), requested=("slow", "broken", "bank"))
+    assert payload["summary"]["checked"] == 0 and _handler_calls(ws) == 1
+    assert _ids(payload["skipped_throttled"]) == ["slow"]
+    reasons = {i["id"]: i["reason"] for i in payload["skipped_not_due"]}
+    assert reasons["broken"].startswith("failed 1 time(s) in a row")
+    assert reasons["bank"].startswith("harvest budget: min_interval_minutes")
+    later = _check(ws, fw, now=NOW + dt.timedelta(hours=3), requested=("slow", "broken", "bank"))
+    assert later["summary"]["checked"] == 3 and _handler_calls(ws) == 2
+
+
+def test_a_requested_check_never_takes_a_source_that_is_not_registered(ws: Path, fw: Path) -> None:
+    _path_watcher(ws, "doc", schedule="weekly")
+    payload = _check(ws, fw, requested=("ghost", "doc"))
+    assert _ids(payload["unchanged"] + payload["changed"]) == ["doc"]
+    (error,) = payload["errors"]
+    assert error["id"] == "ghost" and "only a registered source can be asked for" in error["error"]
+    assert "ghost" not in wl.load_state(ws)["watchers"]
+
+
+def test_a_manual_capture_source_still_waits_for_the_owner_when_an_agent_asks(ws: Path, fw: Path) -> None:
+    _bank(ws, capture_mode="manual")
+    payload = _check(ws, fw, requested=("bank",))
+    assert payload["summary"]["harvested"] == 0 and _handler_calls(ws) == 0
+    assert [d["id"] for d in payload["dispatch"]] == ["bank"], "offered, never pulled"
+
+
+def test_requested_command(ws: Path, fw: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _path_watcher(ws, "doc", schedule="weekly")
+    _path_watcher(ws, "other", schedule="weekly")
+    base = ["--workspace", str(ws), "--framework", str(fw)]
+    assert wl.main(["check", "--requested", *base]) == 2
+    assert "needs the watchers asked for" in capsys.readouterr().err
+    assert wl.main(["check", "--due", "--id", "doc", "--id", "other", *base]) == 2
+    assert "more than one --id" in capsys.readouterr().err
+    assert wl.main(["check", "--requested", "--id", "watch:doc", *base]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["cycle"] == "requested" and payload["summary"]["checked"] == 1, (
+        "a handle names the source as well as a bare id")
+    assert wl.main(["check", "--due", "--id", "other", *base]) == 0, "one --id stays the explicit check"
+    assert json.loads(capsys.readouterr().out)["summary"]["checked"] == 1

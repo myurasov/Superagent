@@ -155,3 +155,17 @@ def test_hand_offs_go_by_interests_and_not_through_the_lead(framework_dir: Path)
     for role in ("project", "bookkeeper"):
         text = (framework_dir / "agents" / f"{role}.agent.md").read_text(encoding="utf-8")
         assert "Tell the lead in one message" not in text and "tells the lead in one message" not in text
+
+
+def test_an_agent_may_ask_the_updater_for_a_look_at_named_sources(framework_dir: Path) -> None:
+    """A targeted run is no cycle: named registered sources, their limits kept, the asker told."""
+    body = (framework_dir / "skills" / "update.md").read_text(encoding="utf-8")
+    step = body.split("## 12. A targeted run", 1)[1]
+    assert "superagent.tools.watchlist check --requested --id <id>" in step
+    for marker in ("Registered sources only", "Take the cycle lock", "No duty stamp",
+                   "The asker gets one message whatever the outcome", "is never forced"):
+        assert marker in step, marker
+    assert "cadence start" not in step.replace("without `cadence start`", "")
+    rule = (framework_dir / "rules" / "autocode.md").read_text(encoding="utf-8")
+    assert "Ask the Updater for a look at a source your work needs now" in rule
+    assert "Check: watch:<id>" in rule and "stays the owner's call" in rule

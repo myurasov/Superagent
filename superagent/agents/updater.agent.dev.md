@@ -64,6 +64,7 @@ The notes of the agent that develops and maintains `updater.agent.md`. The runni
 
 ## Changelog
 
+- Unreleased — targeted runs: an agent may ask for a look at named registered sources (`watchlist check --requested --id ...`, step 12 of the `update` skill): the schedule is left out, the source's limits hold, no duty is stamped, the asker and the interested agents are told (the owner's request).
 - Unreleased — every `update-light` slot inside work hours runs (the check no longer skips a slot with nothing due), and every update run checks every daily watcher inside its throttle and budget; weekly and monthly watchers keep their periods. The briefing's quiet-loop line counts from the start of work hours and allows the light period plus half an hour (the owner's request; settles the two heartbeat signals and the request for a per-watcher interval).
 - Unreleased — hand-offs go by interests: after a cycle the Updater asks `agents interested` who wants to hear about each thing that moved and tells those agents directly (a message, or the wake the interest names). No run report to the lead; a message to the lead only when something is broken (the owner's request).
 - 0.27.0 — "As a session of its own": two granted wakes behind their checks, the registry row names the fetching machine, work hours and off days hold the duties, the Bookkeeper's wake is fired after a bank harvest.

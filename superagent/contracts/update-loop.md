@@ -100,6 +100,7 @@ An entry point carries no command of its own. A test keeps fetch steps out of th
 
 - It never lets a briefing fetch, or an update cycle brief.
 - It never asks the owner a question from an update cycle. The question goes to the asks queue, and never as a blocking ask: the cycle carries on.
+- It never checks a source that is not registered, also when an agent asks: a targeted run (`skills/update.md` step 12) takes the named registered sources under the cycle lock, inside each one's limits, and stamps no duty.
 - It never reports a cycle to the lead. After a cycle the Updater tells each agent that asked to hear about what moved (`contracts/agents.md` § 8a), and the lead only what is broken; the briefing reads the rest from the stores.
 - It never runs two update cycles at once on one machine.
 - It never treats an ask as an approval: an outward action still needs its own approval at the moment of action (`contracts/autonomy.md` § 4).

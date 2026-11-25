@@ -77,6 +77,7 @@ When agents run as registered sessions (`rules/autocode.md`), the Updater has tw
 
 - **To every agent that asked**: what moved and matches one of its interests (`contracts/agents.md` § 8a). The Bookkeeper's interests cover new rows from a finance harvest; a project agent's cover what moved for its project.
 - **To the lead**: only what needs it: a source that stays unreachable, a conflict copy to fold by hand, a cycle that could not finish. The asks it queued and the run report are in the stores, where the briefing reads them.
+- **On an agent's request**: a look at named registered sources, at once and at any hour (step 12 of the `update` skill). It is no cycle: the named sources only, inside their own limits, under the cycle lock, with no duty stamp. The agent that asked is told the outcome for each source, and the agents whose interests match are told what moved.
 - **It keeps no interests of its own**, and it asks nobody: an update run carries on.
 
 ## Changes to this role
