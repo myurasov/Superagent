@@ -763,6 +763,14 @@ def test_the_start_prompt_has_an_agent_write_its_roles_interests(initialized_wor
     assert "7. Do no other work now." in text
     ag.set_row(ws, "project:kitchen-reno", status="dormant")
     assert "agents interest project:kitchen-reno --defaults" in ac.start_prompt(ws, ac.FRAMEWORK, "project:kitchen-reno")
+    # Only the first start writes them: a later start leaves the row as it is, so an
+    # interest the agent or the owner dropped stays dropped.
+    ag.default_interests(ws, "project:kitchen-reno")
+    assert "--defaults" not in ac.start_prompt(ws, ac.FRAMEWORK, "project:kitchen-reno")
+    assert ag.remove_interest(ws, "project:kitchen-reno", "project:kitchen-reno") == 1
+    again = ac.start_prompt(ws, ac.FRAMEWORK, "project:kitchen-reno")
+    assert "--defaults" not in again and "5. Send one message to `sa:superagent`" in again
+    assert ag.interests(ws, "project:kitchen-reno") == []
     for name, dev in (("updater", False), ("superagent", False), ("bookkeeper", True)):
         plain = ac.start_prompt(ws, ac.FRAMEWORK, name, dev=dev)
         assert "--defaults" not in plain and "6. Do no other work now." in plain

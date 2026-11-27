@@ -60,6 +60,7 @@ The notes of the agent that develops and maintains `project.agent.md`. The runni
 
 ## Changelog
 
+- 0.34.0 — only the first start writes the role's interests onto the row; a later start leaves the row as it is, so an interest the agent or the owner dropped stays dropped (the owner's request).
 - 0.34.0 — a project agent's row may carry `id_name`: the id the owner gave it (one of a group), which every tool then builds; its name, handle and project stay (the owner's request).
 - Unreleased — frontmatter `interests`: its own project by default; it adds and drops its own (a vendor, a page, a tag). Woken by the Updater when something its interests name moved, it writes to other agents directly, and the park routine sends the lead no report (the owner's request).
 - 0.27.0 — the role is final for sessions of its own: start, wake rules, the park routine, pause and end. A project agent is created by the `add-agent` skill and retired by the `projects` skill.

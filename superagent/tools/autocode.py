@@ -252,7 +252,12 @@ def _agent(workspace: Path, framework: Path, name: str, *, dev: bool = False) ->
     tier = ar.autocode_preferences(workspace).get("models")
     tier = (tier.get("dev") if isinstance(tier, dict) else None) or {}
     follows = dev and role.kind == "lead"  # no default: the model of the session that starts it
+    stored, _problems = agents.load_registry(workspace)
+    stored_row = next((r for r in stored if r.get("name") == name), None)
     return {
+        # A start writes the role's interests once: onto a row that has none recorded yet.
+        "writes_interests": not dev and bool(role.interests)
+        and (stored_row is None or "interests" not in stored_row),
         "name": instance, "role": role, "dev": dev,
         "id": row["id"] if row and not dev else ar.agent_id(data["prefix"], instance),
         "slug": slug, "follows_starter": follows,
@@ -330,7 +335,7 @@ def start_prompt(workspace: Path, framework: Path, name: str, *, dev: bool = Fal
         else:
             lines.append("4. Set no wake: none is granted to you. You wake on a message.")
     step = 5
-    if not info["dev"] and role.interests:
+    if info["writes_interests"]:
         lines.append(f"{step}. Write your role's interests onto your row, so the Updater tells you "
                      "what moved for you: `uv run python -m superagent.tools.agents interest "
                      f"{info['name']} --defaults`.")

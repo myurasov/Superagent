@@ -58,6 +58,7 @@ The notes of the agent that develops and maintains `bookkeeper.agent.md`. The ru
 
 ## Changelog
 
+- 0.34.0 — only the first start writes the role's interests onto the row; a later start leaves the row as it is, so a dropped interest stays dropped (the owner's request).
 - Unreleased — frontmatter `interests`: finance harvest rows (delivered by `after-harvest`), captured bills and subscriptions, documents filed under Finances. It adds and drops its own, writes to other agents directly, and sends the lead no report after a piece of work (the owner's request).
 - 0.27.0 — "As a session of its own": woken by a `fire-only` wake the Updater fires after a bank harvest, and by the lead's message for the monthly close. No scheduled duty, so nothing of it can be late.
 - 0.25.0 — role file created from the Bookkeeper persona of `superagent.agent.md`.
