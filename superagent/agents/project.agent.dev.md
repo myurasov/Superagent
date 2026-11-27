@@ -57,9 +57,11 @@ The notes of the agent that develops and maintains `project.agent.md`. The runni
 - A project slug named `dev` would collide with the dev twin's id; `agents id` refuses it.
 - An id that was moved in the runtime with no id name on the row leaves every built id the old one. Messages may still arrive where the runtime forwards the old id, while a start, `autocode mark`, the cap check and the audits compare ids and miss. Record the id name in the turn the id moves.
 - A project agent that keeps working notes only in its conversation loses them at the next compaction. The project folder is the memory.
+- A park routine that compacts after every piece of work cuts the thread of a session the owner talks with through the day. Compaction is the owner's word (compact, park) or the runtime's at its limit.
 
 ## Changelog
 
+- 0.34.1 — the park routine has no compaction step: the agent writes its state and goes idle, and its session is compacted only when the owner says compact or park, on a `Park`, and by the runtime at its limit (the owner's request).
 - 0.34.0 — the agent of a parent project records the owner's answers to its sub-projects' asks, when he gives them in its session (`autocode answer`; any other agent is refused) (the owner's request).
 - 0.34.0 — only the first start writes the role's interests onto the row; a later start leaves the row as it is, so an interest the agent or the owner dropped stays dropped (the owner's request).
 - 0.34.0 — a project agent's row may carry `id_name`: the id the owner gave it (one of a group), which every tool then builds; its name, handle and project stay (the owner's request).

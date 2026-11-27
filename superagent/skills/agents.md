@@ -132,7 +132,7 @@ Switch grants off and on with `agents grant <agent> [--wake <name>] --suspend` /
 | Command | What it does |
 |---|---|
 | `start <agent> [--dev]` | Starts a session in this checkout with the model of the agent's tier and gives it the start prompt: register under the built id, read the rule and the role file, set the granted wakes and no other. Then marks the row (`active` with granted wakes, `dormant` without) and its host. `--print` shows the command and the prompt and starts nothing. |
-| `park <agent>` | Asks the agent to write its state, compact and go idle; the row becomes `dormant`. |
+| `park <agent>` | Asks the agent to write its state, compact and go idle; the row becomes `dormant`. It compacts the agent's session, so run it on the owner's word only. |
 | `stop <agent>` | Asks the agent to unregister; the row becomes `off`. |
 | `retire <agent>` | Asks the agent to write its closing note and unregister; the row becomes `retired` and its grants are suspended. |
 | `wakes [<agent>]` | Compares the wakes that are set with the grants: a wake with no grant, a grant with no wake, a trigger that differs. Exit 1 when something differs. |

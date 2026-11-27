@@ -817,6 +817,20 @@ def test_the_agent_of_a_parent_project_records_answers_for_its_sub_projects(
     assert ac.may_answer(ws, ac.FRAMEWORK, "project:garden") == (True, "")
 
 
+def test_an_agent_compacts_its_session_only_on_the_owners_word(framework_dir: Path) -> None:
+    rule = (framework_dir / "rules" / "autocode.md").read_text(encoding="utf-8")
+    assert "**Compact only on the owner's word.**" in rule and "You never compact by yourself" in rule
+    assert "compact when the work was long" not in rule
+    assert "Parking by yourself includes no compaction." in rule
+    role = (framework_dir / "agents" / "project.agent.md").read_text(encoding="utf-8")
+    park = role[role.index("- **Park** (after every piece of work"):role.index("- **Interests.**")]
+    assert "Compact the session" not in park and "never compacts its session by itself" in park
+    assert "3. Go idle." in park and "4." not in park
+    # A park that is asked for keeps its compaction, and the lead asks only on the owner's word.
+    assert "compact" in ac.MESSAGES["park"][1]
+    assert "the lead sends it only on the owner's word" in rule
+
+
 # ----------------------------------------- the id on a project agent's row
 
 def test_start_messages_and_checks_use_the_id_on_the_row(initialized_workspace: Path, fake: Fake) -> None:

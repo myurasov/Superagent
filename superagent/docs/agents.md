@@ -41,7 +41,7 @@ Autocode's own settings stay at their defaults. `uv run python -m superagent.too
 - **Each agent says what it wants to hear about.** Its interests are short handles (`project:<slug>`, `domain:finances`, a contact, `bill:*`). After an update the Updater tells each agent what moved for it, and the agents write to each other directly. The daily briefing lists every agent's interests, and you can have any dropped ("drop the kitchen agent's interest in ...").
 - **The lead is no messenger.** It talks with you, decides what the agents cannot settle among themselves, and coordinates them. It hears from an agent only what needs a decision, what you must hear before the next briefing, and starts and ends.
 - **One update cycle at a time, on one machine.**
-- **State lives in files.** An agent parks after each piece of work: it writes its state, compacts and goes idle.
+- **State lives in files.** An agent parks after each piece of work: it writes its state and goes idle. It compacts its session only when you say compact or park; the runtime compacts at its own limit.
 - **Work hours and off days** (`preferences.update.work_hours`, `off_days`) hold the scheduled update.
 
 ## Turning it off
