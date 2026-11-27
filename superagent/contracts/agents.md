@@ -81,14 +81,15 @@ An id is `<prefix>:<instance name>`.
 
 - **Prefix**: `config.preferences.autocode.id_prefix`, default `sa`. It lets several users share one Autocode server. A lowercase letter first, then lowercase letters, digits or `-`, 16 characters at most. Reserved and refused: `owner`, `autocode`, `me`, `project`, `dev`.
 - **Instance name**: the role name for a lead or durable role (`updater`); `project:<slug>` for a project agent, where the slug is the Project's slug; `<role>:dev` for a dev twin. One dev twin serves every agent of the project role (`project:dev`), so `dev` is refused as a project slug.
+- **Id name**: the row of a project agent may carry `id_name`, the name its id is built from in place of the instance name. It is for an id the owner gave the agent, such as one of a group: `project:<group>:<member>` for the agents of related projects. It keeps the role name first and has one to three more parts; `dev` is refused as a part, and no two agents share an id. The instance name stays the agent's name everywhere else: the registry key, the handle, the project and every tool's argument. `uv run python -m superagent.tools.agents set <name> --id-name <id name>` records it once the owner moved the id (an empty value clears it), and `agents id` takes either name.
 - **Nothing hardcodes a prefix.** Every id, lock name and settings pattern is built from the configured prefix: `uv run python -m superagent.tools.agents id <name>` prints an id (`--dev` for the dev twin). Role files, skills and docs write `<prefix>:<name>`.
 - **Handle**: `agent:<instance name>` (`agent:updater`, `agent:project:<slug>`), per `contracts/operational-handles.md`. Messages and logs name an agent by its handle.
 
 ## 5. The registry: `_memory/agents.yaml`
 
-One file holds every instance (template `templates/memory/agents.yaml`; entity-shape per `contracts/memory-taxonomy.md`). A row carries `name` (the instance name), `role`, `handle`, `project` (for a project agent), `host` (the machine that runs it), `model` / `variant` / `daily_usd` (each overrides the default in `preferences.autocode`), `wakes` (the granted periodic wakes, § 8), `interests` (what the agent wants to hear about, § 8a), `status`, `notes`, `provenance`.
+One file holds every instance (template `templates/memory/agents.yaml`; entity-shape per `contracts/memory-taxonomy.md`). A row carries `name` (the instance name), `id_name` (a project agent's own id name, § 4; optional), `role`, `handle`, `project` (for a project agent), `host` (the machine that runs it), `model` / `variant` / `daily_usd` (each overrides the default in `preferences.autocode`), `wakes` (the granted periodic wakes, § 8), `interests` (what the agent wants to hear about, § 8a), `status`, `notes`, `provenance`.
 
-- **Ids are never stored**: a row holds the name, and the id is built from the prefix.
+- **No row stores a prefix**: a row holds the name, and for a project agent the owner gave another id its id name; the id is built from the prefix and that.
 - **A lead or durable role is one agent with or without a row.** It needs a row only to carry a setting (a host, a model, a grant).
 - **A project agent exists only through its row.** No role file is written per project.
 - **`status`**: `off` (no session runs it; a chat session takes the role; the default), `active` (a registered session runs it with its granted wakes), `dormant` (a registered session holds it and wakes on a message), `paused`, `retired`.

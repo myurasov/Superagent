@@ -163,6 +163,66 @@ def test_id_command(initialized_workspace: Path, capsys: pytest.CaptureFixture[s
     assert code == 2 and "no role named 'nobody'" in err
 
 
+def test_a_project_agents_id_follows_the_id_name_on_its_row(initialized_workspace: Path,
+                                                           capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    for slug in ("reno-kitchen", "reno-bath", "garden"):
+        ag.set_row(ws, f"project:{slug}", status="dormant", now=NOW)
+    row = ag.set_row(ws, "project:reno-kitchen", id_name="project:reno:kitchen", now=NOW)
+    assert (row["name"], row["id_name"]) == ("project:reno-kitchen", "project:reno:kitchen")
+    assert (row["handle"], row["project"]) == ("agent:project:reno-kitchen", "project:reno-kitchen"), (
+        "the name, the handle and the project stay")
+    data = ag.roster(ws)
+    assert data["errors"] == []
+    ids = {a["name"]: a["id"] for a in data["agents"]}
+    assert ids["project:reno-kitchen"] == "sa:project:reno:kitchen"
+    assert ids["project:reno-bath"] == "sa:project:reno-bath" and ids["project:garden"] == "sa:project:garden"
+    assert [line for line in ag.render_roster(data) if " is the agent " in line] == [
+        "sa:project:reno:kitchen is the agent `project:reno-kitchen` (the id name on its row); "
+        "tools take the name"]
+    # `agents id` takes the name or the id name, and prints the id on the row
+    assert _run(["id", "project:reno-kitchen"], ws, capsys)[:2] == (0, "sa:project:reno:kitchen\n")
+    assert _run(["id", "project:reno:kitchen"], ws, capsys)[:2] == (0, "sa:project:reno:kitchen\n")
+    assert _run(["id", "project:garden"], ws, capsys)[:2] == (0, "sa:project:garden\n")
+    # the Updater is given the id to write to
+    ag.default_interests(ws, "project:reno-kitchen", now=NOW)
+    told = ag.interested(ws, ["project:reno-kitchen"], when="filed", now=NOW)
+    assert [(r["agent"], r["id"]) for r in told] == [("project:reno-kitchen", "sa:project:reno:kitchen")]
+    # the command sets it, and an empty value gives the agent the id of its name again
+    code, out, _err = _run(["set", "project:reno-bath", "--id-name", "project:reno:bath"], ws, capsys)
+    assert code == 0 and out.strip().endswith(", id sa:project:reno:bath")
+    assert _run(["id", "project:reno-bath"], ws, capsys)[:2] == (0, "sa:project:reno:bath\n")
+    assert _run(["set", "project:reno-bath", "--id-name", ""], ws, capsys)[0] == 0
+    assert _run(["id", "project:reno-bath"], ws, capsys)[:2] == (0, "sa:project:reno-bath\n")
+    assert ag.set_row(ws, "project:garden", id_name="project:garden", now=NOW).get("id_name") is None
+
+
+def test_an_id_name_that_cannot_be_one_is_refused(initialized_workspace: Path,
+                                                  capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    ag.set_row(ws, "project:reno-kitchen", now=NOW)
+    ag.set_row(ws, "project:reno-bath", id_name="project:reno:bath", now=NOW)
+    for value, why in (("reno:kitchen", "is not an id name"), ("project", "is not an id name"),
+                       ("project:a:b:c:d", "is not an id name"), ("project:Reno:kitchen", "is not a part"),
+                       ("project:reno:dev", "`dev` is reserved"), ("project:reno:bath", "is taken"),
+                       ("project:reno-bath", "is taken")):
+        with pytest.raises(ag.ar.AgentError, match=why):
+            ag.set_row(ws, "project:reno-kitchen", id_name=value, now=NOW)
+    with pytest.raises(ag.ar.AgentError, match="only a project agent"):
+        ag.set_row(ws, "updater", id_name="updater:two", now=NOW)
+    code, out, err = _run(["set", "project:reno-kitchen", "--id-name", "reno:kitchen"], ws, capsys)
+    assert code == 2 and out == "" and "is not an id name" in err
+    # A row edited by hand: the problem is named, and the id is the one the name gives.
+    _registry(ws, [{"name": "project:reno-kitchen", "role": "project", "id_name": "elsewhere:x"},
+                   {"name": "project:reno-bath", "role": "project", "id_name": "project:garden"},
+                   {"name": "project:garden", "role": "project"}])
+    data = ag.roster(ws)
+    errors = "\n".join(data["errors"])
+    assert "`project:reno-kitchen`: 'elsewhere:x' is not an id name" in errors
+    assert "`project:garden` and `project:reno-bath` have the same id, sa:project:garden" in errors
+    assert {a["name"]: a["id"] for a in data["agents"]}["project:reno-kitchen"] == "sa:project:reno-kitchen"
+
+
 # ------------------------------------------------------------------- duties
 
 def test_duties_of_a_current_workspace(initialized_workspace: Path) -> None:

@@ -8,7 +8,7 @@ A registered session has no hooks and nobody watching. Everything below follows 
 
 The start prompt (`tools/autocode.py prompt <agent>`) names the id, the role file and the wakes. Follow it in its order:
 
-1. **Register under exactly the id you were given.** It is built from the configured prefix (`uv run python -m superagent.tools.agents id <name>`). If the answer is `id_taken`, another session holds the id: say so and stop. Never register under another id; only the owner moves an id.
+1. **Register under exactly the id you were given.** It is built from the configured prefix (`uv run python -m superagent.tools.agents id <name>`). If the answer is `id_taken`, another session holds the id: say so and stop. Never register under another id; only the owner moves an id. When the owner has a project agent take another id (its Autocode tool's `rename`), that agent records the id on its row in the same turn, `uv run python -m superagent.tools.agents set <its name> --id-name <the new id without its prefix>`, so every tool builds the id it holds. Its name, handle and project stay (`contracts/agents.md` § 4).
 2. **Read the floor by hand**: `AGENTS.md` § "Non-Negotiables", every file in `workspace/_custom/rules/`, `workspace/_memory/unboxed.yml` and `escalate.yml`, then your role file (and its overlay in `workspace/_custom/agents/`, when there is one).
 3. **Set the wakes that are granted to you, and no other periodic wake** (§ 3).
 4. **Write your role's interests onto your row**, when your role file names any: `uv run python -m superagent.tools.agents interest <you> --defaults` (§ 2).

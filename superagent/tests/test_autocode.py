@@ -768,6 +768,45 @@ def test_the_start_prompt_has_an_agent_write_its_roles_interests(initialized_wor
         assert "--defaults" not in plain and "6. Do no other work now." in plain
 
 
+# ----------------------------------------- the id on a project agent's row
+
+def test_start_messages_and_checks_use_the_id_on_the_row(initialized_workspace: Path, fake: Fake) -> None:
+    ws = initialized_workspace
+    _enable(ws)
+    name, agent_id = "project:reno-kitchen", "sa:project:reno:kitchen"
+    ag.set_row(ws, name, status="dormant", id_name="project:reno:kitchen")
+    prompt = ac.start_prompt(ws, ac.FRAMEWORK, name)
+    assert f"under exactly this id: `{agent_id}`" in prompt
+    assert f"the Superagent agent `{name}`" in prompt and "Your project is `project:reno-kitchen`" in prompt
+    assert f"agents interest {name} --defaults" in prompt, "tools take the name"
+    cmd, _info = ac.start_command(ws, ac.FRAMEWORK, name)
+    assert cmd[cmd.index("--title") + 1] == f"@{agent_id}"
+    # messages go to the id the session holds: a notice, an answer, a park
+    fake.answers["autocode me"] = ME_LEAD
+    assert ac.notify(ws, ac.FRAMEWORK, name, "Pick up", "Pick up: a change") == (True, "")
+    assert ac.answer(ws, ac.FRAMEWORK, _ask_from(ws, name, status=None), "yes")["told"] is True
+    assert ac.tell(ws, ac.FRAMEWORK, name, "park") == {"id": agent_id, "status": "dormant"}
+    assert [c["cmd"][2] for c in fake.calls if c["cmd"][1] == "send"] == [agent_id] * 3
+    # the row follows the registration under that id, and the cap is read for it
+    fake.answers["autocode me"] = (0, json.dumps({"registered": True, "agent": {"id": agent_id}}), "")
+    assert ac.mark(ws, ac.FRAMEWORK, name)["id"] == agent_id
+    ag.grant(ws, name, wake="permit", trigger="every 1d until 2027-03-01", purpose="p", approval="yes")
+    ag.set_row(ws, name, daily_usd=5.0)
+    _spent(fake, agent_id, 1.0)
+    assert ac.run_check(ws, ac.FRAMEWORK, name, None, "permit")[0] == 0
+    _spent(fake, "sa:project:reno-kitchen", 1.0)
+    assert ac.run_check(ws, ac.FRAMEWORK, name, None, "permit")[0] == 3, "another id: its spend is not ours"
+    # the audits compare by that id
+    fake.answers["autocode agents"] = (0, json.dumps([{"id": agent_id, "status": "idle", "machine": "testbox"}]), "")
+    rows = {r["id"]: r for r in ac.status(ws, ac.FRAMEWORK)}
+    assert rows[agent_id]["registered"] == "idle" and rows[agent_id]["note"] == ""
+    assert "sa:project:reno-kitchen" not in rows
+    fake.answers["autocode wakes"] = (0, json.dumps([
+        {"agent": agent_id, "name": "permit", "trigger": "every 1d until 2027-03-01"}]), "")
+    assert ac.audit_wakes(ws, ac.FRAMEWORK, name) == []
+    assert fake.calls[-1]["cmd"] == ["autocode", "wakes", agent_id, "--json"]
+
+
 # --------------------------------- the lead and its dev twin take no default
 
 def test_the_leads_dev_twin_starts_on_the_model_of_the_session_that_starts_it(

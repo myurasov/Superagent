@@ -7,10 +7,11 @@
 # role is one agent and needs a row only to carry a setting. A project agent
 # exists only through its row.
 #
-# Ids are never stored. An agent's id is `<id_prefix>:<name>`, built from
-# `config.preferences.autocode.id_prefix`
+# No id is stored with its prefix. An agent's id is `<id_prefix>:<name>`, built
+# from `config.preferences.autocode.id_prefix`
 # (`uv run python -m superagent.tools.agents id <name>`), so changing the prefix
-# changes every id at once. Read the roster with
+# changes every id at once. A project agent the owner gave another id carries
+# its `id_name`, and its id is `<id_prefix>:<id_name>`. Read the roster with
 # `uv run python -m superagent.tools.agents list`.
 #
 # Entity-shape (contracts/memory-taxonomy.md): rows are long-lived and edited
@@ -30,6 +31,12 @@ agents:
   #   handle      — Operational handle "agent:<name>" (contracts/operational-handles.md).
   #   project     — For a project agent: the handle of its Project
   #                  ("project:kitchen-reno-2026"). null otherwise.
+  #   id_name     — For a project agent the owner gave another id than its name
+  #                  gives: the name that id is built from, such as one of a
+  #                  group ("project:reno:kitchen" for the agent
+  #                  "project:reno-kitchen"). null = the id is built from `name`.
+  #                  Written by `uv run python -m superagent.tools.agents set
+  #                  <name> --id-name ...`. Absent on rows older than 0.34.0 = null.
   #   host        — Machine that runs the agent (`uv run python -m
   #                  superagent.tools.machines name`). null = not placed.
   #   model       — "<provider>/<model>" for this agent; null = the default of the
@@ -71,6 +78,7 @@ agents:
     role: ""
     handle: ""
     project: null
+    id_name: null
     host: null
     model: null
     variant: null

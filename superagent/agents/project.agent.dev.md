@@ -9,7 +9,7 @@ The notes of the agent that develops and maintains `project.agent.md`. The runni
 
 ## Purpose and design notes
 
-- One generic role serves every project: an instance is one row in `_memory/agents.yaml` that names the project, and its id is `<prefix>:project:<slug>`. This one dev twin (`<prefix>:project:dev`) serves them all.
+- One generic role serves every project: an instance is one row in `_memory/agents.yaml` that names the project, and its id is `<prefix>:project:<slug>`, or the one built from the `id_name` on its row when the owner gave the agent another id (one of a group, `<prefix>:project:<group>:<member>`). This one dev twin (`<prefix>:project:dev`) serves them all.
 - A project agent is dormant by default: no periodic wake, no duty. A message wakes it.
 - Its state lives in the project folder (`info.md`, `status.md`, `history.md`), so a session that starts cold reads the files and carries on.
 - It ends with the project: a closing note in `history.md`, then the instance is retired.
@@ -31,7 +31,7 @@ The notes of the agent that develops and maintains `project.agent.md`. The runni
 - Frontmatter and roster: `uv run python -m superagent.tools.agents list` (a role with a problem is named on stderr).
 - Duties: `uv run python -m superagent.tools.agents duties --agent project`.
 - Check exit codes: there is no duty to check; `uv run python -m superagent.tools.agents check project <duty>` exits 2.
-- The id of an instance: `uv run python -m superagent.tools.agents id project:<slug>`.
+- The id of an instance: `uv run python -m superagent.tools.agents id project:<slug>` (the id on the row when the row carries an id name; the command takes the id name too).
 - Manifest in step with the role files: `uv run python -m superagent.tools.build_agent_manifest --check`.
 - Suite: `uv run pytest superagent/tests/test_agent_roles.py superagent/tests/test_agents.py -q`, then the whole suite before a commit.
 - Dry-run a duty in a chat session: take the role (`agents` skill, "act as project") and run the duty's skill against a copy of the workspace.
@@ -55,10 +55,12 @@ The notes of the agent that develops and maintains `project.agent.md`. The runni
 ## Pitfalls
 
 - A project slug named `dev` would collide with the dev twin's id; `agents id` refuses it.
+- An id that was moved in the runtime with no id name on the row leaves every built id the old one. Messages may still arrive where the runtime forwards the old id, while a start, `autocode mark`, the cap check and the audits compare ids and miss. Record the id name in the turn the id moves.
 - A project agent that keeps working notes only in its conversation loses them at the next compaction. The project folder is the memory.
 
 ## Changelog
 
+- 0.34.0 — a project agent's row may carry `id_name`: the id the owner gave it (one of a group), which every tool then builds; its name, handle and project stay (the owner's request).
 - Unreleased — frontmatter `interests`: its own project by default; it adds and drops its own (a vendor, a page, a tag). Woken by the Updater when something its interests name moved, it writes to other agents directly, and the park routine sends the lead no report (the owner's request).
 - 0.27.0 — the role is final for sessions of its own: start, wake rules, the park routine, pause and end. A project agent is created by the `add-agent` skill and retired by the `projects` skill.
 - 0.25.0 — role file created: the generic project role.

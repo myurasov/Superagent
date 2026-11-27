@@ -253,7 +253,8 @@ def _agent(workspace: Path, framework: Path, name: str, *, dev: bool = False) ->
     tier = (tier.get("dev") if isinstance(tier, dict) else None) or {}
     follows = dev and role.kind == "lead"  # no default: the model of the session that starts it
     return {
-        "name": instance, "id": ar.agent_id(data["prefix"], instance), "role": role, "dev": dev,
+        "name": instance, "role": role, "dev": dev,
+        "id": row["id"] if row and not dev else ar.agent_id(data["prefix"], instance),
         "slug": slug, "follows_starter": follows,
         "model": None if follows else (tier.get("model") if dev else (row or {}).get("model")),
         "variant": None if follows else (tier.get("variant") if dev else (row or {}).get("variant")),

@@ -20,7 +20,9 @@ An ID is `<prefix>:<instance name>`. The prefix comes from
 `config.preferences.autocode.id_prefix` (default `sa`), so several users can
 share one Autocode server. The instance name is the role name for a lead or
 durable role, `project:<slug>` for a project agent, and `<role>:dev` for a dev
-twin. Nothing in the framework hardcodes a prefix.
+twin. A project agent's registry row may carry an id name, the name its id is
+built from in place of its instance name (`row_id`). Nothing in the framework
+hardcodes a prefix.
 
 Inputs: the role files, and (for the prefix) `<workspace>/_memory/config.yaml`.
 Outputs: none; this module only reads.
@@ -69,6 +71,8 @@ NAME_RE = re.compile(r"^[a-z][a-z0-9-]{0,30}$")
 #: Names a role may not take (they are segments or Autocode's own names).
 RESERVED_NAMES = frozenset({"dev", "owner", "autocode", "me"})
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
+#: How many parts an id name may have after the role name (`project:<group>:<member>` has two).
+ID_NAME_PARTS = 3
 DUTY_ID_RE = re.compile(r"^[a-z][a-z0-9-]{0,40}$")
 OWNS_RE = re.compile(r"^(_memory|Domains|Projects|Sources|Outbox|Inbox|Archive)/[A-Za-z0-9_<>./-]*$")
 
@@ -272,6 +276,45 @@ def instance_name(role: Role, *, slug: str | None = None, dev: bool = False) -> 
 def agent_id(prefix: str, name: str) -> str:
     """`<prefix>:<instance name>`."""
     return f"{validate_prefix(prefix)}:{name}"
+
+
+def id_name_problem(value: Any, name: str) -> str | None:
+    """Why `value` cannot be the id name of the agent `name`; None when it can.
+
+    An id name is what a project agent's id is built from once the owner gave
+    the agent another id than its instance name gives, such as one of a group:
+    `project:<group>:<member>`. It keeps the role name first and has one to
+    three more parts. The instance name stays the agent's name everywhere else.
+    """
+    try:
+        role, slug, is_dev = split_instance(name)
+    except AgentError as exc:
+        return str(exc)
+    if slug is None or is_dev:
+        return (f"only a project agent (`<role>:<slug>`) takes an id name: the id of `{name}` "
+                "is built from its name")
+    parts = value.split(":") if isinstance(value, str) else []
+    if len(parts) < 2 or len(parts) > 1 + ID_NAME_PARTS or parts[0] != role:
+        return (f"{value!r} is not an id name for `{name}`: use `{role}:<part>`, with up to "
+                f"{ID_NAME_PARTS} parts after `{role}` (`{role}:<group>:<member>`)")
+    for part in parts[1:]:
+        if not SLUG_RE.match(part):
+            return f"{part!r} in the id name {value!r} is not a part (lowercase letters, digits and `-`)"
+        if part == "dev":
+            return f"`dev` is reserved for the dev twin and cannot be a part of the id name {value!r}"
+    return None
+
+
+def row_id(prefix: str, name: str, row: Any = None) -> str:
+    """The id of the agent `name`, given its registry row (or none).
+
+    Built from the row's `id_name` when it carries one that is valid for the
+    agent, and from the instance name otherwise.
+    """
+    id_name = row.get("id_name") if isinstance(row, dict) else None
+    if id_name and id_name_problem(id_name, name) is None:
+        return agent_id(prefix, str(id_name))
+    return agent_id(prefix, name)
 
 
 def resolve_id(name: str, roles: list[Role], prefix: str, *, dev: bool = False) -> str:

@@ -274,16 +274,16 @@ def test_config_template_declares_autocode_defaults(framework_dir: Path) -> None
 
 
 def test_agents_registry_template_shape(framework_dir: Path) -> None:
-    """The registry stores names, never ids, and its example row is not an agent."""
+    """The registry stores names and never an id with its prefix, and its example row is not an agent."""
     path = framework_dir / "templates" / "memory" / "agents.yaml"
     data = yaml.safe_load(path.read_text())
     assert set(data) == {"schema_version", "last_updated", "agents"}
     (row,) = data["agents"]
-    assert set(row) == {"name", "role", "handle", "project", "host", "model", "variant",
+    assert set(row) == {"name", "role", "handle", "project", "id_name", "host", "model", "variant",
                         "daily_usd", "wakes", "interests", "status", "notes", "provenance"}
     assert row["name"] == "" and row["status"] == "off" and row["wakes"] == []
     assert row["interests"] == [], "an agent keeps no interest until it writes one"
-    assert "id" not in row
+    assert "id" not in row and row["id_name"] is None, "an id is built from the prefix and a name"
 
 
 def test_config_template_declares_outbox_drafts_stale_days(framework_dir: Path) -> None:

@@ -98,7 +98,7 @@ FRAMEWORK = Path(__file__).resolve().parent.parent
 REGISTRY_REL = "_memory/agents.yaml"
 REGISTRY_KEY = "agents"
 #: Row fields `set` may write. Grants (`wakes`) go through `grant` only.
-ROW_FIELDS = ("host", "model", "variant", "daily_usd", "status", "project", "notes")
+ROW_FIELDS = ("host", "model", "variant", "daily_usd", "status", "project", "notes", "id_name")
 REGISTRY_SKELETON = "schema_version: 1\nlast_updated: null\n"
 STATUSES = ("off", "active", "dormant", "paused", "retired")
 #: Statuses of an agent a message reaches: a session holds it.
@@ -203,8 +203,12 @@ def roster(workspace: Path, framework: Path = FRAMEWORK) -> dict[str, Any]:
         model, variant = _model_for(role, row, autocode)
         dev_model, dev_variant = _model_for(role, row, autocode, dev=True)
         cap = row.get("daily_usd")
+        if row.get("id_name"):
+            problem = ar.id_name_problem(row["id_name"], name)
+            if problem:
+                errors.append(f"{REGISTRY_REL}: `{name}`: {problem}")
         agents.append({
-            "id": ar.agent_id(prefix, name),
+            "id": ar.row_id(prefix, name, row),
             "name": name,
             "role": role.name,
             "kind": role.kind,
@@ -251,6 +255,12 @@ def roster(workspace: Path, framework: Path = FRAMEWORK) -> dict[str, Any]:
             role_name = row.get("role") or name
             what = "has no role file" if role_name not in known_roles else "does not fit its role"
             errors.append(f"{REGISTRY_REL}: `{name}` {what} (role {role_name!r})")
+    holders: dict[str, str] = {}
+    for agent in agents:
+        first = holders.setdefault(agent["id"], agent["name"])
+        if first != agent["name"]:
+            errors.append(f"{REGISTRY_REL}: `{agent['name']}` and `{first}` have the same id, "
+                          f"{agent['id']}")
     return {
         "prefix": prefix,
         "autocode_enabled": ar.autocode_enabled(workspace),
@@ -273,7 +283,12 @@ def render_roster(data: dict[str, Any]) -> list[str]:
             rows.append((f"{data['prefix']}:{role['name']}:<slug>", role["name"], role["kind"],
                          "no agent yet", "-", role["dev_id"]))
     widths = [max(len(r[i]) for r in rows) for i in range(len(rows[0]))]
-    return ["  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)).rstrip() for row in rows]
+    lines = ["  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)).rstrip() for row in rows]
+    for agent in data["agents"]:
+        if agent["id"] != ar.agent_id(data["prefix"], agent["name"]):
+            lines.append(f"{agent['id']} is the agent `{agent['name']}` (the id name on its row); "
+                         "tools take the name")
+    return lines
 
 
 # ------------------------------------------------------------------ duties
@@ -851,7 +866,7 @@ def interested(workspace: Path, handles: list[str], *, when: str | None = None,
                 deliver, wake = "fire", str(fired[0]["fire"])
             elif not plain:
                 deliver, reason = "skip", why_not
-        found.append({"agent": name, "id": ar.agent_id(prefix, name), "deliver": deliver,
+        found.append({"agent": name, "id": ar.row_id(prefix, name, row), "deliver": deliver,
                       "wake": wake, "reason": reason,
                       "patterns": sorted({str(i["pattern"]) for i in hits})})
     return found
@@ -931,16 +946,37 @@ def heartbeat_lines(workspace: Path, framework: Path = FRAMEWORK, *,
 
 # ---------------------------------------------------------------- the row
 
+def _checked_id_name(workspace: Path, agent: str, value: Any) -> str | None:
+    """`value` as the id name to store on the row of `agent`; None clears it.
+
+    Raises AgentError when it cannot be this agent's id name, or when another
+    agent is named so or holds it.
+    """
+    if value in (None, "") or value == agent:
+        return None  # the id its name gives
+    problem = ar.id_name_problem(value, agent)
+    if problem:
+        raise ar.AgentError(problem)
+    rows, _errors = load_registry(workspace)
+    for row in rows:
+        other = str(row.get("name"))
+        if other != agent and value in (other, row.get("id_name")):
+            raise ar.AgentError(f"the id name `{value}` is taken: it is the id of `{other}`")
+    return str(value)
+
+
 def set_row(workspace: Path, agent: str, *, framework: Path = FRAMEWORK,
             now: dt.datetime | None = None, source: str = "agents", **fields: Any) -> dict[str, Any]:
     """Create or update the registry row of `agent` (its instance name); return the row.
 
     `fields` may hold `host`, `model`, `variant`, `daily_usd`, `status`,
-    `project`, `notes`; a field that is not given keeps its value. A new row
-    starts `off`, and the row of a project agent names its Project
-    (`project:<slug>`) unless told otherwise. Grants are never written here
-    (`grant`). Raises AgentError for a dev twin, an unknown role, a field that
-    is not a row field or a status that is not one.
+    `project`, `notes`, `id_name`; a field that is not given keeps its value.
+    A new row starts `off`, and the row of a project agent names its Project
+    (`project:<slug>`) unless told otherwise. `id_name` is the name a project
+    agent's id is built from once the owner gave it another id than its name
+    gives; an empty value clears it. Grants are never written here (`grant`).
+    Raises AgentError for a dev twin, an unknown role, a field that is not a
+    row field, a status that is not one, or an id name that cannot be one.
     """
     now = now or cadence.now_local()
     role = _resolve_agent(workspace, framework, agent)
@@ -950,6 +986,8 @@ def set_row(workspace: Path, agent: str, *, framework: Path = FRAMEWORK,
                             f"(fields: {', '.join(ROW_FIELDS)})")
     if fields.get("status") is not None and fields["status"] not in STATUSES:
         raise ar.AgentError(f"status {fields['status']!r} is not one of {', '.join(STATUSES)}")
+    if "id_name" in fields:
+        fields["id_name"] = _checked_id_name(workspace, agent, fields["id_name"])
     stamp = now.isoformat(timespec="seconds")
     path, rows = _registry_rows(workspace)
     index = _row_index(rows, agent)
@@ -1015,7 +1053,8 @@ def build_parser() -> argparse.ArgumentParser:
     ls = sub.add_parser("list", parents=[common], help="The roster: roles, instances, ids, dev twins.")
     ls.add_argument("--json", action="store_true", help="Print the roster as JSON.")
     ident = sub.add_parser("id", parents=[common], help="Print the id of an agent.")
-    ident.add_argument("name", help="`<role>`, `<role>:dev` or `project:<slug>`.")
+    ident.add_argument("name", help="`<role>`, `<role>:dev` or `project:<slug>`; or the id name "
+                                    "on a project agent's row.")
     ident.add_argument("--dev", action="store_true", help="The id of the role's dev twin.")
     du = sub.add_parser("duties", parents=[common], help="Duties with schedule, last run and state.")
     du.add_argument("--agent", default=None, help="Only this role's duties.")
@@ -1055,6 +1094,9 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("--daily-usd", type=float, default=None, dest="daily_usd")
     st.add_argument("--project", default=None, help="The Project's handle, for a project agent.")
     st.add_argument("--notes", default=None)
+    st.add_argument("--id-name", default=None, dest="id_name", metavar="NAME",
+                    help="A project agent's id name, once the owner gave it another id than its "
+                         "name gives: `project:<group>:<member>`. An empty value clears it.")
     it = sub.add_parser("interest", parents=[common],
                         help="An agent's interests: what the update cycle should tell it about.")
     it.add_argument("agent", help="`<role>` or `project:<slug>`.")
@@ -1104,7 +1146,15 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "id":
             roles, errors = ar.collect(args.framework, workspace)
             _warn(errors)
-            print(ar.resolve_id(args.name, roles, ar.id_prefix(workspace), dev=args.dev))
+            prefix = ar.id_prefix(workspace)
+            rows, _problems = load_registry(workspace)
+            row = None if args.dev else (
+                next((r for r in rows if r.get("name") == args.name), None)
+                or next((r for r in rows if r.get("id_name") == args.name), None))
+            if row is not None and row.get("id_name"):  # the id follows the row
+                print(ar.row_id(prefix, str(row["name"]), row))
+            else:
+                print(ar.resolve_id(args.name, roles, prefix, dev=args.dev))
             return 0
         if args.command == "duties":
             rows, errors = duty_rows(workspace, args.framework, now=args.now, agent=args.agent)
@@ -1164,7 +1214,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "set":
             given = {k: getattr(args, k) for k in ROW_FIELDS if getattr(args, k) is not None}
             row = set_row(workspace, args.agent, framework=args.framework, now=args.now, **given)
-            print(f"{args.agent}: status {row.get('status')}, host {row.get('host') or '-'}")
+            print(f"{args.agent}: status {row.get('status')}, host {row.get('host') or '-'}"
+                  + (f", id {ar.row_id(ar.id_prefix(workspace), args.agent, row)}"
+                     if row.get("id_name") else ""))
             return 0
         if args.command == "revoke":
             for name in change_grants(workspace, args.agent, wake=args.wake, action="revoke", now=args.now):
