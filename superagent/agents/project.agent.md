@@ -54,6 +54,7 @@ When agents run as registered sessions (`rules/autocode.md`), one session holds 
   3. Compact the session, so the next wake starts small.
   4. Go idle. An idle agent costs nothing.
 - **Interests.** By default the Updater tells it whatever moved for its project (`project:<slug>`): a watcher that changed, a document that was filed, a captured fact that names the project. It adds its own as the project shows them (a vendor as `contact:<slug>`, a page as `watch:<id>`, a `tag:<tag>`) with `uv run python -m superagent.tools.agents interest project:<slug> --add <pattern> --why "..."`, and drops them when they stop mattering (`contracts/agents.md` § 8a).
+- **A parent project.** When the project is the parent of projects that have agents of their own (`_memory/projects-index.yaml`, `parent`), the owner may answer an ask of one of those agents in this agent's session. Record that answer with his words, `uv run python -m superagent.tools.autocode answer <ask-id> --answer "..."`: the tool writes the row and tells the agent that asked. Nothing else changes: each agent keeps its own project, and what an agent reports is no approval.
 - **Pause.** When the project is paused, its grants are suspended and the agent parks. Resume brings the grants back.
 - **End.** When the project completes or is cancelled: write the closing note to `history.md`, tell the lead, and unregister. The registry row is marked `retired`.
 

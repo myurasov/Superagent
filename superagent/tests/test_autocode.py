@@ -776,6 +776,47 @@ def test_the_start_prompt_has_an_agent_write_its_roles_interests(initialized_wor
         assert "--defaults" not in plain and "6. Do no other work now." in plain
 
 
+def test_the_agent_of_a_parent_project_records_answers_for_its_sub_projects(
+        initialized_workspace: Path, fake: Fake, capsys: pytest.CaptureFixture[str]) -> None:
+    ws = initialized_workspace
+    _enable(ws)
+    for slug in ("house", "house-kitchen", "garden"):
+        ag.set_row(ws, f"project:{slug}", status="dormant")
+    index = ws / "_memory" / "projects-index.yaml"
+    data = yaml.safe_load(index.read_text())
+    data["projects"] = [{"id": "house", "parent": None}, {"id": "house-kitchen", "parent": "house"},
+                        {"id": "garden", "parent": None}]
+    index.write_text(yaml.safe_dump(data, sort_keys=False))
+    assert ag.parent_agent(ws, "project:house-kitchen") == "project:house"
+    assert ag.parent_agent(ws, "project:house") is None and ag.parent_agent(ws, "bookkeeper") is None
+
+    def session(agent_id: str) -> None:
+        fake.answers["autocode me"] = (0, json.dumps({"registered": True, "agent": {"id": agent_id}}), "")
+
+    session("sa:project:house")
+    done = ac.answer(ws, ac.FRAMEWORK, _ask_from(ws, "project:house-kitchen", status=None), "yes, the oak")
+    assert done["told"] is True and done["row"]["status"] == "answered"
+    assert done["row"]["answer"] == "yes, the oak"
+    assert [c["cmd"][2] for c in fake.calls if c["cmd"][1] == "send"] == ["sa:project:house-kitchen"]
+    # Any other agent is refused, and nothing is written: not a child for its parent, not a
+    # project agent for another project, not a durable agent, not a dev twin.
+    for agent_id, asker in (("sa:project:house-kitchen", "project:house"), ("sa:project:garden", "project:house-kitchen"),
+                            ("sa:bookkeeper", "project:garden"), ("sa:updater:dev", "project:house")):
+        session(agent_id)
+        ask_id = _ask_from(ws, asker, status=None)
+        with pytest.raises(ar.AgentError, match="may not record the owner's answer to an ask of"):
+            ac.answer(ws, ac.FRAMEWORK, ask_id, "yes")
+        assert next(r for r in asks.load_asks(ws) if r["id"] == ask_id)["status"] == "open"
+    assert ac.main(["answer", ask_id, "--answer", "yes", "--workspace", str(ws)]) == 2
+    assert "sa:updater:dev may not record the owner's answer" in capsys.readouterr().err
+    assert len([c for c in fake.calls if c["cmd"][1] == "send"]) == 1
+    # The lead records for any agent, and a session that is no agent is the owner's own.
+    fake.answers["autocode me"] = ME_LEAD
+    assert ac.answer(ws, ac.FRAMEWORK, ask_id, "yes")["row"]["status"] == "answered"
+    fake.answers["autocode me"] = (0, json.dumps({"registered": False}), "")
+    assert ac.may_answer(ws, ac.FRAMEWORK, "project:garden") == (True, "")
+
+
 # ----------------------------------------- the id on a project agent's row
 
 def test_start_messages_and_checks_use_the_id_on_the_row(initialized_workspace: Path, fake: Fake) -> None:

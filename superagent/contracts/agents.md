@@ -135,7 +135,7 @@ A wake is a prompt a runtime types into an agent's session later. The rules hold
 - **The Updater tells.** After a cycle it asks, for each thing that moved, who is interested: `agents interested --when <kind> --handle <its handle> --handle <each handle it relates to>`. Each such agent gets one message per cycle that names what moved by handle and path, or the wake its interest names is fired. Only an agent a session holds (`active` or `dormant`) is told; with no separate agents the run report is the hand-off.
 - **Agents write to each other directly**, by id. Nothing is relayed through the lead.
 - **The lead is told only** what needs a decision the agents cannot settle among themselves or one about the workspace, what the owner must hear before the next briefing, and an agent's start, end and reached cost cap. Everything else the lead reads from the stores when it briefs: no agent reports to it after a piece of work, and the Updater sends it no run report.
-- **The owner's answer is passed on by the tool.** `tools/autocode.py answer <ask-id> --answer "..."` records the answer on the ask and tells the agent that asked, when a session holds it.
+- **The owner's answer is passed on by the tool.** `tools/autocode.py answer <ask-id> --answer "..."` records the answer on the ask and tells the agent that asked, when a session holds it. The lead records it; so does the agent of a parent project for an ask of its sub-project's agent, when the owner answers in its session; the tool refuses any other agent.
 
 ## 9. With and without Autocode
 

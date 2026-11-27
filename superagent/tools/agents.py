@@ -96,6 +96,7 @@ from superagent.tools import watchlist as wl
 
 FRAMEWORK = Path(__file__).resolve().parent.parent
 REGISTRY_REL = "_memory/agents.yaml"
+PROJECTS_INDEX_REL = "_memory/projects-index.yaml"
 REGISTRY_KEY = "agents"
 #: Row fields `set` may write. Grants (`wakes`) go through `grant` only.
 ROW_FIELDS = ("host", "model", "variant", "daily_usd", "status", "project", "notes", "id_name")
@@ -945,6 +946,38 @@ def heartbeat_lines(workspace: Path, framework: Path = FRAMEWORK, *,
 
 
 # ---------------------------------------------------------------- the row
+
+def _project_id(value: Any) -> str | None:
+    """`kitchen-reno` for `project:kitchen-reno` or `kitchen-reno`; None for anything else."""
+    text = str(value).strip() if isinstance(value, str) else ""
+    text = text[len("project:"):] if text.startswith("project:") else text
+    return text or None
+
+
+def parent_agent(workspace: Path, agent: str) -> str | None:
+    """The agent of the parent project of `agent`'s project, by instance name; None when there is none.
+
+    The parent is the `parent` of the project's row in
+    `_memory/projects-index.yaml`, and its agent is the registry row that
+    names that project.
+    """
+    rows, _errors = load_registry(workspace)
+    row = next((r for r in rows if r.get("name") == agent), None)
+    project = _project_id((row or {}).get("project"))
+    if project is None:
+        return None
+    try:
+        data = yaml.load((workspace / PROJECTS_INDEX_REL).read_text(encoding="utf-8"), Loader=_LOADER)
+    except (OSError, yaml.YAMLError):
+        return None
+    listed = data.get("projects") if isinstance(data, dict) else None
+    entry = next((p for p in listed or [] if isinstance(p, dict) and str(p.get("id")) == project), None)
+    parent = _project_id((entry or {}).get("parent"))
+    if parent is None or parent == project:
+        return None
+    return next((str(r["name"]) for r in rows
+                 if _project_id(r.get("project")) == parent and r.get("name") != agent), None)
+
 
 def _checked_id_name(workspace: Path, agent: str, value: Any) -> str | None:
     """`value` as the id name to store on the row of `agent`; None clears it.

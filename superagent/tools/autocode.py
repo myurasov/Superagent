@@ -61,7 +61,9 @@ tool works with Autocode off.
                      Record the owner's answer on an open ask (the record is
                      `tools/asks.py`'s) and tell the agent that asked, when a
                      session holds it: one message naming the ask. Nobody has
-                     to carry the answer over.
+                     to carry the answer over. The lead records it, and so does
+                     the agent of a parent project for an ask of its
+                     sub-project's agent; any other agent is refused.
   lock-name browser <profile>
                      The name of the Autocode lock two agents share for one
                      browser profile.
@@ -980,6 +982,32 @@ def notify(workspace: Path, framework: Path, name: str, subject: str, text: str
     return True, ""
 
 
+def may_answer(workspace: Path, framework: Path, asker: str) -> tuple[bool, str]:
+    """(may this session record the owner's answer to an ask of `asker`, why not).
+
+    The owner's answer is recorded where he gave it: by a session that is no
+    registered agent (his own chat or shell), by the lead, by the agent that
+    asked, and by the agent whose project is the parent of the asking agent's
+    project. Any other agent is refused: what one agent tells another is
+    never the owner's word.
+    """
+    if not ar.autocode_enabled(workspace):
+        return True, ""
+    try:
+        mine = me()
+    except Unavailable:
+        return True, ""  # no runtime here: no registered session either
+    if mine is None:
+        return True, ""
+    holder = next((a for a in agents.roster(workspace, framework)["agents"] if a["id"] == mine), None)
+    if holder is not None and (holder["kind"] == "lead" or holder["name"] == asker
+                               or agents.parent_agent(workspace, asker) == holder["name"]):
+        return True, ""
+    return False, (f"{mine} may not record the owner's answer to an ask of `{asker}`: the lead "
+                   "records it, or the agent of the parent project when the owner answers in "
+                   "its session")
+
+
 def answer(workspace: Path, framework: Path, ask_id: str, text: str, *, by: str | None = None
            ) -> dict[str, Any]:
     """Record the owner's answer on an open ask and tell the agent that asked.
@@ -987,7 +1015,15 @@ def answer(workspace: Path, framework: Path, ask_id: str, text: str, *, by: str 
     The record is `asks.answer_ask`. Then one message goes to the asking agent
     when a session holds it, naming the ask and where its answer is; the
     answer itself stays on the row. Returns the row, `told` and `why_not`.
+    Raises AgentError, with nothing written, when this session is an agent
+    that may not record an answer for the one that asked (`may_answer`).
     """
+    asker = next((str(r.get("agent") or "") for r in asks.load_asks(workspace)
+                  if r.get("id") == ask_id), None)
+    if asker is not None:
+        allowed, why_not = may_answer(workspace, framework, asker)
+        if not allowed:
+            raise ar.AgentError(why_not)
     row = asks.answer_ask(workspace, ask_id, answer=text, by=by)
     agent = str(row.get("agent") or "")
     told, why = notify(
